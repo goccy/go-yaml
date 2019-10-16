@@ -14,7 +14,7 @@ But I want to use the following features no in that library .
 
 - This library should be considered alpha grade. API may still change.
 
-# Features
+# Features ( Goals )
 
 - Beautiful syntax or validation error notification
 - Support `Scanner` or `Lexer` or `Parser` as public API

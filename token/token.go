@@ -464,6 +464,13 @@ type Token struct {
 	Prev          *Token
 }
 
+func (t *Token) PreviousType() Type {
+	if t.Prev != nil {
+		return t.Prev.Type
+	}
+	return UnknownType
+}
+
 func (t *Token) NextType() Type {
 	if t.Next != nil {
 		return t.Next.Type
@@ -693,13 +700,13 @@ var (
 			Position:      pos,
 		}
 	}
-	MergeKey = func(pos *Position) *Token {
+	MergeKey = func(org string, pos *Position) *Token {
 		return &Token{
 			Type:          MergeKeyType,
 			CharacterType: CharacterTypeMiscellaneous,
 			Indicator:     NotIndicator,
 			Value:         "<<",
-			Origin:        "<<",
+			Origin:        org,
 			Position:      pos,
 		}
 	}

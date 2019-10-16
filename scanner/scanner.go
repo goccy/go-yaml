@@ -290,8 +290,7 @@ func (s *Scanner) scan(ctx *Context) (pos int) {
 			}
 		case '<':
 			if ctx.repeatNum('<') == 2 {
-				ctx.addToken(s.bufferedToken(ctx))
-				ctx.addToken(token.MergeKey(s.pos()))
+				ctx.addToken(token.MergeKey(string(ctx.obuf)+"<<", s.pos()))
 				s.progressColumn(ctx, 1)
 				pos++
 				return

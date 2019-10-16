@@ -1,0 +1,24 @@
+version: 2
+jobs:
+  test:
+    working_directory: /go/src/github.com/goccy/go-yaml
+    docker:
+    - image: circleci/golang:1.12
+      environment:
+        GO111MODULE: "on"
+    steps:
+      - checkout
+      - run:
+          name: Download modules
+          command: |
+            go mod download
+      - run:
+          name: Run unit tests and measure coverage
+          command: |
+            go test -v -coverprofile=coverage.out ./...
+            bash <(curl -s https://codecov.io/bash) -P ${CIRCLE_PULL_REQUEST##*/}
+workflows:
+  version: 2
+  test:
+    jobs:
+      - test

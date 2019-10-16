@@ -244,17 +244,6 @@ func (s *Scanner) scanNewLine(ctx *Context, c rune) {
 	if len(ctx.buf) > 0 && s.savedPos == nil {
 		s.savedPos = s.pos()
 	}
-	if ctx.isLiteral {
-		panic(nil)
-		if ctx.isEOS() {
-			//value := ctx.source(len(ctx.literalType)+1, ctx.idx)
-			//ctx.addToken(token.Literal(value, string(ctx.obuf), s.pos()))
-		}
-		ctx.addBuf(c)
-		ctx.addOriginBuf(c)
-		s.progressLine(ctx)
-		return
-	}
 	if ctx.isEOS() {
 		s.addBufferedTokenIfExists(ctx)
 	}

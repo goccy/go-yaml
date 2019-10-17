@@ -29,7 +29,21 @@ But I want to use the following features no in that library .
 # Install
 
 ```
-go get -u github.com/goccy/go-yaml
+$ go get -u github.com/goccy/go-yaml
+```
+
+# Tools
+
+## ycat 
+
+print yaml file with color
+
+<img width="713" alt="ycat" src="https://user-images.githubusercontent.com/209884/66986084-19b00600-f0f9-11e9-9f0e-1f91eb072fe0.png">
+
+### Install
+
+```
+$ go get -u github.com/goccy/go-yaml/cmd/ycat
 ```
 
 # License

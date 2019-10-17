@@ -22,6 +22,7 @@ type Printer struct {
 	Alias            PrintFunc
 	Bool             PrintFunc
 	String           PrintFunc
+	Number           PrintFunc
 }
 
 func defaultLineNumberFormat(num int) string {
@@ -78,9 +79,14 @@ func (p *Printer) property(tk *token.Token) *Property {
 			return p.Alias()
 		}
 		return prop
-	case token.StringType:
+	case token.StringType, token.SingleQuoteType, token.DoubleQuoteType:
 		if p.String != nil {
 			return p.String()
+		}
+		return prop
+	case token.IntegerType, token.FloatType:
+		if p.Number != nil {
+			return p.Number()
 		}
 		return prop
 	default:

@@ -41,6 +41,12 @@ func _main(args []string) error {
 			Suffix: format(color.Reset),
 		}
 	}
+	p.Number = func() *printer.Property {
+		return &printer.Property{
+			Prefix: format(color.FgHiMagenta),
+			Suffix: format(color.Reset),
+		}
+	}
 	p.MapKey = func() *printer.Property {
 		return &printer.Property{
 			Prefix: format(color.FgHiCyan),

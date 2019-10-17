@@ -246,6 +246,8 @@ func (s *Scanner) scanNewLine(ctx *Context, c rune) {
 	}
 	if ctx.isEOS() {
 		s.addBufferedTokenIfExists(ctx)
+	} else if s.isAnchor {
+		s.addBufferedTokenIfExists(ctx)
 	}
 	ctx.addBuf(' ')
 	ctx.addOriginBuf(c)
@@ -341,7 +343,11 @@ func (s *Scanner) scan(ctx *Context) (pos int) {
 			if nc == ' ' || nc == '\n' {
 				// mapping value
 				s.isMapContext = true
-				s.addBufferedTokenIfExists(ctx)
+				tk := s.bufferedToken(ctx)
+				if tk != nil {
+					s.prevIndentNum = tk.Position.Column - 1
+					ctx.addToken(tk)
+				}
 				ctx.addToken(token.MappingValue(s.pos()))
 				s.progressColumn(ctx, 1)
 				return

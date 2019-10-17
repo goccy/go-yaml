@@ -7,7 +7,12 @@ import (
 	"github.com/goccy/go-yaml/token"
 )
 
-type PrintFunc func(string) string
+type Property struct {
+	Prefix string
+	Suffix string
+}
+
+type PrintFunc func() *Property
 
 type Printer struct {
 	LineNumber       bool
@@ -23,72 +28,110 @@ func defaultLineNumberFormat(num int) string {
 	return fmt.Sprintf("%2d | ", num)
 }
 
-func (p *Printer) PrintTokens(tokens token.Tokens) string {
-	source := ""
-	for _, tk := range tokens {
-		switch tk.PreviousType() {
-		case token.AnchorType:
-			if p.Anchor != nil {
-				source += p.Anchor(tk.Origin)
-			} else {
-				source += tk.Origin
-			}
-			continue
-		case token.AliasType:
-			if p.Alias != nil {
-				source += p.Alias(tk.Origin)
-			} else {
-				source += tk.Origin
-			}
-			continue
+func (p *Printer) lineTexts(tk *token.Token, prop *Property) []string {
+	texts := []string{}
+	for idx, src := range strings.Split(tk.Origin, "\n") {
+		header := ""
+		if p.LineNumber {
+			header = p.LineNumberFormat(tk.Position.Line + idx)
 		}
-		switch tk.NextType() {
-		case token.MappingValueType:
-			if p.MapKey != nil {
-				source += p.MapKey(tk.Origin)
-			} else {
-				source += tk.Origin
-			}
-			continue
-		}
-		switch tk.Type {
-		case token.BoolType:
-			if p.Bool != nil {
-				source += p.Bool(tk.Origin)
-			} else {
-				source += tk.Origin
-			}
-		case token.AnchorType:
-			if p.Anchor != nil {
-				source += p.Anchor(tk.Origin)
-			} else {
-				source += tk.Origin
-			}
-		case token.AliasType:
-			if p.Anchor != nil {
-				source += p.Alias(tk.Origin)
-			} else {
-				source += tk.Origin
-			}
-		case token.StringType:
-			if p.String != nil {
-				source += p.String(tk.Origin)
-			} else {
-				source += tk.Origin
-			}
-		default:
-			source += tk.Origin
-		}
+		lineText := prop.Prefix + src + prop.Suffix
+		texts = append(texts, fmt.Sprintf("%s%s", header, lineText))
 	}
+	return texts
+}
+
+func (p *Printer) property(tk *token.Token) *Property {
+	prop := &Property{}
+	switch tk.PreviousType() {
+	case token.AnchorType:
+		if p.Anchor != nil {
+			return p.Anchor()
+		}
+		return prop
+	case token.AliasType:
+		if p.Alias != nil {
+			return p.Alias()
+		}
+		return prop
+	}
+	switch tk.NextType() {
+	case token.MappingValueType:
+		if p.MapKey != nil {
+			return p.MapKey()
+		}
+		return prop
+	}
+	switch tk.Type {
+	case token.BoolType:
+		if p.Bool != nil {
+			return p.Bool()
+		}
+		return prop
+	case token.AnchorType:
+		if p.Anchor != nil {
+			return p.Anchor()
+		}
+		return prop
+	case token.AliasType:
+		if p.Anchor != nil {
+			return p.Alias()
+		}
+		return prop
+	case token.StringType:
+		if p.String != nil {
+			return p.String()
+		}
+		return prop
+	default:
+	}
+	return prop
+}
+
+func (p *Printer) PrintTokens(tokens token.Tokens) string {
 	if p.LineNumber {
 		if p.LineNumberFormat == nil {
 			p.LineNumberFormat = defaultLineNumberFormat
 		}
-		codes := []string{}
-		for idx, src := range strings.Split(source, "\n") {
-			codes = append(codes, fmt.Sprintf("%s%s", p.LineNumberFormat(idx+1), src))
-		}
-		return strings.Join(codes, "\n")
 	}
-	return source
+	texts := []string{}
+	lineNumber := 1
+	for _, tk := range tokens {
+		lines := strings.Split(tk.Origin, "\n")
+		prop := p.property(tk)
+		header := ""
+		if p.LineNumber {
+			header = p.LineNumberFormat(lineNumber)
+		}
+		if len(lines) == 1 {
+			line := prop.Prefix + lines[0] + prop.Suffix
+			if len(texts) == 0 {
+				texts = append(texts, header+line)
+				lineNumber++
+			} else {
+				text := texts[len(texts)-1]
+				texts[len(texts)-1] = text + line
+			}
+		} else {
+			for idx, src := range lines {
+				if p.LineNumber {
+					header = p.LineNumberFormat(lineNumber)
+				}
+				line := prop.Prefix + src + prop.Suffix
+				if idx == 0 {
+					if len(texts) == 0 {
+						texts = append(texts, header+line)
+						lineNumber++
+					} else {
+						text := texts[len(texts)-1]
+						texts[len(texts)-1] = text + line
+					}
+				} else {
+					texts = append(texts, fmt.Sprintf("%s%s", header, line))
+					lineNumber++
+				}
+			}
+		}
+	}
+	return strings.Join(texts, "\n")
 }

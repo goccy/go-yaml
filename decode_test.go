@@ -247,7 +247,7 @@ func TestDecoder(t *testing.T) {
 		},
 		{
 			"a: b\nc: d\n",
-			&struct {
+			struct {
 				A string
 				C string `yaml:"c"`
 			}{
@@ -256,7 +256,7 @@ func TestDecoder(t *testing.T) {
 		},
 		{
 			"a: 1\nb: 2\n",
-			&struct {
+			struct {
 				A int
 				B int `yaml:"-"`
 			}{

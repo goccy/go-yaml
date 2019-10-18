@@ -96,7 +96,9 @@ func (d *Decoder) nodeToValue(node ast.Node) interface{} {
 
 func (d *Decoder) docToValue(doc *ast.Document) interface{} {
 	for _, node := range doc.Nodes {
-		return d.nodeToValue(node)
+		if v := d.nodeToValue(node); v != nil {
+			return v
+		}
 	}
 	return nil
 }
@@ -222,7 +224,7 @@ func (d *Decoder) decodeStruct(structType reflect.Type, value interface{}) (refl
 		}
 		fieldValue.Set(vv)
 	}
-	return structValue, nil
+	return structValue.Elem(), nil
 }
 
 func (d *Decoder) decodeSlice(sliceType reflect.Type, value interface{}) (reflect.Value, error) {

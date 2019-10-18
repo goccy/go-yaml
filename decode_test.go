@@ -263,6 +263,22 @@ func TestDecoder(t *testing.T) {
 				1, 0,
 			},
 		},
+		{
+			"a: &x 1\nb: &y 2\nc: *x\nd: *y\n",
+			struct{ A, B, C, D int }{1, 2, 1, 2},
+		},
+		{
+			"a: &a {c: 1}\nb: *a\n",
+			struct {
+				A, B struct {
+					C int
+				}
+			}{struct{ C int }{1}, struct{ C int }{1}},
+		},
+		{
+			"a: &a [1, 2]\nb: *a\n",
+			struct{ B []int }{[]int{1, 2}},
+		},
 	}
 	for _, test := range tests {
 		buf := bytes.NewBufferString(test.source)

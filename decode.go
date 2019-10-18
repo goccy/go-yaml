@@ -15,11 +15,15 @@ import (
 )
 
 type Decoder struct {
-	reader io.Reader
+	reader    io.Reader
+	anchorMap map[string]interface{}
 }
 
 func NewDecoder(r io.Reader) *Decoder {
-	return &Decoder{reader: r}
+	return &Decoder{
+		reader:    r,
+		anchorMap: map[string]interface{}{},
+	}
 }
 
 func (d *Decoder) nodeToValue(node ast.Node) interface{} {
@@ -44,6 +48,14 @@ func (d *Decoder) nodeToValue(node ast.Node) interface{} {
 			b, _ := base64.StdEncoding.DecodeString(d.nodeToValue(n.Value).(string))
 			return b
 		}
+	case *ast.AnchorNode:
+		anchorName := n.Name.GetToken().Value
+		anchorValue := d.nodeToValue(n.Value)
+		d.anchorMap[anchorName] = anchorValue
+		return anchorValue
+	case *ast.AliasNode:
+		aliasName := n.Value.GetToken().Value
+		return d.anchorMap[aliasName]
 	case *ast.LiteralNode:
 		return n.Value.GetValue()
 	case *ast.FlowMappingNode:

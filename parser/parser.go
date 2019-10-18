@@ -404,10 +404,28 @@ func (p *Parser) Parse(tokens token.Tokens) (*ast.Document, error) {
 		if err != nil {
 			return nil, xerrors.Errorf("failed to parse: %w", err)
 		}
-		if node != nil {
-			doc.Nodes = append(doc.Nodes, node)
-		}
 		ctx.progress(1)
+		if node == nil {
+			continue
+		}
+		if len(doc.Nodes) == 0 {
+			doc.Nodes = append(doc.Nodes, node)
+			continue
+		}
+		if _, ok := node.(*ast.MappingValueNode); !ok {
+			doc.Nodes = append(doc.Nodes, node)
+			continue
+		}
+		lastNode := doc.Nodes[len(doc.Nodes)-1]
+		switch n := lastNode.(type) {
+		case *ast.MappingValueNode:
+			doc.Nodes[len(doc.Nodes)-1] = &ast.MappingCollectionNode{
+				Start:  n.GetToken(),
+				Values: []ast.Node{lastNode, node},
+			}
+		case *ast.MappingCollectionNode:
+			n.Values = append(n.Values, node)
+		}
 	}
 	return doc, nil
 }

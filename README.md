@@ -26,6 +26,63 @@ But I want to use the following features no in that library .
 - Support `Anchor` and `Alias` to Marshaler
 - Reference to `Anchor` defined by the other file
 
+# Synopsis
+
+## Simple Decode
+
+Support compatible interface to `go-yaml/yaml` by using `reflect`
+
+```go
+	yml := `
+%YAML 1.2
+---
+a: 1
+b: c
+`
+var v struct {
+	A int
+	B string
+}
+if err := yaml.Unmarshal([]byte(yml), &v); err != nil {
+	...
+}
+```
+
+## Reference to `Anchor` defined by the other file
+
+`testdata` directory includes `anchor.yml` file
+
+```shell
+├── testdata
+   └── anchor.yml
+```
+
+And `anchor.yml` is defined the following.
+
+```yaml
+a: &a
+  b: 1
+  c: hello
+```
+
+Then, if `yaml.ReferenceDirs("testdata")` option passed to `yaml.Decoder`, 
+ `Decoder` try to find anchor definition from YAML files the under `testdata` directory.
+ 
+```go
+buf := bytes.NewBufferString("a: *a\n")
+dec := yaml.NewDecoder(buf, yaml.ReferenceDirs("testdata"))
+var v struct {
+	A struct {
+		B int
+		C string
+	}
+}
+if err := dec.Decode(&v); err != nil {
+	...
+}
+fmt.Printf("%+v\n", v) // {A:{B:1 C:hello}}
+```
+
 # Install
 
 ```

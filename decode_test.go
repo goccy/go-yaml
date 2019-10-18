@@ -295,3 +295,17 @@ func TestDecoder(t *testing.T) {
 		}
 	}
 }
+
+func TestDecodeByAnchorOfOtherFile(t *testing.T) {
+	buf := bytes.NewBufferString("a: *a\n")
+	dec := yaml.NewDecoder(buf, yaml.ReferenceDirs("testdata"))
+	var v struct {
+		A struct {
+			B int
+			C string
+		}
+	}
+	if err := dec.Decode(&v); err != nil {
+		t.Fatalf("%+v", err)
+	}
+}

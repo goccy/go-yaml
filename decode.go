@@ -2,8 +2,11 @@ package yaml
 
 import (
 	"encoding/base64"
+	"fmt"
 	"io"
 	"io/ioutil"
+	"os"
+	"path/filepath"
 	"reflect"
 	"strings"
 
@@ -15,14 +18,26 @@ import (
 )
 
 type Decoder struct {
-	reader    io.Reader
-	anchorMap map[string]interface{}
+	reader              io.Reader
+	referenceReaders    []io.Reader
+	anchorMap           map[string]interface{}
+	opts                []DecodeOption
+	referenceFiles      []string
+	referenceDirs       []string
+	isRecursiveDir      bool
+	isResolvedReference bool
 }
 
-func NewDecoder(r io.Reader) *Decoder {
+func NewDecoder(r io.Reader, opts ...DecodeOption) *Decoder {
 	return &Decoder{
-		reader:    r,
-		anchorMap: map[string]interface{}{},
+		reader:              r,
+		anchorMap:           map[string]interface{}{},
+		opts:                opts,
+		referenceReaders:    []io.Reader{},
+		referenceFiles:      []string{},
+		referenceDirs:       []string{},
+		isRecursiveDir:      false,
+		isResolvedReference: false,
 	}
 }
 
@@ -268,7 +283,125 @@ func (d *Decoder) decodeMap(mapType reflect.Type, value interface{}) (reflect.Va
 	return mapValue, nil
 }
 
+func (d *Decoder) fileToReader(file string) (io.Reader, error) {
+	reader, err := os.Open(file)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to open file: %w", err)
+	}
+	return reader, nil
+}
+
+func (d *Decoder) isYAMLFile(file string) bool {
+	ext := filepath.Ext(file)
+	if ext == ".yml" {
+		return true
+	}
+	if ext == ".yaml" {
+		return true
+	}
+	return false
+}
+
+func (d *Decoder) readersUnderDir(dir string) ([]io.Reader, error) {
+	pattern := fmt.Sprintf("%s/*", dir)
+	matches, err := filepath.Glob(pattern)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to get files by %s: %w", pattern, err)
+	}
+	readers := []io.Reader{}
+	for _, match := range matches {
+		if !d.isYAMLFile(match) {
+			continue
+		}
+		reader, err := d.fileToReader(match)
+		if err != nil {
+			return nil, xerrors.Errorf("failed to get reader: %w", err)
+		}
+		readers = append(readers, reader)
+	}
+	return readers, nil
+}
+
+func (d *Decoder) readersUnderDirRecursive(dir string) ([]io.Reader, error) {
+	readers := []io.Reader{}
+	if err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
+		if !d.isYAMLFile(path) {
+			return nil
+		}
+		reader, err := d.fileToReader(path)
+		if err != nil {
+			return xerrors.Errorf("failed to get reader: %w", err)
+		}
+		readers = append(readers, reader)
+		return nil
+	}); err != nil {
+		return nil, xerrors.Errorf("interupt walk in %s: %w", dir, err)
+	}
+	return readers, nil
+}
+
+func (d *Decoder) resolveReference() error {
+	for _, opt := range d.opts {
+		if err := opt(d); err != nil {
+			return xerrors.Errorf("failed to exec option: %w", err)
+		}
+	}
+	for _, file := range d.referenceFiles {
+		reader, err := d.fileToReader(file)
+		if err != nil {
+			return xerrors.Errorf("failed to get reader: %w", err)
+		}
+		d.referenceReaders = append(d.referenceReaders, reader)
+	}
+	for _, dir := range d.referenceDirs {
+		if !d.isRecursiveDir {
+			readers, err := d.readersUnderDir(dir)
+			if err != nil {
+				return xerrors.Errorf("failed to get readers from under the %s: %w", dir, err)
+			}
+			d.referenceReaders = append(d.referenceReaders, readers...)
+		} else {
+			readers, err := d.readersUnderDirRecursive(dir)
+			if err != nil {
+				return xerrors.Errorf("failed to get readers from under the %s: %w", dir, err)
+			}
+			d.referenceReaders = append(d.referenceReaders, readers...)
+		}
+	}
+	for _, reader := range d.referenceReaders {
+		bytes, err := ioutil.ReadAll(reader)
+		if err != nil {
+			return xerrors.Errorf("failed to read buffer: %w", err)
+		}
+
+		// assign new anchor definition to anchorMap
+		if _, err := d.decode(bytes); err != nil {
+			return xerrors.Errorf("failed to decode: %w", err)
+		}
+	}
+	d.isResolvedReference = true
+	return nil
+}
+
+func (d *Decoder) decode(bytes []byte) (interface{}, error) {
+	var (
+		lex    lexer.Lexer
+		parser parser.Parser
+	)
+	tokens := lex.Tokenize(string(bytes))
+	doc, err := parser.Parse(tokens)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to parse yaml: %w", err)
+	}
+	return d.docToValue(doc), nil
+}
+
 func (d *Decoder) Decode(v interface{}) error {
+	if !d.isResolvedReference {
+		if err := d.resolveReference(); err != nil {
+			return xerrors.Errorf("failed to resolve reference: %w", err)
+		}
+	}
 	rv := reflect.ValueOf(v)
 	if rv.Type().Kind() != reflect.Ptr {
 		return xerrors.New("required pointer type value")
@@ -277,16 +410,10 @@ func (d *Decoder) Decode(v interface{}) error {
 	if err != nil {
 		return xerrors.Errorf("failed to read buffer: %w", err)
 	}
-	var (
-		lex    lexer.Lexer
-		parser parser.Parser
-	)
-	tokens := lex.Tokenize(string(bytes))
-	doc, err := parser.Parse(tokens)
+	value, err := d.decode(bytes)
 	if err != nil {
-		return xerrors.Errorf("failed to parse yaml: %w", err)
+		return xerrors.Errorf("failed to decode: %w", err)
 	}
-	value := d.docToValue(doc)
 	if value == nil {
 		return nil
 	}

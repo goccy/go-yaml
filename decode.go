@@ -5,6 +5,7 @@ import (
 	"io"
 	"io/ioutil"
 	"reflect"
+	"strings"
 
 	"github.com/goccy/go-yaml/ast"
 	"github.com/goccy/go-yaml/lexer"
@@ -100,41 +101,157 @@ func (d *Decoder) docToValue(doc *ast.Document) interface{} {
 	return nil
 }
 
-func (d *Decoder) decodeValue(valueType reflect.Type, value interface{}) reflect.Value {
+func (d *Decoder) decodeValue(valueType reflect.Type, value interface{}) (reflect.Value, error) {
 	switch valueType.Kind() {
 	case reflect.Ptr:
-		return reflect.ValueOf(nil)
+		return d.decodeValue(valueType.Elem(), value)
 	case reflect.Interface:
-		return reflect.ValueOf(value)
+		return reflect.ValueOf(value), nil
 	case reflect.Map:
 		return d.decodeMap(valueType, value)
 	case reflect.Array, reflect.Slice:
 		return d.decodeSlice(valueType, value)
 	case reflect.Struct:
-		return reflect.ValueOf(nil)
+		return d.decodeStruct(valueType, value)
 	}
-	return reflect.ValueOf(value).Convert(valueType)
+	return reflect.ValueOf(value).Convert(valueType), nil
 }
 
-func (d *Decoder) decodeSlice(sliceType reflect.Type, value interface{}) reflect.Value {
+const (
+	StructTagName = "yaml"
+)
+
+type StructField struct {
+	FieldName   string
+	RenderName  string
+	IsOmitEmpty bool
+	IsFlow      bool
+	IsInline    bool
+	IsAnchor    bool
+	IsAlias     bool
+}
+
+func (d *Decoder) structField(field reflect.StructField) *StructField {
+	tag := field.Tag.Get(StructTagName)
+	fieldName := strings.ToLower(field.Name)
+	options := strings.Split(tag, ",")
+	if len(options) > 0 {
+		if options[0] != "" {
+			fieldName = options[0]
+		}
+	}
+	structField := &StructField{
+		FieldName:  field.Name,
+		RenderName: fieldName,
+	}
+	if len(options) > 1 {
+		for _, opt := range options[1:] {
+			switch opt {
+			case "omitempty":
+				structField.IsOmitEmpty = true
+			case "flow":
+				structField.IsFlow = true
+			case "inline":
+				structField.IsInline = true
+			case "anchor":
+				structField.IsAnchor = true
+			case "alias":
+				structField.IsAlias = true
+			default:
+			}
+		}
+	}
+	return structField
+}
+
+func (d *Decoder) isIgnoredStructField(field reflect.StructField) bool {
+	if field.PkgPath != "" && !field.Anonymous {
+		// private field
+		return true
+	}
+	tag := field.Tag.Get(StructTagName)
+	if tag == "-" {
+		return true
+	}
+	return false
+}
+
+func (d *Decoder) structFieldMap(structType reflect.Type) (map[string]*StructField, error) {
+	structFieldMap := map[string]*StructField{}
+	renderNameMap := map[string]struct{}{}
+	for i := 0; i < structType.NumField(); i++ {
+		field := structType.Field(i)
+		if d.isIgnoredStructField(field) {
+			continue
+		}
+		structField := d.structField(field)
+		if _, exists := renderNameMap[structField.RenderName]; exists {
+			return nil, xerrors.Errorf("duplicated struct field name %s", structField.RenderName)
+		}
+		structFieldMap[structField.FieldName] = structField
+		renderNameMap[structField.RenderName] = struct{}{}
+	}
+	return structFieldMap, nil
+}
+
+func (d *Decoder) decodeStruct(structType reflect.Type, value interface{}) (reflect.Value, error) {
+	structValue := reflect.New(structType)
+	structFieldMap, err := d.structFieldMap(structType)
+	if err != nil {
+		return reflect.Zero(structType), xerrors.Errorf("failed to create struct field map: %w", err)
+	}
+	valueMap, ok := value.(map[string]interface{})
+	if !ok {
+		return reflect.Zero(structType), xerrors.Errorf("value is not struct type: %s", reflect.TypeOf(value).Name())
+	}
+	for i := 0; i < structType.NumField(); i++ {
+		field := structType.Field(i)
+		if d.isIgnoredStructField(field) {
+			continue
+		}
+		structField := structFieldMap[field.Name]
+		v, exists := valueMap[structField.RenderName]
+		if !exists {
+			continue
+		}
+		fieldValue := structValue.Elem().FieldByName(field.Name)
+		valueType := fieldValue.Type()
+		vv, err := d.decodeValue(valueType, v)
+		if err != nil {
+			return reflect.Zero(structType), xerrors.Errorf("failed to decode value: %w", err)
+		}
+		fieldValue.Set(vv)
+	}
+	return structValue, nil
+}
+
+func (d *Decoder) decodeSlice(sliceType reflect.Type, value interface{}) (reflect.Value, error) {
 	slice := value.([]interface{})
 	sliceValue := reflect.MakeSlice(sliceType, 0, len(slice))
 	sliceValueType := sliceValue.Type().Elem()
 	for _, v := range slice {
-		sliceValue = reflect.Append(sliceValue, d.decodeValue(sliceValueType, v))
+		vv, err := d.decodeValue(sliceValueType, v)
+		if err != nil {
+			return reflect.Zero(sliceType), xerrors.Errorf("failed to decode value: %w", err)
+		}
+		sliceValue = reflect.Append(sliceValue, vv)
 	}
-	return sliceValue
+	return sliceValue, nil
 }
 
-func (d *Decoder) decodeMap(mapType reflect.Type, value interface{}) reflect.Value {
+func (d *Decoder) decodeMap(mapType reflect.Type, value interface{}) (reflect.Value, error) {
 	mapValue := reflect.MakeMap(mapType)
 	keyType := mapValue.Type().Key()
 	valueType := mapValue.Type().Elem()
 	for k, v := range value.(map[string]interface{}) {
 		castedKey := reflect.ValueOf(k).Convert(keyType)
-		mapValue.SetMapIndex(castedKey, d.decodeValue(valueType, v))
+		vv, err := d.decodeValue(valueType, v)
+		if err != nil {
+			return reflect.Zero(mapType), xerrors.Errorf("failed to decode value: %w", err)
+		}
+		mapValue.SetMapIndex(castedKey, vv)
 	}
-	return mapValue
+	return mapValue, nil
 }
 
 func (d *Decoder) Decode(v interface{}) error {
@@ -159,7 +276,10 @@ func (d *Decoder) Decode(v interface{}) error {
 	if value == nil {
 		return nil
 	}
-	decodedValue := d.decodeValue(rv.Elem().Type(), value)
+	decodedValue, err := d.decodeValue(rv.Elem().Type(), value)
+	if err != nil {
+		return xerrors.Errorf("failed to decode value: %w", err)
+	}
 	if decodedValue.IsValid() {
 		rv.Elem().Set(decodedValue)
 	}

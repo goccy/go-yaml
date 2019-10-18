@@ -245,6 +245,24 @@ func TestDecoder(t *testing.T) {
 				},
 			},
 		},
+		{
+			"a: b\nc: d\n",
+			&struct {
+				A string
+				C string `yaml:"c"`
+			}{
+				"b", "d",
+			},
+		},
+		{
+			"a: 1\nb: 2\n",
+			&struct {
+				A int
+				B int `yaml:"-"`
+			}{
+				1, 0,
+			},
+		},
 	}
 	for _, test := range tests {
 		buf := bytes.NewBufferString(test.source)

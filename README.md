@@ -28,7 +28,7 @@ But I want to use the following features no in that library .
 
 # Synopsis
 
-## Simple Encode/Decode
+## 1. Simple Encode/Decode
 
 Support compatible interface to `go-yaml/yaml` by using `reflect`
 
@@ -62,7 +62,7 @@ if err := yaml.Unmarshal([]byte(yml), &v); err != nil {
 }
 ```
 
-## Reference to `Anchor` defined by the other file
+## 2. Reference to `Anchor` defined by the other file
 
 `testdata` directory includes `anchor.yml` file
 
@@ -95,6 +95,29 @@ if err := dec.Decode(&v); err != nil {
 	...
 }
 fmt.Printf("%+v\n", v) // {A:{B:1 C:hello}}
+```
+
+## 3. Encode with `Anchor` and `Alias`
+
+If you want to use `anchor` or `alias`,
+it can define as tag in struct.
+
+```go
+type T struct {
+	A int
+	B string
+}
+var v struct {
+	A *T `yaml:"a,anchor=c"`
+	B *T `yaml:"b,alias=c"`
+}
+v.A = &T{A: 1, B: "hello"}
+v.B = v.A
+bytes, err := yaml.Marshal(v)
+if err != nil {
+	...
+}
+fmt.Printf("%s\n", string(bytes)) // "a: &c\n  a: 1\n  b: hello\nb: *c\n"
 ```
 
 # Install

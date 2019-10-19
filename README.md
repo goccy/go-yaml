@@ -28,9 +28,23 @@ But I want to use the following features no in that library .
 
 # Synopsis
 
-## Simple Decode
+## Simple Encode/Decode
 
 Support compatible interface to `go-yaml/yaml` by using `reflect`
+
+```go
+var v struct {
+	A int
+	B string
+}
+v.A = 1
+v.B = "hello"
+bytes, err := yaml.Marshal(v)
+if err != nil {
+	...
+}
+fmt.Println(string(bytes)) // "a: 1\nb: hello\n"
+```
 
 ```go
 	yml := `

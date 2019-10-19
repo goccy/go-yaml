@@ -160,7 +160,7 @@ type StructField struct {
 	IsAlias     bool
 }
 
-func (d *Decoder) structField(field reflect.StructField) *StructField {
+func structField(field reflect.StructField) *StructField {
 	tag := field.Tag.Get(StructTagName)
 	fieldName := strings.ToLower(field.Name)
 	options := strings.Split(tag, ",")
@@ -193,7 +193,7 @@ func (d *Decoder) structField(field reflect.StructField) *StructField {
 	return structField
 }
 
-func (d *Decoder) isIgnoredStructField(field reflect.StructField) bool {
+func isIgnoredStructField(field reflect.StructField) bool {
 	if field.PkgPath != "" && !field.Anonymous {
 		// private field
 		return true
@@ -205,15 +205,15 @@ func (d *Decoder) isIgnoredStructField(field reflect.StructField) bool {
 	return false
 }
 
-func (d *Decoder) structFieldMap(structType reflect.Type) (map[string]*StructField, error) {
+func structFieldMap(structType reflect.Type) (map[string]*StructField, error) {
 	structFieldMap := map[string]*StructField{}
 	renderNameMap := map[string]struct{}{}
 	for i := 0; i < structType.NumField(); i++ {
 		field := structType.Field(i)
-		if d.isIgnoredStructField(field) {
+		if isIgnoredStructField(field) {
 			continue
 		}
-		structField := d.structField(field)
+		structField := structField(field)
 		if _, exists := renderNameMap[structField.RenderName]; exists {
 			return nil, xerrors.Errorf("duplicated struct field name %s", structField.RenderName)
 		}
@@ -225,7 +225,7 @@ func (d *Decoder) structFieldMap(structType reflect.Type) (map[string]*StructFie
 
 func (d *Decoder) decodeStruct(structType reflect.Type, value interface{}) (reflect.Value, error) {
 	structValue := reflect.New(structType)
-	structFieldMap, err := d.structFieldMap(structType)
+	structFieldMap, err := structFieldMap(structType)
 	if err != nil {
 		return reflect.Zero(structType), xerrors.Errorf("failed to create struct field map: %w", err)
 	}
@@ -235,7 +235,7 @@ func (d *Decoder) decodeStruct(structType reflect.Type, value interface{}) (refl
 	}
 	for i := 0; i < structType.NumField(); i++ {
 		field := structType.Field(i)
-		if d.isIgnoredStructField(field) {
+		if isIgnoredStructField(field) {
 			continue
 		}
 		structField := structFieldMap[field.Name]

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/goccy/go-yaml/ast"
 	"github.com/goccy/go-yaml/token"
 )
 
@@ -140,4 +141,8 @@ func (p *Printer) PrintTokens(tokens token.Tokens) string {
 		}
 	}
 	return strings.Join(texts, "\n")
+}
+
+func (p *Printer) PrintNode(node ast.Node) []byte {
+	return []byte(fmt.Sprintf("%+v\n", node))
 }

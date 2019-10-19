@@ -1,6 +1,9 @@
 package token
 
-import "fmt"
+import (
+	"fmt"
+	"strings"
+)
 
 type Character byte
 
@@ -401,6 +404,27 @@ func isNumber(str string) (bool, bool) {
 		return false, false
 	}
 	return true, isFloat
+}
+
+func IsNeedQuoted(value string) bool {
+	if _, exists := ReservedKeywordMap[ReservedKeyword(value)]; exists {
+		return true
+	}
+	if ok, _ := isNumber(value); ok {
+		return true
+	}
+	if strings.IndexByte(value, ':') == 1 {
+		return true
+	}
+	if strings.IndexByte(value, '#') > 0 {
+		return true
+	}
+	for _, c := range value {
+		if c == '\\' {
+			return true
+		}
+	}
+	return false
 }
 
 func New(value string, org string, pos *Position) *Token {

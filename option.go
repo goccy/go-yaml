@@ -31,3 +31,12 @@ func RecursiveDir(isRecursive bool) DecodeOption {
 		return nil
 	}
 }
+
+type EncodeOption func(e *Encoder) error
+
+func Indent(spaces int) EncodeOption {
+	return func(e *Encoder) error {
+		e.indent = spaces
+		return nil
+	}
+}

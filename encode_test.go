@@ -216,3 +216,25 @@ func TestEncoder(t *testing.T) {
 		}
 	}
 }
+
+func TestEncodeWithAnchorAndAlias(t *testing.T) {
+	var buf bytes.Buffer
+	enc := yaml.NewEncoder(&buf)
+	type T struct {
+		A int
+		B string
+	}
+	var v struct {
+		A *T `yaml:"a,anchor=c"`
+		B *T `yaml:"b,alias=c"`
+	}
+	v.A = &T{A: 1, B: "hello"}
+	v.B = v.A
+	if err := enc.Encode(v); err != nil {
+		t.Fatalf("%+v", err)
+	}
+	expect := "a: &c\n  a: 1\n  b: hello\nb: *c\n"
+	if expect != buf.String() {
+		t.Fatalf("expect = [%s], actual = [%s]", expect, buf.String())
+	}
+}

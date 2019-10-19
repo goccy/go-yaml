@@ -153,11 +153,11 @@ const (
 type StructField struct {
 	FieldName   string
 	RenderName  string
+	AnchorName  string
+	AliasName   string
 	IsOmitEmpty bool
 	IsFlow      bool
 	IsInline    bool
-	IsAnchor    bool
-	IsAlias     bool
 }
 
 func structField(field reflect.StructField) *StructField {
@@ -175,17 +175,23 @@ func structField(field reflect.StructField) *StructField {
 	}
 	if len(options) > 1 {
 		for _, opt := range options[1:] {
-			switch opt {
-			case "omitempty":
+			switch {
+			case opt == "omitempty":
 				structField.IsOmitEmpty = true
-			case "flow":
+			case opt == "flow":
 				structField.IsFlow = true
-			case "inline":
+			case opt == "inline":
 				structField.IsInline = true
-			case "anchor":
-				structField.IsAnchor = true
-			case "alias":
-				structField.IsAlias = true
+			case strings.HasPrefix(opt, "anchor"):
+				anchor := strings.Split(opt, "=")
+				if len(anchor) > 1 {
+					structField.AnchorName = anchor[1]
+				}
+			case strings.HasPrefix(opt, "alias"):
+				alias := strings.Split(opt, "=")
+				if len(alias) > 1 {
+					structField.AliasName = alias[1]
+				}
 			default:
 			}
 		}

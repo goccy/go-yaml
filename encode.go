@@ -102,6 +102,7 @@ func (e *Encoder) encodeValue(v interface{}, column int) (ast.Node, error) {
 		if value.IsNil() {
 			return e.encodeNil(), nil
 		}
+		return e.encodeValue(value.Elem().Interface(), column)
 	case reflect.String:
 		return e.encodeString(v.(string), column), nil
 	case reflect.Bool:
@@ -256,6 +257,20 @@ func (e *Encoder) encodeStruct(value reflect.Value, column int) ast.Node {
 				if mvnode, ok := value.(*ast.MappingValueNode); ok {
 					mvnode.Key.GetToken().Position.Column += e.indent
 				}
+			}
+		}
+		if structField.AnchorName != "" {
+			anchorName := structField.AnchorName
+			value = &ast.AnchorNode{
+				Start: token.New("&", "&", e.pos(column)),
+				Name:  ast.String(token.New(anchorName, anchorName, e.pos(column))),
+				Value: value,
+			}
+		} else if structField.AliasName != "" {
+			aliasName := structField.AliasName
+			value = &ast.AliasNode{
+				Start: token.New("*", "*", e.pos(column)),
+				Value: ast.String(token.New(aliasName, aliasName, e.pos(column))),
 			}
 		}
 		node.Values = append(node.Values, &ast.MappingValueNode{

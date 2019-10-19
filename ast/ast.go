@@ -393,7 +393,11 @@ func (n *AnchorNode) GetToken() *token.Token {
 }
 
 func (n *AnchorNode) String() string {
-	return fmt.Sprintf("&%s %s", n.Name.String(), n.Value.String())
+	value := n.Value.String()
+	if len(strings.Split(value, "\n")) > 1 {
+		return fmt.Sprintf("&%s\n%s", n.Name.String(), value)
+	}
+	return fmt.Sprintf("&%s %s", n.Name.String(), value)
 }
 
 type AliasNode struct {

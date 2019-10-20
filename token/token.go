@@ -468,15 +468,6 @@ func (p *Position) String() string {
 	return fmt.Sprintf("[level:%d,line:%d,column:%d,offset:%d]", p.IndentLevel, p.Line, p.Column, p.Offset)
 }
 
-func (p *Position) IndentString() string {
-	spaceNum := p.IndentLevel * 2
-	space := ""
-	for i := 0; i < spaceNum; i++ {
-		space += " "
-	}
-	return space
-}
-
 type Token struct {
 	Type          Type
 	CharacterType CharacterType

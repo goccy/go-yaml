@@ -270,25 +270,6 @@ func (n *FlowMappingNode) String() string {
 	return fmt.Sprintf("{%s}", strings.Join(values, ", "))
 }
 
-type MappingNode struct {
-	Start  *token.Token
-	Key    Node
-	Values []Node
-}
-
-func (n *MappingNode) GetToken() *token.Token {
-	return n.Start
-}
-
-func (n *MappingNode) String() string {
-	values := []string{}
-	space := strings.Repeat(" ", n.Key.GetToken().Position.Column-1)
-	for _, value := range n.Values {
-		values = append(values, value.String())
-	}
-	return fmt.Sprintf("%s%s:\n%s", space, n.Key.String(), strings.Join(values, "\n"))
-}
-
 type MappingCollectionNode struct {
 	Start  *token.Token
 	Values []Node
@@ -324,8 +305,6 @@ func (n *MappingValueNode) String() string {
 		return fmt.Sprintf("%s%s: %s", space, n.Key.String(), n.Value.String())
 	} else if keyIndentLevel < valueIndentLevel {
 		return fmt.Sprintf("%s%s:\n%s", space, n.Key.String(), n.Value.String())
-	} else if _, ok := n.Value.(*MappingNode); ok {
-		return fmt.Sprintf("%s%s: %s", space, n.Key.String(), n.Value.String())
 	} else if _, ok := n.Value.(*FlowSequenceNode); ok {
 		return fmt.Sprintf("%s%s: %s", space, n.Key.String(), n.Value.String())
 	} else if _, ok := n.Value.(*AnchorNode); ok {
@@ -458,10 +437,6 @@ func Walk(v Visitor, node Node) {
 	case *InfinityNode:
 	case *NanNode:
 	case *FlowMappingNode:
-		for _, value := range n.Values {
-			Walk(v, value)
-		}
-	case *MappingNode:
 		for _, value := range n.Values {
 			Walk(v, value)
 		}

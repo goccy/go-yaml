@@ -139,9 +139,6 @@ func (p *Parser) parseTag(ctx *Context) (ast.Node, error) {
 }
 
 func (p *Parser) isMapNode(node ast.Node) bool {
-	if _, ok := node.(*ast.MappingNode); ok {
-		return true
-	}
 	if _, ok := node.(*ast.MappingValueNode); ok {
 		return true
 	}
@@ -167,9 +164,8 @@ func (p *Parser) parseMappingValue(ctx *Context) (ast.Node, error) {
 	valueIndentLevel := value.GetToken().Position.IndentLevel
 	if keyIndentLevel < valueIndentLevel && p.isMapNode(value) {
 		// sub mapping
-		node := &ast.MappingNode{
+		node := &ast.MappingCollectionNode{
 			Start:  tk,
-			Key:    key,
 			Values: []ast.Node{value},
 		}
 		tk := ctx.afterNextToken()
@@ -198,7 +194,11 @@ func (p *Parser) parseMappingValue(ctx *Context) (ast.Node, error) {
 				break
 			}
 		}
-		return node, nil
+		return &ast.MappingValueNode{
+			Start: tk,
+			Key:   key,
+			Value: node,
+		}, nil
 	}
 	mvnode := &ast.MappingValueNode{
 		Start: tk,

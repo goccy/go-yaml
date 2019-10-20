@@ -79,17 +79,6 @@ func (d *Decoder) nodeToValue(node ast.Node) interface{} {
 			m[key] = d.nodeToValue(value.Value)
 		}
 		return m
-	case *ast.MappingNode:
-		m := map[string]interface{}{}
-		key := n.Key.GetToken().Value
-		subMap := map[string]interface{}{}
-		for _, value := range n.Values {
-			for k, v := range d.nodeToValue(value).(map[string]interface{}) {
-				subMap[k] = v
-			}
-		}
-		m[key] = subMap
-		return m
 	case *ast.MappingValueNode:
 		m := map[string]interface{}{}
 		key := n.Key.GetToken().Value

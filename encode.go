@@ -16,6 +16,7 @@ import (
 )
 
 const (
+	// DefaultIndentSpace default number of space for indent
 	DefaultIndentSpaces = 2
 )
 

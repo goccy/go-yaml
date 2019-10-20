@@ -86,7 +86,7 @@ func TestDecoder(t *testing.T) {
 		},
 		{
 			"v:\n- A\n- B\n",
-			map[string][]string{"v": []string{"A", "B"}},
+			map[string][]string{"v": {"A", "B"}},
 		},
 		{
 			"a: '-'\n",
@@ -107,7 +107,7 @@ func TestDecoder(t *testing.T) {
 					"A",
 					1,
 					map[string][]int{
-						"B": []int{2, 3},
+						"B": {2, 3},
 					},
 				},
 			},
@@ -123,7 +123,7 @@ func TestDecoder(t *testing.T) {
 		{
 			"a: {x: 1}\n",
 			map[string]map[string]int{
-				"a": map[string]int{
+				"a": {
 					"x": 1,
 				},
 			},
@@ -138,7 +138,7 @@ func TestDecoder(t *testing.T) {
 		{
 			"a: [1, 2]\n",
 			map[string][]int{
-				"a": []int{1, 2},
+				"a": {1, 2},
 			},
 		},
 		{
@@ -232,7 +232,7 @@ func TestDecoder(t *testing.T) {
 		{
 			"v:\n- A\n- |-\n  B\n  C\n",
 			map[string][]string{
-				"v": []string{
+				"v": {
 					"A", "B\nC",
 				},
 			},
@@ -240,7 +240,7 @@ func TestDecoder(t *testing.T) {
 		{
 			"v:\n- A\n- >-\n  B\n  C\n",
 			map[string][]string{
-				"v": []string{
+				"v": {
 					"A", "B C",
 				},
 			},

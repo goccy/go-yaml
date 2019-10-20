@@ -87,7 +87,7 @@ func TestEncoder(t *testing.T) {
 		},
 		{
 			"v:\n- A\n- B\n",
-			map[string][]string{"v": []string{"A", "B"}},
+			map[string][]string{"v": {"A", "B"}},
 		},
 		{
 			"a: -\n",
@@ -108,7 +108,7 @@ func TestEncoder(t *testing.T) {
 					"A",
 					1,
 					map[string][]int{
-						"B": []int{2, 3},
+						"B": {2, 3},
 					},
 				},
 			},

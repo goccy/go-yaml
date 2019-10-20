@@ -257,7 +257,7 @@ func (d *Decoder) readersUnderDirRecursive(dir string) ([]io.Reader, error) {
 		readers = append(readers, reader)
 		return nil
 	}); err != nil {
-		return nil, xerrors.Errorf("interupt walk in %s: %w", dir, err)
+		return nil, xerrors.Errorf("interrupt walk in %s: %w", dir, err)
 	}
 	return readers, nil
 }

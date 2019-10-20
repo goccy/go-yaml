@@ -60,7 +60,7 @@ func (e *Encoder) Close() error {
 //
 // See the documentation for Marshal for details about the conversion of Go values to YAML.
 func (e *Encoder) Encode(v interface{}) error {
-	node, err := e.encodeValue(v, 1)
+	node, err := e.encodeValue(reflect.ValueOf(v), 1)
 	if err != nil {
 		return xerrors.Errorf("failed to encode value: %w", err)
 	}
@@ -69,54 +69,31 @@ func (e *Encoder) Encode(v interface{}) error {
 	return nil
 }
 
-func (e *Encoder) encodeValue(v interface{}, column int) (ast.Node, error) {
-	if v == nil {
-		return e.encodeNil(), nil
-	}
-	value := reflect.ValueOf(v)
-	valueType := reflect.TypeOf(v)
-	switch valueType.Kind() {
-	case reflect.Int:
-		return e.encodeInt(int64(v.(int))), nil
-	case reflect.Int8:
-		return e.encodeInt(int64(v.(int8))), nil
-	case reflect.Int16:
-		return e.encodeInt(int64(v.(int16))), nil
-	case reflect.Int32:
-		return e.encodeInt(int64(v.(int32))), nil
-	case reflect.Int64:
-		return e.encodeInt(v.(int64)), nil
-	case reflect.Uint:
-		return e.encodeUint(uint64(v.(uint))), nil
-	case reflect.Uint8:
-		return e.encodeUint(uint64(v.(uint8))), nil
-	case reflect.Uint16:
-		return e.encodeUint(uint64(v.(uint16))), nil
-	case reflect.Uint32:
-		return e.encodeUint(uint64(v.(uint32))), nil
-	case reflect.Uint64:
-		return e.encodeUint(v.(uint64)), nil
-	case reflect.Float32:
-		return e.encodeFloat(float64(v.(float32))), nil
-	case reflect.Float64:
-		return e.encodeFloat(v.(float64)), nil
-	case reflect.Ptr:
-		if value.IsNil() {
+func (e *Encoder) encodeValue(v reflect.Value, column int) (ast.Node, error) {
+	switch v.Type().Kind() {
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+		return e.encodeInt(v.Int()), nil
+	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+		return e.encodeUint(v.Uint()), nil
+	case reflect.Float32, reflect.Float64:
+		return e.encodeFloat(v.Float()), nil
+	case reflect.Ptr, reflect.Interface:
+		if v.IsNil() {
 			return e.encodeNil(), nil
 		}
-		return e.encodeValue(value.Elem().Interface(), column)
+		return e.encodeValue(v.Elem(), column)
 	case reflect.String:
-		return e.encodeString(v.(string), column), nil
+		return e.encodeString(v.String(), column), nil
 	case reflect.Bool:
-		return e.encodeBool(v.(bool)), nil
+		return e.encodeBool(v.Bool()), nil
 	case reflect.Slice:
-		return e.encodeSlice(value), nil
+		return e.encodeSlice(v), nil
 	case reflect.Struct:
-		return e.encodeStruct(value, column), nil
+		return e.encodeStruct(v, column)
 	case reflect.Map:
-		return e.encodeMap(value, column), nil
+		return e.encodeMap(v, column), nil
 	default:
-		fmt.Printf("valueType = [%s]\n", valueType.String())
+		fmt.Printf("valueType = [%s]\n", v.Type().String())
 	}
 	return nil, nil
 }
@@ -191,7 +168,7 @@ func (e *Encoder) encodeSlice(value reflect.Value) ast.Node {
 		Values: []ast.Node{},
 	}
 	for i := 0; i < value.Len(); i++ {
-		node, err := e.encodeValue(value.Index(i).Interface(), e.column)
+		node, err := e.encodeValue(value.Index(i), e.column)
 		if err != nil {
 			panic(err)
 			return nil
@@ -214,7 +191,7 @@ func (e *Encoder) encodeMap(value reflect.Value, column int) ast.Node {
 	for _, key := range keys {
 		k := reflect.ValueOf(key)
 		v := value.MapIndex(k)
-		value, err := e.encodeValue(v.Interface(), column)
+		value, err := e.encodeValue(v, column)
 		if err != nil {
 			return nil
 		}
@@ -233,7 +210,7 @@ func (e *Encoder) encodeMap(value reflect.Value, column int) ast.Node {
 	return node
 }
 
-func (e *Encoder) encodeStruct(value reflect.Value, column int) ast.Node {
+func (e *Encoder) encodeStruct(value reflect.Value, column int) (ast.Node, error) {
 	node := &ast.MappingCollectionNode{
 		Start:  token.New("", "", e.pos(column)),
 		Values: []ast.Node{},
@@ -241,7 +218,7 @@ func (e *Encoder) encodeStruct(value reflect.Value, column int) ast.Node {
 	structType := value.Type()
 	structFieldMap, err := structFieldMap(structType)
 	if err != nil {
-		return nil
+		return nil, xerrors.Errorf("failed to get struct field map: %w", err)
 	}
 	for i := 0; i < value.NumField(); i++ {
 		field := structType.Field(i)
@@ -250,9 +227,9 @@ func (e *Encoder) encodeStruct(value reflect.Value, column int) ast.Node {
 		}
 		fieldValue := value.FieldByName(field.Name)
 		structField := structFieldMap[field.Name]
-		value, err := e.encodeValue(fieldValue.Interface(), column)
+		value, err := e.encodeValue(fieldValue, column)
 		if err != nil {
-			return nil
+			return nil, xerrors.Errorf("failed to encode value: %w", err)
 		}
 		if c, ok := value.(*ast.MappingCollectionNode); ok {
 			for _, value := range c.Values {
@@ -283,11 +260,16 @@ func (e *Encoder) encodeStruct(value reflect.Value, column int) ast.Node {
 			}
 		} else if structField.IsAutoAlias {
 			if fieldValue.Kind() != reflect.Ptr {
-				// TODO: error handling
+				return nil, xerrors.Errorf(
+					"%s in struct is not pointer type. but required automatically alias detection",
+					structField.FieldName,
+				)
 			}
 			anchorName := e.anchorPtrToNameMap[fieldValue.Pointer()]
 			if anchorName == "" {
-				// TODO: error handling
+				return nil, xerrors.Errorf(
+					"cannot find anchor name from pointer address for automatically alias detection",
+				)
 			}
 			aliasName := anchorName
 			value = &ast.AliasNode{
@@ -306,5 +288,5 @@ func (e *Encoder) encodeStruct(value reflect.Value, column int) ast.Node {
 			Value: value,
 		})
 	}
-	return node
+	return node, nil
 }

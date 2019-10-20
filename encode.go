@@ -289,6 +289,7 @@ func (e *Encoder) encodeStruct(value reflect.Value, column int) (ast.Node, error
 				}
 			}
 		}
+		key := e.encodeString(structField.RenderName, column)
 		if structField.AnchorName != "" {
 			anchorName := structField.AnchorName
 			if fieldValue.Kind() == reflect.Ptr {
@@ -327,15 +328,23 @@ func (e *Encoder) encodeStruct(value reflect.Value, column int) (ast.Node, error
 				Start: token.New("*", "*", e.pos(column)),
 				Value: ast.String(token.New(aliasName, aliasName, e.pos(column))),
 			}
+			if structField.IsInline {
+				// if both used alias and inline, output `<<: *alias`
+				key = ast.MergeKey(token.New("<<", "<<", e.pos(column)))
+			}
 		} else if structField.AliasName != "" {
 			aliasName := structField.AliasName
 			value = &ast.AliasNode{
 				Start: token.New("*", "*", e.pos(column)),
 				Value: ast.String(token.New(aliasName, aliasName, e.pos(column))),
 			}
+			if structField.IsInline {
+				// if both used alias and inline, output `<<: *alias`
+				key = ast.MergeKey(token.New("<<", "<<", e.pos(column)))
+			}
 		}
 		node.Values = append(node.Values, &ast.MappingValueNode{
-			Key:   e.encodeString(structField.RenderName, column),
+			Key:   key,
 			Value: value,
 		})
 	}

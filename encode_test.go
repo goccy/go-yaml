@@ -306,3 +306,48 @@ d: *b
 		t.Fatalf("expect = [%s], actual = [%s]", expect, buf.String())
 	}
 }
+
+func TestEncodeWithMerge(t *testing.T) {
+	type Person struct {
+		*Person `yaml:",omitempty,inline,alias"`
+		Name    string `yaml:",omitempty"`
+		Age     int    `yaml:",omitempty"`
+	}
+	defaultPerson := &Person{
+		Name: "John Smith",
+		Age:  20,
+	}
+	people := []*Person{
+		{
+			Person: defaultPerson,
+			Name:   "Ken",
+			Age:    10,
+		},
+		{
+			Person: defaultPerson,
+		},
+	}
+	var doc struct {
+		Default *Person   `yaml:"default,anchor"`
+		People  []*Person `yaml:"people"`
+	}
+	doc.Default = defaultPerson
+	doc.People = people
+	var buf bytes.Buffer
+	enc := yaml.NewEncoder(&buf)
+	if err := enc.Encode(doc); err != nil {
+		t.Fatalf("%+v", err)
+	}
+	expect := `default: &default
+  name: John Smith
+  age: 20
+people:
+- <<: *default
+  name: Ken
+  age: 10
+- <<: *default
+`
+	if expect != buf.String() {
+		t.Fatalf("expect = [%s], actual = [%s]", expect, buf.String())
+	}
+}

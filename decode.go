@@ -155,6 +155,7 @@ type StructField struct {
 	RenderName  string
 	AnchorName  string
 	AliasName   string
+	IsAutoAlias bool
 	IsOmitEmpty bool
 	IsFlow      bool
 	IsInline    bool
@@ -191,6 +192,8 @@ func structField(field reflect.StructField) *StructField {
 				alias := strings.Split(opt, "=")
 				if len(alias) > 1 {
 					structField.AliasName = alias[1]
+				} else {
+					structField.IsAutoAlias = true
 				}
 			default:
 			}

@@ -238,3 +238,37 @@ func TestEncodeWithAnchorAndAlias(t *testing.T) {
 		t.Fatalf("expect = [%s], actual = [%s]", expect, buf.String())
 	}
 }
+
+func TestEncodeWithAutoAlias(t *testing.T) {
+	var buf bytes.Buffer
+	enc := yaml.NewEncoder(&buf)
+	type T struct {
+		I int
+		S string
+	}
+	var v struct {
+		A *T `yaml:"a,anchor=a"`
+		B *T `yaml:"b,anchor=b"`
+		C *T `yaml:"c,alias"`
+		D *T `yaml:"d,alias"`
+	}
+	v.A = &T{I: 1, S: "hello"}
+	v.B = &T{I: 2, S: "world"}
+	v.C = v.A
+	v.D = v.B
+	if err := enc.Encode(v); err != nil {
+		t.Fatalf("%+v", err)
+	}
+	expect := `a: &a
+  i: 1
+  s: hello
+b: &b
+  i: 2
+  s: world
+c: *a
+d: *b
+`
+	if expect != buf.String() {
+		t.Fatalf("expect = [%s], actual = [%s]", expect, buf.String())
+	}
+}

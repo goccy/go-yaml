@@ -21,9 +21,10 @@ const (
 
 // An Encoder writes YAML values to an output stream.
 type Encoder struct {
-	writer io.Writer
-	opts   []EncodeOption
-	indent int
+	writer             io.Writer
+	opts               []EncodeOption
+	indent             int
+	anchorPtrToNameMap map[uintptr]string
 
 	line        int
 	column      int
@@ -36,12 +37,13 @@ type Encoder struct {
 // The Encoder should be closed after use to flush all data to w.
 func NewEncoder(w io.Writer, opts ...EncodeOption) *Encoder {
 	return &Encoder{
-		writer: w,
-		opts:   opts,
-		indent: DefaultIndentSpaces,
-		line:   1,
-		column: 1,
-		offset: 0,
+		writer:             w,
+		opts:               opts,
+		indent:             DefaultIndentSpaces,
+		anchorPtrToNameMap: map[uintptr]string{},
+		line:               1,
+		column:             1,
+		offset:             0,
 	}
 }
 
@@ -261,10 +263,26 @@ func (e *Encoder) encodeStruct(value reflect.Value, column int) ast.Node {
 		}
 		if structField.AnchorName != "" {
 			anchorName := structField.AnchorName
+			if fieldValue.Kind() == reflect.Ptr {
+				e.anchorPtrToNameMap[fieldValue.Pointer()] = anchorName
+			}
 			value = &ast.AnchorNode{
 				Start: token.New("&", "&", e.pos(column)),
 				Name:  ast.String(token.New(anchorName, anchorName, e.pos(column))),
 				Value: value,
+			}
+		} else if structField.IsAutoAlias {
+			if fieldValue.Kind() != reflect.Ptr {
+				// TODO: error handling
+			}
+			anchorName := e.anchorPtrToNameMap[fieldValue.Pointer()]
+			if anchorName == "" {
+				// TODO: error handling
+			}
+			aliasName := anchorName
+			value = &ast.AliasNode{
+				Start: token.New("*", "*", e.pos(column)),
+				Value: ast.String(token.New(aliasName, aliasName, e.pos(column))),
 			}
 		} else if structField.AliasName != "" {
 			aliasName := structField.AliasName

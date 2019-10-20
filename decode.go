@@ -151,14 +151,15 @@ const (
 )
 
 type StructField struct {
-	FieldName   string
-	RenderName  string
-	AnchorName  string
-	AliasName   string
-	IsAutoAlias bool
-	IsOmitEmpty bool
-	IsFlow      bool
-	IsInline    bool
+	FieldName    string
+	RenderName   string
+	AnchorName   string
+	AliasName    string
+	IsAutoAnchor bool
+	IsAutoAlias  bool
+	IsOmitEmpty  bool
+	IsFlow       bool
+	IsInline     bool
 }
 
 func structField(field reflect.StructField) *StructField {
@@ -187,6 +188,8 @@ func structField(field reflect.StructField) *StructField {
 				anchor := strings.Split(opt, "=")
 				if len(anchor) > 1 {
 					structField.AnchorName = anchor[1]
+				} else {
+					structField.IsAutoAnchor = true
 				}
 			case strings.HasPrefix(opt, "alias"):
 				alias := strings.Split(opt, "=")

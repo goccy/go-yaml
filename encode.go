@@ -271,6 +271,16 @@ func (e *Encoder) encodeStruct(value reflect.Value, column int) ast.Node {
 				Name:  ast.String(token.New(anchorName, anchorName, e.pos(column))),
 				Value: value,
 			}
+		} else if structField.IsAutoAnchor {
+			anchorName := structField.RenderName
+			if fieldValue.Kind() == reflect.Ptr {
+				e.anchorPtrToNameMap[fieldValue.Pointer()] = anchorName
+			}
+			value = &ast.AnchorNode{
+				Start: token.New("&", "&", e.pos(column)),
+				Name:  ast.String(token.New(anchorName, anchorName, e.pos(column))),
+				Value: value,
+			}
 		} else if structField.IsAutoAlias {
 			if fieldValue.Kind() != reflect.Ptr {
 				// TODO: error handling

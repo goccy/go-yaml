@@ -13,45 +13,45 @@ import (
 type NodeType int
 
 const (
-	// UnknownNodeType
+	// UnknownNodeType type identifier for default
 	UnknownNodeType NodeType = iota
-	// DocumentType
+	// DocumentType type identifier for document node
 	DocumentType
-	// NullType
+	// NullType type identifier for null node
 	NullType
-	// BoolType
+	// BoolType type identifier for boolean node
 	BoolType
-	// IntegerType
+	// IntegerType type identifier for integer node
 	IntegerType
-	// FloatType
+	// FloatType type identifier for float node
 	FloatType
-	// InfinityType
+	// InfinityType type identifier for infinity node
 	InfinityType
-	// NanType
+	// NanType type identifier for nan node
 	NanType
-	// StringType
+	// StringType type identifier for string node
 	StringType
-	// MergeKeyType
+	// MergeKeyType type identifier for merge key node
 	MergeKeyType
-	// LiteralType
+	// LiteralType type identifier for literal node
 	LiteralType
-	// FlowMappingType
+	// FlowMappingType type identifier for flow mapping node
 	FlowMappingType
-	// MappingCollectionType
+	// MappingCollectionType type identifier for mapping collection node
 	MappingCollectionType
-	// MappingValueType
+	// MappingValueType type identifier for mapping value node
 	MappingValueType
-	// FlowSequenceType
+	// FlowSequenceType type identifier for flow sequence node
 	FlowSequenceType
-	// SequenceType
+	// SequenceType type identifier for sequence node
 	SequenceType
-	// AnchorType
+	// AnchorType type identifier for anchor node
 	AnchorType
-	// AliasType
+	// AliasType type identifier for alias node
 	AliasType
-	// DirectiveType
+	// DirectiveType type identifier for directive node
 	DirectiveType
-	// TagType
+	// TagType type identifier for tag node
 	TagType
 )
 
@@ -606,6 +606,8 @@ func (n *TagNode) String() string {
 	return fmt.Sprintf("%s %s", n.Start.Value, n.Value.String())
 }
 
+// Visitor
+//
 // A Visitor's Visit method is invoked for each node encountered by Walk.
 // If the result visitor w is not nil, Walk visits each of the children of node with the visitor w,
 // followed by a call of w.Visit(nil).

@@ -26,7 +26,6 @@ func TestToken(t *testing.T) {
 		token.DoubleQuote(`"`, `"`, pos),
 		token.Directive(pos),
 		token.Space(pos),
-		token.Tab(pos),
 		token.MergeKey("<<", pos),
 		token.DocumentHeader(pos),
 		token.DocumentEnd(pos),

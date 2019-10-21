@@ -7,10 +7,8 @@ import (
 	"github.com/goccy/go-yaml/token"
 )
 
-type Lexer struct {
-}
-
-func (l *Lexer) Tokenize(src string) token.Tokens {
+// Tokenize split to token instances from string
+func Tokenize(src string) token.Tokens {
 	var s scanner.Scanner
 	s.Init(src)
 	var tokens token.Tokens

@@ -6,6 +6,7 @@ import (
 	"github.com/goccy/go-yaml/token"
 )
 
+// Context context at scanning
 type Context struct {
 	idx         int
 	size        int
@@ -84,9 +85,9 @@ func (c *Context) currentChar() rune {
 	return rune(c.src[c.idx])
 }
 
-func (ctx *Context) nextChar() rune {
-	if ctx.size > ctx.idx+1 {
-		return rune(ctx.src[ctx.idx+1])
+func (c *Context) nextChar() rune {
+	if c.size > c.idx+1 {
+		return rune(c.src[c.idx+1])
 	}
 	return rune(0)
 }

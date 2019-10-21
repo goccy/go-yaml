@@ -7,9 +7,11 @@ import (
 	"golang.org/x/xerrors"
 )
 
+// Parser convert from token instances to ast
 type Parser struct {
 }
 
+// Context context at parsing
 type Context struct {
 	idx    int
 	size   int
@@ -56,7 +58,7 @@ func (ctx *Context) progress(num int) {
 	}
 }
 
-func NewContext(tokens token.Tokens) *Context {
+func newContext(tokens token.Tokens) *Context {
 	removedCommentTokens := token.Tokens{}
 	for _, tk := range tokens {
 		if tk.Type == token.CommentType {
@@ -396,8 +398,9 @@ func (p *Parser) parseToken(ctx *Context, tk *token.Token) (ast.Node, error) {
 	return nil, nil
 }
 
+// Parse parse from token instances, and returns ast.Document
 func (p *Parser) Parse(tokens token.Tokens) (*ast.Document, error) {
-	ctx := NewContext(tokens)
+	ctx := newContext(tokens)
 	doc := &ast.Document{Nodes: []ast.Node{}}
 	for ctx.next() {
 		node, err := p.parseToken(ctx, ctx.currentToken())

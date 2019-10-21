@@ -16,6 +16,7 @@ import (
 	"golang.org/x/xerrors"
 )
 
+// Decoder reads and decodes YAML values from an input stream.
 type Decoder struct {
 	reader              io.Reader
 	referenceReaders    []io.Reader
@@ -27,6 +28,7 @@ type Decoder struct {
 	isResolvedReference bool
 }
 
+// NewDecoder returns a new decoder that reads from r.
 func NewDecoder(r io.Reader, opts ...DecodeOption) *Decoder {
 	return &Decoder{
 		reader:              r,
@@ -296,10 +298,9 @@ func (d *Decoder) resolveReference() error {
 
 func (d *Decoder) decode(bytes []byte) (interface{}, error) {
 	var (
-		lex    lexer.Lexer
 		parser parser.Parser
 	)
-	tokens := lex.Tokenize(string(bytes))
+	tokens := lexer.Tokenize(string(bytes))
 	doc, err := parser.Parse(tokens)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to parse yaml: %w", err)
@@ -307,6 +308,11 @@ func (d *Decoder) decode(bytes []byte) (interface{}, error) {
 	return d.docToValue(doc), nil
 }
 
+// Decode reads the next YAML-encoded value from its input
+// and stores it in the value pointed to by v.
+//
+// See the documentation for Unmarshal for details about the
+// conversion of YAML into a Go value.
 func (d *Decoder) Decode(v interface{}) error {
 	if !d.isResolvedReference {
 		if err := d.resolveReference(); err != nil {

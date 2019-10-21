@@ -27,7 +27,6 @@ func _main(args []string) error {
 	if err != nil {
 		return err
 	}
-	var lexer lexer.Lexer
 	tokens := lexer.Tokenize(string(bytes))
 	var p printer.Printer
 	p.LineNumber = true

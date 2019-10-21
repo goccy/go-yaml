@@ -8,9 +8,11 @@ import (
 )
 
 const (
+	// StructTagName tag keyword for Marshal/Unmarshal
 	StructTagName = "yaml"
 )
 
+// StructField information for each the field in structure
 type StructField struct {
 	FieldName    string
 	RenderName   string

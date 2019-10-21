@@ -16,11 +16,11 @@ import (
 )
 
 const (
-	// DefaultIndentSpace default number of space for indent
+	// DefaultIndentSpaces default number of space for indent
 	DefaultIndentSpaces = 2
 )
 
-// An Encoder writes YAML values to an output stream.
+// Encoder writes YAML values to an output stream.
 type Encoder struct {
 	writer             io.Writer
 	opts               []EncodeOption

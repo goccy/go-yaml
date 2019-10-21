@@ -8,13 +8,16 @@ import (
 	"github.com/goccy/go-yaml/token"
 )
 
+// Property additional property set for each the token
 type Property struct {
 	Prefix string
 	Suffix string
 }
 
+// PrintFunc returns property instance
 type PrintFunc func() *Property
 
+// Printer create text from token collection or ast
 type Printer struct {
 	LineNumber       bool
 	LineNumberFormat func(num int) string
@@ -95,6 +98,7 @@ func (p *Printer) property(tk *token.Token) *Property {
 	return prop
 }
 
+// PrintTokens create text from token collection
 func (p *Printer) PrintTokens(tokens token.Tokens) string {
 	if p.LineNumber {
 		if p.LineNumberFormat == nil {
@@ -143,6 +147,7 @@ func (p *Printer) PrintTokens(tokens token.Tokens) string {
 	return strings.Join(texts, "\n")
 }
 
+// PrintNode create text from ast.Node
 func (p *Printer) PrintNode(node ast.Node) []byte {
 	return []byte(fmt.Sprintf("%+v\n", node))
 }

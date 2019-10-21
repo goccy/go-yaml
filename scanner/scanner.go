@@ -8,15 +8,22 @@ import (
 	"golang.org/x/xerrors"
 )
 
+// IndentState state for indent
 type IndentState int
 
 const (
+	// IndentStateEqual equals previous indent
 	IndentStateEqual IndentState = iota
+	// IndentStateUp more indent than previous
 	IndentStateUp
+	// IndentStateDown less indent than previous
 	IndentStateDown
+	// IndentStateKeep uses not indent token
 	IndentStateKeep
 )
 
+// Scanner holds the scanner's internal state while processing a given text.
+// It can be allocated as part of another data structure but must be initialized via Init before use.
 type Scanner struct {
 	source            string
 	sourcePos         int
@@ -377,8 +384,6 @@ func (s *Scanner) scan(ctx *Context) (pos int) {
 				ctx.addToken(token.Directive(s.pos()))
 				s.progressColumn(ctx, 1)
 				return
-			} else {
-				// TODO: returns syntax error object
 			}
 		case '?':
 			nc := ctx.nextChar()
@@ -441,6 +446,7 @@ func (s *Scanner) scan(ctx *Context) (pos int) {
 	return
 }
 
+// Init prepares the scanner s to tokenize the text src by setting the scanner at the beginning of src.
 func (s *Scanner) Init(src string) {
 	s.source = src
 	s.sourcePos = 0
@@ -455,6 +461,7 @@ func (s *Scanner) Init(src string) {
 	s.isFirstCharAtLine = true
 }
 
+// Scan scans the next token and returns the token collection. The source end is indicated by io.EOF.
 func (s *Scanner) Scan() (token.Tokens, error) {
 	if s.sourcePos >= s.sourceSize {
 		return nil, io.EOF

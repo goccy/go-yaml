@@ -67,12 +67,11 @@ func TestParser(t *testing.T) {
 		"v:\n- A\n- >-\n  B\n  C\n",
 	}
 	var (
-		l lexer.Lexer
 		p parser.Parser
 	)
 	for _, src := range sources {
 		fmt.Printf(src)
-		tokens := l.Tokenize(src)
+		tokens := lexer.Tokenize(src)
 		var printer printer.Printer
 		fmt.Println(printer.PrintTokens(tokens))
 		ast, err := p.Parse(tokens)
@@ -327,11 +326,10 @@ aliased: *anchor
 	}
 	for _, test := range tests {
 		var (
-			l lexer.Lexer
 			p parser.Parser
 		)
 		//fmt.Printf(test.source)
-		tokens := l.Tokenize(test.source)
+		tokens := lexer.Tokenize(test.source)
 		tokens.Dump()
 		doc, err := p.Parse(tokens)
 		if err != nil {

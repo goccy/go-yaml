@@ -49,6 +49,7 @@ const (
 	LineBreakCharacter = '\n'
 )
 
+// Type type identifier for token
 type Type int
 
 const (
@@ -274,6 +275,7 @@ const (
 )
 
 var (
+	// ReservedKeywordMap map for reserved keywords
 	ReservedKeywordMap = map[ReservedKeyword]func(string, string, *Position) *Token{
 		Null: func(value string, org string, pos *Position) *Token {
 			return &Token{
@@ -363,6 +365,7 @@ const (
 )
 
 var (
+	// ReservedTagKeywordMap map for reserved tag keywords
 	ReservedTagKeywordMap = map[ReservedTagKeyword]func(string, string, *Position) *Token{
 		IntegerTag: func(value, org string, pos *Position) *Token {
 			return &Token{

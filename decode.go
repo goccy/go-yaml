@@ -83,8 +83,15 @@ func (d *Decoder) nodeToValue(node ast.Node) interface{} {
 		return m
 	case *ast.MappingValueNode:
 		m := map[string]interface{}{}
-		key := n.Key.GetToken().Value
-		m[key] = d.nodeToValue(n.Value)
+		if n.Key.Type() == ast.MergeKeyType {
+			mapValue := d.nodeToValue(n.Value).(map[string]interface{})
+			for k, v := range mapValue {
+				m[k] = v
+			}
+		} else {
+			key := n.Key.GetToken().Value
+			m[key] = d.nodeToValue(n.Value)
+		}
 		return m
 	case *ast.MappingCollectionNode:
 		m := map[string]interface{}{}
@@ -123,7 +130,11 @@ func (d *Decoder) docToValue(doc *ast.Document) interface{} {
 func (d *Decoder) decodeValue(valueType reflect.Type, value interface{}) (reflect.Value, error) {
 	switch valueType.Kind() {
 	case reflect.Ptr:
-		return d.decodeValue(valueType.Elem(), value)
+		v, err := d.decodeValue(valueType.Elem(), value)
+		if err != nil {
+			return reflect.Zero(valueType), xerrors.Errorf("failed to decode ptr value: %w", err)
+		}
+		return v.Addr(), nil
 	case reflect.Interface:
 		return reflect.ValueOf(value), nil
 	case reflect.Map:

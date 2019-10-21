@@ -309,3 +309,37 @@ func TestDecodeByAnchorOfOtherFile(t *testing.T) {
 		t.Fatalf("%+v", err)
 	}
 }
+
+func TestDecodeWithMergeKey(t *testing.T) {
+	yml := `
+a: &a
+  b: 1
+  c: hello
+items:
+- <<: *a
+- <<: *a
+  c: world
+`
+	type Item struct {
+		B int
+		C string
+	}
+	type T struct {
+		Items []*Item
+	}
+	buf := bytes.NewBufferString(yml)
+	dec := yaml.NewDecoder(buf)
+	var v T
+	if err := dec.Decode(&v); err != nil {
+		t.Fatalf("%+v", err)
+	}
+	if len(v.Items) != 2 {
+		t.Fatal("failed to decode with merge key")
+	}
+	if v.Items[0].B != 1 || v.Items[0].C != "hello" {
+		t.Fatal("failed to decode with merge key")
+	}
+	if v.Items[1].B != 1 || v.Items[1].C != "world" {
+		t.Fatal("failed to decode with merge key")
+	}
+}

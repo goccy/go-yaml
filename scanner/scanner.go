@@ -103,7 +103,9 @@ func (s *Scanner) updateIndent(c rune) {
 		s.indentState = IndentStateEqual
 	} else {
 		s.indentState = IndentStateDown
-		s.indentLevel = s.prevIndentLevel - 1
+		if s.prevIndentLevel > 0 {
+			s.indentLevel = s.prevIndentLevel - 1
+		}
 	}
 	s.prevIndentNum = s.indentNum
 	s.prevIndentLevel = s.indentLevel
@@ -299,6 +301,7 @@ func (s *Scanner) scan(ctx *Context) (pos int) {
 			}
 		case '<':
 			if ctx.repeatNum('<') == 2 {
+				s.prevIndentNum = s.column
 				ctx.addToken(token.MergeKey(string(ctx.obuf)+"<<", s.pos()))
 				s.progressColumn(ctx, 1)
 				pos++

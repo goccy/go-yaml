@@ -162,14 +162,15 @@ func (p *Parser) parseMappingValue(ctx *Context) (ast.Node, error) {
 	if err != nil {
 		return nil, xerrors.Errorf("failed to parse mapping 'value' node: %w", err)
 	}
-	keyIndentLevel := key.GetToken().Position.IndentLevel
-	valueIndentLevel := value.GetToken().Position.IndentLevel
-	if keyIndentLevel < valueIndentLevel && p.isMapNode(value) {
+	keyColumn := key.GetToken().Position.Column
+	valueColumn := value.GetToken().Position.Column
+	if keyColumn < valueColumn && p.isMapNode(value) {
 		// sub mapping
 		node := &ast.MappingCollectionNode{
 			Start:  tk,
 			Values: []ast.Node{value},
 		}
+		startTk := tk
 		tk := ctx.afterNextToken()
 		for tk != nil && tk.Type == token.MappingValueType {
 			ctx.progress(1)
@@ -185,7 +186,7 @@ func (p *Parser) parseMappingValue(ctx *Context) (ast.Node, error) {
 			if nextKeyToken == nil {
 				break
 			}
-			if nextKeyToken.Position.IndentLevel != valueIndentLevel {
+			if nextKeyToken.Position.Column != valueColumn {
 				break
 			}
 			tk = ctx.afterNextToken()
@@ -197,7 +198,7 @@ func (p *Parser) parseMappingValue(ctx *Context) (ast.Node, error) {
 			}
 		}
 		return &ast.MappingValueNode{
-			Start: tk,
+			Start: startTk,
 			Key:   key,
 			Value: node,
 		}, nil
@@ -210,7 +211,7 @@ func (p *Parser) parseMappingValue(ctx *Context) (ast.Node, error) {
 	ntk := ctx.nextToken()
 	antk := ctx.afterNextToken()
 	for antk != nil && antk.Type == token.MappingValueType &&
-		ntk.Position.IndentLevel == key.GetToken().Position.IndentLevel {
+		ntk.Position.Column == key.GetToken().Position.Column {
 		node := &ast.MappingCollectionNode{
 			Start:  tk,
 			Values: []ast.Node{mvnode},

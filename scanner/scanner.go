@@ -1,6 +1,7 @@
 package scanner
 
 import (
+	"fmt"
 	"io"
 	"strings"
 
@@ -33,6 +34,7 @@ type Scanner struct {
 	offset            int
 	prevIndentLevel   int
 	prevIndentNum     int
+	prevIndentKeyNum  int
 	indentLevel       int
 	indentNum         int
 	isFirstCharAtLine bool
@@ -107,7 +109,18 @@ func (s *Scanner) updateIndent(c rune) {
 			s.indentLevel = s.prevIndentLevel - 1
 		}
 	}
+
+	if s.prevIndentKeyNum > 0 {
+		if s.prevIndentKeyNum < s.indentNum {
+			s.indentState = IndentStateUp
+		} else if s.prevIndentKeyNum == s.indentNum {
+			s.indentState = IndentStateEqual
+		} else {
+			s.indentState = IndentStateDown
+		}
+	}
 	s.prevIndentNum = s.indentNum
+	s.prevIndentKeyNum = 0
 	s.prevIndentLevel = s.indentLevel
 	s.isFirstCharAtLine = false
 }
@@ -301,7 +314,8 @@ func (s *Scanner) scan(ctx *Context) (pos int) {
 			}
 		case '<':
 			if ctx.repeatNum('<') == 2 {
-				s.prevIndentNum = s.column
+				s.prevIndentKeyNum = s.column
+				fmt.Println("s.prevIndentKeyNum = ", s.prevIndentKeyNum)
 				ctx.addToken(token.MergeKey(string(ctx.obuf)+"<<", s.pos()))
 				s.progressColumn(ctx, 1)
 				pos++
@@ -355,7 +369,7 @@ func (s *Scanner) scan(ctx *Context) (pos int) {
 				s.isMapContext = true
 				tk := s.bufferedToken(ctx)
 				if tk != nil {
-					s.prevIndentNum = tk.Position.Column - 1
+					s.prevIndentKeyNum = tk.Position.Column - 1
 					ctx.addToken(tk)
 				}
 				ctx.addToken(token.MappingValue(s.pos()))
@@ -459,6 +473,7 @@ func (s *Scanner) Init(src string) {
 	s.offset = 1
 	s.prevIndentLevel = 0
 	s.prevIndentNum = 0
+	s.prevIndentKeyNum = 0
 	s.indentLevel = 0
 	s.indentNum = 0
 	s.isFirstCharAtLine = true

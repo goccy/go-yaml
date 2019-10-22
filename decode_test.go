@@ -286,7 +286,7 @@ func TestDecoder(t *testing.T) {
 		typ := reflect.ValueOf(test.value).Type()
 		value := reflect.New(typ)
 		if err := dec.Decode(value.Interface()); err != nil {
-			t.Fatalf("%+v", err)
+			t.Fatalf("%s: %+v", test.source, err)
 		}
 		actual := fmt.Sprintf("%v", value.Elem().Interface())
 		expect := fmt.Sprintf("%v", test.value)

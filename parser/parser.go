@@ -1,7 +1,10 @@
 package parser
 
 import (
+	"strings"
+
 	"github.com/goccy/go-yaml/ast"
+	"github.com/goccy/go-yaml/errors"
 	"github.com/goccy/go-yaml/token"
 
 	"golang.org/x/xerrors"
@@ -147,10 +150,24 @@ func (p *Parser) isMapNode(node ast.Node) bool {
 	return false
 }
 
+func (p *Parser) validateMapKey(tk *token.Token) error {
+	if tk.Type != token.StringType {
+		return nil
+	}
+	origin := strings.TrimLeft(tk.Origin, "\n")
+	if strings.Index(origin, "\n") > 0 {
+		return errors.NewSyntaxError("unexpected key name", tk)
+	}
+	return nil
+}
+
 func (p *Parser) parseMappingValue(ctx *Context) (ast.Node, error) {
 	key := p.parseMapKey(ctx.currentToken())
 	if key == nil {
 		return nil, xerrors.New("failed to parse mapping 'key'. key is undefined")
+	}
+	if err := p.validateMapKey(key.GetToken()); err != nil {
+		return nil, err
 	}
 	if _, ok := key.(ast.ScalarNode); !ok {
 		return nil, xerrors.New("failed to parse mapping 'key', key is not scalar node")
@@ -160,7 +177,7 @@ func (p *Parser) parseMappingValue(ctx *Context) (ast.Node, error) {
 	ctx.progress(1)          // progress to value token
 	value, err := p.parseToken(ctx, ctx.currentToken())
 	if err != nil {
-		return nil, xerrors.Errorf("failed to parse mapping 'value' node: %w", err)
+		return nil, errors.Wrapf(err, "failed to parse mapping 'value' node")
 	}
 	keyColumn := key.GetToken().Position.Column
 	valueColumn := value.GetToken().Position.Column
@@ -203,6 +220,14 @@ func (p *Parser) parseMappingValue(ctx *Context) (ast.Node, error) {
 			Value: node,
 		}, nil
 	}
+	if keyColumn == valueColumn {
+		if value.Type() == ast.StringType {
+			ntk := ctx.nextToken()
+			if ntk == nil || (ntk.Type != token.MappingValueType && ntk.Type != token.SequenceEntryType) {
+				return nil, errors.NewSyntaxError("could not found expected ':' token", value.GetToken())
+			}
+		}
+	}
 	mvnode := &ast.MappingValueNode{
 		Start: tk,
 		Key:   key,
@@ -221,7 +246,13 @@ func (p *Parser) parseMappingValue(ctx *Context) (ast.Node, error) {
 		if err != nil {
 			return nil, xerrors.Errorf("failed to parse mapping collection node: %w", err)
 		}
-		node.Values = append(node.Values, value)
+		if c, ok := value.(*ast.MappingCollectionNode); ok {
+			for _, v := range c.Values {
+				node.Values = append(node.Values, v)
+			}
+		} else {
+			node.Values = append(node.Values, value)
+		}
 		ntk = ctx.nextToken()
 		antk = ctx.afterNextToken()
 		return node, nil
@@ -240,7 +271,7 @@ func (p *Parser) parseSequenceEntry(ctx *Context) (ast.Node, error) {
 		ctx.progress(1) // skip sequence token
 		value, err := p.parseToken(ctx, ctx.currentToken())
 		if err != nil {
-			return nil, xerrors.Errorf("failed to parse sequence: %w", err)
+			return nil, errors.Wrapf(err, "failed to parse sequence")
 		}
 		sequenceNode.Values = append(sequenceNode.Values, value)
 		tk = ctx.nextToken()
@@ -406,7 +437,7 @@ func (p *Parser) Parse(tokens token.Tokens) (*ast.Document, error) {
 	for ctx.next() {
 		node, err := p.parseToken(ctx, ctx.currentToken())
 		if err != nil {
-			return nil, xerrors.Errorf("failed to parse: %w", err)
+			return nil, errors.Wrapf(err, "failed to parse")
 		}
 		ctx.progress(1)
 		if node == nil {

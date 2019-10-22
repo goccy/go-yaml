@@ -328,7 +328,6 @@ aliased: *anchor
 		var (
 			p parser.Parser
 		)
-		//fmt.Printf(test.source)
 		tokens := lexer.Tokenize(test.source)
 		tokens.Dump()
 		doc, err := p.Parse(tokens)
@@ -343,6 +342,23 @@ aliased: *anchor
 		if test.expect != expect {
 			t.Fatalf("unexpected output: [%s] != [%s]", test.expect, expect)
 		}
+	}
+}
+
+func TestSyntaxError(t *testing.T) {
+	sources := []string{
+		"a:\n- b\n  c: d\n  e: f\n  g: h",
+	}
+	for _, source := range sources {
+		var (
+			p parser.Parser
+		)
+		tokens := lexer.Tokenize(source)
+		_, err := p.Parse(tokens)
+		if err == nil {
+			t.Fatal("cannot catch syntax error")
+		}
+		fmt.Printf("%+v\n", err)
 	}
 }
 

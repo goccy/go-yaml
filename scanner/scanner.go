@@ -1,7 +1,6 @@
 package scanner
 
 import (
-	"fmt"
 	"io"
 	"strings"
 
@@ -315,7 +314,6 @@ func (s *Scanner) scan(ctx *Context) (pos int) {
 		case '<':
 			if ctx.repeatNum('<') == 2 {
 				s.prevIndentKeyNum = s.column
-				fmt.Println("s.prevIndentKeyNum = ", s.prevIndentKeyNum)
 				ctx.addToken(token.MergeKey(string(ctx.obuf)+"<<", s.pos()))
 				s.progressColumn(ctx, 1)
 				pos++
@@ -460,6 +458,7 @@ func (s *Scanner) scan(ctx *Context) (pos int) {
 		ctx.addOriginBuf(c)
 		s.progressColumn(ctx, 1)
 	}
+	s.addBufferedTokenIfExists(ctx)
 	return
 }
 

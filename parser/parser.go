@@ -1,10 +1,11 @@
 package parser
 
 import (
-	"github.com/goccy/go-yaml/ast"
-	"github.com/goccy/go-yaml/token"
+	"strings"
 
-	"golang.org/x/xerrors"
+	"github.com/goccy/go-yaml/ast"
+	"github.com/goccy/go-yaml/errors"
+	"github.com/goccy/go-yaml/token"
 )
 
 // Parser convert from token instances to ast
@@ -91,11 +92,11 @@ func (p *Parser) parseMapping(ctx *Context) (ast.Node, error) {
 
 		value, err := p.parseToken(ctx, tk)
 		if err != nil {
-			return nil, xerrors.Errorf("failed to parse mapping value in mapping node: %w", err)
+			return nil, errors.Wrapf(err, "failed to parse mapping value in mapping node")
 		}
 		mvnode, ok := value.(*ast.MappingValueNode)
 		if !ok {
-			return nil, xerrors.New("failed to parse flow mapping value node")
+			return nil, errors.ErrSyntax("failed to parse flow mapping value node", value.GetToken())
 		}
 		node.Values = append(node.Values, mvnode)
 		ctx.progress(1)
@@ -121,7 +122,7 @@ func (p *Parser) parseSequence(ctx *Context) (ast.Node, error) {
 
 		value, err := p.parseToken(ctx, tk)
 		if err != nil {
-			return nil, xerrors.Errorf("failed to parse sequence value in flow sequence node: %w", err)
+			return nil, errors.Wrapf(err, "failed to parse sequence value in flow sequence node")
 		}
 		node.Values = append(node.Values, value)
 		ctx.progress(1)
@@ -134,7 +135,7 @@ func (p *Parser) parseTag(ctx *Context) (ast.Node, error) {
 	ctx.progress(1) // skip tag token
 	value, err := p.parseToken(ctx, ctx.currentToken())
 	if err != nil {
-		return nil, xerrors.Errorf("failed to parse tag value: %w", err)
+		return nil, errors.Wrapf(err, "failed to parse tag value")
 	}
 	node.Value = value
 	return node, nil
@@ -147,20 +148,34 @@ func (p *Parser) isMapNode(node ast.Node) bool {
 	return false
 }
 
+func (p *Parser) validateMapKey(tk *token.Token) error {
+	if tk.Type != token.StringType {
+		return nil
+	}
+	origin := strings.TrimLeft(tk.Origin, "\n")
+	if strings.Index(origin, "\n") > 0 {
+		return errors.ErrSyntax("unexpected key name", tk)
+	}
+	return nil
+}
+
 func (p *Parser) parseMappingValue(ctx *Context) (ast.Node, error) {
 	key := p.parseMapKey(ctx.currentToken())
 	if key == nil {
-		return nil, xerrors.New("failed to parse mapping 'key'. key is undefined")
+		return nil, errors.ErrSyntax("unexpected mapping 'key'. key is undefined", ctx.currentToken())
+	}
+	if err := p.validateMapKey(key.GetToken()); err != nil {
+		return nil, errors.Wrapf(err, "validate mapping key error")
 	}
 	if _, ok := key.(ast.ScalarNode); !ok {
-		return nil, xerrors.New("failed to parse mapping 'key', key is not scalar node")
+		return nil, errors.ErrSyntax("unexpected mapping 'key', key is not scalar value", key.GetToken())
 	}
 	ctx.progress(1)          // progress to mapping value token
 	tk := ctx.currentToken() // get mapping value token
 	ctx.progress(1)          // progress to value token
 	value, err := p.parseToken(ctx, ctx.currentToken())
 	if err != nil {
-		return nil, xerrors.Errorf("failed to parse mapping 'value' node: %w", err)
+		return nil, errors.Wrapf(err, "failed to parse mapping 'value' node")
 	}
 	keyColumn := key.GetToken().Position.Column
 	valueColumn := value.GetToken().Position.Column
@@ -176,10 +191,10 @@ func (p *Parser) parseMappingValue(ctx *Context) (ast.Node, error) {
 			ctx.progress(1)
 			value, err := p.parseToken(ctx, ctx.currentToken())
 			if err != nil {
-				return nil, xerrors.Errorf("failed to parse mapping value node: %w", err)
+				return nil, errors.Wrapf(err, "failed to parse mapping value node")
 			}
 			if !p.isMapNode(value) {
-				return nil, xerrors.Errorf("failed to parse mapping value node")
+				return nil, errors.Wrapf(err, "failed to parse mapping value node")
 			}
 			node.Values = append(node.Values, value)
 			nextKeyToken := ctx.nextToken()
@@ -203,6 +218,14 @@ func (p *Parser) parseMappingValue(ctx *Context) (ast.Node, error) {
 			Value: node,
 		}, nil
 	}
+	if keyColumn == valueColumn {
+		if value.Type() == ast.StringType {
+			ntk := ctx.nextToken()
+			if ntk == nil || (ntk.Type != token.MappingValueType && ntk.Type != token.SequenceEntryType) {
+				return nil, errors.ErrSyntax("could not found expected ':' token", value.GetToken())
+			}
+		}
+	}
 	mvnode := &ast.MappingValueNode{
 		Start: tk,
 		Key:   key,
@@ -219,9 +242,15 @@ func (p *Parser) parseMappingValue(ctx *Context) (ast.Node, error) {
 		ctx.progress(1)
 		value, err := p.parseToken(ctx, ctx.currentToken())
 		if err != nil {
-			return nil, xerrors.Errorf("failed to parse mapping collection node: %w", err)
+			return nil, errors.Wrapf(err, "failed to parse mapping collection node")
 		}
-		node.Values = append(node.Values, value)
+		if c, ok := value.(*ast.MappingCollectionNode); ok {
+			for _, v := range c.Values {
+				node.Values = append(node.Values, v)
+			}
+		} else {
+			node.Values = append(node.Values, value)
+		}
 		ntk = ctx.nextToken()
 		antk = ctx.afterNextToken()
 		return node, nil
@@ -240,7 +269,7 @@ func (p *Parser) parseSequenceEntry(ctx *Context) (ast.Node, error) {
 		ctx.progress(1) // skip sequence token
 		value, err := p.parseToken(ctx, ctx.currentToken())
 		if err != nil {
-			return nil, xerrors.Errorf("failed to parse sequence: %w", err)
+			return nil, errors.Wrapf(err, "failed to parse sequence")
 		}
 		sequenceNode.Values = append(sequenceNode.Values, value)
 		tk = ctx.nextToken()
@@ -263,22 +292,22 @@ func (p *Parser) parseAnchor(ctx *Context) (ast.Node, error) {
 	anchor := &ast.AnchorNode{Start: tk}
 	ntk := ctx.nextToken()
 	if ntk == nil {
-		return nil, xerrors.New("failed to parse anchor. anchor name is undefined")
+		return nil, errors.ErrSyntax("unexpected anchor. anchor name is undefined", tk)
 	}
 	ctx.progress(1) // skip anchor token
 	name, err := p.parseToken(ctx, ctx.currentToken())
 	if err != nil {
-		return nil, xerrors.Errorf("failed to parser anchor name node: %w", err)
+		return nil, errors.Wrapf(err, "failed to parser anchor name node")
 	}
 	anchor.Name = name
 	ntk = ctx.nextToken()
 	if ntk == nil {
-		return nil, xerrors.New("failed to parse anchor. anchor value is undefined")
+		return nil, errors.ErrSyntax("unexpected anchor. anchor value is undefined", ctx.currentToken())
 	}
 	ctx.progress(1)
 	value, err := p.parseToken(ctx, ctx.currentToken())
 	if err != nil {
-		return nil, xerrors.Errorf("failed to parser anchor name node: %w", err)
+		return nil, errors.Wrapf(err, "failed to parser anchor name node")
 	}
 	anchor.Value = value
 	return anchor, nil
@@ -289,12 +318,12 @@ func (p *Parser) parseAlias(ctx *Context) (ast.Node, error) {
 	alias := &ast.AliasNode{Start: tk}
 	ntk := ctx.nextToken()
 	if ntk == nil {
-		return nil, xerrors.New("failed to parse alias. alias name is undefined")
+		return nil, errors.ErrSyntax("unexpected alias. alias name is undefined", tk)
 	}
 	ctx.progress(1) // skip alias token
 	name, err := p.parseToken(ctx, ctx.currentToken())
 	if err != nil {
-		return nil, xerrors.Errorf("failed to parser alias name node: %w", err)
+		return nil, errors.Wrapf(err, "failed to parser alias name node")
 	}
 	alias.Value = name
 	return alias, nil
@@ -346,12 +375,12 @@ func (p *Parser) parseDirective(ctx *Context) (ast.Node, error) {
 	ctx.progress(1) // skip directive token
 	value, err := p.parseToken(ctx, ctx.currentToken())
 	if err != nil {
-		return nil, xerrors.Errorf("failed to parse directive value: %w", err)
+		return nil, errors.Wrapf(err, "failed to parse directive value")
 	}
 	node.Value = value
 	ctx.progress(1)
 	if ctx.currentToken().Type != token.DocumentHeaderType {
-		return nil, xerrors.New("failed to parse directive value. document not started")
+		return nil, errors.ErrSyntax("unexpected directive value. document not started", ctx.currentToken())
 	}
 	return node, nil
 }
@@ -361,11 +390,11 @@ func (p *Parser) parseLiteral(ctx *Context) (ast.Node, error) {
 	ctx.progress(1) // skip literal/folded token
 	value, err := p.parseToken(ctx, ctx.currentToken())
 	if err != nil {
-		return nil, xerrors.Errorf("failed to parse literal/folded value: %w", err)
+		return nil, errors.Wrapf(err, "failed to parse literal/folded value")
 	}
 	snode, ok := value.(*ast.StringNode)
 	if !ok {
-		return nil, xerrors.New("invalid literal type. required string node")
+		return nil, errors.ErrSyntax("unexpected token. required string token", value.GetToken())
 	}
 	node.Value = snode
 	return node, nil
@@ -406,7 +435,7 @@ func (p *Parser) Parse(tokens token.Tokens) (*ast.Document, error) {
 	for ctx.next() {
 		node, err := p.parseToken(ctx, ctx.currentToken())
 		if err != nil {
-			return nil, xerrors.Errorf("failed to parse: %w", err)
+			return nil, errors.Wrapf(err, "failed to parse")
 		}
 		ctx.progress(1)
 		if node == nil {

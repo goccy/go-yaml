@@ -2,8 +2,10 @@ package printer
 
 import (
 	"fmt"
+	"math"
 	"strings"
 
+	"github.com/fatih/color"
 	"github.com/goccy/go-yaml/ast"
 	"github.com/goccy/go-yaml/token"
 )
@@ -100,13 +102,16 @@ func (p *Printer) property(tk *token.Token) *Property {
 
 // PrintTokens create text from token collection
 func (p *Printer) PrintTokens(tokens token.Tokens) string {
+	if len(tokens) == 0 {
+		return ""
+	}
 	if p.LineNumber {
 		if p.LineNumberFormat == nil {
 			p.LineNumberFormat = defaultLineNumberFormat
 		}
 	}
 	texts := []string{}
-	lineNumber := 1
+	lineNumber := tokens[0].Position.Line
 	for _, tk := range tokens {
 		lines := strings.Split(tk.Origin, "\n")
 		prop := p.property(tk)
@@ -150,4 +155,124 @@ func (p *Printer) PrintTokens(tokens token.Tokens) string {
 // PrintNode create text from ast.Node
 func (p *Printer) PrintNode(node ast.Node) []byte {
 	return []byte(fmt.Sprintf("%+v\n", node))
+}
+
+const escape = "\x1b"
+
+func format(attr color.Attribute) string {
+	return fmt.Sprintf("%s[%dm", escape, attr)
+}
+
+func (p *Printer) setDefaultColorSet() {
+	p.Bool = func() *Property {
+		return &Property{
+			Prefix: format(color.FgHiMagenta),
+			Suffix: format(color.Reset),
+		}
+	}
+	p.Number = func() *Property {
+		return &Property{
+			Prefix: format(color.FgHiMagenta),
+			Suffix: format(color.Reset),
+		}
+	}
+	p.MapKey = func() *Property {
+		return &Property{
+			Prefix: format(color.FgHiCyan),
+			Suffix: format(color.Reset),
+		}
+	}
+	p.Anchor = func() *Property {
+		return &Property{
+			Prefix: format(color.FgHiYellow),
+			Suffix: format(color.Reset),
+		}
+	}
+	p.Alias = func() *Property {
+		return &Property{
+			Prefix: format(color.FgHiYellow),
+			Suffix: format(color.Reset),
+		}
+	}
+	p.String = func() *Property {
+		return &Property{
+			Prefix: format(color.FgHiGreen),
+			Suffix: format(color.Reset),
+		}
+	}
+}
+
+func (p *Printer) PrintErrorMessage(msg string, isColored bool) string {
+	if isColored {
+		return fmt.Sprintf("%s%s%s",
+			format(color.FgHiRed),
+			msg,
+			format(color.Reset),
+		)
+	}
+	return msg
+}
+
+func (p *Printer) PrintErrorToken(tk *token.Token, isColored bool) string {
+	errToken := tk
+	pos := tk.Position
+	curLine := pos.Line
+	curExtLine := curLine + len(strings.Split(tk.Origin, "\n")) - 1
+	minLine := int(math.Max(float64(curLine-3), 1))
+	maxLine := curExtLine + 3
+	for {
+		if tk.Position.Line < minLine {
+			break
+		}
+		if tk.Prev == nil {
+			break
+		}
+		tk = tk.Prev
+	}
+	tokens := token.Tokens{}
+	lastTk := tk
+	for tk.Position.Line <= curExtLine {
+		tokens.Add(tk)
+		lastTk = tk
+		tk = tk.Next
+		if tk == nil {
+			break
+		}
+	}
+	org := lastTk.Origin
+	trimmed := strings.TrimRight(strings.TrimRight(lastTk.Origin, " "), "\n")
+	lastTk.Origin = trimmed
+	if tk != nil {
+		tk.Origin = org[len(org)-len(trimmed):] + tk.Origin
+	}
+	p.LineNumber = true
+	p.LineNumberFormat = func(num int) string {
+		if isColored {
+			fn := color.New(color.Bold, color.FgHiWhite).SprintFunc()
+			if curLine == num {
+				return fn(fmt.Sprintf("> %2d | ", num))
+			}
+			return fn(fmt.Sprintf("  %2d | ", num))
+		}
+		if curLine == num {
+			return fmt.Sprintf("> %2d | ", num)
+		}
+		return fmt.Sprintf("  %2d | ", num)
+	}
+	if isColored {
+		p.setDefaultColorSet()
+	}
+	beforeSource := p.PrintTokens(tokens)
+	prefixSpaceNum := len(fmt.Sprintf("  %2d | ", 1))
+	annotateLine := strings.Repeat(" ", prefixSpaceNum+errToken.Position.Column-2) + "^"
+	tokens = token.Tokens{}
+	for tk != nil {
+		if tk.Position.Line > maxLine {
+			break
+		}
+		tokens.Add(tk)
+		tk = tk.Next
+	}
+	afterSource := p.PrintTokens(tokens)
+	return fmt.Sprintf("%s\n%s\n%s", beforeSource, annotateLine, afterSource)
 }

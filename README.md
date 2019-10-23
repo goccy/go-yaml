@@ -208,6 +208,13 @@ people:
 */
 ```
 
+# 4. Beautiful Syntax Error notification
+
+<img src="https://user-images.githubusercontent.com/209884/67358124-587f0980-f59a-11e9-96fc-7205aab77695.png"></img>
+
+If parser will receive invalid YAML, print syntax error with highlighted source code.
+
+※ If you doesn't want to colored source code or source code, set `errors.ColoredErr = false` or `errors.WithSourceCode = false` .
 
 # Install
 

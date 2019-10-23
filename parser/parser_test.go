@@ -358,7 +358,7 @@ func TestSyntaxError(t *testing.T) {
 		if err == nil {
 			t.Fatal("cannot catch syntax error")
 		}
-		fmt.Printf("%+v\n", err)
+		fmt.Printf("%v\n", err)
 	}
 }
 

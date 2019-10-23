@@ -7,15 +7,14 @@
 
 <img width="300px" src="https://user-images.githubusercontent.com/209884/67159116-64d94b80-f37b-11e9-9b28-f8379636a43c.png"></img>
 
-# Why?
+# Why a new library?
 
-I know [https://github.com/go-yaml/yaml](https://github.com/go-yaml/yaml) . It is the very famous library .
-But I want to use the following features no in that library .
+As of this writing, there already exists a defacto standard library for YAML processing Go: [https://github.com/go-yaml/yaml](https://github.com/go-yaml/yaml). However we feel that some features are lacking, namely:
 
-- Beautiful syntax or validation error notification
-- Manipulate Abstract Syntax Tree for YAML with Go
-- Support `Anchor` and `Alias` to Marshaler
-- Reference to Anchor defined by the other file
+- Pretty format for error notifacations
+- Directly manipulate the YAML abstract syntax tree
+- Support `Anchor` and `Alias` when marshaling
+- Allow referencing elements declared in another file via anchors
 
 # Status
 
@@ -23,10 +22,10 @@ But I want to use the following features no in that library .
 
 # Features ( Goals )
 
-- Beautiful syntax or validation error notification
+- Pretty format for error notifacations
 - Support `Scanner` or `Lexer` or `Parser` as public API
 - Support `Anchor` and `Alias` to Marshaler
-- Reference to `Anchor` defined by the other file
+- Allow referencing elements declared in another file via anchors
 
 # Synopsis
 
@@ -64,7 +63,7 @@ if err := yaml.Unmarshal([]byte(yml), &v); err != nil {
 }
 ```
 
-## 2. Reference to `Anchor` defined by the other file
+## 2. Reference elements in declared in another file
 
 `testdata` directory includes `anchor.yml` file
 
@@ -103,31 +102,40 @@ fmt.Printf("%+v\n", v) // {A:{B:1 C:hello}}
 
 ### 3.1. Explicitly declaration `Anchor` name and `Alias` name
 
-If you want to use `anchor` or `alias`,
-it can define as tag in struct.
+If you want to use `anchor` or `alias`, you can define it as a struct tag.
 
 ```go
 type T struct {
-	A int
-	B string
+  A int
+  B string
 }
 var v struct {
-	A *T `yaml:"a,anchor=c"`
-	B *T `yaml:"b,alias=c"`
+  C *T `yaml:"c,anchor=x"`
+  D *T `yaml:"d,alias=x"`
 }
-v.A = &T{A: 1, B: "hello"}
-v.B = v.A
+v.C = &T{A: 1, B: "hello"}
+v.D = v.C
 bytes, err := yaml.Marshal(v)
 if err != nil {
-	...
+  panic(err)
 }
-fmt.Printf("%s\n", string(bytes)) // "a: &c\n  a: 1\n  b: hello\nb: *c\n"
+fmt.Println(string(bytes))
+/*
+c: &x
+  a: 1
+  b: hello
+d: *x
+*/
 ```
 
-### 3.2. Implicitly declaration `Anchor` name and `Alias` name
+### 3.2. Implicitly declared `Anchor` and `Alias` names
 
-If omitted anchor name, assigned default rendering name ( `strings.ToLower(FieldName)` ) as anchor name.
-If omitted alias name and it's field type is **pointer** type, assigned anchor name automatically from same pointer address.
+If you do not explicitly declare the anchor name, the default behavior is to
+use the equivalent of `strings.ToLower($FieldName)` as the name of the anchor.
+
+If you do not explicitly declare the alias name AND the value is a pointer
+to another element, we look up the anchor name by finding out which anchor
+field the value is assigned to by looking up its pointer address.
 
 ```go
 type T struct {
@@ -163,7 +171,7 @@ d: *b
 
 ### 3.3 MergeKey and Alias
 
-If you want to use merge key and alias ( `<<: *alias` ), you can use it by embed structure with `inline,alias` tag .
+Merge key and alias ( `<<: *alias` ) can be used by embedding a structure with the `inline,alias` tag .
 
 ```go
 type Person struct {
@@ -208,15 +216,15 @@ people:
 */
 ```
 
-# 4. Beautiful Syntax Error notification
+# 4. Pretty Formatted Errors
 
 <img src="https://user-images.githubusercontent.com/209884/67358124-587f0980-f59a-11e9-96fc-7205aab77695.png"></img>
 
-If parser will receive invalid YAML, print syntax error with highlighted source code.
+If parser receives invalid YAML, the error is printed along with highlighted source code.
 
-※ If you doesn't want to colored source code or source code, set `errors.ColoredErr = false` or `errors.WithSourceCode = false` .
+※ If you do not want to source code in your error message (colored or otherwise), set `errors.ColoredErr = false` or `errors.WithSourceCode = false` .
 
-# Install
+# Installation
 
 ```
 $ go get -u github.com/goccy/go-yaml

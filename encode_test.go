@@ -2,6 +2,7 @@ package yaml_test
 
 import (
 	"bytes"
+	"fmt"
 	"math"
 	"testing"
 
@@ -350,4 +351,50 @@ people:
 	if expect != buf.String() {
 		t.Fatalf("expect = [%s], actual = [%s]", expect, buf.String())
 	}
+}
+
+func Example_Marshal_ExplicitAnchorAlias() {
+	type T struct {
+		A int
+		B string
+	}
+	var v struct {
+		C *T `yaml:"c,anchor=x"`
+		D *T `yaml:"d,alias=x"`
+	}
+	v.C = &T{A: 1, B: "hello"}
+	v.D = v.C
+	bytes, err := yaml.Marshal(v)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(string(bytes))
+	// OUTPUT:
+	//c: &x
+	//   a: 1
+	//   b: hello
+	//d: *x
+}
+
+func Example_Marshal_ImplicitAnchorAlias() {
+	type T struct {
+		I int
+		S string
+	}
+	var v struct {
+		A *T `yaml:"a,anchor"`
+		B *T `yaml:"b,anchor"`
+		C *T `yaml:"c,alias"`
+		D *T `yaml:"d,alias"`
+	}
+	v.A = &T{I: 1, S: "hello"}
+	v.B = &T{I: 2, S: "world"}
+	v.C = v.A // C has same pointer address to A
+	v.D = v.B // D has same pointer address to B
+	bytes, err := yaml.Marshal(v)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(string(bytes))
+	// OUTPUT:
 }

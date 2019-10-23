@@ -9,10 +9,13 @@ import (
 )
 
 var (
-	ColoredErr     = true
+	// ColoredErr error with syntax highlight
+	ColoredErr = true
+	// WithSourceCode error with source code
 	WithSourceCode = true
 )
 
+// Wrapf wrap error for stack trace
 func Wrapf(err error, msg string, args ...interface{}) error {
 	return &wrapError{
 		baseError: &baseError{},
@@ -22,6 +25,7 @@ func Wrapf(err error, msg string, args ...interface{}) error {
 	}
 }
 
+// ErrSyntax create syntax error instance with message and token
 func ErrSyntax(msg string, tk *token.Token) *syntaxError {
 	return &syntaxError{
 		baseError: &baseError{},

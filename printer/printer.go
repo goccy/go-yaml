@@ -217,7 +217,7 @@ func (p *Printer) PrintErrorToken(tk *token.Token, isColored bool) string {
 	errToken := tk
 	pos := tk.Position
 	curLine := pos.Line
-	curExtLine := curLine + len(strings.Split(tk.Origin, "\n")) - 1
+	curExtLine := curLine + len(strings.Split(strings.TrimLeft(tk.Origin, "\n"), "\n")) - 1
 	minLine := int(math.Max(float64(curLine-3), 1))
 	maxLine := curExtLine + 3
 	for {
@@ -243,7 +243,7 @@ func (p *Printer) PrintErrorToken(tk *token.Token, isColored bool) string {
 	trimmed := strings.TrimRight(strings.TrimRight(lastTk.Origin, " "), "\n")
 	lastTk.Origin = trimmed
 	if tk != nil {
-		tk.Origin = org[len(org)-len(trimmed):] + tk.Origin
+		tk.Origin = org[len(trimmed)+1:] + tk.Origin
 	}
 	p.LineNumber = true
 	p.LineNumberFormat = func(num int) string {

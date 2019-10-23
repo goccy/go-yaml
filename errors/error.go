@@ -13,6 +13,8 @@ var (
 	ColoredErr = true
 	// WithSourceCode error with source code
 	WithSourceCode = true
+	// ErrDecodeRequiredPointerType error instance for decoding
+	ErrDecodeRequiredPointerType = xerrors.New("required pointer type value")
 )
 
 // Wrapf wrap error for stack trace
@@ -80,14 +82,12 @@ func (e *wrapError) FormatError(p xerrors.Printer) error {
 		}
 		break
 	}
-	if ColoredErr {
-		var yp printer.Printer
-		p.Print(yp.PrintErrorMessage("syntax error: ", ColoredErr))
-	} else {
-		p.Print("syntax error: ")
-	}
 	e.chainStateAndVerb(err)
-	err.(xerrors.Formatter).FormatError(p)
+	if fmtErr, ok := err.(xerrors.Formatter); ok {
+		fmtErr.FormatError(p)
+	} else {
+		p.Print(err)
+	}
 	return nil
 }
 
@@ -149,7 +149,7 @@ func (e *syntaxError) FormatError(p xerrors.Printer) error {
 func (e *syntaxError) Error() string {
 	var p printer.Printer
 	pos := fmt.Sprintf("[%d:%d] ", e.token.Position.Line, e.token.Position.Column)
-	msg := p.PrintErrorMessage(fmt.Sprintf("%s%s", pos, e.msg), ColoredErr)
+	msg := p.PrintErrorMessage(fmt.Sprintf("syntax error: %s%s", pos, e.msg), ColoredErr)
 	if WithSourceCode {
 		err := p.PrintErrorToken(e.token, ColoredErr)
 		return fmt.Sprintf("%s\n%s", msg, err)

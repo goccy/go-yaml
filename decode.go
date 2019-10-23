@@ -10,10 +10,10 @@ import (
 	"reflect"
 
 	"github.com/goccy/go-yaml/ast"
+	"github.com/goccy/go-yaml/errors"
 	"github.com/goccy/go-yaml/lexer"
 	"github.com/goccy/go-yaml/parser"
 	"github.com/goccy/go-yaml/token"
-	"golang.org/x/xerrors"
 )
 
 // Decoder reads and decodes YAML values from an input stream.
@@ -132,7 +132,7 @@ func (d *Decoder) decodeValue(valueType reflect.Type, value interface{}) (reflec
 	case reflect.Ptr:
 		v, err := d.decodeValue(valueType.Elem(), value)
 		if err != nil {
-			return reflect.Zero(valueType), xerrors.Errorf("failed to decode ptr value: %w", err)
+			return reflect.Zero(valueType), errors.Wrapf(err, "failed to decode ptr value")
 		}
 		return v.Addr(), nil
 	case reflect.Interface:
@@ -151,11 +151,14 @@ func (d *Decoder) decodeStruct(structType reflect.Type, value interface{}) (refl
 	structValue := reflect.New(structType)
 	structFieldMap, err := structFieldMap(structType)
 	if err != nil {
-		return reflect.Zero(structType), xerrors.Errorf("failed to create struct field map: %w", err)
+		return reflect.Zero(structType), errors.Wrapf(err, "failed to create struct field map")
+	}
+	if value == nil {
+		return reflect.Zero(structType), nil
 	}
 	valueMap, ok := value.(map[string]interface{})
 	if !ok {
-		return reflect.Zero(structType), xerrors.Errorf("value is not struct type: %s", reflect.TypeOf(value).Name())
+		return reflect.Zero(structType), errors.Wrapf(err, "value is not struct type: %s", reflect.TypeOf(value).Name())
 	}
 	for i := 0; i < structType.NumField(); i++ {
 		field := structType.Field(i)
@@ -171,7 +174,7 @@ func (d *Decoder) decodeStruct(structType reflect.Type, value interface{}) (refl
 		valueType := fieldValue.Type()
 		vv, err := d.decodeValue(valueType, v)
 		if err != nil {
-			return reflect.Zero(structType), xerrors.Errorf("failed to decode value: %w", err)
+			return reflect.Zero(structType), errors.Wrapf(err, "failed to decode value")
 		}
 		fieldValue.Set(vv)
 	}
@@ -185,7 +188,7 @@ func (d *Decoder) decodeSlice(sliceType reflect.Type, value interface{}) (reflec
 	for _, v := range slice {
 		vv, err := d.decodeValue(sliceValueType, v)
 		if err != nil {
-			return reflect.Zero(sliceType), xerrors.Errorf("failed to decode value: %w", err)
+			return reflect.Zero(sliceType), errors.Wrapf(err, "failed to decode value")
 		}
 		sliceValue = reflect.Append(sliceValue, vv)
 	}
@@ -200,7 +203,7 @@ func (d *Decoder) decodeMap(mapType reflect.Type, value interface{}) (reflect.Va
 		castedKey := reflect.ValueOf(k).Convert(keyType)
 		vv, err := d.decodeValue(valueType, v)
 		if err != nil {
-			return reflect.Zero(mapType), xerrors.Errorf("failed to decode value: %w", err)
+			return reflect.Zero(mapType), errors.Wrapf(err, "failed to decode value")
 		}
 		mapValue.SetMapIndex(castedKey, vv)
 	}
@@ -210,7 +213,7 @@ func (d *Decoder) decodeMap(mapType reflect.Type, value interface{}) (reflect.Va
 func (d *Decoder) fileToReader(file string) (io.Reader, error) {
 	reader, err := os.Open(file)
 	if err != nil {
-		return nil, xerrors.Errorf("failed to open file: %w", err)
+		return nil, errors.Wrapf(err, "failed to open file")
 	}
 	return reader, nil
 }
@@ -230,7 +233,7 @@ func (d *Decoder) readersUnderDir(dir string) ([]io.Reader, error) {
 	pattern := fmt.Sprintf("%s/*", dir)
 	matches, err := filepath.Glob(pattern)
 	if err != nil {
-		return nil, xerrors.Errorf("failed to get files by %s: %w", pattern, err)
+		return nil, errors.Wrapf(err, "failed to get files by %s", pattern)
 	}
 	readers := []io.Reader{}
 	for _, match := range matches {
@@ -239,7 +242,7 @@ func (d *Decoder) readersUnderDir(dir string) ([]io.Reader, error) {
 		}
 		reader, err := d.fileToReader(match)
 		if err != nil {
-			return nil, xerrors.Errorf("failed to get reader: %w", err)
+			return nil, errors.Wrapf(err, "failed to get reader")
 		}
 		readers = append(readers, reader)
 	}
@@ -254,12 +257,12 @@ func (d *Decoder) readersUnderDirRecursive(dir string) ([]io.Reader, error) {
 		}
 		reader, err := d.fileToReader(path)
 		if err != nil {
-			return xerrors.Errorf("failed to get reader: %w", err)
+			return errors.Wrapf(err, "failed to get reader")
 		}
 		readers = append(readers, reader)
 		return nil
 	}); err != nil {
-		return nil, xerrors.Errorf("interrupt walk in %s: %w", dir, err)
+		return nil, errors.Wrapf(err, "interrupt walk in %s", dir)
 	}
 	return readers, nil
 }
@@ -267,13 +270,13 @@ func (d *Decoder) readersUnderDirRecursive(dir string) ([]io.Reader, error) {
 func (d *Decoder) resolveReference() error {
 	for _, opt := range d.opts {
 		if err := opt(d); err != nil {
-			return xerrors.Errorf("failed to exec option: %w", err)
+			return errors.Wrapf(err, "failed to exec option")
 		}
 	}
 	for _, file := range d.referenceFiles {
 		reader, err := d.fileToReader(file)
 		if err != nil {
-			return xerrors.Errorf("failed to get reader: %w", err)
+			return errors.Wrapf(err, "failed to get reader")
 		}
 		d.referenceReaders = append(d.referenceReaders, reader)
 	}
@@ -281,13 +284,13 @@ func (d *Decoder) resolveReference() error {
 		if !d.isRecursiveDir {
 			readers, err := d.readersUnderDir(dir)
 			if err != nil {
-				return xerrors.Errorf("failed to get readers from under the %s: %w", dir, err)
+				return errors.Wrapf(err, "failed to get readers from under the %s", dir)
 			}
 			d.referenceReaders = append(d.referenceReaders, readers...)
 		} else {
 			readers, err := d.readersUnderDirRecursive(dir)
 			if err != nil {
-				return xerrors.Errorf("failed to get readers from under the %s: %w", dir, err)
+				return errors.Wrapf(err, "failed to get readers from under the %s", dir)
 			}
 			d.referenceReaders = append(d.referenceReaders, readers...)
 		}
@@ -295,12 +298,12 @@ func (d *Decoder) resolveReference() error {
 	for _, reader := range d.referenceReaders {
 		bytes, err := ioutil.ReadAll(reader)
 		if err != nil {
-			return xerrors.Errorf("failed to read buffer: %w", err)
+			return errors.Wrapf(err, "failed to read buffer")
 		}
 
 		// assign new anchor definition to anchorMap
 		if _, err := d.decode(bytes); err != nil {
-			return xerrors.Errorf("failed to decode: %w", err)
+			return errors.Wrapf(err, "failed to decode")
 		}
 	}
 	d.isResolvedReference = true
@@ -314,7 +317,7 @@ func (d *Decoder) decode(bytes []byte) (interface{}, error) {
 	tokens := lexer.Tokenize(string(bytes))
 	doc, err := parser.Parse(tokens)
 	if err != nil {
-		return nil, xerrors.Errorf("failed to parse yaml: %w", err)
+		return nil, errors.Wrapf(err, "failed to parse yaml")
 	}
 	return d.docToValue(doc), nil
 }
@@ -327,27 +330,27 @@ func (d *Decoder) decode(bytes []byte) (interface{}, error) {
 func (d *Decoder) Decode(v interface{}) error {
 	if !d.isResolvedReference {
 		if err := d.resolveReference(); err != nil {
-			return xerrors.Errorf("failed to resolve reference: %w", err)
+			return errors.Wrapf(err, "failed to resolve reference")
 		}
 	}
 	rv := reflect.ValueOf(v)
 	if rv.Type().Kind() != reflect.Ptr {
-		return xerrors.New("required pointer type value")
+		return errors.ErrDecodeRequiredPointerType
 	}
 	bytes, err := ioutil.ReadAll(d.reader)
 	if err != nil {
-		return xerrors.Errorf("failed to read buffer: %w", err)
+		return errors.Wrapf(err, "failed to read buffer")
 	}
 	value, err := d.decode(bytes)
 	if err != nil {
-		return xerrors.Errorf("failed to decode: %w", err)
+		return errors.Wrapf(err, "failed to decode")
 	}
 	if value == nil {
 		return nil
 	}
 	decodedValue, err := d.decodeValue(rv.Elem().Type(), value)
 	if err != nil {
-		return xerrors.Errorf("failed to decode value: %w", err)
+		return errors.Wrapf(err, "failed to decode value")
 	}
 	if decodedValue.IsValid() {
 		rv.Elem().Set(decodedValue)

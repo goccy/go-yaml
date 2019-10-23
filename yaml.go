@@ -3,7 +3,7 @@ package yaml
 import (
 	"bytes"
 
-	"golang.org/x/xerrors"
+	"github.com/goccy/go-yaml/errors"
 )
 
 // Marshaler interface may be implemented by types to customize their
@@ -76,7 +76,7 @@ func Marshal(v interface{}) ([]byte, error) {
 	var buf bytes.Buffer
 	enc := NewEncoder(&buf)
 	if err := enc.Encode(v); err != nil {
-		return nil, xerrors.Errorf("failed to marshal: %w", err)
+		return nil, errors.Wrapf(err, "failed to marshal", err)
 	}
 	return buf.Bytes(), nil
 }
@@ -107,7 +107,7 @@ func Marshal(v interface{}) ([]byte, error) {
 func Unmarshal(data []byte, v interface{}) error {
 	dec := NewDecoder(bytes.NewBuffer(data))
 	if err := dec.Decode(v); err != nil {
-		return xerrors.Errorf("failed to unmarshal: %w", err)
+		return errors.Wrapf(err, "failed to unmarshal")
 	}
 	return nil
 }

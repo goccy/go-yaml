@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/goccy/go-yaml/ast"
+	"github.com/goccy/go-yaml/errors"
 	"github.com/goccy/go-yaml/printer"
 	"github.com/goccy/go-yaml/token"
 	"golang.org/x/xerrors"
@@ -63,7 +64,7 @@ func (e *Encoder) Close() error {
 func (e *Encoder) Encode(v interface{}) error {
 	node, err := e.encodeValue(reflect.ValueOf(v), 1)
 	if err != nil {
-		return xerrors.Errorf("failed to encode value: %w", err)
+		return errors.Wrapf(err, "failed to encode value")
 	}
 	var p printer.Printer
 	e.writer.Write(p.PrintNode(node))
@@ -266,7 +267,7 @@ func (e *Encoder) encodeStruct(value reflect.Value, column int) (ast.Node, error
 	structType := value.Type()
 	structFieldMap, err := structFieldMap(structType)
 	if err != nil {
-		return nil, xerrors.Errorf("failed to get struct field map: %w", err)
+		return nil, errors.Wrapf(err, "failed to get struct field map")
 	}
 	for i := 0; i < value.NumField(); i++ {
 		field := structType.Field(i)
@@ -281,7 +282,7 @@ func (e *Encoder) encodeStruct(value reflect.Value, column int) (ast.Node, error
 		}
 		value, err := e.encodeValue(fieldValue, column)
 		if err != nil {
-			return nil, xerrors.Errorf("failed to encode value: %w", err)
+			return nil, errors.Wrapf(err, "failed to encode value")
 		}
 		if c, ok := value.(*ast.MappingCollectionNode); ok {
 			for _, value := range c.Values {

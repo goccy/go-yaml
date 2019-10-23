@@ -397,4 +397,12 @@ func Example_Marshal_ImplicitAnchorAlias() {
 	}
 	fmt.Println(string(bytes))
 	// OUTPUT:
+	// a: &a
+	//   i: 1
+	//   s: hello
+	// b: &b
+	//   i: 2
+	//   s: world
+	// c: *a
+	// d: *b
 }

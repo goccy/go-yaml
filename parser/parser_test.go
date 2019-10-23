@@ -323,6 +323,20 @@ aliased: *anchor
   label: center/big
 `,
 		},
+		{
+			`
+a:
+- - b
+- - c
+  - d
+`,
+			`
+a:
+- - b
+- - c
+  - d
+`,
+		},
 	}
 	for _, test := range tests {
 		var (

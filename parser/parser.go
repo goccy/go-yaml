@@ -185,7 +185,18 @@ func (p *Parser) parseMappingValue(ctx *Context) (ast.Node, error) {
 			Start:  tk,
 			Values: []ast.Node{value},
 		}
-		startTk := tk
+		mvnode := &ast.MappingValueNode{
+			Start: tk,
+			Key:   key,
+			Value: node,
+		}
+		ntk := ctx.nextToken()
+		if ntk == nil {
+			return mvnode, nil
+		}
+		if ntk.Position.Column != valueColumn {
+			return mvnode, nil
+		}
 		tk := ctx.afterNextToken()
 		for tk != nil && tk.Type == token.MappingValueType {
 			ctx.progress(1)
@@ -212,11 +223,7 @@ func (p *Parser) parseMappingValue(ctx *Context) (ast.Node, error) {
 				break
 			}
 		}
-		return &ast.MappingValueNode{
-			Start: startTk,
-			Key:   key,
-			Value: node,
-		}, nil
+		return mvnode, nil
 	}
 	if keyColumn == valueColumn {
 		if value.Type() == ast.StringType {
@@ -233,12 +240,12 @@ func (p *Parser) parseMappingValue(ctx *Context) (ast.Node, error) {
 	}
 	ntk := ctx.nextToken()
 	antk := ctx.afterNextToken()
+	node := &ast.MappingCollectionNode{
+		Start:  tk,
+		Values: []ast.Node{mvnode},
+	}
 	for antk != nil && antk.Type == token.MappingValueType &&
 		ntk.Position.Column == key.GetToken().Position.Column {
-		node := &ast.MappingCollectionNode{
-			Start:  tk,
-			Values: []ast.Node{mvnode},
-		}
 		ctx.progress(1)
 		value, err := p.parseToken(ctx, ctx.currentToken())
 		if err != nil {
@@ -253,9 +260,11 @@ func (p *Parser) parseMappingValue(ctx *Context) (ast.Node, error) {
 		}
 		ntk = ctx.nextToken()
 		antk = ctx.afterNextToken()
-		return node, nil
 	}
-	return mvnode, nil
+	if len(node.Values) == 1 {
+		return mvnode, nil
+	}
+	return node, nil
 }
 
 func (p *Parser) parseSequenceEntry(ctx *Context) (ast.Node, error) {
@@ -264,7 +273,7 @@ func (p *Parser) parseSequenceEntry(ctx *Context) (ast.Node, error) {
 		Start:  tk,
 		Values: []ast.Node{},
 	}
-	curIndentLevel := tk.Position.IndentLevel
+	curColumn := tk.Position.Column
 	for tk.Type == token.SequenceEntryType {
 		ctx.progress(1) // skip sequence token
 		value, err := p.parseToken(ctx, ctx.currentToken())
@@ -279,7 +288,7 @@ func (p *Parser) parseSequenceEntry(ctx *Context) (ast.Node, error) {
 		if tk.Type != token.SequenceEntryType {
 			break
 		}
-		if tk.Position.IndentLevel != curIndentLevel {
+		if tk.Position.Column != curColumn {
 			break
 		}
 		ctx.progress(1)

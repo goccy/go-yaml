@@ -33,7 +33,7 @@ type Scanner struct {
 	offset            int
 	prevIndentLevel   int
 	prevIndentNum     int
-	prevIndentKeyNum  int
+	prevIndentColumn  int
 	indentLevel       int
 	indentNum         int
 	isFirstCharAtLine bool
@@ -109,17 +109,17 @@ func (s *Scanner) updateIndent(c rune) {
 		}
 	}
 
-	if s.prevIndentKeyNum > 0 {
-		if s.prevIndentKeyNum < s.indentNum {
+	if s.prevIndentColumn > 0 {
+		if s.prevIndentColumn < s.column {
 			s.indentState = IndentStateUp
-		} else if s.prevIndentKeyNum == s.indentNum {
+		} else if s.prevIndentColumn == s.column {
 			s.indentState = IndentStateEqual
 		} else {
 			s.indentState = IndentStateDown
 		}
 	}
 	s.prevIndentNum = s.indentNum
-	s.prevIndentKeyNum = 0
+	s.prevIndentColumn = 0
 	s.prevIndentLevel = s.indentLevel
 	s.isFirstCharAtLine = false
 }
@@ -313,7 +313,7 @@ func (s *Scanner) scan(ctx *Context) (pos int) {
 			}
 		case '<':
 			if ctx.repeatNum('<') == 2 {
-				s.prevIndentKeyNum = s.column
+				s.prevIndentColumn = s.column
 				ctx.addToken(token.MergeKey(string(ctx.obuf)+"<<", s.pos()))
 				s.progressColumn(ctx, 1)
 				pos++
@@ -339,7 +339,9 @@ func (s *Scanner) scan(ctx *Context) (pos int) {
 			if nc == ' ' {
 				s.addBufferedTokenIfExists(ctx)
 				ctx.addOriginBuf(c)
-				ctx.addToken(token.SequenceEntry(string(ctx.obuf), s.pos()))
+				tk := token.SequenceEntry(string(ctx.obuf), s.pos())
+				s.prevIndentColumn = tk.Position.Column
+				ctx.addToken(tk)
 				s.progressColumn(ctx, 1)
 				return
 			}
@@ -367,7 +369,7 @@ func (s *Scanner) scan(ctx *Context) (pos int) {
 				s.isMapContext = true
 				tk := s.bufferedToken(ctx)
 				if tk != nil {
-					s.prevIndentKeyNum = tk.Position.Column - 1
+					s.prevIndentColumn = tk.Position.Column
 					ctx.addToken(tk)
 				}
 				ctx.addToken(token.MappingValue(s.pos()))
@@ -472,7 +474,7 @@ func (s *Scanner) Init(src string) {
 	s.offset = 1
 	s.prevIndentLevel = 0
 	s.prevIndentNum = 0
-	s.prevIndentKeyNum = 0
+	s.prevIndentColumn = 0
 	s.indentLevel = 0
 	s.indentNum = 0
 	s.isFirstCharAtLine = true

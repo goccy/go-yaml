@@ -29,8 +29,8 @@ func Wrapf(err error, msg string, args ...interface{}) error {
 func ErrSyntax(msg string, tk *token.Token) *syntaxError {
 	return &syntaxError{
 		baseError: &baseError{},
-		Msg:       msg,
-		Token:     tk,
+		msg:       msg,
+		token:     tk,
 		frame:     xerrors.Caller(1),
 	}
 }
@@ -129,8 +129,8 @@ func (e *wrapError) Error() string {
 
 type syntaxError struct {
 	*baseError
-	Msg   string
-	Token *token.Token
+	msg   string
+	token *token.Token
 	frame xerrors.Frame
 }
 
@@ -148,10 +148,10 @@ func (e *syntaxError) FormatError(p xerrors.Printer) error {
 
 func (e *syntaxError) Error() string {
 	var p printer.Printer
-	pos := fmt.Sprintf("[%d:%d] ", e.Token.Position.Line, e.Token.Position.Column)
-	msg := p.PrintErrorMessage(fmt.Sprintf("%s%s", pos, e.Msg), ColoredErr)
+	pos := fmt.Sprintf("[%d:%d] ", e.token.Position.Line, e.token.Position.Column)
+	msg := p.PrintErrorMessage(fmt.Sprintf("%s%s", pos, e.msg), ColoredErr)
 	if WithSourceCode {
-		err := p.PrintErrorToken(e.Token, ColoredErr)
+		err := p.PrintErrorToken(e.token, ColoredErr)
 		return fmt.Sprintf("%s\n%s", msg, err)
 	}
 	return msg

@@ -337,6 +337,26 @@ a:
   - d
 `,
 		},
+		{
+			`
+a:
+  b:
+    c: d
+  e:
+    f: g
+    h: i
+j: k
+`,
+			`
+a:
+  b:
+    c: d
+  e:
+    f: g
+    h: i
+j: k
+`,
+		},
 	}
 	for _, test := range tests {
 		var (

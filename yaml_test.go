@@ -82,7 +82,37 @@ type unmarshalTest struct {
 	c bool
 }
 
-func (t *unmarshalTest) UnmarshalYAML(unmarshal func(interface{}) error) error {
+func (t *unmarshalTest) UnmarshalYAML(b []byte) error {
+	if t.a != 0 {
+		return xerrors.New("unexpected field value to a")
+	}
+	if t.b != "" {
+		return xerrors.New("unexpected field value to b")
+	}
+	if t.c {
+		return xerrors.New("unexpected field value to c")
+	}
+	var v struct {
+		A int
+		B string
+		C bool
+	}
+	if err := yaml.Unmarshal(b, &v); err != nil {
+		return err
+	}
+	t.a = v.A
+	t.b = v.B
+	t.c = v.C
+	return nil
+}
+
+type unmarshalTest2 struct {
+	a int
+	b string
+	c bool
+}
+
+func (t *unmarshalTest2) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	var v struct {
 		A int
 		B string
@@ -112,9 +142,14 @@ a:
   a: 1
   b: hello
   c: true
+b:
+  a: 2
+  b: world
+  c: true
 `
 	var v struct {
 		A *unmarshalTest
+		B *unmarshalTest2
 	}
 	if err := yaml.Unmarshal([]byte(yml), &v); err != nil {
 		t.Fatalf("failed to Unmarshal: %+v", err)
@@ -129,6 +164,18 @@ a:
 		t.Fatal("failed to UnmarshalYAML")
 	}
 	if !v.A.c {
+		t.Fatal("failed to UnmarshalYAML")
+	}
+	if v.B == nil {
+		t.Fatal("failed to UnmarshalYAML")
+	}
+	if v.B.a != 2 {
+		t.Fatal("failed to UnmarshalYAML")
+	}
+	if v.B.b != "world" {
+		t.Fatal("failed to UnmarshalYAML")
+	}
+	if !v.B.c {
 		t.Fatal("failed to UnmarshalYAML")
 	}
 }

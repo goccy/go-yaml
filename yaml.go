@@ -20,6 +20,11 @@ type Marshaler interface {
 // Unmarshaler interface may be implemented by types to customize their
 // behavior when being unmarshaled from a YAML document.
 type Unmarshaler interface {
+	UnmarshalYAML([]byte) error
+}
+
+// ReserveUnmarshaler interface has UnmarshalYAML compatible with github.com/go-yaml/yaml package.
+type ReserveUnmarshaler interface {
 	UnmarshalYAML(func(interface{}) error) error
 }
 

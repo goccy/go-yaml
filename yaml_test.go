@@ -41,13 +41,29 @@ b: c
 
 type marshalTest struct{}
 
-func (t *marshalTest) MarshalYAML() (interface{}, error) {
-	return yaml.MapSlice{
+func (t *marshalTest) MarshalYAML() ([]byte, error) {
+	return yaml.Marshal(yaml.MapSlice{
 		{
 			"a", 1,
 		},
 		{
 			"b", "hello",
+		},
+		{
+			"c", true,
+		},
+	})
+}
+
+type marshalTest2 struct{}
+
+func (t *marshalTest2) MarshalYAML() (interface{}, error) {
+	return yaml.MapSlice{
+		{
+			"a", 2,
+		},
+		{
+			"b", "world",
 		},
 		{
 			"c", true,
@@ -58,8 +74,10 @@ func (t *marshalTest) MarshalYAML() (interface{}, error) {
 func TestMarshalYAML(t *testing.T) {
 	var v struct {
 		A *marshalTest
+		B *marshalTest2
 	}
 	v.A = &marshalTest{}
+	v.B = &marshalTest2{}
 	bytes, err := yaml.Marshal(v)
 	if err != nil {
 		t.Fatalf("failed to Marshal: %+v", err)
@@ -68,6 +86,10 @@ func TestMarshalYAML(t *testing.T) {
 a:
   a: 1
   b: hello
+  c: true
+b:
+  a: 2
+  b: world
   c: true
 `
 	actual := "\n" + string(bytes)

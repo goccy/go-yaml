@@ -14,6 +14,11 @@ import (
 // If an error is returned by MarshalYAML, the marshaling procedure stops
 // and returns with the provided error.
 type Marshaler interface {
+	MarshalYAML() ([]byte, error)
+}
+
+// ReserveMarshaler interface has MarshalYAML compatible with github.com/go-yaml/yaml package.
+type ReserveMarshaler interface {
 	MarshalYAML() (interface{}, error)
 }
 

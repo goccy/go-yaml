@@ -179,52 +179,6 @@ func (p *Parser) parseMappingValue(ctx *Context) (ast.Node, error) {
 	}
 	keyColumn := key.GetToken().Position.Column
 	valueColumn := value.GetToken().Position.Column
-	if keyColumn < valueColumn && p.isMapNode(value) {
-		// sub mapping
-		node := &ast.MappingCollectionNode{
-			Start:  tk,
-			Values: []ast.Node{value},
-		}
-		mvnode := &ast.MappingValueNode{
-			Start: tk,
-			Key:   key,
-			Value: node,
-		}
-		ntk := ctx.nextToken()
-		if ntk == nil {
-			return mvnode, nil
-		}
-		if ntk.Position.Column != valueColumn {
-			return mvnode, nil
-		}
-		tk := ctx.afterNextToken()
-		for tk != nil && tk.Type == token.MappingValueType {
-			ctx.progress(1)
-			value, err := p.parseToken(ctx, ctx.currentToken())
-			if err != nil {
-				return nil, errors.Wrapf(err, "failed to parse mapping value node")
-			}
-			if !p.isMapNode(value) {
-				return nil, errors.Wrapf(err, "failed to parse mapping value node")
-			}
-			node.Values = append(node.Values, value)
-			nextKeyToken := ctx.nextToken()
-			if nextKeyToken == nil {
-				break
-			}
-			if nextKeyToken.Position.Column != valueColumn {
-				break
-			}
-			tk = ctx.afterNextToken()
-			if tk == nil {
-				break
-			}
-			if tk.Type != token.MappingValueType {
-				break
-			}
-		}
-		return mvnode, nil
-	}
 	if keyColumn == valueColumn {
 		if value.Type() == ast.StringType {
 			ntk := ctx.nextToken()

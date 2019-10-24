@@ -343,3 +343,31 @@ items:
 		t.Fatal("failed to decode with merge key")
 	}
 }
+
+func TestDecoder_InvalidCases(t *testing.T) {
+	const src = `---
+a:
+- b
+  c: d
+`
+	var v struct {
+		A []string
+	}
+	err := yaml.NewDecoder(strings.NewReader(src)).Decode(&v)
+	if err == nil {
+		t.Fatalf("expected error")
+	}
+
+	if err.Error() != yaml.FormatError(err, false, true) {
+		t.Logf("err.Error() = %s", err.Error())
+		t.Logf("yaml.FormatError(err, false, true) = %s", yaml.FormatError(err, false, true))
+		t.Fatal(`err.Error() should match yaml.FormatError(err, false, true)`)
+	}
+
+	//TODO: properly check if errors are colored/have source
+	t.Logf("%s", err)
+	t.Logf("%s", yaml.FormatError(err, true, false))
+	t.Logf("%s", yaml.FormatError(err, false, true))
+	t.Logf("%s", yaml.FormatError(err, true, true))
+}
+

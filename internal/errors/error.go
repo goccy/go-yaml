@@ -1,6 +1,7 @@
 package errors
 
 import (
+	"bytes"
 	"fmt"
 
 	"github.com/goccy/go-yaml/printer"
@@ -8,12 +9,12 @@ import (
 	"golang.org/x/xerrors"
 )
 
+const (
+	defaultColorize      = false
+	defaultIncludeSource = true
+)
+
 var (
-	// ColoredErr error with syntax highlight
-	ColoredErr = true
-	// WithSourceCode error with source code
-	WithSourceCode = true
-	// ErrDecodeRequiredPointerType error instance for decoding
 	ErrDecodeRequiredPointerType = xerrors.New("required pointer type value")
 )
 
@@ -66,7 +67,24 @@ type wrapError struct {
 	frame   xerrors.Frame
 }
 
+type myprinter struct {
+	xerrors.Printer
+	colored    bool
+	inclSource bool
+}
+
+func (e *wrapError) PrettyPrint(p xerrors.Printer, colored, inclSource bool) error {
+	return e.FormatError(&myprinter{Printer: p, colored: colored, inclSource: inclSource})
+}
+
 func (e *wrapError) FormatError(p xerrors.Printer) error {
+	if _, ok := p.(*myprinter); !ok {
+		p = &myprinter{
+			Printer:    p,
+			colored:    defaultColorize,
+			inclSource: defaultIncludeSource,
+		}
+	}
 	if e.verb == 'v' && e.state.Flag('+') {
 		// print stack trace for debugging
 		p.Print(e.err, "\n")
@@ -124,7 +142,9 @@ func (e *wrapError) Format(state fmt.State, verb rune) {
 }
 
 func (e *wrapError) Error() string {
-	return e.err.Error()
+	var buf bytes.Buffer
+	e.PrettyPrint(&Sink{&buf}, defaultColorize, defaultIncludeSource)
+	return buf.String()
 }
 
 type syntaxError struct {
@@ -134,25 +154,53 @@ type syntaxError struct {
 	frame xerrors.Frame
 }
 
+func (e *syntaxError) PrettyPrint(p xerrors.Printer, colored, inclSource bool) error {
+	return e.FormatError(&myprinter{Printer: p, colored: colored, inclSource: inclSource})
+}
+
 func (e *syntaxError) FormatError(p xerrors.Printer) error {
+	var pp printer.Printer
+
+	var colored, inclSource bool
+	if mp, ok := p.(*myprinter); ok {
+		colored = mp.colored
+		inclSource = mp.inclSource
+	}
+
+	pos := fmt.Sprintf("[%d:%d] ", e.token.Position.Line, e.token.Position.Column)
+	msg := pp.PrintErrorMessage(fmt.Sprintf("%s%s", pos, e.msg), colored)
+	if inclSource {
+		msg += "\n" + pp.PrintErrorToken(e.token, colored)
+	}
+	p.Print(msg)
+
 	if e.verb == 'v' && e.state.Flag('+') {
 		// %+v
 		// print stack trace for debugging
-		p.Print(e.Error())
 		e.frame.Format(p)
-	} else {
-		p.Print(e.Error())
 	}
 	return nil
 }
 
+type PrettyPrinter interface {
+	PrettyPrint(xerrors.Printer, bool, bool) error
+}
+type Sink struct{ *bytes.Buffer }
+
+func (es *Sink) Print(args ...interface{}) {
+	fmt.Fprint(es.Buffer, args...)
+}
+
+func (es *Sink) Printf(f string, args ...interface{}) {
+	fmt.Fprintf(es.Buffer, f, args...)
+}
+
+func (es *Sink) Detail() bool {
+	return false
+}
+
 func (e *syntaxError) Error() string {
-	var p printer.Printer
-	pos := fmt.Sprintf("[%d:%d] ", e.token.Position.Line, e.token.Position.Column)
-	msg := p.PrintErrorMessage(fmt.Sprintf("syntax error: %s%s", pos, e.msg), ColoredErr)
-	if WithSourceCode {
-		err := p.PrintErrorToken(e.token, ColoredErr)
-		return fmt.Sprintf("%s\n%s", msg, err)
-	}
-	return msg
+	var buf bytes.Buffer
+	e.PrettyPrint(&Sink{&buf}, defaultColorize, defaultIncludeSource)
+	return buf.String()
 }

@@ -4,7 +4,7 @@ import (
 	"strings"
 
 	"github.com/goccy/go-yaml/ast"
-	"github.com/goccy/go-yaml/errors"
+	"github.com/goccy/go-yaml/internal/errors"
 	"github.com/goccy/go-yaml/token"
 )
 

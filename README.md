@@ -218,11 +218,19 @@ people:
 
 # 4. Pretty Formatted Errors
 
+Error values produced during parsing has two extra features over regular
+error values.
+
+First by default they contain extra information on the location of the error
+from the source YAML document, to make it easier finding the error location.
+
+Second, the error messages can optionally be colorized.
+
+If you would like to control exactly how the output looks like, consider
+using  `yaml.FormatError`, which accepts two boolean values to
+control turning on/off these features
+
 <img src="https://user-images.githubusercontent.com/209884/67358124-587f0980-f59a-11e9-96fc-7205aab77695.png"></img>
-
-If parser receives invalid YAML, the error is printed along with highlighted source code.
-
-※ If you do not want to source code in your error message (colored or otherwise), set `errors.ColoredErr = false` or `errors.WithSourceCode = false` .
 
 # Installation
 

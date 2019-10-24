@@ -3,7 +3,8 @@ package yaml
 import (
 	"bytes"
 
-	"github.com/goccy/go-yaml/errors"
+	"github.com/goccy/go-yaml/internal/errors"
+	"golang.org/x/xerrors"
 )
 
 // Marshaler interface may be implemented by types to customize their
@@ -110,4 +111,16 @@ func Unmarshal(data []byte, v interface{}) error {
 		return errors.Wrapf(err, "failed to unmarshal")
 	}
 	return nil
+}
+
+func FormatError(e error, colored, inclSource bool) string {
+	var pp errors.PrettyPrinter
+	if xerrors.As(e, &pp) {
+		var buf bytes.Buffer
+		pp.PrettyPrint(&errors.Sink{&buf}, colored, inclSource)
+		return buf.String()
+	}
+
+	return e.Error()
+
 }

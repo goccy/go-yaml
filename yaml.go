@@ -13,14 +13,23 @@ import (
 // If an error is returned by MarshalYAML, the marshaling procedure stops
 // and returns with the provided error.
 type Marshaler interface {
-	MarshalYAML() ([]byte, error)
+	MarshalYAML() (interface{}, error)
 }
 
 // Unmarshaler interface may be implemented by types to customize their
 // behavior when being unmarshaled from a YAML document.
 type Unmarshaler interface {
-	UnmarshalYAML([]byte) error
+	UnmarshalYAML(func(interface{}) error) error
 }
+
+// MapItem is an item in a MapSlice.
+type MapItem struct {
+	Key, Value interface{}
+}
+
+// MapSlice encodes and decodes as a YAML map.
+// The order of keys is preserved when encoding and decoding.
+type MapSlice []MapItem
 
 // Marshal serializes the value provided into a YAML document. The structure
 // of the generated document will reflect the structure of the value itself.

@@ -9,12 +9,12 @@ import (
 	"golang.org/x/xerrors"
 )
 
+const (
+	defaultColorize      = false
+	defaultIncludeSource = true
+)
+
 var (
-	// ColoredErr error with syntax highlight
-	ColoredErr = true
-	// WithSourceCode error with source code
-	WithSourceCode = true
-	// ErrDecodeRequiredPointerType error instance for decoding
 	ErrDecodeRequiredPointerType = xerrors.New("required pointer type value")
 )
 
@@ -78,6 +78,13 @@ func (e *wrapError) PrettyPrint(p xerrors.Printer, colored, inclSource bool) err
 }
 
 func (e *wrapError) FormatError(p xerrors.Printer) error {
+	if _, ok := p.(*myprinter); !ok {
+		p = &myprinter{
+			Printer:    p,
+			colored:    defaultColorize,
+			inclSource: defaultIncludeSource,
+		}
+	}
 	if e.verb == 'v' && e.state.Flag('+') {
 		// print stack trace for debugging
 		p.Print(e.err, "\n")
@@ -135,7 +142,9 @@ func (e *wrapError) Format(state fmt.State, verb rune) {
 }
 
 func (e *wrapError) Error() string {
-	return e.err.Error()
+	var buf bytes.Buffer
+	e.PrettyPrint(&Sink{&buf}, defaultColorize, defaultIncludeSource)
+	return buf.String()
 }
 
 type syntaxError struct {
@@ -153,7 +162,7 @@ func (e *syntaxError) FormatError(p xerrors.Printer) error {
 	var pp printer.Printer
 
 	var colored, inclSource bool
-	if mp,ok := p.(*myprinter); ok {
+	if mp, ok := p.(*myprinter); ok {
 		colored = mp.colored
 		inclSource = mp.inclSource
 	}
@@ -192,6 +201,6 @@ func (es *Sink) Detail() bool {
 
 func (e *syntaxError) Error() string {
 	var buf bytes.Buffer
-	e.PrettyPrint(&Sink{&buf}, false, false)
+	e.PrettyPrint(&Sink{&buf}, defaultColorize, defaultIncludeSource)
 	return buf.String()
 }

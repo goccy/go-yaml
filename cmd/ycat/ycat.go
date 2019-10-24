@@ -7,6 +7,7 @@ import (
 	"os"
 
 	"github.com/fatih/color"
+	"github.com/goccy/go-yaml"
 	"github.com/goccy/go-yaml/lexer"
 	"github.com/goccy/go-yaml/printer"
 	"github.com/mattn/go-colorable"
@@ -77,6 +78,6 @@ func _main(args []string) error {
 
 func main() {
 	if err := _main(os.Args); err != nil {
-		fmt.Printf("%v\n", err)
+		fmt.Printf("%v\n", yaml.FormatError(err, true, true))
 	}
 }

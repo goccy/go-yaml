@@ -55,6 +55,53 @@ const (
 	TagType
 )
 
+// String node type identifier to text
+func (t NodeType) String() string {
+	switch t {
+	case UnknownNodeType:
+		return "UnknownNode"
+	case DocumentType:
+		return "Document"
+	case NullType:
+		return "Null"
+	case BoolType:
+		return "Bool"
+	case IntegerType:
+		return "Integer"
+	case FloatType:
+		return "Float"
+	case InfinityType:
+		return "Infinity"
+	case NanType:
+		return "Nan"
+	case StringType:
+		return "String"
+	case MergeKeyType:
+		return "MergeKey"
+	case LiteralType:
+		return "Literal"
+	case FlowMappingType:
+		return "FlowMapping"
+	case MappingCollectionType:
+		return "MappingCollection"
+	case MappingValueType:
+		return "MappingValue"
+	case FlowSequenceType:
+		return "FlowSequence"
+	case SequenceType:
+		return "Sequence"
+	case AnchorType:
+		return "Anchor"
+	case AliasType:
+		return "Alias"
+	case DirectiveType:
+		return "Directive"
+	case TagType:
+		return "Tag"
+	}
+	return ""
+}
+
 // Node type of node
 type Node interface {
 	// String node to text

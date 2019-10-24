@@ -433,6 +433,39 @@ func (n *NanNode) String() string {
 	return n.Token.Value
 }
 
+// MapNode interface of FlowMappingNode / MappingValueNode / MappingCollectionNode
+type MapNode interface {
+	MapRange() *MapNodeIter
+}
+
+// MapNodeIter is an iterator for ranging over a MapNode
+type MapNodeIter struct {
+	values []*MappingValueNode
+	idx    int
+}
+
+const (
+	startRangeIndex = -1
+)
+
+// Next advances the map iterator and reports whether there is another entry.
+// It returns false when the iterator is exhausted.
+func (m *MapNodeIter) Next() bool {
+	m.idx++
+	next := m.idx < len(m.values)
+	return next
+}
+
+// Key returns the key of the iterator's current map node entry.
+func (m *MapNodeIter) Key() Node {
+	return m.values[m.idx].Key
+}
+
+// Value returns the value of the iterator's current map node entry.
+func (m *MapNodeIter) Value() Node {
+	return m.values[m.idx].Value
+}
+
 // FlowMappingNode type of flow mapping node
 type FlowMappingNode struct {
 	Start  *token.Token
@@ -457,6 +490,14 @@ func (n *FlowMappingNode) String() string {
 	return fmt.Sprintf("{%s}", strings.Join(values, ", "))
 }
 
+// MapRange implements MapNode protocol
+func (n *FlowMappingNode) MapRange() *MapNodeIter {
+	return &MapNodeIter{
+		idx:    startRangeIndex,
+		values: n.Values,
+	}
+}
+
 // MappingCollectionNode type of mapping collection node
 type MappingCollectionNode struct {
 	Start  *token.Token
@@ -478,6 +519,28 @@ func (n *MappingCollectionNode) String() string {
 		values = append(values, value.String())
 	}
 	return strings.Join(values, "\n")
+}
+
+func (n *MappingCollectionNode) toMappingValues() []*MappingValueNode {
+	values := []*MappingValueNode{}
+	for _, value := range n.Values {
+		if mvnode, ok := value.(*MappingValueNode); ok {
+			values = append(values, mvnode)
+		} else if c, ok := value.(*MappingCollectionNode); ok {
+			values = append(values, c.toMappingValues()...)
+		} else if fmnode, ok := value.(*FlowMappingNode); ok {
+			values = append(values, fmnode.Values...)
+		}
+	}
+	return values
+}
+
+// MapRange implements MapNode protocol
+func (n *MappingCollectionNode) MapRange() *MapNodeIter {
+	return &MapNodeIter{
+		idx:    startRangeIndex,
+		values: n.toMappingValues(),
+	}
 }
 
 // MappingValueNode type of mapping value
@@ -514,6 +577,43 @@ func (n *MappingValueNode) String() string {
 	return fmt.Sprintf("%s%s:\n%s", space, n.Key.String(), n.Value.String())
 }
 
+// MapRange implements MapNode protocol
+func (n *MappingValueNode) MapRange() *MapNodeIter {
+	return &MapNodeIter{
+		idx:    startRangeIndex,
+		values: []*MappingValueNode{n},
+	}
+}
+
+// ArrayNode interface of FlowSequenceNode / SequenceNode
+type ArrayNode interface {
+	ArrayRange() *ArrayNodeIter
+}
+
+// ArrayNodeIter is an iterator for ranging over a ArrayNode
+type ArrayNodeIter struct {
+	values []Node
+	idx    int
+}
+
+// Next advances the array iterator and reports whether there is another entry.
+// It returns false when the iterator is exhausted.
+func (m *ArrayNodeIter) Next() bool {
+	m.idx++
+	next := m.idx < len(m.values)
+	return next
+}
+
+// Value returns the value of the iterator's current array entry.
+func (m *ArrayNodeIter) Value() Node {
+	return m.values[m.idx]
+}
+
+// Len returns length of array
+func (m *ArrayNodeIter) Len() int {
+	return len(m.values)
+}
+
 // FlowSequenceNode type of sequence node
 type FlowSequenceNode struct {
 	Start  *token.Token
@@ -536,6 +636,14 @@ func (n *FlowSequenceNode) String() string {
 		values = append(values, value.String())
 	}
 	return fmt.Sprintf("[%s]", strings.Join(values, ", "))
+}
+
+// ArrayRange implements ArrayNode protocol
+func (n *FlowSequenceNode) ArrayRange() *ArrayNodeIter {
+	return &ArrayNodeIter{
+		idx:    startRangeIndex,
+		values: n.Values,
+	}
 }
 
 // SequenceNode type of sequence node
@@ -570,6 +678,14 @@ func (n *SequenceNode) String() string {
 		values = append(values, fmt.Sprintf("%s- %s", space, newValue))
 	}
 	return strings.Join(values, "\n")
+}
+
+// ArrayRange implements ArrayNode protocol
+func (n *SequenceNode) ArrayRange() *ArrayNodeIter {
+	return &ArrayNodeIter{
+		idx:    startRangeIndex,
+		values: n.Values,
+	}
 }
 
 // AnchorNode type of anchor node

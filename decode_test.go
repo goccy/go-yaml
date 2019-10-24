@@ -78,7 +78,7 @@ func TestDecoder(t *testing.T) {
 		},
 		{
 			"v: null\n",
-			map[string]interface{}{},
+			map[string]interface{}{"v": nil},
 		},
 		{
 			"v: \"\"\n",

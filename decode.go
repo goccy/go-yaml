@@ -127,38 +127,95 @@ func (d *Decoder) docToValue(doc *ast.Document) interface{} {
 	return nil
 }
 
-func (d *Decoder) decodeValue(valueType reflect.Type, value interface{}) (reflect.Value, error) {
+func (d *Decoder) decodeValue(dst reflect.Value, src interface{}) error {
+	valueType := dst.Type()
+	if unmarshaler, ok := dst.Addr().Interface().(Unmarshaler); ok {
+		if err := unmarshaler.UnmarshalYAML(func(v interface{}) error {
+			rv := reflect.ValueOf(v)
+			if rv.Type().Kind() != reflect.Ptr {
+				return errors.ErrDecodeRequiredPointerType
+			}
+			if err := d.decodeValue(rv.Elem(), src); err != nil {
+				return errors.Wrapf(err, "failed to decode value")
+			}
+			return nil
+		}); err != nil {
+			return errors.Wrapf(err, "failed to UnmarshalYAML")
+		}
+		return nil
+	}
 	switch valueType.Kind() {
 	case reflect.Ptr:
-		v, err := d.decodeValue(valueType.Elem(), value)
-		if err != nil {
-			return reflect.Zero(valueType), errors.Wrapf(err, "failed to decode ptr value")
+		if dst.IsNil() {
+			return nil
 		}
-		return v.Addr(), nil
+		v := d.createDecodableValue(dst.Type())
+		if err := d.decodeValue(v, src); err != nil {
+			return errors.Wrapf(err, "failed to decode ptr value")
+		}
+		dst.Set(d.castToAssignableValue(v, dst.Type()))
 	case reflect.Interface:
-		return reflect.ValueOf(value), nil
+		v := reflect.ValueOf(src)
+		if v.IsValid() {
+			dst.Set(v)
+		}
 	case reflect.Map:
-		return d.decodeMap(valueType, value)
+		return d.decodeMap(dst, src)
 	case reflect.Array, reflect.Slice:
-		return d.decodeSlice(valueType, value)
+		return d.decodeSlice(dst, src)
 	case reflect.Struct:
-		return d.decodeStruct(valueType, value)
+		return d.decodeStruct(dst, src)
 	}
-	return reflect.ValueOf(value).Convert(valueType), nil
+	v := reflect.ValueOf(src)
+	if v.IsValid() {
+		dst.Set(v.Convert(dst.Type()))
+	}
+	return nil
 }
 
-func (d *Decoder) decodeStruct(structType reflect.Type, value interface{}) (reflect.Value, error) {
+func (d *Decoder) createDecodableValue(typ reflect.Type) reflect.Value {
+	for {
+		if typ.Kind() == reflect.Ptr {
+			typ = typ.Elem()
+			continue
+		}
+		break
+	}
+	return reflect.New(typ).Elem()
+}
+
+func (d *Decoder) castToAssignableValue(value reflect.Value, target reflect.Type) reflect.Value {
+	if target.Kind() != reflect.Ptr {
+		return value
+	}
+	maxTryCount := 5
+	tryCount := 0
+	for {
+		if tryCount > maxTryCount {
+			return value
+		}
+		if value.Type().AssignableTo(target) {
+			break
+		}
+		value = value.Addr()
+		tryCount++
+	}
+	return value
+}
+
+func (d *Decoder) decodeStruct(dst reflect.Value, src interface{}) error {
+	if src == nil {
+		return nil
+	}
+	structType := dst.Type()
 	structValue := reflect.New(structType)
 	structFieldMap, err := structFieldMap(structType)
 	if err != nil {
-		return reflect.Zero(structType), errors.Wrapf(err, "failed to create struct field map")
+		return errors.Wrapf(err, "failed to create struct field map")
 	}
-	if value == nil {
-		return reflect.Zero(structType), nil
-	}
-	valueMap, ok := value.(map[string]interface{})
+	srcMap, ok := src.(map[string]interface{})
 	if !ok {
-		return reflect.Zero(structType), errors.Wrapf(err, "value is not struct type: %s", reflect.TypeOf(value).Name())
+		return errors.Wrapf(err, "value is not struct type: %s", reflect.TypeOf(src).Name())
 	}
 	for i := 0; i < structType.NumField(); i++ {
 		field := structType.Field(i)
@@ -166,48 +223,52 @@ func (d *Decoder) decodeStruct(structType reflect.Type, value interface{}) (refl
 			continue
 		}
 		structField := structFieldMap[field.Name]
-		v, exists := valueMap[structField.RenderName]
+		v, exists := srcMap[structField.RenderName]
 		if !exists {
 			continue
 		}
 		fieldValue := structValue.Elem().FieldByName(field.Name)
-		valueType := fieldValue.Type()
-		vv, err := d.decodeValue(valueType, v)
-		if err != nil {
-			return reflect.Zero(structType), errors.Wrapf(err, "failed to decode value")
+		newFieldValue := d.createDecodableValue(fieldValue.Type())
+		if err := d.decodeValue(newFieldValue, v); err != nil {
+			return errors.Wrapf(err, "failed to decode value")
 		}
-		fieldValue.Set(vv)
+		fieldValue.Set(d.castToAssignableValue(newFieldValue, fieldValue.Type()))
 	}
-	return structValue.Elem(), nil
+	dst.Set(structValue.Elem())
+	return nil
 }
 
-func (d *Decoder) decodeSlice(sliceType reflect.Type, value interface{}) (reflect.Value, error) {
-	slice := value.([]interface{})
+func (d *Decoder) decodeSlice(dst reflect.Value, src interface{}) error {
+	sliceType := dst.Type()
+	slice := src.([]interface{})
 	sliceValue := reflect.MakeSlice(sliceType, 0, len(slice))
-	sliceValueType := sliceValue.Type().Elem()
+	elemType := sliceType.Elem()
 	for _, v := range slice {
-		vv, err := d.decodeValue(sliceValueType, v)
-		if err != nil {
-			return reflect.Zero(sliceType), errors.Wrapf(err, "failed to decode value")
+		dstValue := d.createDecodableValue(elemType)
+		if err := d.decodeValue(dstValue, v); err != nil {
+			return errors.Wrapf(err, "failed to decode value")
 		}
-		sliceValue = reflect.Append(sliceValue, vv)
+		sliceValue = reflect.Append(sliceValue, d.castToAssignableValue(dstValue, elemType))
 	}
-	return sliceValue, nil
+	dst.Set(sliceValue)
+	return nil
 }
 
-func (d *Decoder) decodeMap(mapType reflect.Type, value interface{}) (reflect.Value, error) {
+func (d *Decoder) decodeMap(dst reflect.Value, src interface{}) error {
+	mapType := dst.Type()
 	mapValue := reflect.MakeMap(mapType)
 	keyType := mapValue.Type().Key()
 	valueType := mapValue.Type().Elem()
-	for k, v := range value.(map[string]interface{}) {
-		castedKey := reflect.ValueOf(k).Convert(keyType)
-		vv, err := d.decodeValue(valueType, v)
-		if err != nil {
-			return reflect.Zero(mapType), errors.Wrapf(err, "failed to decode value")
+	for k, v := range src.(map[string]interface{}) {
+		dstValue := d.createDecodableValue(valueType)
+		if err := d.decodeValue(dstValue, v); err != nil {
+			return errors.Wrapf(err, "failed to decode value")
 		}
-		mapValue.SetMapIndex(castedKey, vv)
+		castedKey := reflect.ValueOf(k).Convert(keyType)
+		mapValue.SetMapIndex(castedKey, d.castToAssignableValue(dstValue, valueType))
 	}
-	return mapValue, nil
+	dst.Set(mapValue)
+	return nil
 }
 
 func (d *Decoder) fileToReader(file string) (io.Reader, error) {
@@ -348,12 +409,8 @@ func (d *Decoder) Decode(v interface{}) error {
 	if value == nil {
 		return nil
 	}
-	decodedValue, err := d.decodeValue(rv.Elem().Type(), value)
-	if err != nil {
+	if err := d.decodeValue(rv.Elem(), value); err != nil {
 		return errors.Wrapf(err, "failed to decode value")
-	}
-	if decodedValue.IsValid() {
-		rv.Elem().Set(decodedValue)
 	}
 	return nil
 }

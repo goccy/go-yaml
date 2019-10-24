@@ -72,6 +72,13 @@ func (e *Encoder) Encode(v interface{}) error {
 }
 
 func (e *Encoder) encodeValue(v reflect.Value, column int) (ast.Node, error) {
+	if marshaler, ok := v.Interface().(Marshaler); ok {
+		marshalV, err := marshaler.MarshalYAML()
+		if err != nil {
+			return nil, errors.Wrapf(err, "failed to MarshalYAML")
+		}
+		return e.encodeValue(reflect.ValueOf(marshalV), column)
+	}
 	switch v.Type().Kind() {
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
 		return e.encodeInt(v.Int()), nil
@@ -89,8 +96,14 @@ func (e *Encoder) encodeValue(v reflect.Value, column int) (ast.Node, error) {
 	case reflect.Bool:
 		return e.encodeBool(v.Bool()), nil
 	case reflect.Slice:
+		if mapSlice, ok := v.Interface().(MapSlice); ok {
+			return e.encodeMapSlice(mapSlice, column)
+		}
 		return e.encodeSlice(v), nil
 	case reflect.Struct:
+		if mapItem, ok := v.Interface().(MapItem); ok {
+			return e.encodeMapItem(mapItem, column)
+		}
 		return e.encodeStruct(v, column)
 	case reflect.Map:
 		return e.encodeMap(v, column), nil
@@ -178,6 +191,42 @@ func (e *Encoder) encodeSlice(value reflect.Value) ast.Node {
 		sequence.Values = append(sequence.Values, node)
 	}
 	return sequence
+}
+
+func (e *Encoder) encodeMapItem(item MapItem, column int) (*ast.MappingValueNode, error) {
+	k := reflect.ValueOf(item.Key)
+	v := reflect.ValueOf(item.Value)
+	value, err := e.encodeValue(v, column)
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to encode MapItem")
+	}
+	if c, ok := value.(*ast.MappingCollectionNode); ok {
+		for _, value := range c.Values {
+			if mvnode, ok := value.(*ast.MappingValueNode); ok {
+				mvnode.Key.GetToken().Position.Column += e.indent
+			}
+		}
+	}
+	return &ast.MappingValueNode{
+		Start: token.New("", "", e.pos(column)),
+		Key:   e.encodeString(k.Interface().(string), column),
+		Value: value,
+	}, nil
+}
+
+func (e *Encoder) encodeMapSlice(value MapSlice, column int) (ast.Node, error) {
+	node := &ast.MappingCollectionNode{
+		Start:  token.New("", "", e.pos(column)),
+		Values: []ast.Node{},
+	}
+	for _, item := range value {
+		value, err := e.encodeMapItem(item, column)
+		if err != nil {
+			return nil, errors.Wrapf(err, "failed to encode MapItem for MapSlice")
+		}
+		node.Values = append(node.Values, value)
+	}
+	return node, nil
 }
 
 func (e *Encoder) encodeMap(value reflect.Value, column int) ast.Node {

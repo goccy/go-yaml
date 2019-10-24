@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/goccy/go-yaml"
+	"golang.org/x/xerrors"
 )
 
 func TestMarshal(t *testing.T) {
@@ -35,5 +36,42 @@ b: c
 	}
 	if err := yaml.Unmarshal([]byte(yml), &v); err != nil {
 		t.Fatalf("%+v", err)
+	}
+}
+
+type marshalTest struct{}
+
+func (t *marshalTest) MarshalYAML() (interface{}, error) {
+	return yaml.MapSlice{
+		{
+			"a", 1,
+		},
+		{
+			"b", "hello",
+		},
+		{
+			"c", true,
+		},
+	}, nil
+}
+
+func TestMarshalYAML(t *testing.T) {
+	var v struct {
+		A *marshalTest
+	}
+	v.A = &marshalTest{}
+	bytes, err := yaml.Marshal(v)
+	if err != nil {
+		t.Fatalf("failed to Marshal: %+v", err)
+	}
+	expect := `
+a:
+  a: 1
+  b: hello
+  c: true
+`
+	actual := "\n" + string(bytes)
+	if expect != actual {
+		t.Fatalf("failed to MarshalYAML expect:[%s], actual:[%s]", expect, actual)
 	}
 }

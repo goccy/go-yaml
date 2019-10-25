@@ -96,7 +96,7 @@ func Marshal(v interface{}) ([]byte, error) {
 	var buf bytes.Buffer
 	enc := NewEncoder(&buf)
 	if err := enc.Encode(v); err != nil {
-		return nil, errors.Wrapf(err, "failed to marshal", err)
+		return nil, errors.Wrapf(err, "failed to marshal")
 	}
 	return buf.Bytes(), nil
 }

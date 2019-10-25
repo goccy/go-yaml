@@ -37,7 +37,6 @@ type Scanner struct {
 	indentLevel       int
 	indentNum         int
 	isFirstCharAtLine bool
-	isMapContext      bool
 	isAnchor          bool
 	indentState       IndentState
 	savedPos          *token.Position
@@ -141,7 +140,6 @@ func (s *Scanner) addBufferedTokenIfExists(ctx *Context) {
 }
 
 func (s *Scanner) breakLiteral(ctx *Context) {
-	s.isMapContext = false
 	ctx.breakLiteral()
 }
 
@@ -292,9 +290,6 @@ func (s *Scanner) scan(ctx *Context) (pos int) {
 				// doesn't raw folded literal
 				s.addBufferedTokenIfExists(ctx)
 			}
-			s.isMapContext = false
-		} else if c != '-' && s.indentState == IndentStateUp {
-			s.isMapContext = false
 		}
 		switch c {
 		case '{':
@@ -331,7 +326,7 @@ func (s *Scanner) scan(ctx *Context) (pos int) {
 				pos += 2
 				return
 			}
-			if !s.isMapContext && s.isChangedToIndentStateUp() {
+			if ctx.bufferedSrc() != "" && s.isChangedToIndentStateUp() {
 				// raw folded
 				ctx.isRawFolded = true
 				ctx.addBuf(c)
@@ -370,7 +365,6 @@ func (s *Scanner) scan(ctx *Context) (pos int) {
 			nc := ctx.nextChar()
 			if nc == ' ' || nc == '\n' {
 				// mapping value
-				s.isMapContext = true
 				tk := s.bufferedToken(ctx)
 				if tk != nil {
 					s.prevIndentColumn = tk.Position.Column

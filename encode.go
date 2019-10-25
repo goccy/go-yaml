@@ -11,6 +11,8 @@ import (
 
 	"github.com/goccy/go-yaml/ast"
 	"github.com/goccy/go-yaml/internal/errors"
+	"github.com/goccy/go-yaml/lexer"
+	"github.com/goccy/go-yaml/parser"
 	"github.com/goccy/go-yaml/printer"
 	"github.com/goccy/go-yaml/token"
 	"golang.org/x/xerrors"
@@ -71,8 +73,35 @@ func (e *Encoder) Encode(v interface{}) error {
 	return nil
 }
 
+func (e *Encoder) encodeDocument(doc []byte) (ast.Node, error) {
+	var (
+		parser parser.Parser
+	)
+	tokens := lexer.Tokenize(string(doc))
+	docNode, err := parser.Parse(tokens)
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to parse yaml")
+	}
+	for _, node := range docNode.Nodes {
+		if node != nil {
+			return node, nil
+		}
+	}
+	return nil, nil
+}
+
 func (e *Encoder) encodeValue(v reflect.Value, column int) (ast.Node, error) {
-	if marshaler, ok := v.Interface().(Marshaler); ok {
+	if marshaler, ok := v.Interface().(BytesMarshaler); ok {
+		doc, err := marshaler.MarshalYAML()
+		if err != nil {
+			return nil, errors.Wrapf(err, "failed to MarshalYAML")
+		}
+		node, err := e.encodeDocument(doc)
+		if err != nil {
+			return nil, errors.Wrapf(err, "failed to encode document")
+		}
+		return node, nil
+	} else if marshaler, ok := v.Interface().(InterfaceMarshaler); ok {
 		marshalV, err := marshaler.MarshalYAML()
 		if err != nil {
 			return nil, errors.Wrapf(err, "failed to MarshalYAML")
@@ -99,7 +128,7 @@ func (e *Encoder) encodeValue(v reflect.Value, column int) (ast.Node, error) {
 		if mapSlice, ok := v.Interface().(MapSlice); ok {
 			return e.encodeMapSlice(mapSlice, column)
 		}
-		return e.encodeSlice(v), nil
+		return e.encodeSlice(v)
 	case reflect.Struct:
 		if mapItem, ok := v.Interface().(MapItem); ok {
 			return e.encodeMapItem(mapItem, column)
@@ -177,7 +206,7 @@ func (e *Encoder) encodeBool(v bool) ast.Node {
 	return ast.Bool(token.New(value, value, e.pos(e.column)))
 }
 
-func (e *Encoder) encodeSlice(value reflect.Value) ast.Node {
+func (e *Encoder) encodeSlice(value reflect.Value) (ast.Node, error) {
 	sequence := &ast.SequenceNode{
 		Start:  token.New("-", "-", e.pos(e.column)),
 		Values: []ast.Node{},
@@ -185,12 +214,11 @@ func (e *Encoder) encodeSlice(value reflect.Value) ast.Node {
 	for i := 0; i < value.Len(); i++ {
 		node, err := e.encodeValue(value.Index(i), e.column)
 		if err != nil {
-			panic(err)
-			return nil
+			return nil, errors.Wrapf(err, "failed to encode value for slice")
 		}
 		sequence.Values = append(sequence.Values, node)
 	}
-	return sequence
+	return sequence, nil
 }
 
 func (e *Encoder) encodeMapItem(item MapItem, column int) (*ast.MappingValueNode, error) {
@@ -337,6 +365,7 @@ func (e *Encoder) encodeStruct(value reflect.Value, column int) (ast.Node, error
 			for _, value := range c.Values {
 				if mvnode, ok := value.(*ast.MappingValueNode); ok {
 					mvnode.Key.GetToken().Position.Column += e.indent
+					mvnode.Value.GetToken().Position.Column += e.indent
 				}
 			}
 		}

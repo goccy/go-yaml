@@ -7,19 +7,29 @@ import (
 	"golang.org/x/xerrors"
 )
 
-// Marshaler interface may be implemented by types to customize their
+// BytesMarshaler interface may be implemented by types to customize their
 // behavior when being marshaled into a YAML document. The returned value
 // is marshaled in place of the original value implementing Marshaler.
 //
 // If an error is returned by MarshalYAML, the marshaling procedure stops
 // and returns with the provided error.
-type Marshaler interface {
+type BytesMarshaler interface {
+	MarshalYAML() ([]byte, error)
+}
+
+// InterfaceMarshaler interface has MarshalYAML compatible with github.com/go-yaml/yaml package.
+type InterfaceMarshaler interface {
 	MarshalYAML() (interface{}, error)
 }
 
-// Unmarshaler interface may be implemented by types to customize their
+// BytesUnmarshaler interface may be implemented by types to customize their
 // behavior when being unmarshaled from a YAML document.
-type Unmarshaler interface {
+type BytesUnmarshaler interface {
+	UnmarshalYAML([]byte) error
+}
+
+// InterfaceUnmarshaler interface has UnmarshalYAML compatible with github.com/go-yaml/yaml package.
+type InterfaceUnmarshaler interface {
 	UnmarshalYAML(func(interface{}) error) error
 }
 
@@ -86,7 +96,7 @@ func Marshal(v interface{}) ([]byte, error) {
 	var buf bytes.Buffer
 	enc := NewEncoder(&buf)
 	if err := enc.Encode(v); err != nil {
-		return nil, errors.Wrapf(err, "failed to marshal", err)
+		return nil, errors.Wrapf(err, "failed to marshal")
 	}
 	return buf.Bytes(), nil
 }

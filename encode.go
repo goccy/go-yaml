@@ -365,6 +365,7 @@ func (e *Encoder) encodeStruct(value reflect.Value, column int) (ast.Node, error
 			for _, value := range c.Values {
 				if mvnode, ok := value.(*ast.MappingValueNode); ok {
 					mvnode.Key.GetToken().Position.Column += e.indent
+					mvnode.Value.GetToken().Position.Column += e.indent
 				}
 			}
 		}

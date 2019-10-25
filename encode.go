@@ -91,7 +91,7 @@ func (e *Encoder) encodeDocument(doc []byte) (ast.Node, error) {
 }
 
 func (e *Encoder) encodeValue(v reflect.Value, column int) (ast.Node, error) {
-	if marshaler, ok := v.Interface().(Marshaler); ok {
+	if marshaler, ok := v.Interface().(BytesMarshaler); ok {
 		doc, err := marshaler.MarshalYAML()
 		if err != nil {
 			return nil, errors.Wrapf(err, "failed to MarshalYAML")
@@ -101,7 +101,7 @@ func (e *Encoder) encodeValue(v reflect.Value, column int) (ast.Node, error) {
 			return nil, errors.Wrapf(err, "failed to encode document")
 		}
 		return node, nil
-	} else if marshaler, ok := v.Interface().(ReserveMarshaler); ok {
+	} else if marshaler, ok := v.Interface().(InterfaceMarshaler); ok {
 		marshalV, err := marshaler.MarshalYAML()
 		if err != nil {
 			return nil, errors.Wrapf(err, "failed to MarshalYAML")

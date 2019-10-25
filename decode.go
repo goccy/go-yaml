@@ -178,13 +178,13 @@ func (d *Decoder) docToNode(doc *ast.Document) ast.Node {
 
 func (d *Decoder) decodeValue(dst reflect.Value, src ast.Node) error {
 	valueType := dst.Type()
-	if unmarshaler, ok := dst.Addr().Interface().(Unmarshaler); ok {
+	if unmarshaler, ok := dst.Addr().Interface().(BytesUnmarshaler); ok {
 		b := fmt.Sprintf("%v", src)
 		if err := unmarshaler.UnmarshalYAML([]byte(b)); err != nil {
 			return errors.Wrapf(err, "failed to UnmarshalYAML")
 		}
 		return nil
-	} else if unmarshaler, ok := dst.Addr().Interface().(ReserveUnmarshaler); ok {
+	} else if unmarshaler, ok := dst.Addr().Interface().(InterfaceUnmarshaler); ok {
 		if err := unmarshaler.UnmarshalYAML(func(v interface{}) error {
 			rv := reflect.ValueOf(v)
 			if rv.Type().Kind() != reflect.Ptr {

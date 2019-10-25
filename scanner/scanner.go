@@ -286,8 +286,12 @@ func (s *Scanner) scan(ctx *Context) (pos int) {
 		} else if ctx.isLiteral || ctx.isFolded || ctx.isRawFolded {
 			s.scanLiteral(ctx, c)
 			continue
-		} else if s.isMapContext && s.isChangedToIndentStateEqual() {
-			s.addBufferedTokenIfExists(ctx)
+		} else if s.isChangedToIndentStateEqual() {
+			// if first character is \n, buffer expect to raw folded literal
+			if len(ctx.obuf) > 0 && ctx.obuf[0] != '\n' {
+				// doesn't raw folded literal
+				s.addBufferedTokenIfExists(ctx)
+			}
 			s.isMapContext = false
 		} else if c != '-' && s.indentState == IndentStateUp {
 			s.isMapContext = false

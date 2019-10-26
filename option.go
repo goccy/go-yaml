@@ -37,6 +37,14 @@ func RecursiveDir(isRecursive bool) DecodeOption {
 	}
 }
 
+// Validator set StructValidator instance to Decoder
+func Validator(v StructValidator) DecodeOption {
+	return func(d *Decoder) error {
+		d.validator = v
+		return nil
+	}
+}
+
 // EncodeOption functional option type for Encoder
 type EncodeOption func(e *Encoder) error
 

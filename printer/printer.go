@@ -218,6 +218,10 @@ func (p *Printer) PrintErrorToken(tk *token.Token, isColored bool) string {
 	pos := tk.Position
 	curLine := pos.Line
 	curExtLine := curLine + len(strings.Split(strings.TrimLeft(tk.Origin, "\n"), "\n")) - 1
+	if tk.Origin[len(tk.Origin)-1] == '\n' {
+		// if last character is '\n', ignore it.
+		curExtLine--
+	}
 	minLine := int(math.Max(float64(curLine-3), 1))
 	maxLine := curExtLine + 3
 	for {

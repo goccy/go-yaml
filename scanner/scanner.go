@@ -262,6 +262,7 @@ func (s *Scanner) scanLiteralHeader(ctx *Context) (pos int, err error) {
 func (s *Scanner) scanNewLine(ctx *Context, c rune) {
 	if len(ctx.buf) > 0 && s.savedPos == nil {
 		s.savedPos = s.pos()
+		s.savedPos.Column -= len(ctx.bufferedSrc())
 	}
 	if ctx.isEOS() {
 		s.addBufferedTokenIfExists(ctx)

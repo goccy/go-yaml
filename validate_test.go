@@ -30,7 +30,7 @@ func ExampleStructValidator() {
 	var v []*Person
 	err := dec.Decode(&v)
 	if err == nil {
-		panic(err)
+		panic("expected error")
 	}
 	fmt.Printf("%v", err)
 	// OUTPUT:

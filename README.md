@@ -63,6 +63,15 @@ if err := yaml.Unmarshal([]byte(yml), &v); err != nil {
 }
 ```
 
+For custom marshal/unmarshaling, implement one of Bytes or Interface Marshaler/Unmarshaler. The difference is that while BytesMarshaler/BytesUnmarshaler behave  like `encoding.json`, InterfaceMarshaler/InterfaceUnmarshaler behave like `gopkg.in/yaml.v2`.
+
+Semantically both are the same, but they differ in performance. Because indentation matter in YAML, you cannot simply accept a valid YAML fragment from a Marshaler, and expect it to work when it is attached to the parent container's serialized form. Therefore when we receive use the BytesMarshaler, which returns []byte, we must decode it once to figure out how to make it work in the given context. If you use the InterfaceMarshaler, we can skip the decoding.
+
+If you are repeatedly marshaling complex objects, the latter is always better
+performance wise. But if you are, for example, just providing a choice between
+a config file format that is read only once, the former is probably easier to
+code.
+
 ## 2. Reference elements in declared in another file
 
 `testdata` directory includes `anchor.yml` file

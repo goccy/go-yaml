@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"math"
+	"strconv"
 	"testing"
 
 	"github.com/goccy/go-yaml"
@@ -405,4 +406,98 @@ func Example_Marshal_ImplicitAnchorAlias() {
 	//   s: world
 	// c: *a
 	// d: *b
+}
+
+type tMarshal []string
+
+func (t *tMarshal) MarshalYAML() ([]byte, error) {
+	var buf bytes.Buffer
+	buf.WriteString("tags:\n")
+	for i, v := range *t {
+		if i == 0 {
+			fmt.Fprintf(&buf, "- %s\n", v)
+		} else {
+			fmt.Fprintf(&buf, "  %s\n", v)
+		}
+	}
+	return buf.Bytes(), nil
+}
+func Test_Marshaler(t *testing.T) {
+	const expected = `- hello-world
+`
+
+	// sanity check
+	var l []string
+	if err := yaml.Unmarshal([]byte(expected), &l); err != nil {
+		t.Fatalf("failed to parse string: %s", err)
+	}
+
+	buf, err := yaml.Marshal(tMarshal{"hello-world"})
+	if err != nil {
+		t.Fatalf("failed to marshal: %s", err)
+	}
+
+	if string(buf) != expected {
+		t.Fatalf("expected '%s', got '%s'", expected, buf)
+	}
+
+	t.Logf("%s", buf)
+}
+
+type SlowMarshaler struct {
+	A string
+	B int
+}
+type FastMarshaler struct {
+	A string
+	B int
+}
+
+func (v SlowMarshaler) MarshalYAML() ([]byte, error) {
+	var buf bytes.Buffer
+	buf.WriteString("tags:\n")
+	buf.WriteString("- slow-marshaler\n")
+	buf.WriteString("a: " + v.A + "\n")
+	buf.WriteString("b: " + strconv.FormatInt(int64(v.B), 10) + "\n")
+	return buf.Bytes(), nil
+}
+
+func (v FastMarshaler) MarshalYAML() (interface{}, error) {
+	return yaml.MapSlice{
+		{"tags", []string{"fast-marshaler"}},
+		{"a", v.A},
+		{"b", v.B},
+	}, nil
+}
+
+func Example_MarshalYAML() {
+	var slow SlowMarshaler
+	slow.A = "Hello slow poke"
+	slow.B = 100
+	buf, err := yaml.Marshal(slow)
+	if err != nil {
+		panic(err.Error())
+	}
+
+	fmt.Println(string(buf))
+
+	var fast FastMarshaler
+	fast.A = "Hello speed demon"
+	fast.B = 100
+	buf, err = yaml.Marshal(fast)
+	if err != nil {
+		panic(err.Error())
+	}
+
+	fmt.Println(string(buf))
+	// OUTPUT:
+	// tags:
+	// - slow-marshaler
+	// a: Hello slow poke
+	// b: 100
+	//
+	// tags:
+	// - fast-marshaler
+	// a: Hello speed demon
+	// b: 100
 }

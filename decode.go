@@ -27,6 +27,7 @@ type Decoder struct {
 	referenceDirs       []string
 	isRecursiveDir      bool
 	isResolvedReference bool
+	validator           StructValidator
 }
 
 // NewDecoder returns a new decoder that reads from r.
@@ -316,6 +317,26 @@ func (d *Decoder) decodeStruct(dst reflect.Value, src ast.Node) error {
 			return errors.Wrapf(err, "failed to decode value")
 		}
 		fieldValue.Set(d.castToAssignableValue(newFieldValue, fieldValue.Type()))
+	}
+	if d.validator != nil {
+		if err := d.validator.Struct(structValue.Interface()); err != nil {
+			ev := reflect.ValueOf(err)
+			if ev.Type().Kind() == reflect.Slice {
+				for i := 0; i < ev.Len(); i++ {
+					fieldErr, ok := ev.Index(i).Interface().(FieldError)
+					if !ok {
+						continue
+					}
+					fieldName := fieldErr.StructField()
+					structField := structFieldMap[fieldName]
+					node, exists := keyToNodeMap[structField.RenderName]
+					if exists {
+						// TODO: to make FieldError message cutomizable
+						return errors.ErrSyntax(fmt.Sprintf("%s", err), node.GetToken())
+					}
+				}
+			}
+		}
 	}
 	dst.Set(structValue.Elem())
 	return nil

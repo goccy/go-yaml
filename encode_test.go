@@ -354,12 +354,14 @@ people:
 	}
 }
 
-func TestInlineEncode(t *testing.T) {
+func TestEncoder_Inline(t *testing.T) {
 	type base struct {
 		A int
 		B string
 	}
-	bytes, err := yaml.Marshal(struct {
+	var buf bytes.Buffer
+	enc := yaml.NewEncoder(&buf)
+	if err := enc.Encode(struct {
 		*base `yaml:",inline"`
 		C     bool
 	}{
@@ -368,8 +370,7 @@ func TestInlineEncode(t *testing.T) {
 			B: "hello",
 		},
 		C: true,
-	})
-	if err != nil {
+	}); err != nil {
 		t.Fatalf("%+v", err)
 	}
 	expect := `
@@ -377,7 +378,7 @@ a: 1
 b: hello
 c: true
 `
-	actual := "\n" + string(bytes)
+	actual := "\n" + buf.String()
 	if expect != actual {
 		t.Fatalf("inline marshal error: expect=[%s] actual=[%s]", expect, actual)
 	}

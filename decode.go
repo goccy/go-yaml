@@ -287,6 +287,30 @@ func (d *Decoder) keyToNodeMap(node ast.Node) (map[string]ast.Node, error) {
 	return keyToNodeMap, nil
 }
 
+func (d *Decoder) setDefaultValueIfConflicted(v reflect.Value, fieldMap StructFieldMap) error {
+	typ := v.Type()
+	if typ.Kind() != reflect.Struct {
+		return nil
+	}
+	embeddedStructFieldMap, err := structFieldMap(typ)
+	if err != nil {
+		return errors.Wrapf(err, "failed to get struct field map by embedded type")
+	}
+	for i := 0; i < typ.NumField(); i++ {
+		field := typ.Field(i)
+		structField := embeddedStructFieldMap[field.Name]
+		if !fieldMap.isIncludedRenderName(structField.RenderName) {
+			continue
+		}
+		// if declared same key name, set default value
+		fieldValue := v.Field(i)
+		if fieldValue.CanSet() {
+			fieldValue.Set(reflect.Zero(fieldValue.Type()))
+		}
+	}
+	return nil
+}
+
 func (d *Decoder) decodeStruct(dst reflect.Value, src ast.Node) error {
 	if src == nil {
 		return nil
@@ -316,6 +340,7 @@ func (d *Decoder) decodeStruct(dst reflect.Value, src ast.Node) error {
 			if err := d.decodeValue(newFieldValue, src); err != nil {
 				return errors.Wrapf(err, "failed to decode value")
 			}
+			d.setDefaultValueIfConflicted(newFieldValue, structFieldMap)
 			fieldValue.Set(d.castToAssignableValue(newFieldValue, fieldValue.Type()))
 			continue
 		}

@@ -384,6 +384,38 @@ c: true
 	}
 }
 
+func TestEncoder_InlineAndConflictKey(t *testing.T) {
+	type base struct {
+		A int
+		B string
+	}
+	var buf bytes.Buffer
+	enc := yaml.NewEncoder(&buf)
+	if err := enc.Encode(struct {
+		*base `yaml:",inline"`
+		A     int // conflict
+		C     bool
+	}{
+		base: &base{
+			A: 1,
+			B: "hello",
+		},
+		A: 0, // default value
+		C: true,
+	}); err != nil {
+		t.Fatalf("%+v", err)
+	}
+	expect := `
+b: hello
+a: 0
+c: true
+`
+	actual := "\n" + buf.String()
+	if expect != actual {
+		t.Fatalf("inline marshal error: expect=[%s] actual=[%s]", expect, actual)
+	}
+}
+
 func Example_Marshal_ExplicitAnchorAlias() {
 	type T struct {
 		A int

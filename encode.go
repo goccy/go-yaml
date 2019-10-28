@@ -450,6 +450,11 @@ func (e *Encoder) encodeStruct(value reflect.Value, column int) (ast.Node, error
 			for mapIter.Next() {
 				key := mapIter.Key()
 				value := mapIter.Value()
+				keyName := key.GetToken().Value
+				if structFieldMap.isIncludedRenderName(keyName) {
+					// if declared same key name, skip encoding this field
+					continue
+				}
 				key.GetToken().Position.Column -= e.indent
 				value.GetToken().Position.Column -= e.indent
 				node.Values = append(node.Values, &ast.MappingValueNode{

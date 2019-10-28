@@ -354,6 +354,35 @@ people:
 	}
 }
 
+func TestInlineEncode(t *testing.T) {
+	type base struct {
+		A int
+		B string
+	}
+	bytes, err := yaml.Marshal(struct {
+		*base `yaml:",inline"`
+		C     bool
+	}{
+		base: &base{
+			A: 1,
+			B: "hello",
+		},
+		C: true,
+	})
+	if err != nil {
+		t.Fatalf("%+v", err)
+	}
+	expect := `
+a: 1
+b: hello
+c: true
+`
+	actual := "\n" + string(bytes)
+	if expect != actual {
+		t.Fatalf("inline marshal error: expect=[%s] actual=[%s]", expect, actual)
+	}
+}
+
 func Example_Marshal_ExplicitAnchorAlias() {
 	type T struct {
 		A int

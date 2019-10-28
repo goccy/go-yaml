@@ -283,7 +283,7 @@ func TestDecoder(t *testing.T) {
 			"tags:\n- hello-world\na: foo",
 			struct {
 				Tags []string
-				A string
+				A    string
 			}{Tags: []string{"hello-world"}, A: "foo"},
 		},
 	}
@@ -351,6 +351,34 @@ items:
 	}
 }
 
+func TestDecoder_Inline(t *testing.T) {
+	type Base struct {
+		A int
+		B string
+	}
+	yml := `---
+a: 1
+b: hello
+c: true
+`
+	var v struct {
+		*Base `yaml:",inline"`
+		C     bool
+	}
+	if err := yaml.NewDecoder(strings.NewReader(yml)).Decode(&v); err != nil {
+		t.Fatalf("%+v", err)
+	}
+	if v.A != 1 {
+		t.Fatal("failed to decode with inline key")
+	}
+	if v.B != "hello" {
+		t.Fatal("failed to decode with inline key")
+	}
+	if !v.C {
+		t.Fatal("failed to decode with inline key")
+	}
+}
+
 func TestDecoder_InvalidCases(t *testing.T) {
 	const src = `---
 a:
@@ -377,4 +405,3 @@ a:
 	t.Logf("%s", yaml.FormatError(err, false, true))
 	t.Logf("%s", yaml.FormatError(err, true, true))
 }
-

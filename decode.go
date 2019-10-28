@@ -307,6 +307,18 @@ func (d *Decoder) decodeStruct(dst reflect.Value, src ast.Node) error {
 			continue
 		}
 		structField := structFieldMap[field.Name]
+		if structField.IsInline {
+			fieldValue := structValue.Elem().FieldByName(field.Name)
+			if !fieldValue.CanSet() {
+				return xerrors.Errorf("cannot set embedded type as unexported field %s.%s", field.PkgPath, field.Name)
+			}
+			newFieldValue := d.createDecodableValue(fieldValue.Type())
+			if err := d.decodeValue(newFieldValue, src); err != nil {
+				return errors.Wrapf(err, "failed to decode value")
+			}
+			fieldValue.Set(d.castToAssignableValue(newFieldValue, fieldValue.Type()))
+			continue
+		}
 		v, exists := keyToNodeMap[structField.RenderName]
 		if !exists {
 			continue

@@ -268,6 +268,18 @@ func TestDecoder(t *testing.T) {
 		},
 
 		{
+			"a: -b_c",
+			map[string]interface{}{"a": "-b_c"},
+		},
+		{
+			"a: +b_c",
+			map[string]interface{}{"a": "+b_c"},
+		},
+		{
+			"a: 50cent_of_dollar",
+			map[string]interface{}{"a": "50cent_of_dollar"},
+		},
+		{
 			"v: .inf\n",
 			map[string]interface{}{"v": math.Inf(0)},
 		},

@@ -105,6 +105,12 @@ const (
 	NanType
 	// IntegerType type for Integer token
 	IntegerType
+	// BinaryIntegerType type for BinaryInteger token
+	BinaryIntegerType
+	// OctetIntegerType type for OctetInteger token
+	OctetIntegerType
+	// HexIntegerType type for HexInteger token
+	HexIntegerType
 	// FloatType type for Float token
 	FloatType
 	// StringType type for String token
@@ -166,6 +172,12 @@ func (t Type) String() string {
 		return "Bool"
 	case IntegerType:
 		return "Integer"
+	case BinaryIntegerType:
+		return "BinaryInteger"
+	case OctetIntegerType:
+		return "OctetInteger"
+	case HexIntegerType:
+		return "HexInteger"
 	case FloatType:
 		return "Float"
 	case NullType:
@@ -460,41 +472,110 @@ var (
 	}
 )
 
-func isNumber(str string) (bool, bool) {
-	if str == "-" || str == "." {
-		return false, false
+type numType int
+
+const (
+	numTypeNone numType = iota
+	numTypeBinary
+	numTypeOctet
+	numTypeHex
+	numTypeFloat
+)
+
+type numStat struct {
+	isNum bool
+	typ   numType
+}
+
+func getNumberStat(str string) *numStat {
+	stat := &numStat{}
+	if str == "" {
+		return stat
 	}
-	isFloat := false
-	isMultipleDot := false
+	if str == "-" || str == "." || str == "+" || str == "_" {
+		return stat
+	}
+	if str[0] == '_' {
+		return stat
+	}
+	dotFound := false
+	isNegative := false
+	isExponent := false
+	if str[0] == '-' {
+		isNegative = true
+	}
 	for idx, c := range str {
 		switch c {
-		case '0', '1', '2', '3', '4', '5', '6', '7', '8', '9':
-			continue
-		case '.':
-			if isFloat {
-				isMultipleDot = true
-			}
-			isFloat = true
-			continue
-		case '-':
-			if idx == 0 {
+		case 'x':
+			if (isNegative && idx == 2) || (!isNegative && idx == 1) {
 				continue
 			}
+		case 'o':
+			if (isNegative && idx == 2) || (!isNegative && idx == 1) {
+				continue
+			}
+		case '0', '1', '2', '3', '4', '5', '6', '7', '8', '9':
+			continue
+		case 'a', 'b', 'c', 'd', 'e', 'f', 'A', 'B', 'C', 'D', 'E', 'F':
+			if (len(str) > 2 && str[0] == '0' && str[1] == 'x') ||
+				(len(str) > 3 && isNegative && str[1] == '0' && str[2] == 'x') {
+				// hex number
+				continue
+			}
+			if c == 'b' && ((isNegative && idx == 2) || (!isNegative && idx == 1)) {
+				// binary number
+				continue
+			}
+			if (c == 'e' || c == 'E') && dotFound {
+				// exponent
+				isExponent = true
+				continue
+			}
+		case '.':
+			if dotFound {
+				// multiple dot
+				return stat
+			}
+			dotFound = true
+			continue
+		case '-':
+			if idx == 0 || isExponent {
+				continue
+			}
+		case '+':
+			if idx == 0 || isExponent {
+				continue
+			}
+		case '_':
+			continue
 		}
-		return false, false
+		return stat
 	}
-	if isMultipleDot {
-		return false, false
+	stat.isNum = true
+	switch {
+	case dotFound:
+		stat.typ = numTypeFloat
+	case strings.HasPrefix(str, "0b") || strings.HasPrefix(str, "-0b"):
+		stat.typ = numTypeBinary
+	case strings.HasPrefix(str, "0x") || strings.HasPrefix(str, "-0x"):
+		stat.typ = numTypeHex
+	case strings.HasPrefix(str, "0o") || strings.HasPrefix(str, "-0o"):
+		stat.typ = numTypeOctet
+	case (len(str) > 1 && str[0] == '0') || (len(str) > 1 && str[0] == '-' && str[1] == '0'):
+		stat.typ = numTypeOctet
 	}
-	return true, isFloat
+	return stat
 }
 
 // IsNeedQuoted whether need quote for passed string or not
 func IsNeedQuoted(value string) bool {
+	if value == "" {
+		return true
+	}
 	if _, exists := ReservedKeywordMap[ReservedKeyword(value)]; exists {
 		return true
 	}
-	if ok, _ := isNumber(value); ok {
+	if stat := getNumberStat(value); stat.isNum {
 		return true
 	}
 	if strings.IndexByte(value, ':') == 1 {
@@ -517,7 +598,7 @@ func New(value string, org string, pos *Position) *Token {
 	if fn != nil {
 		return fn(value, org, pos)
 	}
-	if ok, isFloat := isNumber(value); ok {
+	if stat := getNumberStat(value); stat.isNum {
 		tk := &Token{
 			Type:          IntegerType,
 			CharacterType: CharacterTypeMiscellaneous,
@@ -526,8 +607,15 @@ func New(value string, org string, pos *Position) *Token {
 			Origin:        org,
 			Position:      pos,
 		}
-		if isFloat {
+		switch stat.typ {
+		case numTypeFloat:
 			tk.Type = FloatType
+		case numTypeBinary:
+			tk.Type = BinaryIntegerType
+		case numTypeOctet:
+			tk.Type = OctetIntegerType
+		case numTypeHex:
+			tk.Type = HexIntegerType
 		}
 		return tk
 	}

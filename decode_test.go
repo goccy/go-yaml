@@ -37,12 +37,44 @@ func TestDecoder(t *testing.T) {
 			map[string]interface{}{"v": true},
 		},
 		{
+			"v: true\n",
+			map[string]string{"v": "true"},
+		},
+		{
 			"v: false\n",
 			map[string]bool{"v": false},
 		},
 		{
 			"v: 10\n",
 			map[string]int{"v": 10},
+		},
+		{
+			"v: 10",
+			map[string]interface{}{"v": 10},
+		},
+		{
+			"v: 0b10",
+			map[string]interface{}{"v": 2},
+		},
+		{
+			"v: -0b101010",
+			map[string]interface{}{"v": -42},
+		},
+		{
+			"v: -0b1000000000000000000000000000000000000000000000000000000000000000",
+			map[string]interface{}{"v": -9223372036854775808},
+		},
+		{
+			"v: 0xA",
+			map[string]interface{}{"v": 10},
+		},
+		{
+			"v: .1",
+			map[string]interface{}{"v": 0.1},
+		},
+		{
+			"v: -.1",
+			map[string]interface{}{"v": -0.1},
 		},
 		{
 			"v: -10\n",
@@ -63,6 +95,189 @@ func TestDecoder(t *testing.T) {
 		{
 			"v: -0.1\n",
 			map[string]float64{"v": -0.1},
+		},
+		{
+			"v: 6.8523e+5",
+			map[string]interface{}{"v": 6.8523e+5},
+		},
+		{
+			"v: 685.230_15e+03",
+			map[string]interface{}{"v": 685.23015e+03},
+		},
+		{
+			"v: 685_230.15",
+			map[string]interface{}{"v": 685230.15},
+		},
+		{
+			"v: 685_230.15",
+			map[string]float64{"v": 685230.15},
+		},
+		{
+			"v: 685230",
+			map[string]interface{}{"v": 685230},
+		},
+		{
+			"v: +685_230",
+			map[string]interface{}{"v": 685230},
+		},
+		{
+			"v: 02472256",
+			map[string]interface{}{"v": 685230},
+		},
+		{
+			"v: 0x_0A_74_AE",
+			map[string]interface{}{"v": 685230},
+		},
+		{
+			"v: 0b1010_0111_0100_1010_1110",
+			map[string]interface{}{"v": 685230},
+		},
+		{
+			"v: +685_230",
+			map[string]int{"v": 685230},
+		},
+
+		// Some cross type conversions
+		{
+			"v: 42",
+			map[string]uint{"v": 42},
+		}, {
+			"v: -42",
+			map[string]uint{},
+		}, {
+			"v: 4294967296",
+			map[string]uint64{"v": 4294967296},
+		}, {
+			"v: -4294967296",
+			map[string]uint64{},
+		},
+
+		// int
+		{
+			"v: 2147483647",
+			map[string]int{"v": math.MaxInt32},
+		},
+		{
+			"v: -2147483648",
+			map[string]int{"v": math.MinInt32},
+		},
+
+		// int64
+		{
+			"v: 9223372036854775807",
+			map[string]int64{"v": math.MaxInt64},
+		},
+		{
+			"v: 0b111111111111111111111111111111111111111111111111111111111111111",
+			map[string]int64{"v": math.MaxInt64},
+		},
+		{
+			"v: -9223372036854775808",
+			map[string]int64{"v": math.MinInt64},
+		},
+		{
+			"v: -0b111111111111111111111111111111111111111111111111111111111111111",
+			map[string]int64{"v": -math.MaxInt64},
+		},
+
+		// uint
+		{
+			"v: 0",
+			map[string]uint{"v": 0},
+		},
+		{
+			"v: 4294967295",
+			map[string]uint{"v": math.MaxUint32},
+		},
+		{
+			"v: -1",
+			map[string]uint{},
+		},
+
+		// uint64
+		{
+			"v: 0",
+			map[string]uint{"v": 0},
+		},
+		{
+			"v: 18446744073709551615",
+			map[string]uint64{"v": math.MaxUint64},
+		},
+		{
+			"v: 0b1111111111111111111111111111111111111111111111111111111111111111",
+			map[string]uint64{"v": math.MaxUint64},
+		},
+		{
+			"v: 9223372036854775807",
+			map[string]uint64{"v": math.MaxInt64},
+		},
+		{
+			"v: -1",
+			map[string]uint64{},
+		},
+
+		// float32
+		{
+			"v: 3.40282346638528859811704183484516925440e+38",
+			map[string]float32{"v": math.MaxFloat32},
+		},
+		{
+			"v: 1.401298464324817070923729583289916131280e-45",
+			map[string]float32{"v": math.SmallestNonzeroFloat32},
+		},
+		{
+			"v: 18446744073709551615",
+			map[string]float32{"v": float32(math.MaxUint64)},
+		},
+		{
+			"v: 18446744073709551616",
+			map[string]float32{"v": float32(math.MaxUint64 + 1)},
+		},
+
+		// float64
+		{
+			"v: 1.797693134862315708145274237317043567981e+308",
+			map[string]float64{"v": math.MaxFloat64},
+		},
+		{
+			"v: 4.940656458412465441765687928682213723651e-324",
+			map[string]float64{"v": math.SmallestNonzeroFloat64},
+		},
+		{
+			"v: 18446744073709551615",
+			map[string]float64{"v": float64(math.MaxUint64)},
+		},
+		{
+			"v: 18446744073709551616",
+			map[string]float64{"v": float64(math.MaxUint64 + 1)},
+		},
+
+		// Overflow cases.
+		{
+			"v: 4294967297",
+			map[string]int32{},
+		}, {
+			"v: 128",
+			map[string]int8{},
+		},
+
+		// Quoted values.
+		{
+			"'1': '\"2\"'",
+			map[interface{}]interface{}{"1": "\"2\""},
+		},
+
+		{
+			"a: -b_c",
+			map[string]interface{}{"a": "-b_c"},
+		},
+		{
+			"a: +b_c",
+			map[string]interface{}{"a": "+b_c"},
+		},
+		{
+			"a: 50cent_of_dollar",
+			map[string]interface{}{"a": "50cent_of_dollar"},
 		},
 		{
 			"v: .inf\n",
@@ -285,6 +500,13 @@ func TestDecoder(t *testing.T) {
 				Tags []string
 				A    string
 			}{Tags: []string{"hello-world"}, A: "foo"},
+		},
+		{
+			"",
+			(*struct{})(nil),
+		},
+		{
+			"{}", struct{}{},
 		},
 	}
 	for _, test := range tests {

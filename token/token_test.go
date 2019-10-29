@@ -31,6 +31,17 @@ func TestToken(t *testing.T) {
 		token.DocumentEnd(pos),
 		token.New("1", "1", pos),
 		token.New("3.14", "3.14", pos),
+		token.New("-0b101010", "-0b101010", pos),
+		token.New("0xA", "0xA", pos),
+		token.New("685.230_15e+03", "685.230_15e+03", pos),
+		token.New("02472256", "02472256", pos),
+		token.New("0o2472256", "0o2472256", pos),
+		token.New("", "", pos),
+		token.New("_1", "_1", pos),
+		token.New("1.1.1.1", "1.1.1.1", pos),
+		token.New("+", "+", pos),
+		token.New("-", "-", pos),
+		token.New("_", "_", pos),
 		token.New("true", "true", pos),
 		token.New("false", "false", pos),
 		token.New(".nan", ".nan", pos),
@@ -65,6 +76,9 @@ func TestToken(t *testing.T) {
 }
 
 func TestIsNeedQuoted(t *testing.T) {
+	if !token.IsNeedQuoted("") {
+		t.Fatal("failed to quoted judge for empty string")
+	}
 	if !token.IsNeedQuoted("true") {
 		t.Fatal("failed to quoted judge for boolean")
 	}

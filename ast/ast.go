@@ -152,18 +152,75 @@ func Bool(tk *token.Token) Node {
 	}
 }
 
+func removeUnderScoreFromNumber(num string) string {
+	return strings.ReplaceAll(num, "_", "")
+}
+
 // Integer create node for integer value
 func Integer(tk *token.Token) Node {
-	i, _ := strconv.ParseInt(tk.Value, 10, 64)
-	return &IntegerNode{
-		Token: tk,
-		Value: i,
+	value := removeUnderScoreFromNumber(tk.Value)
+	switch tk.Type {
+	case token.BinaryIntegerType:
+		// skip two characters because binary token starts with '0b'
+		skipCharacterNum := 2
+		negativePrefix := ""
+		if value[0] == '-' {
+			skipCharacterNum++
+			negativePrefix = "-"
+		}
+		if len(negativePrefix) > 0 {
+			i, _ := strconv.ParseInt(negativePrefix+value[skipCharacterNum:], 2, 64)
+			return &IntegerNode{Token: tk, Value: i}
+		}
+		i, _ := strconv.ParseUint(negativePrefix+value[skipCharacterNum:], 2, 64)
+		return &IntegerNode{Token: tk, Value: i}
+	case token.OctetIntegerType:
+		// octet token starts with '0o' or '-0o' or '0' or '-0'
+		skipCharacterNum := 1
+		negativePrefix := ""
+		if value[0] == '-' {
+			skipCharacterNum++
+			if value[2] == 'o' {
+				skipCharacterNum++
+			}
+			negativePrefix = "-"
+		} else {
+			if value[1] == 'o' {
+				skipCharacterNum++
+			}
+		}
+		if len(negativePrefix) > 0 {
+			i, _ := strconv.ParseInt(negativePrefix+value[skipCharacterNum:], 8, 64)
+			return &IntegerNode{Token: tk, Value: i}
+		}
+		i, _ := strconv.ParseUint(value[skipCharacterNum:], 8, 64)
+		return &IntegerNode{Token: tk, Value: i}
+	case token.HexIntegerType:
+		// hex token starts with '0x' or '-0x'
+		skipCharacterNum := 2
+		negativePrefix := ""
+		if value[0] == '-' {
+			skipCharacterNum++
+			negativePrefix = "-"
+		}
+		if len(negativePrefix) > 0 {
+			i, _ := strconv.ParseInt(negativePrefix+value[skipCharacterNum:], 16, 64)
+			return &IntegerNode{Token: tk, Value: i}
+		}
+		i, _ := strconv.ParseUint(value[skipCharacterNum:], 16, 64)
+		return &IntegerNode{Token: tk, Value: i}
 	}
+	if value[0] == '-' || value[0] == '+' {
+		i, _ := strconv.ParseInt(value, 10, 64)
+		return &IntegerNode{Token: tk, Value: i}
+	}
+	i, _ := strconv.ParseUint(value, 10, 64)
+	return &IntegerNode{Token: tk, Value: i}
 }
 
 // Float create node for float value
 func Float(tk *token.Token) Node {
-	f, _ := strconv.ParseFloat(tk.Value, 64)
+	f, _ := strconv.ParseFloat(removeUnderScoreFromNumber(tk.Value), 64)
 	return &FloatNode{
 		Token: tk,
 		Value: f,
@@ -232,7 +289,7 @@ func (n *NullNode) String() string {
 type IntegerNode struct {
 	ScalarNode
 	Token *token.Token
-	Value int64
+	Value interface{} // int64 or uint64 value
 }
 
 // Type returns IntegerType

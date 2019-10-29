@@ -37,6 +37,10 @@ func TestDecoder(t *testing.T) {
 			map[string]interface{}{"v": true},
 		},
 		{
+			"v: true\n",
+			map[string]string{"v": "true"},
+		},
+		{
 			"v: false\n",
 			map[string]bool{"v": false},
 		},

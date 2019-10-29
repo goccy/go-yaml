@@ -177,6 +177,24 @@ func (d *Decoder) docToNode(doc *ast.Document) ast.Node {
 	return nil
 }
 
+func (d *Decoder) convertValue(v reflect.Value, typ reflect.Type) reflect.Value {
+	if typ.Kind() != reflect.String {
+		return v.Convert(typ)
+	}
+	// cast value to string
+	switch v.Type().Kind() {
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+		return reflect.ValueOf(fmt.Sprint(v.Int()))
+	case reflect.Float32, reflect.Float64:
+		return reflect.ValueOf(fmt.Sprint(v.Float()))
+	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr:
+		return reflect.ValueOf(fmt.Sprint(v.Uint()))
+	case reflect.Bool:
+		return reflect.ValueOf(fmt.Sprint(v.Bool()))
+	}
+	return v.Convert(typ)
+}
+
 func (d *Decoder) decodeValue(dst reflect.Value, src ast.Node) error {
 	valueType := dst.Type()
 	if unmarshaler, ok := dst.Addr().Interface().(BytesUnmarshaler); ok {
@@ -224,7 +242,7 @@ func (d *Decoder) decodeValue(dst reflect.Value, src ast.Node) error {
 	}
 	v := reflect.ValueOf(d.nodeToValue(src))
 	if v.IsValid() {
-		dst.Set(v.Convert(dst.Type()))
+		dst.Set(d.convertValue(v, dst.Type()))
 	}
 	return nil
 }

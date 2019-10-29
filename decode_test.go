@@ -286,6 +286,13 @@ func TestDecoder(t *testing.T) {
 				A    string
 			}{Tags: []string{"hello-world"}, A: "foo"},
 		},
+		{
+			"",
+			(*struct{})(nil),
+		},
+		{
+			"{}", struct{}{},
+		},
 	}
 	for _, test := range tests {
 		buf := bytes.NewBufferString(test.source)

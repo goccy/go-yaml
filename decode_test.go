@@ -49,6 +49,34 @@ func TestDecoder(t *testing.T) {
 			map[string]int{"v": 10},
 		},
 		{
+			"v: 10",
+			map[string]interface{}{"v": 10},
+		},
+		{
+			"v: 0b10",
+			map[string]interface{}{"v": 2},
+		},
+		{
+			"v: -0b101010",
+			map[string]interface{}{"v": -42},
+		},
+		{
+			"v: -0b1000000000000000000000000000000000000000000000000000000000000000",
+			map[string]interface{}{"v": -9223372036854775808},
+		},
+		{
+			"v: 0xA",
+			map[string]interface{}{"v": 10},
+		},
+		{
+			"v: .1",
+			map[string]interface{}{"v": 0.1},
+		},
+		{
+			"v: -.1",
+			map[string]interface{}{"v": -0.1},
+		},
+		{
 			"v: -10\n",
 			map[string]int{"v": -10},
 		},
@@ -67,6 +95,46 @@ func TestDecoder(t *testing.T) {
 		{
 			"v: -0.1\n",
 			map[string]float64{"v": -0.1},
+		},
+		{
+			"v: 6.8523e+5",
+			map[string]interface{}{"v": 6.8523e+5},
+		},
+		{
+			"v: 685.230_15e+03",
+			map[string]interface{}{"v": 685.23015e+03},
+		},
+		{
+			"v: 685_230.15",
+			map[string]interface{}{"v": 685230.15},
+		},
+		{
+			"v: 685_230.15",
+			map[string]float64{"v": 685230.15},
+		},
+		{
+			"v: 685230",
+			map[string]interface{}{"v": 685230},
+		},
+		{
+			"v: +685_230",
+			map[string]interface{}{"v": 685230},
+		},
+		{
+			"v: 02472256",
+			map[string]interface{}{"v": 685230},
+		},
+		{
+			"v: 0x_0A_74_AE",
+			map[string]interface{}{"v": 685230},
+		},
+		{
+			"v: 0b1010_0111_0100_1010_1110",
+			map[string]interface{}{"v": 685230},
+		},
+		{
+			"v: +685_230",
+			map[string]int{"v": 685230},
 		},
 		{
 			"v: .inf\n",

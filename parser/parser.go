@@ -321,7 +321,10 @@ func (p *Parser) parseScalarValue(tk *token.Token) ast.Node {
 		return ast.Null(tk)
 	case token.BoolType:
 		return ast.Bool(tk)
-	case token.IntegerType:
+	case token.IntegerType,
+		token.BinaryIntegerType,
+		token.OctetIntegerType,
+		token.HexIntegerType:
 		return ast.Integer(tk)
 	case token.FloatType:
 		return ast.Float(tk)

@@ -252,6 +252,11 @@ func (d *Decoder) decodeValue(dst reflect.Value, src ast.Node) error {
 				dst.SetInt(vv)
 				return nil
 			}
+		case uint64:
+			if vv <= math.MaxInt64 && !dst.OverflowInt(int64(vv)) {
+				dst.SetInt(int64(vv))
+				return nil
+			}
 		case float64:
 			if vv <= math.MaxInt64 && !dst.OverflowInt(int64(vv)) {
 				dst.SetInt(int64(vv))
@@ -263,8 +268,13 @@ func (d *Decoder) decodeValue(dst reflect.Value, src ast.Node) error {
 		v := d.nodeToValue(src)
 		switch vv := v.(type) {
 		case int64:
-			if vv >= 0 && !dst.OverflowUint(uint64(vv)) {
+			if 0 <= vv && !dst.OverflowUint(uint64(vv)) {
 				dst.SetUint(uint64(vv))
+				return nil
+			}
+		case uint64:
+			if !dst.OverflowUint(vv) {
+				dst.SetUint(vv)
 				return nil
 			}
 		case float64:

@@ -152,6 +152,121 @@ func TestDecoder(t *testing.T) {
 			map[string]uint64{},
 		},
 
+		// int
+		{
+			"v: 2147483647",
+			map[string]int{"v": math.MaxInt32},
+		},
+		{
+			"v: -2147483648",
+			map[string]int{"v": math.MinInt32},
+		},
+
+		// int64
+		{
+			"v: 9223372036854775807",
+			map[string]int64{"v": math.MaxInt64},
+		},
+		{
+			"v: 0b111111111111111111111111111111111111111111111111111111111111111",
+			map[string]int64{"v": math.MaxInt64},
+		},
+		{
+			"v: -9223372036854775808",
+			map[string]int64{"v": math.MinInt64},
+		},
+		{
+			"v: -0b111111111111111111111111111111111111111111111111111111111111111",
+			map[string]int64{"v": -math.MaxInt64},
+		},
+
+		// uint
+		{
+			"v: 0",
+			map[string]uint{"v": 0},
+		},
+		{
+			"v: 4294967295",
+			map[string]uint{"v": math.MaxUint32},
+		},
+		{
+			"v: -1",
+			map[string]uint{},
+		},
+
+		// uint64
+		{
+			"v: 0",
+			map[string]uint{"v": 0},
+		},
+		{
+			"v: 18446744073709551615",
+			map[string]uint64{"v": math.MaxUint64},
+		},
+		{
+			"v: 0b1111111111111111111111111111111111111111111111111111111111111111",
+			map[string]uint64{"v": math.MaxUint64},
+		},
+		{
+			"v: 9223372036854775807",
+			map[string]uint64{"v": math.MaxInt64},
+		},
+		{
+			"v: -1",
+			map[string]uint64{},
+		},
+
+		// float32
+		{
+			"v: 3.40282346638528859811704183484516925440e+38",
+			map[string]float32{"v": math.MaxFloat32},
+		},
+		{
+			"v: 1.401298464324817070923729583289916131280e-45",
+			map[string]float32{"v": math.SmallestNonzeroFloat32},
+		},
+		{
+			"v: 18446744073709551615",
+			map[string]float32{"v": float32(math.MaxUint64)},
+		},
+		{
+			"v: 18446744073709551616",
+			map[string]float32{"v": float32(math.MaxUint64 + 1)},
+		},
+
+		// float64
+		{
+			"v: 1.797693134862315708145274237317043567981e+308",
+			map[string]float64{"v": math.MaxFloat64},
+		},
+		{
+			"v: 4.940656458412465441765687928682213723651e-324",
+			map[string]float64{"v": math.SmallestNonzeroFloat64},
+		},
+		{
+			"v: 18446744073709551615",
+			map[string]float64{"v": float64(math.MaxUint64)},
+		},
+		{
+			"v: 18446744073709551616",
+			map[string]float64{"v": float64(math.MaxUint64 + 1)},
+		},
+
+		// Overflow cases.
+		{
+			"v: 4294967297",
+			map[string]int32{},
+		}, {
+			"v: 128",
+			map[string]int8{},
+		},
+
+		// Quoted values.
+		{
+			"'1': '\"2\"'",
+			map[interface{}]interface{}{"1": "\"2\""},
+		},
+
 		{
 			"v: .inf\n",
 			map[string]interface{}{"v": math.Inf(0)},

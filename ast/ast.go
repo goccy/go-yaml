@@ -168,7 +168,11 @@ func Integer(tk *token.Token) Node {
 			skipCharacterNum++
 			negativePrefix = "-"
 		}
-		i, _ := strconv.ParseInt(negativePrefix+value[skipCharacterNum:], 2, 64)
+		if len(negativePrefix) > 0 {
+			i, _ := strconv.ParseInt(negativePrefix+value[skipCharacterNum:], 2, 64)
+			return &IntegerNode{Token: tk, Value: i}
+		}
+		i, _ := strconv.ParseUint(negativePrefix+value[skipCharacterNum:], 2, 64)
 		return &IntegerNode{Token: tk, Value: i}
 	case token.OctetIntegerType:
 		// octet token starts with '0o' or '-0o' or '0' or '-0'
@@ -185,7 +189,11 @@ func Integer(tk *token.Token) Node {
 				skipCharacterNum++
 			}
 		}
-		i, _ := strconv.ParseInt(negativePrefix+value[skipCharacterNum:], 8, 64)
+		if len(negativePrefix) > 0 {
+			i, _ := strconv.ParseInt(negativePrefix+value[skipCharacterNum:], 8, 64)
+			return &IntegerNode{Token: tk, Value: i}
+		}
+		i, _ := strconv.ParseUint(value[skipCharacterNum:], 8, 64)
 		return &IntegerNode{Token: tk, Value: i}
 	case token.HexIntegerType:
 		// hex token starts with '0x' or '-0x'
@@ -195,14 +203,19 @@ func Integer(tk *token.Token) Node {
 			skipCharacterNum++
 			negativePrefix = "-"
 		}
-		i, _ := strconv.ParseInt(negativePrefix+value[skipCharacterNum:], 16, 64)
+		if len(negativePrefix) > 0 {
+			i, _ := strconv.ParseInt(negativePrefix+value[skipCharacterNum:], 16, 64)
+			return &IntegerNode{Token: tk, Value: i}
+		}
+		i, _ := strconv.ParseUint(value[skipCharacterNum:], 16, 64)
 		return &IntegerNode{Token: tk, Value: i}
 	}
-	i, _ := strconv.ParseInt(value, 10, 64)
-	return &IntegerNode{
-		Token: tk,
-		Value: i,
+	if value[0] == '-' || value[0] == '+' {
+		i, _ := strconv.ParseInt(value, 10, 64)
+		return &IntegerNode{Token: tk, Value: i}
 	}
+	i, _ := strconv.ParseUint(value, 10, 64)
+	return &IntegerNode{Token: tk, Value: i}
 }
 
 // Float create node for float value
@@ -276,7 +289,7 @@ func (n *NullNode) String() string {
 type IntegerNode struct {
 	ScalarNode
 	Token *token.Token
-	Value int64
+	Value interface{} // int64 or uint64 value
 }
 
 // Type returns IntegerType

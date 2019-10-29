@@ -561,7 +561,7 @@ func getNumberStat(str string) *numStat {
 		stat.typ = numTypeHex
 	case strings.HasPrefix(str, "0o") || strings.HasPrefix(str, "-0o"):
 		stat.typ = numTypeOctet
-	case str[0] == '0' || (len(str) > 1 && str[0] == '-' && str[1] == '0'):
+	case (len(str) > 1 && str[0] == '0') || (len(str) > 1 && str[0] == '-' && str[1] == '0'):
 		stat.typ = numTypeOctet
 	}
 	return stat
@@ -569,6 +569,9 @@ func getNumberStat(str string) *numStat {
 
 // IsNeedQuoted whether need quote for passed string or not
 func IsNeedQuoted(value string) bool {
+	if value == "" {
+		return true
+	}
 	if _, exists := ReservedKeywordMap[ReservedKeyword(value)]; exists {
 		return true
 	}

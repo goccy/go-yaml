@@ -136,6 +136,22 @@ func TestDecoder(t *testing.T) {
 			"v: +685_230",
 			map[string]int{"v": 685230},
 		},
+
+		// Some cross type conversions
+		{
+			"v: 42",
+			map[string]uint{"v": 42},
+		}, {
+			"v: -42",
+			map[string]uint{},
+		}, {
+			"v: 4294967296",
+			map[string]uint64{"v": 4294967296},
+		}, {
+			"v: -4294967296",
+			map[string]uint64{},
+		},
+
 		{
 			"v: .inf\n",
 			map[string]interface{}{"v": math.Inf(0)},

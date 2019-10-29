@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"math"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -195,6 +196,10 @@ func (d *Decoder) convertValue(v reflect.Value, typ reflect.Type) reflect.Value 
 	return v.Convert(typ)
 }
 
+var (
+	errOverflowNumber = xerrors.New("overflow number")
+)
+
 func (d *Decoder) decodeValue(dst reflect.Value, src ast.Node) error {
 	valueType := dst.Type()
 	if unmarshaler, ok := dst.Addr().Interface().(BytesUnmarshaler); ok {
@@ -239,6 +244,36 @@ func (d *Decoder) decodeValue(dst reflect.Value, src ast.Node) error {
 		return d.decodeSlice(dst, src)
 	case reflect.Struct:
 		return d.decodeStruct(dst, src)
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+		v := d.nodeToValue(src)
+		switch vv := v.(type) {
+		case int64:
+			if !dst.OverflowInt(vv) {
+				dst.SetInt(vv)
+				return nil
+			}
+		case float64:
+			if vv <= math.MaxInt64 && !dst.OverflowInt(int64(vv)) {
+				dst.SetInt(int64(vv))
+				return nil
+			}
+		}
+		return errOverflowNumber
+	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+		v := d.nodeToValue(src)
+		switch vv := v.(type) {
+		case int64:
+			if vv >= 0 && !dst.OverflowUint(uint64(vv)) {
+				dst.SetUint(uint64(vv))
+				return nil
+			}
+		case float64:
+			if 0 <= vv && vv <= math.MaxUint64 && !dst.OverflowUint(uint64(vv)) {
+				dst.SetUint(uint64(vv))
+				return nil
+			}
+		}
+		return errOverflowNumber
 	}
 	v := reflect.ValueOf(d.nodeToValue(src))
 	if v.IsValid() {
@@ -356,6 +391,10 @@ func (d *Decoder) decodeStruct(dst reflect.Value, src ast.Node) error {
 			}
 			newFieldValue := d.createDecodableValue(fieldValue.Type())
 			if err := d.decodeValue(newFieldValue, src); err != nil {
+				if xerrors.Is(err, errOverflowNumber) {
+					// skip decoding overflow value
+					continue
+				}
 				return errors.Wrapf(err, "failed to decode value")
 			}
 			d.setDefaultValueIfConflicted(newFieldValue, structFieldMap)
@@ -369,6 +408,10 @@ func (d *Decoder) decodeStruct(dst reflect.Value, src ast.Node) error {
 		fieldValue := structValue.Elem().FieldByName(field.Name)
 		newFieldValue := d.createDecodableValue(fieldValue.Type())
 		if err := d.decodeValue(newFieldValue, v); err != nil {
+			if xerrors.Is(err, errOverflowNumber) {
+				// skip decoding overflow value
+				continue
+			}
 			return errors.Wrapf(err, "failed to decode value")
 		}
 		fieldValue.Set(d.castToAssignableValue(newFieldValue, fieldValue.Type()))
@@ -433,6 +476,10 @@ func (d *Decoder) decodeMap(dst reflect.Value, src ast.Node) error {
 		value := mapIter.Value()
 		dstValue := d.createDecodableValue(valueType)
 		if err := d.decodeValue(dstValue, value); err != nil {
+			if xerrors.Is(err, errOverflowNumber) {
+				// skip decoding overflow value
+				continue
+			}
 			return errors.Wrapf(err, "failed to decode value")
 		}
 		castedKey := reflect.ValueOf(d.nodeToValue(key)).Convert(keyType)

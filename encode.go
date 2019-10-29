@@ -90,23 +90,42 @@ func (e *Encoder) encodeDocument(doc []byte) (ast.Node, error) {
 	return nil, nil
 }
 
+func (e *Encoder) isInvalidValue(v reflect.Value) bool {
+	if !v.IsValid() {
+		return true
+	}
+	kind := v.Type().Kind()
+	if kind == reflect.Ptr && v.IsNil() {
+		return true
+	}
+	if kind == reflect.Interface && v.IsNil() {
+		return true
+	}
+	return false
+}
+
 func (e *Encoder) encodeValue(v reflect.Value, column int) (ast.Node, error) {
-	if marshaler, ok := v.Interface().(BytesMarshaler); ok {
-		doc, err := marshaler.MarshalYAML()
-		if err != nil {
-			return nil, errors.Wrapf(err, "failed to MarshalYAML")
+	if e.isInvalidValue(v) {
+		return e.encodeNil(), nil
+	}
+	if v.CanInterface() {
+		if marshaler, ok := v.Interface().(BytesMarshaler); ok {
+			doc, err := marshaler.MarshalYAML()
+			if err != nil {
+				return nil, errors.Wrapf(err, "failed to MarshalYAML")
+			}
+			node, err := e.encodeDocument(doc)
+			if err != nil {
+				return nil, errors.Wrapf(err, "failed to encode document")
+			}
+			return node, nil
+		} else if marshaler, ok := v.Interface().(InterfaceMarshaler); ok {
+			marshalV, err := marshaler.MarshalYAML()
+			if err != nil {
+				return nil, errors.Wrapf(err, "failed to MarshalYAML")
+			}
+			return e.encodeValue(reflect.ValueOf(marshalV), column)
 		}
-		node, err := e.encodeDocument(doc)
-		if err != nil {
-			return nil, errors.Wrapf(err, "failed to encode document")
-		}
-		return node, nil
-	} else if marshaler, ok := v.Interface().(InterfaceMarshaler); ok {
-		marshalV, err := marshaler.MarshalYAML()
-		if err != nil {
-			return nil, errors.Wrapf(err, "failed to MarshalYAML")
-		}
-		return e.encodeValue(reflect.ValueOf(marshalV), column)
 	}
 	switch v.Type().Kind() {
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
@@ -116,9 +135,6 @@ func (e *Encoder) encodeValue(v reflect.Value, column int) (ast.Node, error) {
 	case reflect.Float32, reflect.Float64:
 		return e.encodeFloat(v.Float()), nil
 	case reflect.Ptr, reflect.Interface:
-		if v.IsNil() {
-			return e.encodeNil(), nil
-		}
 		return e.encodeValue(v.Elem(), column)
 	case reflect.String:
 		return e.encodeString(v.String(), column), nil
@@ -130,8 +146,10 @@ func (e *Encoder) encodeValue(v reflect.Value, column int) (ast.Node, error) {
 		}
 		return e.encodeSlice(v)
 	case reflect.Struct:
-		if mapItem, ok := v.Interface().(MapItem); ok {
-			return e.encodeMapItem(mapItem, column)
+		if v.CanInterface() {
+			if mapItem, ok := v.Interface().(MapItem); ok {
+				return e.encodeMapItem(mapItem, column)
+			}
 		}
 		return e.encodeStruct(v, column)
 	case reflect.Map:
@@ -370,7 +388,8 @@ func (e *Encoder) encodeStruct(value reflect.Value, column int) (ast.Node, error
 			}
 		}
 		key := e.encodeString(structField.RenderName, column)
-		if structField.AnchorName != "" {
+		switch {
+		case structField.AnchorName != "":
 			anchorName := structField.AnchorName
 			if fieldValue.Kind() == reflect.Ptr {
 				e.anchorPtrToNameMap[fieldValue.Pointer()] = anchorName
@@ -380,7 +399,7 @@ func (e *Encoder) encodeStruct(value reflect.Value, column int) (ast.Node, error
 				Name:  ast.String(token.New(anchorName, anchorName, e.pos(column))),
 				Value: value,
 			}
-		} else if structField.IsAutoAnchor {
+		case structField.IsAutoAnchor:
 			anchorName := structField.RenderName
 			if fieldValue.Kind() == reflect.Ptr {
 				e.anchorPtrToNameMap[fieldValue.Pointer()] = anchorName
@@ -390,7 +409,7 @@ func (e *Encoder) encodeStruct(value reflect.Value, column int) (ast.Node, error
 				Name:  ast.String(token.New(anchorName, anchorName, e.pos(column))),
 				Value: value,
 			}
-		} else if structField.IsAutoAlias {
+		case structField.IsAutoAlias:
 			if fieldValue.Kind() != reflect.Ptr {
 				return nil, xerrors.Errorf(
 					"%s in struct is not pointer type. but required automatically alias detection",
@@ -412,7 +431,7 @@ func (e *Encoder) encodeStruct(value reflect.Value, column int) (ast.Node, error
 				// if both used alias and inline, output `<<: *alias`
 				key = ast.MergeKey(token.New("<<", "<<", e.pos(column)))
 			}
-		} else if structField.AliasName != "" {
+		case structField.AliasName != "":
 			aliasName := structField.AliasName
 			value = &ast.AliasNode{
 				Start: token.New("*", "*", e.pos(column)),
@@ -422,6 +441,28 @@ func (e *Encoder) encodeStruct(value reflect.Value, column int) (ast.Node, error
 				// if both used alias and inline, output `<<: *alias`
 				key = ast.MergeKey(token.New("<<", "<<", e.pos(column)))
 			}
+		case structField.IsInline:
+			mapNode, ok := value.(ast.MapNode)
+			if !ok {
+				return nil, xerrors.Errorf("inline value is must be map or struct type")
+			}
+			mapIter := mapNode.MapRange()
+			for mapIter.Next() {
+				key := mapIter.Key()
+				value := mapIter.Value()
+				keyName := key.GetToken().Value
+				if structFieldMap.isIncludedRenderName(keyName) {
+					// if declared same key name, skip encoding this field
+					continue
+				}
+				key.GetToken().Position.Column -= e.indent
+				value.GetToken().Position.Column -= e.indent
+				node.Values = append(node.Values, &ast.MappingValueNode{
+					Key:   key,
+					Value: value,
+				})
+			}
+			continue
 		}
 		node.Values = append(node.Values, &ast.MappingValueNode{
 			Key:   key,

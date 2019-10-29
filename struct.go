@@ -80,8 +80,19 @@ func isIgnoredStructField(field reflect.StructField) bool {
 	return false
 }
 
-func structFieldMap(structType reflect.Type) (map[string]*StructField, error) {
-	structFieldMap := map[string]*StructField{}
+type StructFieldMap map[string]*StructField
+
+func (m StructFieldMap) isIncludedRenderName(name string) bool {
+	for _, v := range m {
+		if v.RenderName == name {
+			return true
+		}
+	}
+	return false
+}
+
+func structFieldMap(structType reflect.Type) (StructFieldMap, error) {
+	structFieldMap := StructFieldMap{}
 	renderNameMap := map[string]struct{}{}
 	for i := 0; i < structType.NumField(); i++ {
 		field := structType.Field(i)

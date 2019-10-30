@@ -41,6 +41,18 @@ func TestDecoder(t *testing.T) {
 			map[string]string{"v": "true"},
 		},
 		{
+			"v: 10\n",
+			map[string]string{"v": "10"},
+		},
+		{
+			"v: -10\n",
+			map[string]string{"v": "-10"},
+		},
+		{
+			"v: 1.234\n",
+			map[string]string{"v": "1.234"},
+		},
+		{
 			"v: false\n",
 			map[string]bool{"v": false},
 		},
@@ -544,7 +556,7 @@ func TestDecoder(t *testing.T) {
 	}
 }
 
-func TestDecodeByAnchorOfOtherFile(t *testing.T) {
+func TestDecoder_AnchorReferenceDirs(t *testing.T) {
 	buf := bytes.NewBufferString("a: *a\n")
 	dec := yaml.NewDecoder(buf, yaml.ReferenceDirs("testdata"))
 	var v struct {
@@ -555,6 +567,56 @@ func TestDecodeByAnchorOfOtherFile(t *testing.T) {
 	}
 	if err := dec.Decode(&v); err != nil {
 		t.Fatalf("%+v", err)
+	}
+	if v.A.B != 1 {
+		t.Fatal("failed to decode by reference dirs")
+	}
+	if v.A.C != "hello" {
+		t.Fatal("failed to decode by reference dirs")
+	}
+}
+
+func TestDecoder_AnchorReferenceDirsRecursive(t *testing.T) {
+	buf := bytes.NewBufferString("a: *a\n")
+	dec := yaml.NewDecoder(
+		buf,
+		yaml.RecursiveDir(true),
+		yaml.ReferenceDirs("testdata"),
+	)
+	var v struct {
+		A struct {
+			B int
+			C string
+		}
+	}
+	if err := dec.Decode(&v); err != nil {
+		t.Fatalf("%+v", err)
+	}
+	if v.A.B != 1 {
+		t.Fatal("failed to decode by reference dirs")
+	}
+	if v.A.C != "hello" {
+		t.Fatal("failed to decode by reference dirs")
+	}
+}
+
+func TestDecoder_AnchorFiles(t *testing.T) {
+	buf := bytes.NewBufferString("a: *a\n")
+	dec := yaml.NewDecoder(buf, yaml.ReferenceFiles("testdata/anchor.yml"))
+	var v struct {
+		A struct {
+			B int
+			C string
+		}
+	}
+	if err := dec.Decode(&v); err != nil {
+		t.Fatalf("%+v", err)
+	}
+	if v.A.B != 1 {
+		t.Fatal("failed to decode by reference dirs")
+	}
+	if v.A.C != "hello" {
+		t.Fatal("failed to decode by reference dirs")
 	}
 }
 

@@ -141,13 +141,6 @@ func (p *Parser) parseTag(ctx *Context) (ast.Node, error) {
 	return node, nil
 }
 
-func (p *Parser) isMapNode(node ast.Node) bool {
-	if _, ok := node.(*ast.MappingValueNode); ok {
-		return true
-	}
-	return false
-}
-
 func (p *Parser) validateMapKey(tk *token.Token) error {
 	if tk.Type != token.StringType {
 		return nil

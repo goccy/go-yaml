@@ -141,13 +141,6 @@ func (p *Parser) parseTag(ctx *Context) (ast.Node, error) {
 	return node, nil
 }
 
-func (p *Parser) isMapNode(node ast.Node) bool {
-	if _, ok := node.(*ast.MappingValueNode); ok {
-		return true
-	}
-	return false
-}
-
 func (p *Parser) validateMapKey(tk *token.Token) error {
 	if tk.Type != token.StringType {
 		return nil
@@ -173,9 +166,15 @@ func (p *Parser) parseMappingValue(ctx *Context) (ast.Node, error) {
 	ctx.progress(1)          // progress to mapping value token
 	tk := ctx.currentToken() // get mapping value token
 	ctx.progress(1)          // progress to value token
-	value, err := p.parseToken(ctx, ctx.currentToken())
-	if err != nil {
-		return nil, errors.Wrapf(err, "failed to parse mapping 'value' node")
+	var value ast.Node
+	if vtk := ctx.currentToken(); vtk == nil {
+		value = ast.Null(token.New("null", "null", tk.Position))
+	} else {
+		v, err := p.parseToken(ctx, ctx.currentToken())
+		if err != nil {
+			return nil, errors.Wrapf(err, "failed to parse mapping 'value' node")
+		}
+		value = v
 	}
 	keyColumn := key.GetToken().Position.Column
 	valueColumn := value.GetToken().Position.Column
@@ -298,6 +297,9 @@ func (p *Parser) parseMapKey(tk *token.Token) ast.Node {
 	}
 	if tk.Type == token.MergeKeyType {
 		return ast.MergeKey(tk)
+	}
+	if tk.Type == token.NullType {
+		return ast.Null(tk)
 	}
 	return nil
 }

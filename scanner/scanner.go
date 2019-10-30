@@ -364,7 +364,7 @@ func (s *Scanner) scan(ctx *Context) (pos int) {
 			return
 		case ':':
 			nc := ctx.nextChar()
-			if nc == ' ' || nc == '\n' {
+			if nc == ' ' || nc == '\n' || ctx.isNextEOS() {
 				// mapping value
 				tk := s.bufferedToken(ctx)
 				if tk != nil {

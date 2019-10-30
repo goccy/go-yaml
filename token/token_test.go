@@ -42,6 +42,7 @@ func TestToken(t *testing.T) {
 		token.New("+", "+", pos),
 		token.New("-", "-", pos),
 		token.New("_", "_", pos),
+		token.New("~", "~", pos),
 		token.New("true", "true", pos),
 		token.New("false", "false", pos),
 		token.New(".nan", ".nan", pos),

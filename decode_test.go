@@ -279,6 +279,25 @@ func TestDecoder(t *testing.T) {
 			"a: 50cent_of_dollar",
 			map[string]interface{}{"a": "50cent_of_dollar"},
 		},
+
+		// Nulls
+		{
+			"v:",
+			map[string]interface{}{"v": nil},
+		},
+		{
+			"v: ~",
+			map[string]interface{}{"v": nil},
+		},
+		{
+			"~: null key",
+			map[interface{}]string{nil: "null key"},
+		},
+		{
+			"v:",
+			map[string]*bool{"v": nil},
+		},
+
 		{
 			"v: .inf\n",
 			map[string]interface{}{"v": math.Inf(0)},

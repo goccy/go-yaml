@@ -274,6 +274,8 @@ type ReservedKeyword string
 const (
 	// Null `null` keyword
 	Null ReservedKeyword = "null"
+	// NullSymbol `~` keyword
+	NullSymbol = "~"
 	// False `false` keyword
 	False = "false"
 	// True `true` keyword
@@ -290,6 +292,16 @@ var (
 	// ReservedKeywordMap map for reserved keywords
 	ReservedKeywordMap = map[ReservedKeyword]func(string, string, *Position) *Token{
 		Null: func(value string, org string, pos *Position) *Token {
+			return &Token{
+				Type:          NullType,
+				CharacterType: CharacterTypeMiscellaneous,
+				Indicator:     NotIndicator,
+				Value:         value,
+				Origin:        org,
+				Position:      pos,
+			}
+		},
+		NullSymbol: func(value, org string, pos *Position) *Token {
 			return &Token{
 				Type:          NullType,
 				CharacterType: CharacterTypeMiscellaneous,

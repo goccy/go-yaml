@@ -66,6 +66,10 @@ func (c *Context) isEOS() bool {
 	return len(c.src)-1 <= c.idx
 }
 
+func (c *Context) isNextEOS() bool {
+	return len(c.src)-1 <= c.idx+1
+}
+
 func (c *Context) next() bool {
 	return c.idx < c.size
 }

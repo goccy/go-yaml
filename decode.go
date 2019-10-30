@@ -228,6 +228,11 @@ func (d *Decoder) decodeValue(dst reflect.Value, src ast.Node) error {
 		if dst.IsNil() {
 			return nil
 		}
+		if src.Type() == ast.NullType {
+			// set nil value to pointer
+			dst.Set(reflect.Zero(valueType))
+			return nil
+		}
 		v := d.createDecodableValue(dst.Type())
 		if err := d.decodeValue(v, src); err != nil {
 			return errors.Wrapf(err, "failed to decode ptr value")
@@ -399,6 +404,11 @@ func (d *Decoder) decodeStruct(dst reflect.Value, src ast.Node) error {
 			if !fieldValue.CanSet() {
 				return xerrors.Errorf("cannot set embedded type as unexported field %s.%s", field.PkgPath, field.Name)
 			}
+			if fieldValue.Type().Kind() == reflect.Ptr && src.Type() == ast.NullType {
+				// set nil value to pointer
+				fieldValue.Set(reflect.Zero(fieldValue.Type()))
+				continue
+			}
 			newFieldValue := d.createDecodableValue(fieldValue.Type())
 			if err := d.decodeValue(newFieldValue, src); err != nil {
 				if xerrors.Is(err, errOverflowNumber) {
@@ -416,6 +426,11 @@ func (d *Decoder) decodeStruct(dst reflect.Value, src ast.Node) error {
 			continue
 		}
 		fieldValue := structValue.Elem().FieldByName(field.Name)
+		if fieldValue.Type().Kind() == reflect.Ptr && src.Type() == ast.NullType {
+			// set nil value to pointer
+			fieldValue.Set(reflect.Zero(fieldValue.Type()))
+			continue
+		}
 		newFieldValue := d.createDecodableValue(fieldValue.Type())
 		if err := d.decodeValue(newFieldValue, v); err != nil {
 			if xerrors.Is(err, errOverflowNumber) {
@@ -461,6 +476,11 @@ func (d *Decoder) decodeSlice(dst reflect.Value, src ast.Node) error {
 	elemType := sliceType.Elem()
 	for iter.Next() {
 		v := iter.Value()
+		if elemType.Kind() == reflect.Ptr && v.Type() == ast.NullType {
+			// set nil value to pointer
+			sliceValue = reflect.Append(sliceValue, reflect.Zero(elemType))
+			continue
+		}
 		dstValue := d.createDecodableValue(elemType)
 		if err := d.decodeValue(dstValue, v); err != nil {
 			return errors.Wrapf(err, "failed to decode value")
@@ -484,6 +504,15 @@ func (d *Decoder) decodeMap(dst reflect.Value, src ast.Node) error {
 	for mapIter.Next() {
 		key := mapIter.Key()
 		value := mapIter.Value()
+		k := reflect.ValueOf(d.nodeToValue(key))
+		if k.IsValid() && k.Type().ConvertibleTo(keyType) {
+			k = k.Convert(keyType)
+		}
+		if valueType.Kind() == reflect.Ptr && value.Type() == ast.NullType {
+			// set nil value to pointer
+			mapValue.SetMapIndex(k, reflect.Zero(valueType))
+			continue
+		}
 		dstValue := d.createDecodableValue(valueType)
 		if err := d.decodeValue(dstValue, value); err != nil {
 			if xerrors.Is(err, errOverflowNumber) {
@@ -492,8 +521,12 @@ func (d *Decoder) decodeMap(dst reflect.Value, src ast.Node) error {
 			}
 			return errors.Wrapf(err, "failed to decode value")
 		}
-		castedKey := reflect.ValueOf(d.nodeToValue(key)).Convert(keyType)
-		mapValue.SetMapIndex(castedKey, d.castToAssignableValue(dstValue, valueType))
+		if !k.IsValid() {
+			// expect nil key
+			mapValue.SetMapIndex(d.createDecodableValue(keyType), d.castToAssignableValue(dstValue, valueType))
+			continue
+		}
+		mapValue.SetMapIndex(k, d.castToAssignableValue(dstValue, valueType))
 	}
 	dst.Set(mapValue)
 	return nil

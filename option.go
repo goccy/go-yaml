@@ -55,3 +55,11 @@ func Indent(spaces int) EncodeOption {
 		return nil
 	}
 }
+
+// Flow encoding by flow style
+func Flow(isFlowStyle bool) EncodeOption {
+	return func(e *Encoder) error {
+		e.isFlowStyle = isFlowStyle
+		return nil
+	}
+}

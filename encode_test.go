@@ -495,6 +495,35 @@ c: true
 	}
 }
 
+func TestEncoder_Flow(t *testing.T) {
+	var buf bytes.Buffer
+	enc := yaml.NewEncoder(&buf, yaml.Flow(true))
+	var v struct {
+		A int
+		B string
+		C struct {
+			D int
+			E string
+		}
+		F []int
+	}
+	v.A = 1
+	v.B = "hello"
+	v.C.D = 3
+	v.C.E = "world"
+	v.F = []int{1, 2}
+	if err := enc.Encode(v); err != nil {
+		t.Fatalf("%+v", err)
+	}
+	expect := `
+{a: 1, b: hello, c: {d: 3, e: world}, f: [1, 2]}
+`
+	actual := "\n" + buf.String()
+	if expect != actual {
+		t.Fatalf("flow style marshal error: expect=[%s] actual=[%s]", expect, actual)
+	}
+}
+
 func Example_Marshal_ExplicitAnchorAlias() {
 	type T struct {
 		A int

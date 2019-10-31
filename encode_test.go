@@ -206,6 +206,85 @@ func TestEncoder(t *testing.T) {
 				1, 0,
 			},
 		},
+
+		// Conditional flag
+		{
+			"a: 1\n",
+			struct {
+				A int "a,omitempty"
+				B int "b,omitempty"
+			}{1, 0},
+		},
+		{
+			"{}\n",
+			struct {
+				A int "a,omitempty"
+				B int "b,omitempty"
+			}{0, 0},
+		},
+
+		{
+			"a: {x: 1}\n",
+			struct {
+				A *struct{ X, y int } "a,omitempty,flow"
+			}{&struct{ X, y int }{1, 2}},
+		},
+
+		{
+			"{}\n",
+			struct {
+				A *struct{ X, y int } "a,omitempty,flow"
+			}{nil},
+		},
+
+		{
+			"a: {x: 0}\n",
+			struct {
+				A *struct{ X, y int } "a,omitempty,flow"
+			}{&struct{ X, y int }{}},
+		},
+
+		{
+			"a: {x: 1}\n",
+			struct {
+				A struct{ X, y int } "a,omitempty,flow"
+			}{struct{ X, y int }{1, 2}},
+		},
+		{
+			"{}\n",
+			struct {
+				A struct{ X, y int } "a,omitempty,flow"
+			}{struct{ X, y int }{0, 1}},
+		},
+		{
+			"a: 1.0\n",
+			struct {
+				A float64 "a,omitempty"
+				B float64 "b,omitempty"
+			}{1, 0},
+		},
+
+		// Flow flag
+		{
+			"a: [1, 2]\n",
+			struct {
+				A []int "a,flow"
+			}{[]int{1, 2}},
+		},
+		{
+			"a: {b: c, d: e}\n",
+			&struct {
+				A map[string]string "a,flow"
+			}{map[string]string{"b": "c", "d": "e"}},
+		},
+		{
+			"a: {b: c, d: e}\n",
+			struct {
+				A struct {
+					B, D string
+				} "a,flow"
+			}{struct{ B, D string }{"c", "e"}},
+		},
 	}
 	for _, test := range tests {
 		var buf bytes.Buffer

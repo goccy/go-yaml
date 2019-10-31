@@ -522,7 +522,7 @@ type MappingNode struct {
 	Start       *token.Token
 	End         *token.Token
 	IsFlowStyle bool
-	Values      []Node
+	Values      []*MappingValueNode
 }
 
 // Type returns MappingType
@@ -563,23 +563,11 @@ func (n *MappingNode) String() string {
 	return n.blockStyleString()
 }
 
-func (n *MappingNode) toMappingValues() []*MappingValueNode {
-	values := []*MappingValueNode{}
-	for _, value := range n.Values {
-		if mvnode, ok := value.(*MappingValueNode); ok {
-			values = append(values, mvnode)
-		} else if c, ok := value.(*MappingNode); ok {
-			values = append(values, c.toMappingValues()...)
-		}
-	}
-	return values
-}
-
 // MapRange implements MapNode protocol
 func (n *MappingNode) MapRange() *MapNodeIter {
 	return &MapNodeIter{
 		idx:    startRangeIndex,
-		values: n.toMappingValues(),
+		values: n.Values,
 	}
 }
 

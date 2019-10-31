@@ -6,6 +6,7 @@ import (
 	"github.com/goccy/go-yaml/ast"
 	"github.com/goccy/go-yaml/internal/errors"
 	"github.com/goccy/go-yaml/token"
+	"golang.org/x/xerrors"
 )
 
 // Parser convert from token instances to ast
@@ -78,7 +79,7 @@ func (p *Parser) parseMapping(ctx *Context) (ast.Node, error) {
 	node := &ast.MappingNode{
 		Start:       ctx.currentToken(),
 		IsFlowStyle: true,
-		Values:      []ast.Node{},
+		Values:      []*ast.MappingValueNode{},
 	}
 	ctx.progress(1) // skip MappingStart token
 	for ctx.next() {
@@ -196,21 +197,25 @@ func (p *Parser) parseMappingValue(ctx *Context) (ast.Node, error) {
 	antk := ctx.afterNextToken()
 	node := &ast.MappingNode{
 		Start:  tk,
-		Values: []ast.Node{mvnode},
+		Values: []*ast.MappingValueNode{mvnode},
 	}
 	for antk != nil && antk.Type == token.MappingValueType &&
 		ntk.Position.Column == key.GetToken().Position.Column {
 		ctx.progress(1)
 		value, err := p.parseToken(ctx, ctx.currentToken())
 		if err != nil {
-			return nil, errors.Wrapf(err, "failed to parse mapping collection node")
+			return nil, errors.Wrapf(err, "failed to parse mapping node")
 		}
-		if c, ok := value.(*ast.MappingNode); ok {
+		switch value.Type() {
+		case ast.MappingType:
+			c := value.(*ast.MappingNode)
 			for _, v := range c.Values {
 				node.Values = append(node.Values, v)
 			}
-		} else {
-			node.Values = append(node.Values, value)
+		case ast.MappingValueType:
+			node.Values = append(node.Values, value.(*ast.MappingValueNode))
+		default:
+			return nil, xerrors.Errorf("failed to parse mapping value node node is %s", value.Type())
 		}
 		ntk = ctx.nextToken()
 		antk = ctx.afterNextToken()
@@ -414,19 +419,22 @@ func (p *Parser) Parse(tokens token.Tokens) (*ast.Document, error) {
 			doc.Nodes = append(doc.Nodes, node)
 			continue
 		}
-		if _, ok := node.(*ast.MappingValueNode); !ok {
+		mvnode, ok := node.(*ast.MappingValueNode)
+		if !ok {
 			doc.Nodes = append(doc.Nodes, node)
 			continue
 		}
 		lastNode := doc.Nodes[len(doc.Nodes)-1]
-		switch n := lastNode.(type) {
-		case *ast.MappingValueNode:
+		switch lastNode.Type() {
+		case ast.MappingValueType:
+			n := lastNode.(*ast.MappingValueNode)
 			doc.Nodes[len(doc.Nodes)-1] = &ast.MappingNode{
 				Start:  n.GetToken(),
-				Values: []ast.Node{lastNode, node},
+				Values: []*ast.MappingValueNode{n, mvnode},
 			}
-		case *ast.MappingNode:
-			n.Values = append(n.Values, node)
+		case ast.MappingType:
+			n := lastNode.(*ast.MappingNode)
+			n.Values = append(n.Values, mvnode)
 		}
 	}
 	return doc, nil

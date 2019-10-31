@@ -248,9 +248,7 @@ func (e *Encoder) encodeMapItem(item MapItem, column int) (*ast.MappingValueNode
 	}
 	if c, ok := value.(*ast.MappingNode); ok {
 		for _, value := range c.Values {
-			if mvnode, ok := value.(*ast.MappingValueNode); ok {
-				mvnode.Key.GetToken().Position.Column += e.indent
-			}
+			value.Key.GetToken().Position.Column += e.indent
 		}
 	}
 	return &ast.MappingValueNode{
@@ -263,7 +261,7 @@ func (e *Encoder) encodeMapItem(item MapItem, column int) (*ast.MappingValueNode
 func (e *Encoder) encodeMapSlice(value MapSlice, column int) (ast.Node, error) {
 	node := &ast.MappingNode{
 		Start:  token.New("", "", e.pos(column)),
-		Values: []ast.Node{},
+		Values: []*ast.MappingValueNode{},
 	}
 	for _, item := range value {
 		value, err := e.encodeMapItem(item, column)
@@ -278,7 +276,7 @@ func (e *Encoder) encodeMapSlice(value MapSlice, column int) (ast.Node, error) {
 func (e *Encoder) encodeMap(value reflect.Value, column int) ast.Node {
 	node := &ast.MappingNode{
 		Start:  token.New("", "", e.pos(column)),
-		Values: []ast.Node{},
+		Values: []*ast.MappingValueNode{},
 	}
 	keys := []string{}
 	for _, k := range value.MapKeys() {
@@ -294,9 +292,7 @@ func (e *Encoder) encodeMap(value reflect.Value, column int) ast.Node {
 		}
 		if c, ok := value.(*ast.MappingNode); ok {
 			for _, value := range c.Values {
-				if mvnode, ok := value.(*ast.MappingValueNode); ok {
-					mvnode.Key.GetToken().Position.Column += e.indent
-				}
+				value.Key.GetToken().Position.Column += e.indent
 			}
 		}
 		node.Values = append(node.Values, &ast.MappingValueNode{
@@ -357,7 +353,7 @@ func (e *Encoder) isZeroValue(v reflect.Value) bool {
 func (e *Encoder) encodeStruct(value reflect.Value, column int) (ast.Node, error) {
 	node := &ast.MappingNode{
 		Start:  token.New("", "", e.pos(column)),
-		Values: []ast.Node{},
+		Values: []*ast.MappingValueNode{},
 	}
 	structType := value.Type()
 	structFieldMap, err := structFieldMap(structType)
@@ -381,10 +377,8 @@ func (e *Encoder) encodeStruct(value reflect.Value, column int) (ast.Node, error
 		}
 		if c, ok := value.(*ast.MappingNode); ok {
 			for _, value := range c.Values {
-				if mvnode, ok := value.(*ast.MappingValueNode); ok {
-					mvnode.Key.GetToken().Position.Column += e.indent
-					mvnode.Value.GetToken().Position.Column += e.indent
-				}
+				value.Key.GetToken().Position.Column += e.indent
+				value.Value.GetToken().Position.Column += e.indent
 			}
 		}
 		key := e.encodeString(structField.RenderName, column)

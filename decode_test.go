@@ -445,6 +445,28 @@ func TestDecoder(t *testing.T) {
 			map[string]interface{}{"v": []interface{}{"A", 1, "C"}},
 		},
 
+		// Block sequence
+		{
+			"v:\n - A\n - B",
+			map[string]interface{}{"v": []interface{}{"A", "B"}},
+		},
+		{
+			"v:\n - A\n - B\n - C",
+			map[string][]string{"v": []string{"A", "B", "C"}},
+		},
+		{
+			"v:\n - A\n - 1\n - C",
+			map[string][]string{"v": []string{"A", "1", "C"}},
+		},
+		{
+			"v:\n - A\n - 1\n - C",
+			map[string][]int{"v": []int{1}},
+		},
+		{
+			"v:\n - A\n - 1\n - C",
+			map[string]interface{}{"v": []interface{}{"A", 1, "C"}},
+		},
+
 		{
 			"v: \"\"\n",
 			map[string]string{"v": ""},

@@ -367,6 +367,7 @@ func TestDecoder(t *testing.T) {
 			"v: ~",
 			map[string]string{"v": ""},
 		},
+
 		{
 			"v: .inf\n",
 			map[string]interface{}{"v": math.Inf(0)},
@@ -403,6 +404,25 @@ func TestDecoder(t *testing.T) {
 			"v: .NAN\n",
 			map[string]interface{}{"v": math.NaN()},
 		},
+
+		// Explicit tags.
+		{
+			"v: !!float '1.1'",
+			map[string]interface{}{"v": 1.1},
+		},
+		{
+			"v: !!float 0",
+			map[string]interface{}{"v": float64(0)},
+		},
+		{
+			"v: !!float -1",
+			map[string]interface{}{"v": float64(-1)},
+		},
+		{
+			"v: !!null ''",
+			map[string]interface{}{"v": nil},
+		},
+
 		{
 			"v: \"\"\n",
 			map[string]string{"v": ""},

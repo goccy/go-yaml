@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"strconv"
 
 	"github.com/goccy/go-yaml/ast"
 	"github.com/goccy/go-yaml/internal/errors"
@@ -45,6 +46,35 @@ func NewDecoder(r io.Reader, opts ...DecodeOption) *Decoder {
 	}
 }
 
+func (d *Decoder) castToFloat(v interface{}) interface{} {
+	switch vv := v.(type) {
+	case int:
+		return float64(vv)
+	case int8:
+		return float64(vv)
+	case int16:
+		return float64(vv)
+	case int32:
+		return float64(vv)
+	case int64:
+		return float64(vv)
+	case uint:
+		return float64(vv)
+	case uint8:
+		return float64(vv)
+	case uint16:
+		return float64(vv)
+	case uint32:
+		return float64(vv)
+	case uint64:
+		return float64(vv)
+	case string:
+		f, _ := strconv.ParseFloat(vv, 64)
+		return f
+	}
+	return 0
+}
+
 func (d *Decoder) nodeToValue(node ast.Node) interface{} {
 	switch n := node.(type) {
 	case *ast.NullNode:
@@ -63,6 +93,10 @@ func (d *Decoder) nodeToValue(node ast.Node) interface{} {
 		return n.GetValue()
 	case *ast.TagNode:
 		switch n.Start.Value {
+		case token.FloatTag:
+			return d.castToFloat(d.nodeToValue(n.Value))
+		case token.NullTag:
+			return nil
 		case token.BinaryTag:
 			b, _ := base64.StdEncoding.DecodeString(d.nodeToValue(n.Value).(string))
 			return b

@@ -255,6 +255,14 @@ func MergeKey(tk *token.Token) Node {
 	}
 }
 
+func Mapping(tk *token.Token, isFlowStyle bool) *MappingNode {
+	return &MappingNode{
+		Start:       tk,
+		IsFlowStyle: isFlowStyle,
+		Values:      []*MappingValueNode{},
+	}
+}
+
 // NullNode type of null node
 type NullNode struct {
 	ScalarNode

@@ -76,11 +76,7 @@ func newContext(tokens token.Tokens) *Context {
 }
 
 func (p *Parser) parseMapping(ctx *Context) (ast.Node, error) {
-	node := &ast.MappingNode{
-		Start:       ctx.currentToken(),
-		IsFlowStyle: true,
-		Values:      []*ast.MappingValueNode{},
-	}
+	node := ast.Mapping(ctx.currentToken(), true)
 	ctx.progress(1) // skip MappingStart token
 	for ctx.next() {
 		tk := ctx.currentToken()

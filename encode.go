@@ -259,10 +259,7 @@ func (e *Encoder) encodeMapItem(item MapItem, column int) (*ast.MappingValueNode
 }
 
 func (e *Encoder) encodeMapSlice(value MapSlice, column int) (ast.Node, error) {
-	node := &ast.MappingNode{
-		Start:  token.New("", "", e.pos(column)),
-		Values: []*ast.MappingValueNode{},
-	}
+	node := ast.Mapping(token.New("", "", e.pos(column)), false)
 	for _, item := range value {
 		value, err := e.encodeMapItem(item, column)
 		if err != nil {
@@ -274,10 +271,7 @@ func (e *Encoder) encodeMapSlice(value MapSlice, column int) (ast.Node, error) {
 }
 
 func (e *Encoder) encodeMap(value reflect.Value, column int) ast.Node {
-	node := &ast.MappingNode{
-		Start:  token.New("", "", e.pos(column)),
-		Values: []*ast.MappingValueNode{},
-	}
+	node := ast.Mapping(token.New("", "", e.pos(column)), false)
 	keys := []string{}
 	for _, k := range value.MapKeys() {
 		keys = append(keys, k.Interface().(string))
@@ -351,10 +345,7 @@ func (e *Encoder) isZeroValue(v reflect.Value) bool {
 }
 
 func (e *Encoder) encodeStruct(value reflect.Value, column int) (ast.Node, error) {
-	node := &ast.MappingNode{
-		Start:  token.New("", "", e.pos(column)),
-		Values: []*ast.MappingValueNode{},
-	}
+	node := ast.Mapping(token.New("", "", e.pos(column)), false)
 	structType := value.Type()
 	structFieldMap, err := structFieldMap(structType)
 	if err != nil {

@@ -309,7 +309,26 @@ func TestDecoder(t *testing.T) {
 			"v:",
 			map[string]*bool{"v": nil},
 		},
-
+		{
+			"v: null",
+			map[string]*string{"v": nil},
+		},
+		{
+			"v: null",
+			map[string]string{"v": ""},
+		},
+		{
+			"v: null",
+			map[string]interface{}{"v": nil},
+		},
+		{
+			"v: ~",
+			map[string]*string{"v": nil},
+		},
+		{
+			"v: ~",
+			map[string]string{"v": ""},
+		},
 		{
 			"v: .inf\n",
 			map[string]interface{}{"v": math.Inf(0)},
@@ -321,10 +340,6 @@ func TestDecoder(t *testing.T) {
 		{
 			"v: .nan\n",
 			map[string]interface{}{"v": math.NaN()},
-		},
-		{
-			"v: null\n",
-			map[string]interface{}{"v": nil},
 		},
 		{
 			"v: \"\"\n",

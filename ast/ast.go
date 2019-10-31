@@ -35,14 +35,10 @@ const (
 	MergeKeyType
 	// LiteralType type identifier for literal node
 	LiteralType
-	// FlowMappingType type identifier for flow mapping node
-	FlowMappingType
-	// MappingCollectionType type identifier for mapping collection node
-	MappingCollectionType
+	// MappingType type identifier for mapping node
+	MappingType
 	// MappingValueType type identifier for mapping value node
 	MappingValueType
-	// FlowSequenceType type identifier for flow sequence node
-	FlowSequenceType
 	// SequenceType type identifier for sequence node
 	SequenceType
 	// AnchorType type identifier for anchor node
@@ -80,14 +76,10 @@ func (t NodeType) String() string {
 		return "MergeKey"
 	case LiteralType:
 		return "Literal"
-	case FlowMappingType:
-		return "FlowMapping"
-	case MappingCollectionType:
-		return "MappingCollection"
+	case MappingType:
+		return "Mapping"
 	case MappingValueType:
 		return "MappingValue"
-	case FlowSequenceType:
-		return "FlowSequence"
 	case SequenceType:
 		return "Sequence"
 	case AnchorType:
@@ -258,6 +250,24 @@ func String(tk *token.Token) Node {
 func MergeKey(tk *token.Token) Node {
 	return &MergeKeyNode{
 		Token: tk,
+	}
+}
+
+// Mapping create node for map
+func Mapping(tk *token.Token, isFlowStyle bool) *MappingNode {
+	return &MappingNode{
+		Start:       tk,
+		IsFlowStyle: isFlowStyle,
+		Values:      []*MappingValueNode{},
+	}
+}
+
+// Sequence create node for sequence
+func Sequence(tk *token.Token, isFlowStyle bool) *SequenceNode {
+	return &SequenceNode{
+		Start:       tk,
+		IsFlowStyle: isFlowStyle,
+		Values:      []Node{},
 	}
 }
 
@@ -490,7 +500,7 @@ func (n *NanNode) String() string {
 	return n.Token.Value
 }
 
-// MapNode interface of FlowMappingNode / MappingValueNode / MappingCollectionNode
+// MapNode interface of MappingValueNode / MappingNode
 type MapNode interface {
 	MapRange() *MapNodeIter
 }
@@ -523,23 +533,26 @@ func (m *MapNodeIter) Value() Node {
 	return m.values[m.idx].Value
 }
 
-// FlowMappingNode type of flow mapping node
-type FlowMappingNode struct {
-	Start  *token.Token
-	End    *token.Token
-	Values []*MappingValueNode
+// MappingNode type of mapping node
+type MappingNode struct {
+	Start       *token.Token
+	End         *token.Token
+	IsFlowStyle bool
+	Values      []*MappingValueNode
 }
 
-// Type returns FlowMappingType
-func (n *FlowMappingNode) Type() NodeType { return FlowMappingType }
+// Type returns MappingType
+func (n *MappingNode) Type() NodeType { return MappingType }
 
 // GetToken returns token instance
-func (n *FlowMappingNode) GetToken() *token.Token {
+func (n *MappingNode) GetToken() *token.Token {
 	return n.Start
 }
 
-// String flow mapping to text
-func (n *FlowMappingNode) String() string {
+func (n *MappingNode) flowStyleString() string {
+	if len(n.Values) == 0 {
+		return "{}"
+	}
 	values := []string{}
 	for _, value := range n.Values {
 		values = append(values, strings.TrimLeft(value.String(), " "))
@@ -547,30 +560,10 @@ func (n *FlowMappingNode) String() string {
 	return fmt.Sprintf("{%s}", strings.Join(values, ", "))
 }
 
-// MapRange implements MapNode protocol
-func (n *FlowMappingNode) MapRange() *MapNodeIter {
-	return &MapNodeIter{
-		idx:    startRangeIndex,
-		values: n.Values,
+func (n *MappingNode) blockStyleString() string {
+	if len(n.Values) == 0 {
+		return "{}"
 	}
-}
-
-// MappingCollectionNode type of mapping collection node
-type MappingCollectionNode struct {
-	Start  *token.Token
-	Values []Node
-}
-
-// Type returns MappingCollectionType
-func (n *MappingCollectionNode) Type() NodeType { return MappingCollectionType }
-
-// GetToken returns token instance
-func (n *MappingCollectionNode) GetToken() *token.Token {
-	return n.Start
-}
-
-// String mapping collection to text
-func (n *MappingCollectionNode) String() string {
 	values := []string{}
 	for _, value := range n.Values {
 		values = append(values, value.String())
@@ -578,25 +571,19 @@ func (n *MappingCollectionNode) String() string {
 	return strings.Join(values, "\n")
 }
 
-func (n *MappingCollectionNode) toMappingValues() []*MappingValueNode {
-	values := []*MappingValueNode{}
-	for _, value := range n.Values {
-		if mvnode, ok := value.(*MappingValueNode); ok {
-			values = append(values, mvnode)
-		} else if c, ok := value.(*MappingCollectionNode); ok {
-			values = append(values, c.toMappingValues()...)
-		} else if fmnode, ok := value.(*FlowMappingNode); ok {
-			values = append(values, fmnode.Values...)
-		}
+// String mapping values to text
+func (n *MappingNode) String() string {
+	if n.IsFlowStyle {
+		return n.flowStyleString()
 	}
-	return values
+	return n.blockStyleString()
 }
 
 // MapRange implements MapNode protocol
-func (n *MappingCollectionNode) MapRange() *MapNodeIter {
+func (n *MappingNode) MapRange() *MapNodeIter {
 	return &MapNodeIter{
 		idx:    startRangeIndex,
-		values: n.toMappingValues(),
+		values: n.Values,
 	}
 }
 
@@ -624,7 +611,9 @@ func (n *MappingValueNode) String() string {
 		return fmt.Sprintf("%s%s: %s", space, n.Key.String(), n.Value.String())
 	} else if keyIndentLevel < valueIndentLevel {
 		return fmt.Sprintf("%s%s:\n%s", space, n.Key.String(), n.Value.String())
-	} else if _, ok := n.Value.(*FlowSequenceNode); ok {
+	} else if m, ok := n.Value.(*MappingNode); ok && m.IsFlowStyle {
+		return fmt.Sprintf("%s%s: %s", space, n.Key.String(), n.Value.String())
+	} else if s, ok := n.Value.(*SequenceNode); ok && s.IsFlowStyle {
 		return fmt.Sprintf("%s%s: %s", space, n.Key.String(), n.Value.String())
 	} else if _, ok := n.Value.(*AnchorNode); ok {
 		return fmt.Sprintf("%s%s: %s", space, n.Key.String(), n.Value.String())
@@ -642,7 +631,7 @@ func (n *MappingValueNode) MapRange() *MapNodeIter {
 	}
 }
 
-// ArrayNode interface of FlowSequenceNode / SequenceNode
+// ArrayNode interface of SequenceNode
 type ArrayNode interface {
 	ArrayRange() *ArrayNodeIter
 }
@@ -671,42 +660,12 @@ func (m *ArrayNodeIter) Len() int {
 	return len(m.values)
 }
 
-// FlowSequenceNode type of sequence node
-type FlowSequenceNode struct {
-	Start  *token.Token
-	End    *token.Token
-	Values []Node
-}
-
-// Type returns FlowSequenceType
-func (n *FlowSequenceNode) Type() NodeType { return FlowSequenceType }
-
-// GetToken returns token instance
-func (n *FlowSequenceNode) GetToken() *token.Token {
-	return n.Start
-}
-
-// String flow sequence to text
-func (n *FlowSequenceNode) String() string {
-	values := []string{}
-	for _, value := range n.Values {
-		values = append(values, value.String())
-	}
-	return fmt.Sprintf("[%s]", strings.Join(values, ", "))
-}
-
-// ArrayRange implements ArrayNode protocol
-func (n *FlowSequenceNode) ArrayRange() *ArrayNodeIter {
-	return &ArrayNodeIter{
-		idx:    startRangeIndex,
-		values: n.Values,
-	}
-}
-
 // SequenceNode type of sequence node
 type SequenceNode struct {
-	Start  *token.Token
-	Values []Node
+	Start       *token.Token
+	End         *token.Token
+	IsFlowStyle bool
+	Values      []Node
 }
 
 // Type returns SequenceType
@@ -717,8 +676,15 @@ func (n *SequenceNode) GetToken() *token.Token {
 	return n.Start
 }
 
-// String sequence to text
-func (n *SequenceNode) String() string {
+func (n *SequenceNode) flowStyleString() string {
+	values := []string{}
+	for _, value := range n.Values {
+		values = append(values, value.String())
+	}
+	return fmt.Sprintf("[%s]", strings.Join(values, ", "))
+}
+
+func (n *SequenceNode) blockStyleString() string {
 	space := strings.Repeat(" ", n.Start.Position.Column-1)
 	values := []string{}
 	for _, value := range n.Values {
@@ -735,6 +701,14 @@ func (n *SequenceNode) String() string {
 		values = append(values, fmt.Sprintf("%s- %s", space, newValue))
 	}
 	return strings.Join(values, "\n")
+}
+
+// String sequence to text
+func (n *SequenceNode) String() string {
+	if n.IsFlowStyle {
+		return n.flowStyleString()
+	}
+	return n.blockStyleString()
 }
 
 // ArrayRange implements ArrayNode protocol
@@ -851,21 +825,13 @@ func Walk(v Visitor, node Node) {
 	case *BoolNode:
 	case *InfinityNode:
 	case *NanNode:
-	case *FlowMappingNode:
-		for _, value := range n.Values {
-			Walk(v, value)
-		}
-	case *MappingCollectionNode:
+	case *MappingNode:
 		for _, value := range n.Values {
 			Walk(v, value)
 		}
 	case *MappingValueNode:
 		Walk(v, n.Key)
 		Walk(v, n.Value)
-	case *FlowSequenceNode:
-		for _, value := range n.Values {
-			Walk(v, value)
-		}
 	case *SequenceNode:
 		for _, value := range n.Values {
 			Walk(v, value)

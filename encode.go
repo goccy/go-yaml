@@ -28,6 +28,7 @@ type Encoder struct {
 	writer             io.Writer
 	opts               []EncodeOption
 	indent             int
+	isFlowStyle        bool
 	anchorPtrToNameMap map[uintptr]string
 
 	line        int
@@ -64,6 +65,11 @@ func (e *Encoder) Close() error {
 //
 // See the documentation for Marshal for details about the conversion of Go values to YAML.
 func (e *Encoder) Encode(v interface{}) error {
+	for _, opt := range e.opts {
+		if err := opt(e); err != nil {
+			return errors.Wrapf(err, "failed to run option for encoder")
+		}
+	}
 	node, err := e.encodeValue(reflect.ValueOf(v), 1)
 	if err != nil {
 		return errors.Wrapf(err, "failed to encode value")
@@ -225,10 +231,7 @@ func (e *Encoder) encodeBool(v bool) ast.Node {
 }
 
 func (e *Encoder) encodeSlice(value reflect.Value) (ast.Node, error) {
-	sequence := &ast.SequenceNode{
-		Start:  token.New("-", "-", e.pos(e.column)),
-		Values: []ast.Node{},
-	}
+	sequence := ast.Sequence(token.New("-", "-", e.pos(e.column)), e.isFlowStyle)
 	for i := 0; i < value.Len(); i++ {
 		node, err := e.encodeValue(value.Index(i), e.column)
 		if err != nil {
@@ -246,11 +249,9 @@ func (e *Encoder) encodeMapItem(item MapItem, column int) (*ast.MappingValueNode
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to encode MapItem")
 	}
-	if c, ok := value.(*ast.MappingCollectionNode); ok {
-		for _, value := range c.Values {
-			if mvnode, ok := value.(*ast.MappingValueNode); ok {
-				mvnode.Key.GetToken().Position.Column += e.indent
-			}
+	if m, ok := value.(*ast.MappingNode); ok {
+		for _, value := range m.Values {
+			value.Key.GetToken().Position.Column += e.indent
 		}
 	}
 	return &ast.MappingValueNode{
@@ -261,10 +262,7 @@ func (e *Encoder) encodeMapItem(item MapItem, column int) (*ast.MappingValueNode
 }
 
 func (e *Encoder) encodeMapSlice(value MapSlice, column int) (ast.Node, error) {
-	node := &ast.MappingCollectionNode{
-		Start:  token.New("", "", e.pos(column)),
-		Values: []ast.Node{},
-	}
+	node := ast.Mapping(token.New("", "", e.pos(column)), e.isFlowStyle)
 	for _, item := range value {
 		value, err := e.encodeMapItem(item, column)
 		if err != nil {
@@ -276,10 +274,7 @@ func (e *Encoder) encodeMapSlice(value MapSlice, column int) (ast.Node, error) {
 }
 
 func (e *Encoder) encodeMap(value reflect.Value, column int) ast.Node {
-	node := &ast.MappingCollectionNode{
-		Start:  token.New("", "", e.pos(column)),
-		Values: []ast.Node{},
-	}
+	node := ast.Mapping(token.New("", "", e.pos(column)), e.isFlowStyle)
 	keys := []string{}
 	for _, k := range value.MapKeys() {
 		keys = append(keys, k.Interface().(string))
@@ -292,11 +287,9 @@ func (e *Encoder) encodeMap(value reflect.Value, column int) ast.Node {
 		if err != nil {
 			return nil
 		}
-		if c, ok := value.(*ast.MappingCollectionNode); ok {
-			for _, value := range c.Values {
-				if mvnode, ok := value.(*ast.MappingValueNode); ok {
-					mvnode.Key.GetToken().Position.Column += e.indent
-				}
+		if m, ok := value.(*ast.MappingNode); ok {
+			for _, value := range m.Values {
+				value.Key.GetToken().Position.Column += e.indent
 			}
 		}
 		node.Values = append(node.Values, &ast.MappingValueNode{
@@ -355,10 +348,7 @@ func (e *Encoder) isZeroValue(v reflect.Value) bool {
 }
 
 func (e *Encoder) encodeStruct(value reflect.Value, column int) (ast.Node, error) {
-	node := &ast.MappingCollectionNode{
-		Start:  token.New("", "", e.pos(column)),
-		Values: []ast.Node{},
-	}
+	node := ast.Mapping(token.New("", "", e.pos(column)), e.isFlowStyle)
 	structType := value.Type()
 	structFieldMap, err := structFieldMap(structType)
 	if err != nil {
@@ -379,12 +369,17 @@ func (e *Encoder) encodeStruct(value reflect.Value, column int) (ast.Node, error
 		if err != nil {
 			return nil, errors.Wrapf(err, "failed to encode value")
 		}
-		if c, ok := value.(*ast.MappingCollectionNode); ok {
-			for _, value := range c.Values {
-				if mvnode, ok := value.(*ast.MappingValueNode); ok {
-					mvnode.Key.GetToken().Position.Column += e.indent
-					mvnode.Value.GetToken().Position.Column += e.indent
-				}
+		if m, ok := value.(*ast.MappingNode); ok {
+			if !e.isFlowStyle && structField.IsFlow {
+				m.IsFlowStyle = true
+			}
+			for _, value := range m.Values {
+				value.Key.GetToken().Position.Column += e.indent
+				value.Value.GetToken().Position.Column += e.indent
+			}
+		} else if s, ok := value.(*ast.SequenceNode); ok {
+			if !e.isFlowStyle && structField.IsFlow {
+				s.IsFlowStyle = true
 			}
 		}
 		key := e.encodeString(structField.RenderName, column)

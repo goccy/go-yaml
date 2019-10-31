@@ -77,13 +77,6 @@ func (d *Decoder) nodeToValue(node ast.Node) interface{} {
 		return d.nodeToValue(d.anchorMap[aliasName])
 	case *ast.LiteralNode:
 		return n.Value.GetValue()
-	case *ast.FlowMappingNode:
-		m := map[string]interface{}{}
-		for _, value := range n.Values {
-			key := value.Key.GetToken().Value
-			m[key] = d.nodeToValue(value.Value)
-		}
-		return m
 	case *ast.MappingValueNode:
 		m := map[string]interface{}{}
 		if n.Key.Type() == ast.MergeKeyType {
@@ -96,7 +89,7 @@ func (d *Decoder) nodeToValue(node ast.Node) interface{} {
 			m[key] = d.nodeToValue(n.Value)
 		}
 		return m
-	case *ast.MappingCollectionNode:
+	case *ast.MappingNode:
 		m := map[string]interface{}{}
 		for _, value := range n.Values {
 			subMap := d.nodeToValue(value).(map[string]interface{})
@@ -105,12 +98,6 @@ func (d *Decoder) nodeToValue(node ast.Node) interface{} {
 			}
 		}
 		return m
-	case *ast.FlowSequenceNode:
-		v := []interface{}{}
-		for _, value := range n.Values {
-			v = append(v, d.nodeToValue(value))
-		}
-		return v
 	case *ast.SequenceNode:
 		v := []interface{}{}
 		for _, value := range n.Values {

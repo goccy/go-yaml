@@ -206,6 +206,85 @@ func TestEncoder(t *testing.T) {
 				1, 0,
 			},
 		},
+
+		// Conditional flag
+		{
+			"a: 1\n",
+			struct {
+				A int "a,omitempty"
+				B int "b,omitempty"
+			}{1, 0},
+		},
+		{
+			"{}\n",
+			struct {
+				A int "a,omitempty"
+				B int "b,omitempty"
+			}{0, 0},
+		},
+
+		{
+			"a: {x: 1}\n",
+			struct {
+				A *struct{ X, y int } "a,omitempty,flow"
+			}{&struct{ X, y int }{1, 2}},
+		},
+
+		{
+			"{}\n",
+			struct {
+				A *struct{ X, y int } "a,omitempty,flow"
+			}{nil},
+		},
+
+		{
+			"a: {x: 0}\n",
+			struct {
+				A *struct{ X, y int } "a,omitempty,flow"
+			}{&struct{ X, y int }{}},
+		},
+
+		{
+			"a: {x: 1}\n",
+			struct {
+				A struct{ X, y int } "a,omitempty,flow"
+			}{struct{ X, y int }{1, 2}},
+		},
+		{
+			"{}\n",
+			struct {
+				A struct{ X, y int } "a,omitempty,flow"
+			}{struct{ X, y int }{0, 1}},
+		},
+		{
+			"a: 1.0\n",
+			struct {
+				A float64 "a,omitempty"
+				B float64 "b,omitempty"
+			}{1, 0},
+		},
+
+		// Flow flag
+		{
+			"a: [1, 2]\n",
+			struct {
+				A []int "a,flow"
+			}{[]int{1, 2}},
+		},
+		{
+			"a: {b: c, d: e}\n",
+			&struct {
+				A map[string]string "a,flow"
+			}{map[string]string{"b": "c", "d": "e"}},
+		},
+		{
+			"a: {b: c, d: e}\n",
+			struct {
+				A struct {
+					B, D string
+				} "a,flow"
+			}{struct{ B, D string }{"c", "e"}},
+		},
 	}
 	for _, test := range tests {
 		var buf bytes.Buffer
@@ -413,6 +492,35 @@ c: true
 	actual := "\n" + buf.String()
 	if expect != actual {
 		t.Fatalf("inline marshal error: expect=[%s] actual=[%s]", expect, actual)
+	}
+}
+
+func TestEncoder_Flow(t *testing.T) {
+	var buf bytes.Buffer
+	enc := yaml.NewEncoder(&buf, yaml.Flow(true))
+	var v struct {
+		A int
+		B string
+		C struct {
+			D int
+			E string
+		}
+		F []int
+	}
+	v.A = 1
+	v.B = "hello"
+	v.C.D = 3
+	v.C.E = "world"
+	v.F = []int{1, 2}
+	if err := enc.Encode(v); err != nil {
+		t.Fatalf("%+v", err)
+	}
+	expect := `
+{a: 1, b: hello, c: {d: 3, e: world}, f: [1, 2]}
+`
+	actual := "\n" + buf.String()
+	if expect != actual {
+		t.Fatalf("flow style marshal error: expect=[%s] actual=[%s]", expect, actual)
 	}
 }
 

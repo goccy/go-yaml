@@ -246,8 +246,8 @@ func (e *Encoder) encodeMapItem(item MapItem, column int) (*ast.MappingValueNode
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to encode MapItem")
 	}
-	if c, ok := value.(*ast.MappingNode); ok {
-		for _, value := range c.Values {
+	if m, ok := value.(*ast.MappingNode); ok {
+		for _, value := range m.Values {
 			value.Key.GetToken().Position.Column += e.indent
 		}
 	}
@@ -284,8 +284,8 @@ func (e *Encoder) encodeMap(value reflect.Value, column int) ast.Node {
 		if err != nil {
 			return nil
 		}
-		if c, ok := value.(*ast.MappingNode); ok {
-			for _, value := range c.Values {
+		if m, ok := value.(*ast.MappingNode); ok {
+			for _, value := range m.Values {
 				value.Key.GetToken().Position.Column += e.indent
 			}
 		}
@@ -366,10 +366,17 @@ func (e *Encoder) encodeStruct(value reflect.Value, column int) (ast.Node, error
 		if err != nil {
 			return nil, errors.Wrapf(err, "failed to encode value")
 		}
-		if c, ok := value.(*ast.MappingNode); ok {
-			for _, value := range c.Values {
+		if m, ok := value.(*ast.MappingNode); ok {
+			if structField.IsFlow {
+				m.IsFlowStyle = true
+			}
+			for _, value := range m.Values {
 				value.Key.GetToken().Position.Column += e.indent
 				value.Value.GetToken().Position.Column += e.indent
+			}
+		} else if s, ok := value.(*ast.SequenceNode); ok {
+			if structField.IsFlow {
+				s.IsFlowStyle = true
 			}
 		}
 		key := e.encodeString(structField.RenderName, column)

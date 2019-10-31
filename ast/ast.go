@@ -35,8 +35,6 @@ const (
 	MergeKeyType
 	// LiteralType type identifier for literal node
 	LiteralType
-	// FlowMappingType type identifier for flow mapping node
-	FlowMappingType
 	// MappingType type identifier for mapping node
 	MappingType
 	// MappingValueType type identifier for mapping value node
@@ -80,14 +78,10 @@ func (t NodeType) String() string {
 		return "MergeKey"
 	case LiteralType:
 		return "Literal"
-	case FlowMappingType:
-		return "FlowMapping"
 	case MappingType:
 		return "Mapping"
 	case MappingValueType:
 		return "MappingValue"
-	case FlowSequenceType:
-		return "FlowSequence"
 	case SequenceType:
 		return "Sequence"
 	case AnchorType:
@@ -523,43 +517,12 @@ func (m *MapNodeIter) Value() Node {
 	return m.values[m.idx].Value
 }
 
-// FlowMappingNode type of flow mapping node
-type FlowMappingNode struct {
-	Start  *token.Token
-	End    *token.Token
-	Values []*MappingValueNode
-}
-
-// Type returns FlowMappingType
-func (n *FlowMappingNode) Type() NodeType { return FlowMappingType }
-
-// GetToken returns token instance
-func (n *FlowMappingNode) GetToken() *token.Token {
-	return n.Start
-}
-
-// String flow mapping to text
-func (n *FlowMappingNode) String() string {
-	values := []string{}
-	for _, value := range n.Values {
-		values = append(values, strings.TrimLeft(value.String(), " "))
-	}
-	return fmt.Sprintf("{%s}", strings.Join(values, ", "))
-}
-
-// MapRange implements MapNode protocol
-func (n *FlowMappingNode) MapRange() *MapNodeIter {
-	return &MapNodeIter{
-		idx:    startRangeIndex,
-		values: n.Values,
-	}
-}
-
 // MappingNode type of mapping node
 type MappingNode struct {
-	Start  *token.Token
-	End    *token.Token
-	Values []Node
+	Start       *token.Token
+	End         *token.Token
+	IsFlowStyle bool
+	Values      []Node
 }
 
 // Type returns MappingType
@@ -570,8 +533,18 @@ func (n *MappingNode) GetToken() *token.Token {
 	return n.Start
 }
 
-// String mapping values to text
-func (n *MappingNode) String() string {
+func (n *MappingNode) flowStyleString() string {
+	if len(n.Values) == 0 {
+		return "{}"
+	}
+	values := []string{}
+	for _, value := range n.Values {
+		values = append(values, strings.TrimLeft(value.String(), " "))
+	}
+	return fmt.Sprintf("{%s}", strings.Join(values, ", "))
+}
+
+func (n *MappingNode) blockStyleString() string {
 	if len(n.Values) == 0 {
 		return "{}"
 	}
@@ -582,6 +555,14 @@ func (n *MappingNode) String() string {
 	return strings.Join(values, "\n")
 }
 
+// String mapping values to text
+func (n *MappingNode) String() string {
+	if n.IsFlowStyle {
+		return n.flowStyleString()
+	}
+	return n.blockStyleString()
+}
+
 func (n *MappingNode) toMappingValues() []*MappingValueNode {
 	values := []*MappingValueNode{}
 	for _, value := range n.Values {
@@ -589,8 +570,6 @@ func (n *MappingNode) toMappingValues() []*MappingValueNode {
 			values = append(values, mvnode)
 		} else if c, ok := value.(*MappingNode); ok {
 			values = append(values, c.toMappingValues()...)
-		} else if fmnode, ok := value.(*FlowMappingNode); ok {
-			values = append(values, fmnode.Values...)
 		}
 	}
 	return values
@@ -855,10 +834,6 @@ func Walk(v Visitor, node Node) {
 	case *BoolNode:
 	case *InfinityNode:
 	case *NanNode:
-	case *FlowMappingNode:
-		for _, value := range n.Values {
-			Walk(v, value)
-		}
 	case *MappingNode:
 		for _, value := range n.Values {
 			Walk(v, value)

@@ -401,11 +401,6 @@ type Visitor struct {
 
 func (v *Visitor) Visit(node ast.Node) ast.Visitor {
 	switch n := node.(type) {
-	case *ast.FlowMappingNode:
-		n.Start.Next = nil
-		n.Start.Prev = nil
-		n.End.Next = nil
-		n.End.Prev = nil
 	case *ast.FlowSequenceNode:
 		n.Start.Next = nil
 		n.Start.Prev = nil

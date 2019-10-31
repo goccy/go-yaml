@@ -77,13 +77,6 @@ func (d *Decoder) nodeToValue(node ast.Node) interface{} {
 		return d.nodeToValue(d.anchorMap[aliasName])
 	case *ast.LiteralNode:
 		return n.Value.GetValue()
-	case *ast.FlowMappingNode:
-		m := map[string]interface{}{}
-		for _, value := range n.Values {
-			key := value.Key.GetToken().Value
-			m[key] = d.nodeToValue(value.Value)
-		}
-		return m
 	case *ast.MappingValueNode:
 		m := map[string]interface{}{}
 		if n.Key.Type() == ast.MergeKeyType {

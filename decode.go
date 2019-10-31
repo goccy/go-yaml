@@ -98,12 +98,6 @@ func (d *Decoder) nodeToValue(node ast.Node) interface{} {
 			}
 		}
 		return m
-	case *ast.FlowSequenceNode:
-		v := []interface{}{}
-		for _, value := range n.Values {
-			v = append(v, d.nodeToValue(value))
-		}
-		return v
 	case *ast.SequenceNode:
 		v := []interface{}{}
 		for _, value := range n.Values {

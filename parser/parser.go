@@ -103,10 +103,7 @@ func (p *Parser) parseMapping(ctx *Context) (ast.Node, error) {
 }
 
 func (p *Parser) parseSequence(ctx *Context) (ast.Node, error) {
-	node := &ast.FlowSequenceNode{
-		Start:  ctx.currentToken(),
-		Values: []ast.Node{},
-	}
+	node := ast.Sequence(ctx.currentToken(), true)
 	ctx.progress(1) // skip SequenceStart token
 	for ctx.next() {
 		tk := ctx.currentToken()

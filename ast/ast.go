@@ -225,9 +225,9 @@ func Infinity(tk *token.Token) Node {
 		Token: tk,
 	}
 	switch tk.Value {
-	case ".inf":
+	case ".inf", ".Inf", ".INF":
 		node.Value = math.Inf(0)
-	case "-.inf":
+	case "-.inf", "-.Inf", "-.INF":
 		node.Value = math.Inf(-1)
 	}
 	return node

@@ -268,101 +268,70 @@ func (i Indicator) String() string {
 	return ""
 }
 
-// ReservedKeyword type of reserved keyword
-type ReservedKeyword string
-
-const (
-	// Null `null` keyword
-	Null ReservedKeyword = "null"
-	// NullSymbol `~` keyword
-	NullSymbol = "~"
-	// False `false` keyword
-	False = "false"
-	// True `true` keyword
-	True = "true"
-	// Infinity `.inf` keyword
-	Infinity = ".inf"
-	// NegativeInfinity `-.inf` keyword
-	NegativeInfinity = "-.inf"
-	// Nan `.nan` keyword
-	Nan = ".nan"
-)
-
 var (
-	// ReservedKeywordMap map for reserved keywords
-	ReservedKeywordMap = map[ReservedKeyword]func(string, string, *Position) *Token{
-		Null: func(value string, org string, pos *Position) *Token {
-			return &Token{
-				Type:          NullType,
-				CharacterType: CharacterTypeMiscellaneous,
-				Indicator:     NotIndicator,
-				Value:         value,
-				Origin:        org,
-				Position:      pos,
-			}
-		},
-		NullSymbol: func(value, org string, pos *Position) *Token {
-			return &Token{
-				Type:          NullType,
-				CharacterType: CharacterTypeMiscellaneous,
-				Indicator:     NotIndicator,
-				Value:         value,
-				Origin:        org,
-				Position:      pos,
-			}
-		},
-		False: func(value string, org string, pos *Position) *Token {
-			return &Token{
-				Type:          BoolType,
-				CharacterType: CharacterTypeMiscellaneous,
-				Indicator:     NotIndicator,
-				Value:         value,
-				Origin:        org,
-				Position:      pos,
-			}
-		},
-		True: func(value string, org string, pos *Position) *Token {
-			return &Token{
-				Type:          BoolType,
-				CharacterType: CharacterTypeMiscellaneous,
-				Indicator:     NotIndicator,
-				Value:         value,
-				Origin:        org,
-				Position:      pos,
-			}
-		},
-		Infinity: func(value string, org string, pos *Position) *Token {
-			return &Token{
-				Type:          InfinityType,
-				CharacterType: CharacterTypeMiscellaneous,
-				Indicator:     NotIndicator,
-				Value:         value,
-				Origin:        org,
-				Position:      pos,
-			}
-		},
-		NegativeInfinity: func(value string, org string, pos *Position) *Token {
-			return &Token{
-				Type:          InfinityType,
-				CharacterType: CharacterTypeMiscellaneous,
-				Indicator:     NotIndicator,
-				Value:         value,
-				Origin:        org,
-				Position:      pos,
-			}
-		},
-		Nan: func(value string, org string, pos *Position) *Token {
-			return &Token{
-				Type:          NanType,
-				CharacterType: CharacterTypeMiscellaneous,
-				Indicator:     NotIndicator,
-				Value:         value,
-				Origin:        org,
-				Position:      pos,
-			}
-		},
+	reservedNullKeywords = []string{
+		"null",
+		"Null",
+		"NULL",
+		"~",
 	}
+	reservedBoolKeywords = []string{
+		"true",
+		"True",
+		"TRUE",
+		"false",
+		"False",
+		"FALSE",
+	}
+	reservedInfKeywords = []string{
+		".inf",
+		".Inf",
+		".INF",
+		"-.inf",
+		"-.Inf",
+		"-.INF",
+	}
+	reservedNanKeywords = []string{
+		".nan",
+		".NaN",
+		".NAN",
+	}
+	reservedKeywordMap = map[string]func(string, string, *Position) *Token{}
 )
+
+func reservedKeywordToken(typ Type, value, org string, pos *Position) *Token {
+	return &Token{
+		Type:          typ,
+		CharacterType: CharacterTypeMiscellaneous,
+		Indicator:     NotIndicator,
+		Value:         value,
+		Origin:        org,
+		Position:      pos,
+	}
+}
+
+func init() {
+	for _, keyword := range reservedNullKeywords {
+		reservedKeywordMap[keyword] = func(value, org string, pos *Position) *Token {
+			return reservedKeywordToken(NullType, value, org, pos)
+		}
+	}
+	for _, keyword := range reservedBoolKeywords {
+		reservedKeywordMap[keyword] = func(value, org string, pos *Position) *Token {
+			return reservedKeywordToken(BoolType, value, org, pos)
+		}
+	}
+	for _, keyword := range reservedInfKeywords {
+		reservedKeywordMap[keyword] = func(value, org string, pos *Position) *Token {
+			return reservedKeywordToken(InfinityType, value, org, pos)
+		}
+	}
+	for _, keyword := range reservedNanKeywords {
+		reservedKeywordMap[keyword] = func(value, org string, pos *Position) *Token {
+			return reservedKeywordToken(NanType, value, org, pos)
+		}
+	}
+}
 
 // ReservedTagKeyword type of reserved tag keyword
 type ReservedTagKeyword string
@@ -584,7 +553,7 @@ func IsNeedQuoted(value string) bool {
 	if value == "" {
 		return true
 	}
-	if _, exists := ReservedKeywordMap[ReservedKeyword(value)]; exists {
+	if _, exists := reservedKeywordMap[value]; exists {
 		return true
 	}
 	if stat := getNumberStat(value); stat.isNum {
@@ -606,7 +575,7 @@ func IsNeedQuoted(value string) bool {
 
 // New create reserved keyword token or number token and other string token
 func New(value string, org string, pos *Position) *Token {
-	fn := ReservedKeywordMap[ReservedKeyword(value)]
+	fn := reservedKeywordMap[value]
 	if fn != nil {
 		return fn(value, org, pos)
 	}

@@ -423,6 +423,28 @@ func TestDecoder(t *testing.T) {
 			map[string]interface{}{"v": nil},
 		},
 
+		// Flow sequence
+		{
+			"v: [A,B]",
+			map[string]interface{}{"v": []interface{}{"A", "B"}},
+		},
+		{
+			"v: [A,B,C,]",
+			map[string][]string{"v": []string{"A", "B", "C"}},
+		},
+		{
+			"v: [A,1,C]",
+			map[string][]string{"v": []string{"A", "1", "C"}},
+		},
+		{
+			"v: [A,1,C]",
+			map[string][]int{"v": []int{1}},
+		},
+		{
+			"v: [A,1,C]",
+			map[string]interface{}{"v": []interface{}{"A", 1, "C"}},
+		},
+
 		{
 			"v: \"\"\n",
 			map[string]string{"v": ""},

@@ -504,6 +504,10 @@ func (d *Decoder) decodeSlice(dst reflect.Value, src ast.Node) error {
 		}
 		dstValue := d.createDecodableValue(elemType)
 		if err := d.decodeValue(dstValue, v); err != nil {
+			if xerrors.Is(err, errOverflowNumber) {
+				// skip decoding overflow value
+				continue
+			}
 			return errors.Wrapf(err, "failed to decode value")
 		}
 		sliceValue = reflect.Append(sliceValue, d.castToAssignableValue(dstValue, elemType))

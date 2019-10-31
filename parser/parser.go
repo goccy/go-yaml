@@ -193,7 +193,7 @@ func (p *Parser) parseMappingValue(ctx *Context) (ast.Node, error) {
 	}
 	ntk := ctx.nextToken()
 	antk := ctx.afterNextToken()
-	node := &ast.MappingCollectionNode{
+	node := &ast.MappingNode{
 		Start:  tk,
 		Values: []ast.Node{mvnode},
 	}
@@ -204,7 +204,7 @@ func (p *Parser) parseMappingValue(ctx *Context) (ast.Node, error) {
 		if err != nil {
 			return nil, errors.Wrapf(err, "failed to parse mapping collection node")
 		}
-		if c, ok := value.(*ast.MappingCollectionNode); ok {
+		if c, ok := value.(*ast.MappingNode); ok {
 			for _, v := range c.Values {
 				node.Values = append(node.Values, v)
 			}
@@ -420,11 +420,11 @@ func (p *Parser) Parse(tokens token.Tokens) (*ast.Document, error) {
 		lastNode := doc.Nodes[len(doc.Nodes)-1]
 		switch n := lastNode.(type) {
 		case *ast.MappingValueNode:
-			doc.Nodes[len(doc.Nodes)-1] = &ast.MappingCollectionNode{
+			doc.Nodes[len(doc.Nodes)-1] = &ast.MappingNode{
 				Start:  n.GetToken(),
 				Values: []ast.Node{lastNode, node},
 			}
-		case *ast.MappingCollectionNode:
+		case *ast.MappingNode:
 			n.Values = append(n.Values, node)
 		}
 	}

@@ -246,7 +246,7 @@ func (e *Encoder) encodeMapItem(item MapItem, column int) (*ast.MappingValueNode
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to encode MapItem")
 	}
-	if c, ok := value.(*ast.MappingCollectionNode); ok {
+	if c, ok := value.(*ast.MappingNode); ok {
 		for _, value := range c.Values {
 			if mvnode, ok := value.(*ast.MappingValueNode); ok {
 				mvnode.Key.GetToken().Position.Column += e.indent
@@ -261,7 +261,7 @@ func (e *Encoder) encodeMapItem(item MapItem, column int) (*ast.MappingValueNode
 }
 
 func (e *Encoder) encodeMapSlice(value MapSlice, column int) (ast.Node, error) {
-	node := &ast.MappingCollectionNode{
+	node := &ast.MappingNode{
 		Start:  token.New("", "", e.pos(column)),
 		Values: []ast.Node{},
 	}
@@ -276,7 +276,7 @@ func (e *Encoder) encodeMapSlice(value MapSlice, column int) (ast.Node, error) {
 }
 
 func (e *Encoder) encodeMap(value reflect.Value, column int) ast.Node {
-	node := &ast.MappingCollectionNode{
+	node := &ast.MappingNode{
 		Start:  token.New("", "", e.pos(column)),
 		Values: []ast.Node{},
 	}
@@ -292,7 +292,7 @@ func (e *Encoder) encodeMap(value reflect.Value, column int) ast.Node {
 		if err != nil {
 			return nil
 		}
-		if c, ok := value.(*ast.MappingCollectionNode); ok {
+		if c, ok := value.(*ast.MappingNode); ok {
 			for _, value := range c.Values {
 				if mvnode, ok := value.(*ast.MappingValueNode); ok {
 					mvnode.Key.GetToken().Position.Column += e.indent
@@ -355,7 +355,7 @@ func (e *Encoder) isZeroValue(v reflect.Value) bool {
 }
 
 func (e *Encoder) encodeStruct(value reflect.Value, column int) (ast.Node, error) {
-	node := &ast.MappingCollectionNode{
+	node := &ast.MappingNode{
 		Start:  token.New("", "", e.pos(column)),
 		Values: []ast.Node{},
 	}
@@ -379,7 +379,7 @@ func (e *Encoder) encodeStruct(value reflect.Value, column int) (ast.Node, error
 		if err != nil {
 			return nil, errors.Wrapf(err, "failed to encode value")
 		}
-		if c, ok := value.(*ast.MappingCollectionNode); ok {
+		if c, ok := value.(*ast.MappingNode); ok {
 			for _, value := range c.Values {
 				if mvnode, ok := value.(*ast.MappingValueNode); ok {
 					mvnode.Key.GetToken().Position.Column += e.indent

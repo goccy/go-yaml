@@ -96,7 +96,7 @@ func (d *Decoder) nodeToValue(node ast.Node) interface{} {
 			m[key] = d.nodeToValue(n.Value)
 		}
 		return m
-	case *ast.MappingCollectionNode:
+	case *ast.MappingNode:
 		m := map[string]interface{}{}
 		for _, value := range n.Values {
 			subMap := d.nodeToValue(value).(map[string]interface{})

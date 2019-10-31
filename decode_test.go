@@ -467,6 +467,12 @@ func TestDecoder(t *testing.T) {
 			map[string]interface{}{"v": []interface{}{"A", 1, "C"}},
 		},
 
+		// Map inside interface with no type hints.
+		{
+			"a: {b: c}",
+			map[interface{}]interface{}{"a": map[interface{}]interface{}{"b": "c"}},
+		},
+
 		{
 			"v: \"\"\n",
 			map[string]string{"v": ""},

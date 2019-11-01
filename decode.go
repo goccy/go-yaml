@@ -230,6 +230,7 @@ func (d *Decoder) convertValue(v reflect.Value, typ reflect.Type) reflect.Value 
 
 var (
 	errOverflowNumber = xerrors.New("overflow number")
+	errTypeMismatch   = xerrors.New("type mismatch")
 )
 
 func (d *Decoder) decodeValue(dst reflect.Value, src ast.Node) error {
@@ -299,6 +300,8 @@ func (d *Decoder) decodeValue(dst reflect.Value, src ast.Node) error {
 				dst.SetInt(int64(vv))
 				return nil
 			}
+		default:
+			return errTypeMismatch
 		}
 		return errOverflowNumber
 	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
@@ -319,6 +322,8 @@ func (d *Decoder) decodeValue(dst reflect.Value, src ast.Node) error {
 				dst.SetUint(uint64(vv))
 				return nil
 			}
+		default:
+			return errTypeMismatch
 		}
 		return errOverflowNumber
 	}
@@ -446,8 +451,8 @@ func (d *Decoder) decodeStruct(dst reflect.Value, src ast.Node) error {
 			}
 			newFieldValue := d.createDecodableValue(fieldValue.Type())
 			if err := d.decodeValue(newFieldValue, src); err != nil {
-				if xerrors.Is(err, errOverflowNumber) {
-					// skip decoding overflow value
+				if xerrors.Is(err, errTypeMismatch) || xerrors.Is(err, errOverflowNumber) {
+					// skip decoding if an error occurs
 					continue
 				}
 				return errors.Wrapf(err, "failed to decode value")
@@ -468,8 +473,8 @@ func (d *Decoder) decodeStruct(dst reflect.Value, src ast.Node) error {
 		}
 		newFieldValue := d.createDecodableValue(fieldValue.Type())
 		if err := d.decodeValue(newFieldValue, v); err != nil {
-			if xerrors.Is(err, errOverflowNumber) {
-				// skip decoding overflow value
+			if xerrors.Is(err, errTypeMismatch) || xerrors.Is(err, errOverflowNumber) {
+				// skip decoding if an error occurs
 				continue
 			}
 			return errors.Wrapf(err, "failed to decode value")
@@ -521,8 +526,8 @@ func (d *Decoder) decodeSlice(dst reflect.Value, src ast.Node) error {
 		}
 		dstValue := d.createDecodableValue(elemType)
 		if err := d.decodeValue(dstValue, v); err != nil {
-			if xerrors.Is(err, errOverflowNumber) {
-				// skip decoding overflow value
+			if xerrors.Is(err, errTypeMismatch) || xerrors.Is(err, errOverflowNumber) {
+				// skip decoding if an error occurs
 				continue
 			}
 			return errors.Wrapf(err, "failed to decode value")
@@ -560,8 +565,8 @@ func (d *Decoder) decodeMap(dst reflect.Value, src ast.Node) error {
 		}
 		dstValue := d.createDecodableValue(valueType)
 		if err := d.decodeValue(dstValue, value); err != nil {
-			if xerrors.Is(err, errOverflowNumber) {
-				// skip decoding overflow value
+			if xerrors.Is(err, errTypeMismatch) || xerrors.Is(err, errOverflowNumber) {
+				// skip decoding if an error occurs
 				continue
 			}
 			return errors.Wrapf(err, "failed to decode value")

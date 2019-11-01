@@ -493,6 +493,59 @@ func TestDecoder(t *testing.T) {
 			"hello: world\n",
 			map[string]string{"hello": "world"},
 		},
+
+		// Structs and type conversions.
+		{
+			"hello: world",
+			struct{ Hello string }{"world"},
+		},
+		{
+			"a: {b: c}",
+			struct{ A struct{ B string } }{struct{ B string }{"c"}},
+		},
+		{
+			"a: {b: c}",
+			struct{ A map[string]string }{map[string]string{"b": "c"}},
+		},
+		{
+			"a:",
+			struct{ A map[string]string }{},
+		},
+		{
+			"a: 1",
+			struct{ A int }{1},
+		},
+		{
+			"a: 1",
+			struct{ A float64 }{1},
+		},
+		{
+			"a: 1.0",
+			struct{ A int }{1},
+		},
+		{
+			"a: 1.0",
+			struct{ A uint }{1},
+		},
+		{
+			"a: [1, 2]",
+			struct{ A []int }{[]int{1, 2}},
+		},
+		{
+			"a: [1, 2]",
+			struct{ A [2]int }{[2]int{1, 2}},
+		},
+		{
+			"a: 1",
+			struct{ B int }{0},
+		},
+		{
+			"a: 1",
+			struct {
+				B int "a"
+			}{1},
+		},
+
 		{
 			"v:\n- A\n- 1\n- B:\n  - 2\n  - 3\n",
 			map[string]interface{}{
@@ -656,6 +709,8 @@ func TestDecoder(t *testing.T) {
 				1, 0,
 			},
 		},
+
+		// Anchors and aliases.
 		{
 			"a: &x 1\nb: &y 2\nc: *x\nd: *y\n",
 			struct{ A, B, C, D int }{1, 2, 1, 2},
@@ -672,6 +727,7 @@ func TestDecoder(t *testing.T) {
 			"a: &a [1, 2]\nb: *a\n",
 			struct{ B []int }{[]int{1, 2}},
 		},
+
 		{
 			"tags:\n- hello-world\na: foo",
 			struct {
@@ -695,10 +751,10 @@ func TestDecoder(t *testing.T) {
 		if err := dec.Decode(value.Interface()); err != nil {
 			t.Fatalf("%s: %+v", test.source, err)
 		}
-		actual := fmt.Sprintf("%v", value.Elem().Interface())
-		expect := fmt.Sprintf("%v", test.value)
+		actual := fmt.Sprintf("%+v", value.Elem().Interface())
+		expect := fmt.Sprintf("%+v", test.value)
 		if actual != expect {
-			t.Fatal("failed to test. ", actual, expect)
+			t.Fatalf("failed to test [%s], actual=[%s], expect=[%s]", test.source, actual, expect)
 		}
 	}
 }

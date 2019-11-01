@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"strconv"
+	"time"
 
 	"github.com/goccy/go-yaml/ast"
 	"github.com/goccy/go-yaml/internal/errors"
@@ -283,6 +284,9 @@ func (d *Decoder) decodeValue(dst reflect.Value, src ast.Node) error {
 	case reflect.Slice:
 		return d.decodeSlice(dst, src)
 	case reflect.Struct:
+		if _, ok := dst.Addr().Interface().(*time.Time); ok {
+			return d.decodeTime(dst, src)
+		}
 		return d.decodeStruct(dst, src)
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
 		v := d.nodeToValue(src)
@@ -417,6 +421,36 @@ func (d *Decoder) setDefaultValueIfConflicted(v reflect.Value, fieldMap StructFi
 		if fieldValue.CanSet() {
 			fieldValue.Set(reflect.Zero(fieldValue.Type()))
 		}
+	}
+	return nil
+}
+
+// This is a subset of the formats allowed by the regular expression
+// defined at http://yaml.org/type/timestamp.html.
+var allowedTimestampFormats = []string{
+	"2006-1-2T15:4:5.999999999Z07:00", // RCF3339Nano with short date fields.
+	"2006-1-2t15:4:5.999999999Z07:00", // RFC3339Nano with short date fields and lower-case "t".
+	"2006-1-2 15:4:5.999999999",       // space separated with no time zone
+	"2006-1-2",                        // date only
+}
+
+func (d *Decoder) decodeTime(dst reflect.Value, src ast.Node) error {
+	if src == nil {
+		return nil
+	}
+	v := d.nodeToValue(src)
+	s, ok := v.(string)
+	if !ok {
+		return errTypeMismatch
+	}
+	for _, format := range allowedTimestampFormats {
+		t, err := time.Parse(format, s)
+		if err != nil {
+			// invalid format
+			continue
+		}
+		dst.Set(reflect.ValueOf(t))
+		break
 	}
 	return nil
 }

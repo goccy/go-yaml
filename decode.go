@@ -68,7 +68,12 @@ func (d *Decoder) castToFloat(v interface{}) interface{} {
 		return float64(vv)
 	case uint64:
 		return float64(vv)
+	case float32:
+		return float64(vv)
+	case float64:
+		return vv
 	case string:
+		// if error occurred, return zero value
 		f, _ := strconv.ParseFloat(vv, 64)
 		return f
 	}

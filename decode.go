@@ -278,7 +278,9 @@ func (d *Decoder) decodeValue(dst reflect.Value, src ast.Node) error {
 		}
 	case reflect.Map:
 		return d.decodeMap(dst, src)
-	case reflect.Array, reflect.Slice:
+	case reflect.Array:
+		return d.decodeArray(dst, src)
+	case reflect.Slice:
 		return d.decodeSlice(dst, src)
 	case reflect.Struct:
 		return d.decodeStruct(dst, src)
@@ -502,6 +504,41 @@ func (d *Decoder) decodeStruct(dst reflect.Value, src ast.Node) error {
 		}
 	}
 	dst.Set(structValue.Elem())
+	return nil
+}
+
+func (d *Decoder) decodeArray(dst reflect.Value, src ast.Node) error {
+	arrayNode, err := d.getArrayNode(src)
+	if err != nil {
+		return errors.Wrapf(err, "failed to get array node")
+	}
+	if arrayNode == nil {
+		return nil
+	}
+	iter := arrayNode.ArrayRange()
+	arrayValue := reflect.New(dst.Type()).Elem()
+	arrayType := dst.Type()
+	elemType := arrayType.Elem()
+	idx := 0
+	for iter.Next() {
+		v := iter.Value()
+		if elemType.Kind() == reflect.Ptr && v.Type() == ast.NullType {
+			// set nil value to pointer
+			arrayValue.Index(idx).Set(reflect.Zero(elemType))
+		} else {
+			dstValue := d.createDecodableValue(elemType)
+			if err := d.decodeValue(dstValue, v); err != nil {
+				if xerrors.Is(err, errTypeMismatch) || xerrors.Is(err, errOverflowNumber) {
+					// skip decoding if an error occurs
+				}
+				return errors.Wrapf(err, "failed to decode value")
+			} else {
+				arrayValue.Index(idx).Set(d.castToAssignableValue(dstValue, elemType))
+			}
+		}
+		idx++
+	}
+	dst.Set(arrayValue)
 	return nil
 }
 

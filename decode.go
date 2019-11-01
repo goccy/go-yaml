@@ -148,6 +148,9 @@ func (d *Decoder) nodeToValue(node ast.Node) interface{} {
 }
 
 func (d *Decoder) getMapNode(node ast.Node) (ast.MapNode, error) {
+	if _, ok := node.(*ast.NullNode); ok {
+		return nil, nil
+	}
 	if anchor, ok := node.(*ast.AnchorNode); ok {
 		mapNode, ok := anchor.Value.(ast.MapNode)
 		if ok {
@@ -172,6 +175,9 @@ func (d *Decoder) getMapNode(node ast.Node) (ast.MapNode, error) {
 }
 
 func (d *Decoder) getArrayNode(node ast.Node) (ast.ArrayNode, error) {
+	if _, ok := node.(*ast.NullNode); ok {
+		return nil, nil
+	}
 	if anchor, ok := node.(*ast.AnchorNode); ok {
 		arrayNode, ok := anchor.Value.(ast.ArrayNode)
 		if ok {
@@ -358,8 +364,11 @@ func (d *Decoder) keyToNodeMap(node ast.Node) (map[string]ast.Node, error) {
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to get map node")
 	}
-	mapIter := mapNode.MapRange()
 	keyToNodeMap := map[string]ast.Node{}
+	if mapNode == nil {
+		return keyToNodeMap, nil
+	}
+	mapIter := mapNode.MapRange()
 	for mapIter.Next() {
 		keyNode := mapIter.Key()
 		if keyNode.Type() == ast.MergeKeyType {
@@ -496,6 +505,9 @@ func (d *Decoder) decodeSlice(dst reflect.Value, src ast.Node) error {
 	if err != nil {
 		return errors.Wrapf(err, "failed to get array node")
 	}
+	if arrayNode == nil {
+		return nil
+	}
 	iter := arrayNode.ArrayRange()
 	sliceType := dst.Type()
 	sliceValue := reflect.MakeSlice(sliceType, 0, iter.Len())
@@ -525,6 +537,9 @@ func (d *Decoder) decodeMap(dst reflect.Value, src ast.Node) error {
 	mapNode, err := d.getMapNode(src)
 	if err != nil {
 		return errors.Wrapf(err, "failed to get map node")
+	}
+	if mapNode == nil {
+		return nil
 	}
 	mapType := dst.Type()
 	mapValue := reflect.MakeMap(mapType)

@@ -148,6 +148,9 @@ func (d *Decoder) nodeToValue(node ast.Node) interface{} {
 }
 
 func (d *Decoder) getMapNode(node ast.Node) (ast.MapNode, error) {
+	if _, ok := node.(*ast.NullNode); ok {
+		return nil, nil
+	}
 	if anchor, ok := node.(*ast.AnchorNode); ok {
 		mapNode, ok := anchor.Value.(ast.MapNode)
 		if ok {
@@ -172,6 +175,9 @@ func (d *Decoder) getMapNode(node ast.Node) (ast.MapNode, error) {
 }
 
 func (d *Decoder) getArrayNode(node ast.Node) (ast.ArrayNode, error) {
+	if _, ok := node.(*ast.NullNode); ok {
+		return nil, nil
+	}
 	if anchor, ok := node.(*ast.AnchorNode); ok {
 		arrayNode, ok := anchor.Value.(ast.ArrayNode)
 		if ok {
@@ -224,6 +230,7 @@ func (d *Decoder) convertValue(v reflect.Value, typ reflect.Type) reflect.Value 
 
 var (
 	errOverflowNumber = xerrors.New("overflow number")
+	errTypeMismatch   = xerrors.New("type mismatch")
 )
 
 func (d *Decoder) decodeValue(dst reflect.Value, src ast.Node) error {
@@ -271,7 +278,9 @@ func (d *Decoder) decodeValue(dst reflect.Value, src ast.Node) error {
 		}
 	case reflect.Map:
 		return d.decodeMap(dst, src)
-	case reflect.Array, reflect.Slice:
+	case reflect.Array:
+		return d.decodeArray(dst, src)
+	case reflect.Slice:
 		return d.decodeSlice(dst, src)
 	case reflect.Struct:
 		return d.decodeStruct(dst, src)
@@ -293,6 +302,8 @@ func (d *Decoder) decodeValue(dst reflect.Value, src ast.Node) error {
 				dst.SetInt(int64(vv))
 				return nil
 			}
+		default:
+			return errTypeMismatch
 		}
 		return errOverflowNumber
 	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
@@ -313,6 +324,8 @@ func (d *Decoder) decodeValue(dst reflect.Value, src ast.Node) error {
 				dst.SetUint(uint64(vv))
 				return nil
 			}
+		default:
+			return errTypeMismatch
 		}
 		return errOverflowNumber
 	}
@@ -358,8 +371,11 @@ func (d *Decoder) keyToNodeMap(node ast.Node) (map[string]ast.Node, error) {
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to get map node")
 	}
-	mapIter := mapNode.MapRange()
 	keyToNodeMap := map[string]ast.Node{}
+	if mapNode == nil {
+		return keyToNodeMap, nil
+	}
+	mapIter := mapNode.MapRange()
 	for mapIter.Next() {
 		keyNode := mapIter.Key()
 		if keyNode.Type() == ast.MergeKeyType {
@@ -437,8 +453,8 @@ func (d *Decoder) decodeStruct(dst reflect.Value, src ast.Node) error {
 			}
 			newFieldValue := d.createDecodableValue(fieldValue.Type())
 			if err := d.decodeValue(newFieldValue, src); err != nil {
-				if xerrors.Is(err, errOverflowNumber) {
-					// skip decoding overflow value
+				if xerrors.Is(err, errTypeMismatch) || xerrors.Is(err, errOverflowNumber) {
+					// skip decoding if an error occurs
 					continue
 				}
 				return errors.Wrapf(err, "failed to decode value")
@@ -459,8 +475,8 @@ func (d *Decoder) decodeStruct(dst reflect.Value, src ast.Node) error {
 		}
 		newFieldValue := d.createDecodableValue(fieldValue.Type())
 		if err := d.decodeValue(newFieldValue, v); err != nil {
-			if xerrors.Is(err, errOverflowNumber) {
-				// skip decoding overflow value
+			if xerrors.Is(err, errTypeMismatch) || xerrors.Is(err, errOverflowNumber) {
+				// skip decoding if an error occurs
 				continue
 			}
 			return errors.Wrapf(err, "failed to decode value")
@@ -491,10 +507,48 @@ func (d *Decoder) decodeStruct(dst reflect.Value, src ast.Node) error {
 	return nil
 }
 
+func (d *Decoder) decodeArray(dst reflect.Value, src ast.Node) error {
+	arrayNode, err := d.getArrayNode(src)
+	if err != nil {
+		return errors.Wrapf(err, "failed to get array node")
+	}
+	if arrayNode == nil {
+		return nil
+	}
+	iter := arrayNode.ArrayRange()
+	arrayValue := reflect.New(dst.Type()).Elem()
+	arrayType := dst.Type()
+	elemType := arrayType.Elem()
+	idx := 0
+	for iter.Next() {
+		v := iter.Value()
+		if elemType.Kind() == reflect.Ptr && v.Type() == ast.NullType {
+			// set nil value to pointer
+			arrayValue.Index(idx).Set(reflect.Zero(elemType))
+		} else {
+			dstValue := d.createDecodableValue(elemType)
+			if err := d.decodeValue(dstValue, v); err != nil {
+				if xerrors.Is(err, errTypeMismatch) || xerrors.Is(err, errOverflowNumber) {
+					// skip decoding if an error occurs
+				}
+				return errors.Wrapf(err, "failed to decode value")
+			} else {
+				arrayValue.Index(idx).Set(d.castToAssignableValue(dstValue, elemType))
+			}
+		}
+		idx++
+	}
+	dst.Set(arrayValue)
+	return nil
+}
+
 func (d *Decoder) decodeSlice(dst reflect.Value, src ast.Node) error {
 	arrayNode, err := d.getArrayNode(src)
 	if err != nil {
 		return errors.Wrapf(err, "failed to get array node")
+	}
+	if arrayNode == nil {
+		return nil
 	}
 	iter := arrayNode.ArrayRange()
 	sliceType := dst.Type()
@@ -509,8 +563,8 @@ func (d *Decoder) decodeSlice(dst reflect.Value, src ast.Node) error {
 		}
 		dstValue := d.createDecodableValue(elemType)
 		if err := d.decodeValue(dstValue, v); err != nil {
-			if xerrors.Is(err, errOverflowNumber) {
-				// skip decoding overflow value
+			if xerrors.Is(err, errTypeMismatch) || xerrors.Is(err, errOverflowNumber) {
+				// skip decoding if an error occurs
 				continue
 			}
 			return errors.Wrapf(err, "failed to decode value")
@@ -525,6 +579,9 @@ func (d *Decoder) decodeMap(dst reflect.Value, src ast.Node) error {
 	mapNode, err := d.getMapNode(src)
 	if err != nil {
 		return errors.Wrapf(err, "failed to get map node")
+	}
+	if mapNode == nil {
+		return nil
 	}
 	mapType := dst.Type()
 	mapValue := reflect.MakeMap(mapType)
@@ -545,8 +602,8 @@ func (d *Decoder) decodeMap(dst reflect.Value, src ast.Node) error {
 		}
 		dstValue := d.createDecodableValue(valueType)
 		if err := d.decodeValue(dstValue, value); err != nil {
-			if xerrors.Is(err, errOverflowNumber) {
-				// skip decoding overflow value
+			if xerrors.Is(err, errTypeMismatch) || xerrors.Is(err, errOverflowNumber) {
+				// skip decoding if an error occurs
 				continue
 			}
 			return errors.Wrapf(err, "failed to decode value")

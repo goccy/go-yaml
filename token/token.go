@@ -355,6 +355,8 @@ const (
 	OrderedMapTag = "!!omap"
 	// SetTag `!!set` tag
 	SetTag = "!!set"
+	// TimestampTag `!!timestamp` tag
+	TimestampTag = "!!timestamp"
 )
 
 var (
@@ -441,6 +443,16 @@ var (
 			}
 		},
 		SetTag: func(value, org string, pos *Position) *Token {
+			return &Token{
+				Type:          TagType,
+				CharacterType: CharacterTypeIndicator,
+				Indicator:     NodePropertyIndicator,
+				Value:         value,
+				Origin:        org,
+				Position:      pos,
+			}
+		},
+		TimestampTag: func(value, org string, pos *Position) *Token {
 			return &Token{
 				Type:          TagType,
 				CharacterType: CharacterTypeIndicator,

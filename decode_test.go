@@ -7,6 +7,7 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/goccy/go-yaml"
 )
@@ -294,6 +295,33 @@ func TestDecoder(t *testing.T) {
 			map[string]float64{"v": float64(math.MaxUint64 + 1)},
 		},
 
+		// Timestamps
+		{
+			// Date only.
+			"v: 2015-01-01\n",
+			map[string]time.Time{"v": time.Date(2015, 1, 1, 0, 0, 0, 0, time.UTC)},
+		},
+		{
+			// RFC3339
+			"v: 2015-02-24T18:19:39.12Z\n",
+			map[string]time.Time{"v": time.Date(2015, 2, 24, 18, 19, 39, .12e9, time.UTC)},
+		},
+		{
+			// RFC3339 with short dates.
+			"v: 2015-2-3T3:4:5Z",
+			map[string]time.Time{"v": time.Date(2015, 2, 3, 3, 4, 5, 0, time.UTC)},
+		},
+		{
+			// ISO8601 lower case t
+			"v: 2015-02-24t18:19:39Z\n",
+			map[string]time.Time{"v": time.Date(2015, 2, 24, 18, 19, 39, 0, time.UTC)},
+		},
+		{
+			// space separate, no time zone
+			"v: 2015-02-24 18:19:39\n",
+			map[string]time.Time{"v": time.Date(2015, 2, 24, 18, 19, 39, 0, time.UTC)},
+		},
+
 		// Overflow cases.
 		{
 			"v: 4294967297",
@@ -421,6 +449,14 @@ func TestDecoder(t *testing.T) {
 		{
 			"v: !!null ''",
 			map[string]interface{}{"v": nil},
+		},
+		{
+			"v: !!timestamp \"2015-01-01\"",
+			map[string]time.Time{"v": time.Date(2015, 1, 1, 0, 0, 0, 0, time.UTC)},
+		},
+		{
+			"v: !!timestamp 2015-01-01",
+			map[string]time.Time{"v": time.Date(2015, 1, 1, 0, 0, 0, 0, time.UTC)},
 		},
 
 		// Flow sequence

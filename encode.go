@@ -161,7 +161,7 @@ func (e *Encoder) encodeValue(v reflect.Value, column int) (ast.Node, error) {
 	case reflect.Map:
 		return e.encodeMap(v, column), nil
 	default:
-		fmt.Printf("valueType = [%s]\n", v.Type().String())
+		return nil, xerrors.Errorf("unknown value type %s", v.Type().String())
 	}
 	return nil, nil
 }

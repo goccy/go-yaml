@@ -450,6 +450,14 @@ func TestDecoder(t *testing.T) {
 			"v: !!null ''",
 			map[string]interface{}{"v": nil},
 		},
+		{
+			"v: !!timestamp \"2015-01-01\"",
+			map[string]time.Time{"v": time.Date(2015, 1, 1, 0, 0, 0, 0, time.UTC)},
+		},
+		{
+			"v: !!timestamp 2015-01-01",
+			map[string]time.Time{"v": time.Date(2015, 1, 1, 0, 0, 0, 0, time.UTC)},
+		},
 
 		// Flow sequence
 		{

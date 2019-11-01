@@ -99,6 +99,9 @@ func (d *Decoder) nodeToValue(node ast.Node) interface{} {
 		return n.GetValue()
 	case *ast.TagNode:
 		switch n.Start.Value {
+		case token.TimestampTag:
+			t, _ := d.castToTime(n.Value)
+			return t
 		case token.FloatTag:
 			return d.castToFloat(d.nodeToValue(n.Value))
 		case token.NullTag:
@@ -434,14 +437,17 @@ var allowedTimestampFormats = []string{
 	"2006-1-2",                        // date only
 }
 
-func (d *Decoder) decodeTime(dst reflect.Value, src ast.Node) error {
+func (d *Decoder) castToTime(src ast.Node) (time.Time, error) {
 	if src == nil {
-		return nil
+		return time.Time{}, nil
 	}
 	v := d.nodeToValue(src)
+	if t, ok := v.(time.Time); ok {
+		return t, nil
+	}
 	s, ok := v.(string)
 	if !ok {
-		return errTypeMismatch
+		return time.Time{}, errTypeMismatch
 	}
 	for _, format := range allowedTimestampFormats {
 		t, err := time.Parse(format, s)
@@ -449,9 +455,17 @@ func (d *Decoder) decodeTime(dst reflect.Value, src ast.Node) error {
 			// invalid format
 			continue
 		}
-		dst.Set(reflect.ValueOf(t))
-		break
+		return t, nil
 	}
+	return time.Time{}, nil
+}
+
+func (d *Decoder) decodeTime(dst reflect.Value, src ast.Node) error {
+	t, err := d.castToTime(src)
+	if err != nil {
+		return err
+	}
+	dst.Set(reflect.ValueOf(t))
 	return nil
 }
 

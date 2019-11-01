@@ -149,6 +149,36 @@ func TestDecoder(t *testing.T) {
 			map[string]int{"v": 685230},
 		},
 
+		// Bools from spec
+		{
+			"v: True",
+			map[string]interface{}{"v": true},
+		},
+		{
+			"v: TRUE",
+			map[string]interface{}{"v": true},
+		},
+		{
+			"v: False",
+			map[string]interface{}{"v": false},
+		},
+		{
+			"v: FALSE",
+			map[string]interface{}{"v": false},
+		},
+		{
+			"v: y",
+			map[string]interface{}{"v": "y"}, // y or yes or Yes is string
+		},
+		{
+			"v: NO",
+			map[string]interface{}{"v": "NO"}, // no or No or NO is string
+		},
+		{
+			"v: on",
+			map[string]interface{}{"v": "on"}, // on is string
+		},
+
 		// Some cross type conversions
 		{
 			"v: 42",
@@ -309,9 +339,45 @@ func TestDecoder(t *testing.T) {
 			"v:",
 			map[string]*bool{"v": nil},
 		},
+		{
+			"v: null",
+			map[string]*string{"v": nil},
+		},
+		{
+			"v: null",
+			map[string]string{"v": ""},
+		},
+		{
+			"v: null",
+			map[string]interface{}{"v": nil},
+		},
+		{
+			"v: Null",
+			map[string]interface{}{"v": nil},
+		},
+		{
+			"v: NULL",
+			map[string]interface{}{"v": nil},
+		},
+		{
+			"v: ~",
+			map[string]*string{"v": nil},
+		},
+		{
+			"v: ~",
+			map[string]string{"v": ""},
+		},
 
 		{
 			"v: .inf\n",
+			map[string]interface{}{"v": math.Inf(0)},
+		},
+		{
+			"v: .Inf\n",
+			map[string]interface{}{"v": math.Inf(0)},
+		},
+		{
+			"v: .INF\n",
 			map[string]interface{}{"v": math.Inf(0)},
 		},
 		{
@@ -319,13 +385,94 @@ func TestDecoder(t *testing.T) {
 			map[string]interface{}{"v": math.Inf(-1)},
 		},
 		{
+			"v: -.Inf\n",
+			map[string]interface{}{"v": math.Inf(-1)},
+		},
+		{
+			"v: -.INF\n",
+			map[string]interface{}{"v": math.Inf(-1)},
+		},
+		{
 			"v: .nan\n",
 			map[string]interface{}{"v": math.NaN()},
 		},
 		{
-			"v: null\n",
+			"v: .NaN\n",
+			map[string]interface{}{"v": math.NaN()},
+		},
+		{
+			"v: .NAN\n",
+			map[string]interface{}{"v": math.NaN()},
+		},
+
+		// Explicit tags.
+		{
+			"v: !!float '1.1'",
+			map[string]interface{}{"v": 1.1},
+		},
+		{
+			"v: !!float 0",
+			map[string]interface{}{"v": float64(0)},
+		},
+		{
+			"v: !!float -1",
+			map[string]interface{}{"v": float64(-1)},
+		},
+		{
+			"v: !!null ''",
 			map[string]interface{}{"v": nil},
 		},
+
+		// Flow sequence
+		{
+			"v: [A,B]",
+			map[string]interface{}{"v": []interface{}{"A", "B"}},
+		},
+		{
+			"v: [A,B,C,]",
+			map[string][]string{"v": []string{"A", "B", "C"}},
+		},
+		{
+			"v: [A,1,C]",
+			map[string][]string{"v": []string{"A", "1", "C"}},
+		},
+		{
+			"v: [A,1,C]",
+			map[string][]int{"v": []int{1}},
+		},
+		{
+			"v: [A,1,C]",
+			map[string]interface{}{"v": []interface{}{"A", 1, "C"}},
+		},
+
+		// Block sequence
+		{
+			"v:\n - A\n - B",
+			map[string]interface{}{"v": []interface{}{"A", "B"}},
+		},
+		{
+			"v:\n - A\n - B\n - C",
+			map[string][]string{"v": []string{"A", "B", "C"}},
+		},
+		{
+			"v:\n - A\n - 1\n - C",
+			map[string][]string{"v": []string{"A", "1", "C"}},
+		},
+		{
+			"v:\n - A\n - 1\n - C",
+			map[string][]int{"v": []int{1}},
+		},
+		{
+			"v:\n - A\n - 1\n - C",
+			map[string]interface{}{"v": []interface{}{"A", 1, "C"}},
+		},
+
+		// Map inside interface with no type hints.
+		{
+			"a: {b: c}",
+			map[interface{}]interface{}{"a": map[interface{}]interface{}{"b": "c"}},
+		},
+
 		{
 			"v: \"\"\n",
 			map[string]string{"v": ""},

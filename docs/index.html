@@ -1,0 +1,30 @@
+<!doctype html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <title>Online YAML Parser</title>
+</head>
+
+<body>
+  <h1>Online YAML Parser ( powered by github.com/goccy/go-yaml )</h2>
+    <script src="wasm_exec.js"></script>
+    <script>
+        if (!WebAssembly.instantiateStreaming) {
+            WebAssembly.instantiateStreaming = async (resp, importObject) => {
+                const source = await (await resp).arrayBuffer();
+                return await WebAssembly.instantiate(source, importObject);
+            };
+        }
+
+        const go = new Go();
+        let mod, inst;
+        WebAssembly.instantiateStreaming(fetch("yaml.wasm"), go.importObject).then((result) => {
+            mod = result.module;
+            inst = result.instance;
+            go.run(inst).then(() => inst = WebAssembly.instantiate(mod, go.importObject));
+        });
+
+    </script>
+</body>
+</html>

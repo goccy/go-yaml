@@ -104,10 +104,31 @@ type Node interface {
 	Type() NodeType
 }
 
+// File contains all documents in YAML file
+type File struct {
+	Name string
+	Docs []*Document
+}
+
+// String all documents to text
+func (f *File) String() string {
+	docs := []string{}
+	for _, doc := range f.Docs {
+		docs = append(docs, doc.String())
+	}
+	return strings.Join(docs, "\n")
+}
+
 // Document type of Document
 type Document struct {
-	// Nodes all nodes in document
-	Nodes []Node
+	Start *token.Token // position of DocumentHeader ( `---` )
+	End   *token.Token // position of DocumentEnd ( `...` )
+	Body  Node
+}
+
+// GetToken returns token instance
+func (d *Document) GetToken() *token.Token {
+	return d.Body.GetToken()
 }
 
 // Type returns DocumentType
@@ -115,11 +136,15 @@ func (d *Document) Type() NodeType { return DocumentType }
 
 // String document to text
 func (d *Document) String() string {
-	values := []string{}
-	for _, node := range d.Nodes {
-		values = append(values, strings.TrimLeft(node.String(), " "))
+	doc := []string{}
+	if d.Start != nil {
+		doc = append(doc, d.Start.Value)
 	}
-	return strings.Join(values, "\n")
+	doc = append(doc, d.Body.String())
+	if d.End != nil {
+		doc = append(doc, d.End.Value)
+	}
+	return strings.Join(doc, "\n")
 }
 
 // ScalarNode type for scalar node

@@ -16,11 +16,8 @@ As of this writing, there already exists a defacto standard library for YAML pro
 - Support `Anchor` and `Alias` when marshaling
 - Allow referencing elements declared in another file via anchors
 
-# Status
 
-- This library should be considered alpha grade. API may still change.
-
-# Features ( Goals )
+# Features
 
 - Pretty format for error notifacations
 - Support `Scanner` or `Lexer` or `Parser` as public API

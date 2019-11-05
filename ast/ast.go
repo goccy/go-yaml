@@ -104,11 +104,13 @@ type Node interface {
 	Type() NodeType
 }
 
+// File contains all documents in YAML file
 type File struct {
 	Name string
 	Docs []*Document
 }
 
+// String all documents to text
 func (f *File) String() string {
 	docs := []string{}
 	for _, doc := range f.Docs {
@@ -124,6 +126,7 @@ type Document struct {
 	Body  Node
 }
 
+// GetToken returns token instance
 func (d *Document) GetToken() *token.Token {
 	return d.Body.GetToken()
 }

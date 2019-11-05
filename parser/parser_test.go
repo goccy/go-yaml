@@ -66,15 +66,12 @@ func TestParser(t *testing.T) {
 		"v:\n- A\n- |-\n  B\n  C\n",
 		"v:\n- A\n- >-\n  B\n  C\n",
 	}
-	var (
-		p parser.Parser
-	)
 	for _, src := range sources {
 		fmt.Printf(src)
 		tokens := lexer.Tokenize(src)
 		var printer printer.Printer
 		fmt.Println(printer.PrintTokens(tokens))
-		ast, err := p.Parse(tokens)
+		ast, err := parser.Parse(tokens, 0)
 		if err != nil {
 			t.Fatalf("%+v", err)
 		}
@@ -305,6 +302,7 @@ aliased: *anchor
   label: center/big
 `,
 			`
+---
 - &CENTER {x: 1, y: 2}
 - &LEFT {x: 0, y: 2}
 - &BIG {r: 10}
@@ -357,22 +355,41 @@ a:
 j: k
 `,
 		},
+		{
+			`
+---
+a: 1
+b: 2
+...
+---
+c: 3
+d: 4
+...
+`,
+			`
+---
+a: 1
+b: 2
+...
+---
+c: 3
+d: 4
+...
+`,
+		},
 	}
 	for _, test := range tests {
-		var (
-			p parser.Parser
-		)
 		tokens := lexer.Tokenize(test.source)
 		tokens.Dump()
-		doc, err := p.Parse(tokens)
+		f, err := parser.Parse(tokens, 0)
 		if err != nil {
 			t.Fatalf("%+v", err)
 		}
 		var v Visitor
-		for _, node := range doc.Nodes {
-			ast.Walk(&v, node)
+		for _, doc := range f.Docs {
+			ast.Walk(&v, doc.Body)
 		}
-		expect := fmt.Sprintf("\n%+v\n", doc)
+		expect := fmt.Sprintf("\n%+v\n", f)
 		if test.expect != expect {
 			t.Fatalf("unexpected output: [%s] != [%s]", test.expect, expect)
 		}
@@ -384,11 +401,7 @@ func TestSyntaxError(t *testing.T) {
 		"a:\n- b\n  c: d\n  e: f\n  g: h",
 	}
 	for _, source := range sources {
-		var (
-			p parser.Parser
-		)
-		tokens := lexer.Tokenize(source)
-		_, err := p.Parse(tokens)
+		_, err := parser.ParseBytes([]byte(source), 0)
 		if err == nil {
 			t.Fatal("cannot catch syntax error")
 		}

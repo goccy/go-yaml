@@ -11,7 +11,6 @@ import (
 
 	"github.com/goccy/go-yaml/ast"
 	"github.com/goccy/go-yaml/internal/errors"
-	"github.com/goccy/go-yaml/lexer"
 	"github.com/goccy/go-yaml/parser"
 	"github.com/goccy/go-yaml/printer"
 	"github.com/goccy/go-yaml/token"
@@ -80,17 +79,13 @@ func (e *Encoder) Encode(v interface{}) error {
 }
 
 func (e *Encoder) encodeDocument(doc []byte) (ast.Node, error) {
-	var (
-		parser parser.Parser
-	)
-	tokens := lexer.Tokenize(string(doc))
-	docNode, err := parser.Parse(tokens)
+	f, err := parser.ParseBytes(doc, 0)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to parse yaml")
 	}
-	for _, node := range docNode.Nodes {
-		if node != nil {
-			return node, nil
+	for _, docNode := range f.Docs {
+		if docNode.Body != nil {
+			return docNode.Body, nil
 		}
 	}
 	return nil, nil

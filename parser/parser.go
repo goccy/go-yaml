@@ -1,81 +1,19 @@
 package parser
 
 import (
+	"io/ioutil"
 	"strings"
 
 	"github.com/goccy/go-yaml/ast"
 	"github.com/goccy/go-yaml/internal/errors"
+	"github.com/goccy/go-yaml/lexer"
 	"github.com/goccy/go-yaml/token"
 	"golang.org/x/xerrors"
 )
 
-// Parser convert from token instances to ast
-type Parser struct {
-}
+type parser struct{}
 
-// Context context at parsing
-type Context struct {
-	idx    int
-	size   int
-	tokens token.Tokens
-}
-
-func (ctx *Context) next() bool {
-	return ctx.idx < ctx.size
-}
-
-func (ctx *Context) previousToken() *token.Token {
-	if ctx.idx > 0 {
-		return ctx.tokens[ctx.idx-1]
-	}
-	return nil
-}
-
-func (ctx *Context) currentToken() *token.Token {
-	if ctx.idx >= ctx.size {
-		return nil
-	}
-	return ctx.tokens[ctx.idx]
-}
-
-func (ctx *Context) nextToken() *token.Token {
-	if ctx.size > ctx.idx+1 {
-		return ctx.tokens[ctx.idx+1]
-	}
-	return nil
-}
-
-func (ctx *Context) afterNextToken() *token.Token {
-	if ctx.size > ctx.idx+2 {
-		return ctx.tokens[ctx.idx+2]
-	}
-	return nil
-}
-
-func (ctx *Context) progress(num int) {
-	if ctx.size <= ctx.idx+num {
-		ctx.idx = ctx.size
-	} else {
-		ctx.idx += num
-	}
-}
-
-func newContext(tokens token.Tokens) *Context {
-	removedCommentTokens := token.Tokens{}
-	for _, tk := range tokens {
-		if tk.Type == token.CommentType {
-			continue
-		}
-		removedCommentTokens.Add(tk)
-	}
-	return &Context{
-		idx:    0,
-		size:   len(removedCommentTokens),
-		tokens: removedCommentTokens,
-	}
-}
-
-func (p *Parser) parseMapping(ctx *Context) (ast.Node, error) {
+func (p *parser) parseMapping(ctx *context) (ast.Node, error) {
 	node := ast.Mapping(ctx.currentToken(), true)
 	ctx.progress(1) // skip MappingStart token
 	for ctx.next() {
@@ -102,7 +40,7 @@ func (p *Parser) parseMapping(ctx *Context) (ast.Node, error) {
 	return node, nil
 }
 
-func (p *Parser) parseSequence(ctx *Context) (ast.Node, error) {
+func (p *parser) parseSequence(ctx *context) (ast.Node, error) {
 	node := ast.Sequence(ctx.currentToken(), true)
 	ctx.progress(1) // skip SequenceStart token
 	for ctx.next() {
@@ -125,7 +63,7 @@ func (p *Parser) parseSequence(ctx *Context) (ast.Node, error) {
 	return node, nil
 }
 
-func (p *Parser) parseTag(ctx *Context) (ast.Node, error) {
+func (p *parser) parseTag(ctx *context) (ast.Node, error) {
 	node := &ast.TagNode{Start: ctx.currentToken()}
 	ctx.progress(1) // skip tag token
 	value, err := p.parseToken(ctx, ctx.currentToken())
@@ -136,7 +74,7 @@ func (p *Parser) parseTag(ctx *Context) (ast.Node, error) {
 	return node, nil
 }
 
-func (p *Parser) validateMapKey(tk *token.Token) error {
+func (p *parser) validateMapKey(tk *token.Token) error {
 	if tk.Type != token.StringType {
 		return nil
 	}
@@ -147,7 +85,7 @@ func (p *Parser) validateMapKey(tk *token.Token) error {
 	return nil
 }
 
-func (p *Parser) parseMappingValue(ctx *Context) (ast.Node, error) {
+func (p *parser) parseMappingValue(ctx *context) (ast.Node, error) {
 	key := p.parseMapKey(ctx.currentToken())
 	if key == nil {
 		return nil, errors.ErrSyntax("unexpected mapping 'key'. key is undefined", ctx.currentToken())
@@ -219,7 +157,7 @@ func (p *Parser) parseMappingValue(ctx *Context) (ast.Node, error) {
 	return node, nil
 }
 
-func (p *Parser) parseSequenceEntry(ctx *Context) (ast.Node, error) {
+func (p *parser) parseSequenceEntry(ctx *context) (ast.Node, error) {
 	tk := ctx.currentToken()
 	sequenceNode := &ast.SequenceNode{
 		Start:  tk,
@@ -248,7 +186,7 @@ func (p *Parser) parseSequenceEntry(ctx *Context) (ast.Node, error) {
 	return sequenceNode, nil
 }
 
-func (p *Parser) parseAnchor(ctx *Context) (ast.Node, error) {
+func (p *parser) parseAnchor(ctx *context) (ast.Node, error) {
 	tk := ctx.currentToken()
 	anchor := &ast.AnchorNode{Start: tk}
 	ntk := ctx.nextToken()
@@ -274,7 +212,7 @@ func (p *Parser) parseAnchor(ctx *Context) (ast.Node, error) {
 	return anchor, nil
 }
 
-func (p *Parser) parseAlias(ctx *Context) (ast.Node, error) {
+func (p *parser) parseAlias(ctx *context) (ast.Node, error) {
 	tk := ctx.currentToken()
 	alias := &ast.AliasNode{Start: tk}
 	ntk := ctx.nextToken()
@@ -290,7 +228,7 @@ func (p *Parser) parseAlias(ctx *Context) (ast.Node, error) {
 	return alias, nil
 }
 
-func (p *Parser) parseMapKey(tk *token.Token) ast.Node {
+func (p *parser) parseMapKey(tk *token.Token) ast.Node {
 	if node := p.parseStringValue(tk); node != nil {
 		return node
 	}
@@ -303,7 +241,7 @@ func (p *Parser) parseMapKey(tk *token.Token) ast.Node {
 	return nil
 }
 
-func (p *Parser) parseStringValue(tk *token.Token) ast.Node {
+func (p *parser) parseStringValue(tk *token.Token) ast.Node {
 	switch tk.Type {
 	case token.StringType,
 		token.SingleQuoteType,
@@ -313,7 +251,7 @@ func (p *Parser) parseStringValue(tk *token.Token) ast.Node {
 	return nil
 }
 
-func (p *Parser) parseScalarValue(tk *token.Token) ast.Node {
+func (p *parser) parseScalarValue(tk *token.Token) ast.Node {
 	if node := p.parseStringValue(tk); node != nil {
 		return node
 	}
@@ -337,7 +275,7 @@ func (p *Parser) parseScalarValue(tk *token.Token) ast.Node {
 	return nil
 }
 
-func (p *Parser) parseDirective(ctx *Context) (ast.Node, error) {
+func (p *parser) parseDirective(ctx *context) (ast.Node, error) {
 	node := &ast.DirectiveNode{Start: ctx.currentToken()}
 	ctx.progress(1) // skip directive token
 	value, err := p.parseToken(ctx, ctx.currentToken())
@@ -352,7 +290,7 @@ func (p *Parser) parseDirective(ctx *Context) (ast.Node, error) {
 	return node, nil
 }
 
-func (p *Parser) parseLiteral(ctx *Context) (ast.Node, error) {
+func (p *parser) parseLiteral(ctx *context) (ast.Node, error) {
 	node := &ast.LiteralNode{Start: ctx.currentToken()}
 	ctx.progress(1) // skip literal/folded token
 	value, err := p.parseToken(ctx, ctx.currentToken())
@@ -367,7 +305,22 @@ func (p *Parser) parseLiteral(ctx *Context) (ast.Node, error) {
 	return node, nil
 }
 
-func (p *Parser) parseToken(ctx *Context, tk *token.Token) (ast.Node, error) {
+func (p *parser) parseDocument(ctx *context) (*ast.Document, error) {
+	node := &ast.Document{Start: ctx.currentToken()}
+	ctx.progress(1) // skip document header token
+	body, err := p.parseToken(ctx, ctx.currentToken())
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to parse document body")
+	}
+	node.Body = body
+	if ntk := ctx.nextToken(); ntk != nil && ntk.Type == token.DocumentEndType {
+		node.End = ntk
+		ctx.progress(1)
+	}
+	return node, nil
+}
+
+func (p *parser) parseToken(ctx *context, tk *token.Token) (ast.Node, error) {
 	if tk.NextType() == token.MappingValueType {
 		return p.parseMappingValue(ctx)
 	}
@@ -375,6 +328,8 @@ func (p *Parser) parseToken(ctx *Context, tk *token.Token) (ast.Node, error) {
 		return node, nil
 	}
 	switch tk.Type {
+	case token.DocumentHeaderType:
+		return p.parseDocument(ctx)
 	case token.MappingStartType:
 		return p.parseMapping(ctx)
 	case token.SequenceStartType:
@@ -395,10 +350,9 @@ func (p *Parser) parseToken(ctx *Context, tk *token.Token) (ast.Node, error) {
 	return nil, nil
 }
 
-// Parse parse from token instances, and returns ast.Document
-func (p *Parser) Parse(tokens token.Tokens) (*ast.Document, error) {
-	ctx := newContext(tokens)
-	doc := &ast.Document{Nodes: []ast.Node{}}
+func (p *parser) parse(tokens token.Tokens, mode Mode) (*ast.File, error) {
+	ctx := newContext(tokens, mode)
+	file := &ast.File{Docs: []*ast.Document{}}
 	for ctx.next() {
 		node, err := p.parseToken(ctx, ctx.currentToken())
 		if err != nil {
@@ -408,27 +362,51 @@ func (p *Parser) Parse(tokens token.Tokens) (*ast.Document, error) {
 		if node == nil {
 			continue
 		}
-		if len(doc.Nodes) == 0 {
-			doc.Nodes = append(doc.Nodes, node)
-			continue
-		}
-		mvnode, ok := node.(*ast.MappingValueNode)
-		if !ok {
-			doc.Nodes = append(doc.Nodes, node)
-			continue
-		}
-		lastNode := doc.Nodes[len(doc.Nodes)-1]
-		switch lastNode.Type() {
-		case ast.MappingValueType:
-			n := lastNode.(*ast.MappingValueNode)
-			doc.Nodes[len(doc.Nodes)-1] = &ast.MappingNode{
-				Start:  n.GetToken(),
-				Values: []*ast.MappingValueNode{n, mvnode},
-			}
-		case ast.MappingType:
-			n := lastNode.(*ast.MappingNode)
-			n.Values = append(n.Values, mvnode)
+		if doc, ok := node.(*ast.Document); ok {
+			file.Docs = append(file.Docs, doc)
+		} else {
+			file.Docs = append(file.Docs, &ast.Document{Body: node})
 		}
 	}
-	return doc, nil
+	return file, nil
+}
+
+type Mode uint
+
+const (
+	ParseComments Mode = 1 << iota // parse comments and add them to AST
+)
+
+// ParseBytes parse from byte slice, and returns ast.File
+func ParseBytes(bytes []byte, mode Mode) (*ast.File, error) {
+	tokens := lexer.Tokenize(string(bytes))
+	f, err := Parse(tokens, mode)
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to parse")
+	}
+	return f, nil
+}
+
+// Parse parse from token instances, and returns ast.File
+func Parse(tokens token.Tokens, mode Mode) (*ast.File, error) {
+	var p parser
+	f, err := p.parse(tokens, mode)
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to parse")
+	}
+	return f, nil
+}
+
+// Parse parse from filename, and returns ast.File
+func ParseFile(filename string, mode Mode) (*ast.File, error) {
+	file, err := ioutil.ReadFile(filename)
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to read file: %s", filename)
+	}
+	f, err := ParseBytes(file, mode)
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to parse")
+	}
+	f.Name = filename
+	return f, nil
 }

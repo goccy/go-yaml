@@ -14,7 +14,6 @@ import (
 
 	"github.com/goccy/go-yaml/ast"
 	"github.com/goccy/go-yaml/internal/errors"
-	"github.com/goccy/go-yaml/lexer"
 	"github.com/goccy/go-yaml/parser"
 	"github.com/goccy/go-yaml/token"
 	"golang.org/x/xerrors"
@@ -205,10 +204,10 @@ func (d *Decoder) getArrayNode(node ast.Node) (ast.ArrayNode, error) {
 	return arrayNode, nil
 }
 
-func (d *Decoder) docToNode(doc *ast.Document) ast.Node {
-	for _, node := range doc.Nodes {
-		if v := d.nodeToValue(node); v != nil {
-			return node
+func (d *Decoder) fileToNode(f *ast.File) ast.Node {
+	for _, doc := range f.Docs {
+		if v := d.nodeToValue(doc.Body); v != nil {
+			return doc.Body
 		}
 	}
 	return nil
@@ -768,15 +767,11 @@ func (d *Decoder) resolveReference() error {
 }
 
 func (d *Decoder) decode(bytes []byte) (ast.Node, error) {
-	var (
-		parser parser.Parser
-	)
-	tokens := lexer.Tokenize(string(bytes))
-	doc, err := parser.Parse(tokens)
+	f, err := parser.ParseBytes(bytes, 0)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to parse yaml")
 	}
-	return d.docToNode(doc), nil
+	return d.fileToNode(f), nil
 }
 
 // Decode reads the next YAML-encoded value from its input

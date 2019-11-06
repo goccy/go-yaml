@@ -179,6 +179,22 @@ func TestDecoder(t *testing.T) {
 			"v: on",
 			map[string]interface{}{"v": "on"}, // on is string
 		},
+		{ // FAIL
+			"v: 0* a",
+			map[string]interface{}{"v": "0* a"},
+		},
+		{ // FAIL
+			"v: 0* a",
+			map[string]interface{}{"v": "0* a"},
+		},
+		{ // FAIL
+			"v: 0*",
+			map[string]interface{}{"v": "0*"},
+		},
+		{ // PANIC
+			"v: a *? a",
+			map[string]interface{}{"v": "a *? a"},
+		},
 
 		// Some cross type conversions
 		{

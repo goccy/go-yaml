@@ -25,21 +25,23 @@ const (
 // Scanner holds the scanner's internal state while processing a given text.
 // It can be allocated as part of another data structure but must be initialized via Init before use.
 type Scanner struct {
-	source            string
-	sourcePos         int
-	sourceSize        int
-	line              int
-	column            int
-	offset            int
-	prevIndentLevel   int
-	prevIndentNum     int
-	prevIndentColumn  int
-	indentLevel       int
-	indentNum         int
-	isFirstCharAtLine bool
-	isAnchor          bool
-	indentState       IndentState
-	savedPos          *token.Position
+	source                string
+	sourcePos             int
+	sourceSize            int
+	line                  int
+	column                int
+	offset                int
+	prevIndentLevel       int
+	prevIndentNum         int
+	prevIndentColumn      int
+	indentLevel           int
+	indentNum             int
+	isFirstCharAtLine     bool
+	isAnchor              bool
+	isStartedFlowSequence bool
+	isStartedFlowMap      bool
+	indentState           IndentState
+	savedPos              *token.Position
 }
 
 func (s *Scanner) pos() *token.Position {
@@ -294,16 +296,22 @@ func (s *Scanner) scan(ctx *Context) (pos int) {
 		}
 		switch c {
 		case '{':
-			ctx.addOriginBuf(c)
-			ctx.addToken(token.MappingStart(string(ctx.obuf), s.pos()))
-			s.progressColumn(ctx, 1)
-			return
+			if ctx.bufferedSrc() == "" {
+				ctx.addOriginBuf(c)
+				ctx.addToken(token.MappingStart(string(ctx.obuf), s.pos()))
+				s.isStartedFlowMap = true
+				s.progressColumn(ctx, 1)
+				return
+			}
 		case '}':
-			ctx.addToken(s.bufferedToken(ctx))
-			ctx.addOriginBuf(c)
-			ctx.addToken(token.MappingEnd(string(ctx.obuf), s.pos()))
-			s.progressColumn(ctx, 1)
-			return
+			if ctx.bufferedSrc() == "" || s.isStartedFlowMap {
+				ctx.addToken(s.bufferedToken(ctx))
+				ctx.addOriginBuf(c)
+				ctx.addToken(token.MappingEnd(string(ctx.obuf), s.pos()))
+				s.isStartedFlowMap = false
+				s.progressColumn(ctx, 1)
+				return
+			}
 		case '.':
 			if s.indentNum == 0 && ctx.repeatNum('.') == 3 {
 				ctx.addToken(token.DocumentEnd(s.pos()))
@@ -346,22 +354,30 @@ func (s *Scanner) scan(ctx *Context) (pos int) {
 				return
 			}
 		case '[':
-			ctx.addOriginBuf(c)
-			ctx.addToken(token.SequenceStart(string(ctx.obuf), s.pos()))
-			s.progressColumn(ctx, 1)
-			return
+			if ctx.bufferedSrc() == "" {
+				ctx.addOriginBuf(c)
+				ctx.addToken(token.SequenceStart(string(ctx.obuf), s.pos()))
+				s.isStartedFlowSequence = true
+				s.progressColumn(ctx, 1)
+				return
+			}
 		case ']':
-			s.addBufferedTokenIfExists(ctx)
-			ctx.addOriginBuf(c)
-			ctx.addToken(token.SequenceEnd(string(ctx.obuf), s.pos()))
-			s.progressColumn(ctx, 1)
-			return
+			if ctx.bufferedSrc() == "" || s.isStartedFlowSequence {
+				s.addBufferedTokenIfExists(ctx)
+				ctx.addOriginBuf(c)
+				ctx.addToken(token.SequenceEnd(string(ctx.obuf), s.pos()))
+				s.isStartedFlowSequence = false
+				s.progressColumn(ctx, 1)
+				return
+			}
 		case ',':
-			s.addBufferedTokenIfExists(ctx)
-			ctx.addOriginBuf(c)
-			ctx.addToken(token.CollectEntry(string(ctx.obuf), s.pos()))
-			s.progressColumn(ctx, 1)
-			return
+			if s.isStartedFlowSequence || s.isStartedFlowMap {
+				s.addBufferedTokenIfExists(ctx)
+				ctx.addOriginBuf(c)
+				ctx.addToken(token.CollectEntry(string(ctx.obuf), s.pos()))
+				s.progressColumn(ctx, 1)
+				return
+			}
 		case ':':
 			nc := ctx.nextChar()
 			if nc == ' ' || nc == '\n' || ctx.isNextEOS() {
@@ -387,40 +403,46 @@ func (s *Scanner) scan(ctx *Context) (pos int) {
 				continue
 			}
 		case '!':
-			token, progress := s.scanTag(ctx)
-			ctx.addToken(token)
-			s.progressColumn(ctx, progress)
-			if c := ctx.previousChar(); c == '\n' {
-				s.progressLine(ctx)
+			if ctx.bufferedSrc() == "" {
+				token, progress := s.scanTag(ctx)
+				ctx.addToken(token)
+				s.progressColumn(ctx, progress)
+				if c := ctx.previousChar(); c == '\n' {
+					s.progressLine(ctx)
+				}
+				pos += progress
+				return
 			}
-			pos += progress
-			return
 		case '%':
-			if s.indentNum == 0 {
+			if ctx.bufferedSrc() == "" && s.indentNum == 0 {
 				ctx.addToken(token.Directive(s.pos()))
 				s.progressColumn(ctx, 1)
 				return
 			}
 		case '?':
 			nc := ctx.nextChar()
-			if nc == ' ' {
+			if ctx.bufferedSrc() == "" && nc == ' ' {
 				ctx.addToken(token.Directive(s.pos()))
 				s.progressColumn(ctx, 1)
 				return
 			}
 		case '&':
-			s.addBufferedTokenIfExists(ctx)
-			ctx.addOriginBuf(c)
-			ctx.addToken(token.Anchor(string(ctx.obuf), s.pos()))
-			s.progressColumn(ctx, 1)
-			s.isAnchor = true
-			return
+			if ctx.bufferedSrc() == "" {
+				s.addBufferedTokenIfExists(ctx)
+				ctx.addOriginBuf(c)
+				ctx.addToken(token.Anchor(string(ctx.obuf), s.pos()))
+				s.progressColumn(ctx, 1)
+				s.isAnchor = true
+				return
+			}
 		case '*':
-			s.addBufferedTokenIfExists(ctx)
-			ctx.addOriginBuf(c)
-			ctx.addToken(token.Alias(string(ctx.obuf), s.pos()))
-			s.progressColumn(ctx, 1)
-			return
+			if ctx.bufferedSrc() == "" {
+				s.addBufferedTokenIfExists(ctx)
+				ctx.addOriginBuf(c)
+				ctx.addToken(token.Alias(string(ctx.obuf), s.pos()))
+				s.progressColumn(ctx, 1)
+				return
+			}
 		case '#':
 			s.addBufferedTokenIfExists(ctx)
 			token, progress := s.scanComment(ctx)

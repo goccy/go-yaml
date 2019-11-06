@@ -778,6 +778,14 @@ func TestDecoder(t *testing.T) {
 		{
 			"{}", struct{}{},
 		},
+		{
+			"v: /a/{b}",
+			map[string]string{"v": "/a/{b}"},
+		},
+		{
+			"v: 1[]{},!%?&*",
+			map[string]string{"v": "1[]{},!%?&*"},
+		},
 	}
 	for _, test := range tests {
 		buf := bytes.NewBufferString(test.source)

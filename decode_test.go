@@ -12,6 +12,11 @@ import (
 	"github.com/goccy/go-yaml"
 )
 
+type Child struct {
+	B int
+	C int `yaml:"-"`
+}
+
 func TestDecoder(t *testing.T) {
 	tests := []struct {
 		source string
@@ -743,6 +748,19 @@ func TestDecoder(t *testing.T) {
 				B int `yaml:"-"`
 			}{
 				1, 0,
+			},
+		},
+		{
+			"a: 1\nb: 2\n",
+			struct {
+				A     int
+				Child `yaml:",inline"`
+			}{
+				1,
+				Child{
+					B: 2,
+					C: 0,
+				},
 			},
 		},
 

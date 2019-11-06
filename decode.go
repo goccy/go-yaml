@@ -414,6 +414,9 @@ func (d *Decoder) setDefaultValueIfConflicted(v reflect.Value, fieldMap StructFi
 	}
 	for i := 0; i < typ.NumField(); i++ {
 		field := typ.Field(i)
+		if isIgnoredStructField(field) {
+			continue
+		}
 		structField := embeddedStructFieldMap[field.Name]
 		if !fieldMap.isIncludedRenderName(structField.RenderName) {
 			continue

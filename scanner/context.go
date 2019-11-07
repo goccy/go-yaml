@@ -10,7 +10,7 @@ import (
 type Context struct {
 	idx         int
 	size        int
-	src         string
+	src         []rune
 	buf         []rune
 	obuf        []rune
 	tokens      token.Tokens
@@ -20,7 +20,8 @@ type Context struct {
 	literalOpt  string
 }
 
-func newContext(src string) *Context {
+func newContext(s string) *Context {
+	src := []rune(s)
 	return &Context{
 		idx:    0,
 		size:   len(src),
@@ -75,23 +76,23 @@ func (c *Context) next() bool {
 }
 
 func (c *Context) source(s, e int) string {
-	return c.src[s:e]
+	return string(c.src[s:e])
 }
 
 func (c *Context) previousChar() rune {
 	if c.idx > 0 {
-		return rune(c.src[c.idx-1])
+		return c.src[c.idx-1]
 	}
 	return rune(0)
 }
 
 func (c *Context) currentChar() rune {
-	return rune(c.src[c.idx])
+	return c.src[c.idx]
 }
 
 func (c *Context) nextChar() rune {
 	if c.size > c.idx+1 {
-		return rune(c.src[c.idx+1])
+		return c.src[c.idx+1]
 	}
 	return rune(0)
 }
@@ -99,7 +100,7 @@ func (c *Context) nextChar() rune {
 func (c *Context) repeatNum(r rune) int {
 	cnt := 0
 	for i := c.idx; i < c.size; i++ {
-		if rune(c.src[i]) == r {
+		if c.src[i] == r {
 			cnt++
 		} else {
 			break

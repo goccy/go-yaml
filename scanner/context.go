@@ -20,8 +20,7 @@ type Context struct {
 	literalOpt  string
 }
 
-func newContext(s string) *Context {
-	src := []rune(s)
+func newContext(src []rune) *Context {
 	return &Context{
 		idx:    0,
 		size:   len(src),

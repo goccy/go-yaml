@@ -25,7 +25,7 @@ const (
 // Scanner holds the scanner's internal state while processing a given text.
 // It can be allocated as part of another data structure but must be initialized via Init before use.
 type Scanner struct {
-	source                 string
+	source                 []rune
 	sourcePos              int
 	sourceSize             int
 	line                   int
@@ -486,7 +486,8 @@ func (s *Scanner) scan(ctx *Context) (pos int) {
 }
 
 // Init prepares the scanner s to tokenize the text src by setting the scanner at the beginning of src.
-func (s *Scanner) Init(src string) {
+func (s *Scanner) Init(text string) {
+	src := []rune(text)
 	s.source = src
 	s.sourcePos = 0
 	s.sourceSize = len(src)

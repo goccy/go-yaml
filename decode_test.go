@@ -842,8 +842,8 @@ func TestDecoder(t *testing.T) {
 
 		// Multi bytes
 		{
-			"v: あいうえお",
-			map[string]string{"v": "あいうえお"},
+			"v: あいうえお\nv2: かきくけこ",
+			map[string]string{"v": "あいうえお", "v2": "かきくけこ"},
 		},
 	}
 	for _, test := range tests {

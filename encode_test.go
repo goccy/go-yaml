@@ -288,8 +288,8 @@ func TestEncoder(t *testing.T) {
 
 		// Multi bytes
 		{
-			"v: あいうえお\n",
-			map[string]string{"v": "あいうえお"},
+			"v: あいうえお\nv2: かきくけこ\n",
+			map[string]string{"v": "あいうえお", "v2": "かきくけこ"},
 		},
 	}
 	for _, test := range tests {

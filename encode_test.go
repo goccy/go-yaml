@@ -6,6 +6,7 @@ import (
 	"math"
 	"strconv"
 	"testing"
+	"time"
 
 	"github.com/goccy/go-yaml"
 )
@@ -290,6 +291,20 @@ func TestEncoder(t *testing.T) {
 		{
 			"v: あいうえお\nv2: かきくけこ\n",
 			map[string]string{"v": "あいうえお", "v2": "かきくけこ"},
+		},
+
+		// time value
+		{
+			"v: 0001-01-01T00:00:00Z\n",
+			map[string]time.Time{"v": time.Time{}},
+		},
+		{
+			"v: 0001-01-01T00:00:00Z\n",
+			map[string]*time.Time{"v": &time.Time{}},
+		},
+		{
+			"v: null\n",
+			map[string]*time.Time{"v": nil},
 		},
 	}
 	for _, test := range tests {

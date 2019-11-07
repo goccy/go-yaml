@@ -8,6 +8,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/goccy/go-yaml/ast"
 	"github.com/goccy/go-yaml/internal/errors"
@@ -150,6 +151,9 @@ func (e *Encoder) encodeValue(v reflect.Value, column int) (ast.Node, error) {
 		if v.CanInterface() {
 			if mapItem, ok := v.Interface().(MapItem); ok {
 				return e.encodeMapItem(mapItem, column)
+			}
+			if t, ok := v.Interface().(time.Time); ok {
+				return e.encodeTime(t, column), nil
 			}
 		}
 		return e.encodeStruct(v, column)
@@ -340,6 +344,11 @@ func (e *Encoder) isZeroValue(v reflect.Value) bool {
 		return true
 	}
 	return false
+}
+
+func (e *Encoder) encodeTime(v time.Time, column int) ast.Node {
+	value := v.Format(time.RFC3339Nano)
+	return ast.String(token.New(value, value, e.pos(column)))
 }
 
 func (e *Encoder) encodeStruct(value reflect.Value, column int) (ast.Node, error) {

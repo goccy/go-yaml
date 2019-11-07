@@ -361,7 +361,6 @@ func (s *Scanner) scan(ctx *Context) (pos int) {
 				tk := token.SequenceEntry(string(ctx.obuf), s.pos())
 				s.prevIndentColumn = tk.Position.Column
 				ctx.addToken(tk)
-				ctx.resetBuffer()
 				s.progressColumn(ctx, 1)
 				return
 			}

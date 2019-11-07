@@ -805,6 +805,10 @@ func TestDecoder(t *testing.T) {
 			map[string]string{"v": "1[]{},!%?&*"},
 		},
 		{
+			"v: user's item",
+			map[string]string{"v": "user's item"},
+		},
+		{
 			"v: [1,[2,[3,[4,5],6],7],8]",
 			map[string]interface{}{
 				"v": []interface{}{

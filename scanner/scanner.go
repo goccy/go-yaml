@@ -25,23 +25,23 @@ const (
 // Scanner holds the scanner's internal state while processing a given text.
 // It can be allocated as part of another data structure but must be initialized via Init before use.
 type Scanner struct {
-	source                string
-	sourcePos             int
-	sourceSize            int
-	line                  int
-	column                int
-	offset                int
-	prevIndentLevel       int
-	prevIndentNum         int
-	prevIndentColumn      int
-	indentLevel           int
-	indentNum             int
-	isFirstCharAtLine     bool
-	isAnchor              bool
-	isStartedFlowSequence bool
-	isStartedFlowMap      bool
-	indentState           IndentState
-	savedPos              *token.Position
+	source                 string
+	sourcePos              int
+	sourceSize             int
+	line                   int
+	column                 int
+	offset                 int
+	prevIndentLevel        int
+	prevIndentNum          int
+	prevIndentColumn       int
+	indentLevel            int
+	indentNum              int
+	isFirstCharAtLine      bool
+	isAnchor               bool
+	startedFlowSequenceNum int
+	startedFlowMapNum      int
+	indentState            IndentState
+	savedPos               *token.Position
 }
 
 func (s *Scanner) pos() *token.Position {
@@ -299,16 +299,16 @@ func (s *Scanner) scan(ctx *Context) (pos int) {
 			if ctx.bufferedSrc() == "" {
 				ctx.addOriginBuf(c)
 				ctx.addToken(token.MappingStart(string(ctx.obuf), s.pos()))
-				s.isStartedFlowMap = true
+				s.startedFlowMapNum++
 				s.progressColumn(ctx, 1)
 				return
 			}
 		case '}':
-			if ctx.bufferedSrc() == "" || s.isStartedFlowMap {
+			if ctx.bufferedSrc() == "" || s.startedFlowMapNum > 0 {
 				ctx.addToken(s.bufferedToken(ctx))
 				ctx.addOriginBuf(c)
 				ctx.addToken(token.MappingEnd(string(ctx.obuf), s.pos()))
-				s.isStartedFlowMap = false
+				s.startedFlowMapNum--
 				s.progressColumn(ctx, 1)
 				return
 			}
@@ -357,21 +357,21 @@ func (s *Scanner) scan(ctx *Context) (pos int) {
 			if ctx.bufferedSrc() == "" {
 				ctx.addOriginBuf(c)
 				ctx.addToken(token.SequenceStart(string(ctx.obuf), s.pos()))
-				s.isStartedFlowSequence = true
+				s.startedFlowSequenceNum++
 				s.progressColumn(ctx, 1)
 				return
 			}
 		case ']':
-			if ctx.bufferedSrc() == "" || s.isStartedFlowSequence {
+			if ctx.bufferedSrc() == "" || s.startedFlowSequenceNum > 0 {
 				s.addBufferedTokenIfExists(ctx)
 				ctx.addOriginBuf(c)
 				ctx.addToken(token.SequenceEnd(string(ctx.obuf), s.pos()))
-				s.isStartedFlowSequence = false
+				s.startedFlowSequenceNum--
 				s.progressColumn(ctx, 1)
 				return
 			}
 		case ',':
-			if s.isStartedFlowSequence || s.isStartedFlowMap {
+			if s.startedFlowSequenceNum > 0 || s.startedFlowMapNum > 0 {
 				s.addBufferedTokenIfExists(ctx)
 				ctx.addOriginBuf(c)
 				ctx.addToken(token.CollectEntry(string(ctx.obuf), s.pos()))

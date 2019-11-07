@@ -804,6 +804,41 @@ func TestDecoder(t *testing.T) {
 			"v: 1[]{},!%?&*",
 			map[string]string{"v": "1[]{},!%?&*"},
 		},
+		{
+			"v: [1,[2,[3,[4,5],6],7],8]",
+			map[string]interface{}{
+				"v": []interface{}{
+					1,
+					[]interface{}{
+						2,
+						[]interface{}{
+							3,
+							[]int{4, 5},
+							6,
+						},
+						7,
+					},
+					8,
+				},
+			},
+		},
+		{
+			"v: {a: {b: {c: {d: e},f: g},h: i},j: k}",
+			map[string]interface{}{
+				"v": map[string]interface{}{
+					"a": map[string]interface{}{
+						"b": map[string]interface{}{
+							"c": map[string]string{
+								"d": "e",
+							},
+							"f": "g",
+						},
+						"h": "i",
+					},
+					"j": "k",
+				},
+			},
+		},
 	}
 	for _, test := range tests {
 		buf := bytes.NewBufferString(test.source)

@@ -87,6 +87,19 @@ func (s *Scanner) progressLine(ctx *Context) {
 	ctx.progress(1)
 }
 
+func (s *Scanner) isNeededKeepPreviousIndentNum(ctx *Context, c rune) bool {
+	if !s.isChangedToIndentStateUp() {
+		return false
+	}
+	if ctx.isDocument() {
+		return true
+	}
+	if c == '-' && ctx.bufferedSrc() != "" {
+		return true
+	}
+	return false
+}
+
 func (s *Scanner) updateIndent(ctx *Context, c rune) {
 	if s.isFirstCharAtLine && c == ' ' {
 		s.indentNum++
@@ -120,9 +133,7 @@ func (s *Scanner) updateIndent(ctx *Context, c rune) {
 		}
 	}
 	s.isFirstCharAtLine = false
-	if ctx.isDocument() && s.isChangedToIndentStateUp() {
-		return
-	} else if c == '-' && ctx.bufferedSrc() != "" && s.isChangedToIndentStateUp() {
+	if s.isNeededKeepPreviousIndentNum(ctx, c) {
 		return
 	}
 	s.prevIndentNum = s.indentNum

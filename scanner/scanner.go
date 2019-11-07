@@ -87,7 +87,7 @@ func (s *Scanner) progressLine(ctx *Context) {
 	ctx.progress(1)
 }
 
-func (s *Scanner) updateIndent(c rune) {
+func (s *Scanner) updateIndent(ctx *Context, c rune) {
 	if s.isFirstCharAtLine && c == ' ' {
 		s.indentNum++
 		return
@@ -119,10 +119,15 @@ func (s *Scanner) updateIndent(c rune) {
 			s.indentState = IndentStateDown
 		}
 	}
+	s.isFirstCharAtLine = false
+	if ctx.isDocument() && s.isChangedToIndentStateUp() {
+		return
+	} else if c == '-' && ctx.bufferedSrc() != "" && s.isChangedToIndentStateUp() {
+		return
+	}
 	s.prevIndentNum = s.indentNum
 	s.prevIndentColumn = 0
 	s.prevIndentLevel = s.indentLevel
-	s.isFirstCharAtLine = false
 }
 
 func (s *Scanner) isChangedToIndentStateDown() bool {
@@ -212,6 +217,7 @@ func (s *Scanner) scanLiteral(ctx *Context, c rune) {
 	if ctx.isEOS() {
 		value := ctx.bufferedSrc()
 		ctx.addToken(token.New(value, string(ctx.obuf), s.pos()))
+		ctx.resetBuffer()
 	}
 	if c == '\n' {
 		if ctx.isLiteral {
@@ -280,13 +286,18 @@ func (s *Scanner) scan(ctx *Context) (pos int) {
 	for ctx.next() {
 		pos = ctx.nextPos()
 		c := ctx.currentChar()
-		s.updateIndent(c)
-		if s.isChangedToIndentStateDown() {
+		s.updateIndent(ctx, c)
+		if ctx.isDocument() {
+			if s.isChangedToIndentStateEqual() ||
+				s.isChangedToIndentStateDown() {
+				s.addBufferedTokenIfExists(ctx)
+				s.breakLiteral(ctx)
+			} else {
+				s.scanLiteral(ctx, c)
+				continue
+			}
+		} else if s.isChangedToIndentStateDown() {
 			s.addBufferedTokenIfExists(ctx)
-			s.breakLiteral(ctx)
-		} else if ctx.isLiteral || ctx.isFolded || ctx.isRawFolded {
-			s.scanLiteral(ctx, c)
-			continue
 		} else if s.isChangedToIndentStateEqual() {
 			// if first character is \n, buffer expect to raw folded literal
 			if len(ctx.obuf) > 0 && ctx.obuf[0] != '\n' {
@@ -350,6 +361,7 @@ func (s *Scanner) scan(ctx *Context) (pos int) {
 				tk := token.SequenceEntry(string(ctx.obuf), s.pos())
 				s.prevIndentColumn = tk.Position.Column
 				ctx.addToken(tk)
+				ctx.resetBuffer()
 				s.progressColumn(ctx, 1)
 				return
 			}

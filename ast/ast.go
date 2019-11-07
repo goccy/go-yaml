@@ -424,7 +424,8 @@ func (n *LiteralNode) GetValue() interface{} {
 
 // String literal to text
 func (n *LiteralNode) String() string {
-	return n.Value.String()
+	origin := n.Value.GetToken().Origin
+	return fmt.Sprintf("|\n%s", strings.TrimRight(strings.TrimRight(origin, " "), "\n"))
 }
 
 // MergeKeyNode type of merge key node

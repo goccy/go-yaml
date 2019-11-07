@@ -61,7 +61,7 @@ func (s *Scanner) bufferedToken(ctx *Context) *token.Token {
 		return tk
 	}
 	trimmedSrc := strings.TrimLeft(string(ctx.buf), " ")
-	size := len(trimmedSrc)
+	size := len([]rune(trimmedSrc))
 	return ctx.bufferedToken(&token.Position{
 		Line:        s.line,
 		Column:      s.column - size,
@@ -164,7 +164,7 @@ func (s *Scanner) scanQuote(ctx *Context, ch rune) (tk *token.Token, pos int) {
 			case '"':
 				tk = token.DoubleQuote(value, string(ctx.obuf), s.pos())
 			}
-			pos = len(value) + 1
+			pos = len([]rune(value)) + 1
 			return
 		}
 	}
@@ -181,7 +181,7 @@ func (s *Scanner) scanTag(ctx *Context) (tk *token.Token, pos int) {
 		case ' ', '\n':
 			value := ctx.source(ctx.idx-1, ctx.idx+idx)
 			tk = token.Tag(value, string(ctx.obuf), s.pos())
-			pos = len(value)
+			pos = len([]rune(value))
 			return
 		}
 	}
@@ -201,7 +201,7 @@ func (s *Scanner) scanComment(ctx *Context) (tk *token.Token, pos int) {
 			}
 			value := ctx.source(ctx.idx, ctx.idx+idx)
 			tk = token.Comment(value, string(ctx.obuf), s.pos())
-			pos = len(value) + 1
+			pos = len([]rune(value)) + 1
 			return
 		}
 	}
@@ -264,7 +264,7 @@ func (s *Scanner) scanLiteralHeader(ctx *Context) (pos int, err error) {
 func (s *Scanner) scanNewLine(ctx *Context, c rune) {
 	if len(ctx.buf) > 0 && s.savedPos == nil {
 		s.savedPos = s.pos()
-		s.savedPos.Column -= len(ctx.bufferedSrc())
+		s.savedPos.Column -= len([]rune(ctx.bufferedSrc()))
 	}
 	if ctx.isEOS() {
 		s.addBufferedTokenIfExists(ctx)

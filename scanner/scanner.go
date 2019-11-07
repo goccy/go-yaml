@@ -34,6 +34,7 @@ type Scanner struct {
 	prevIndentLevel        int
 	prevIndentNum          int
 	prevIndentColumn       int
+	docStartColumn         int
 	indentLevel            int
 	indentNum              int
 	isFirstCharAtLine      bool
@@ -158,6 +159,7 @@ func (s *Scanner) addBufferedTokenIfExists(ctx *Context) {
 }
 
 func (s *Scanner) breakLiteral(ctx *Context) {
+	s.docStartColumn = 0
 	ctx.breakLiteral()
 }
 
@@ -238,8 +240,14 @@ func (s *Scanner) scanLiteral(ctx *Context, c rune) {
 		}
 		s.progressLine(ctx)
 	} else if s.isFirstCharAtLine && c == ' ' {
+		if 0 < s.docStartColumn && s.docStartColumn <= s.column {
+			ctx.addBuf(c)
+		}
 		s.progressColumn(ctx, 1)
 	} else {
+		if s.docStartColumn == 0 {
+			s.docStartColumn = s.column
+		}
 		ctx.addBuf(c)
 		s.progressColumn(ctx, 1)
 	}

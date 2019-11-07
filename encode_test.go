@@ -285,6 +285,12 @@ func TestEncoder(t *testing.T) {
 				} "a,flow"
 			}{struct{ B, D string }{"c", "e"}},
 		},
+
+		// Multi bytes
+		{
+			"v: あいうえお\n",
+			map[string]string{"v": "あいうえお"},
+		},
 	}
 	for _, test := range tests {
 		var buf bytes.Buffer

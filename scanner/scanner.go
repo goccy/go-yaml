@@ -452,11 +452,13 @@ func (s *Scanner) scan(ctx *Context) (pos int) {
 			pos += progress
 			return
 		case '\'', '"':
-			token, progress := s.scanQuote(ctx, c)
-			ctx.addToken(token)
-			s.progressColumn(ctx, progress)
-			pos += progress
-			return
+			if ctx.bufferedSrc() == "" {
+				token, progress := s.scanQuote(ctx, c)
+				ctx.addToken(token)
+				s.progressColumn(ctx, progress)
+				pos += progress
+				return
+			}
 		case '\n':
 			s.scanNewLine(ctx, c)
 			continue

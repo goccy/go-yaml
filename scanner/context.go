@@ -123,6 +123,10 @@ func (c *Context) nextPos() int {
 func (c *Context) bufferedSrc() string {
 	src := strings.TrimLeft(string(c.buf), " ")
 	src = strings.TrimRight(src, " ")
+	if len(src) > 0 && src[len(src)-1] == '\n' && c.isDocument() && c.literalOpt == "-" {
+		// remove end '\n' character
+		src = src[:len(src)-1]
+	}
 	return src
 }
 

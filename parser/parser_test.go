@@ -395,6 +395,19 @@ a:
   c: d
 `,
 		},
+		{
+			`
+|
+    hoge
+    fuga
+    piyo`,
+			`
+|
+    hoge
+    fuga
+    piyo
+`,
+		},
 	}
 	for _, test := range tests {
 		tokens := lexer.Tokenize(test.source)

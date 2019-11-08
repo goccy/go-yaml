@@ -62,6 +62,10 @@ func (c *Context) addOriginBuf(r rune) {
 	c.obuf = append(c.obuf, r)
 }
 
+func (c *Context) isDocument() bool {
+	return c.isLiteral || c.isFolded || c.isRawFolded
+}
+
 func (c *Context) isEOS() bool {
 	return len(c.src)-1 <= c.idx
 }

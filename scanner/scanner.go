@@ -34,6 +34,7 @@ type Scanner struct {
 	prevIndentLevel        int
 	prevIndentNum          int
 	prevIndentColumn       int
+	docStartColumn         int
 	indentLevel            int
 	indentNum              int
 	isFirstCharAtLine      bool
@@ -87,7 +88,20 @@ func (s *Scanner) progressLine(ctx *Context) {
 	ctx.progress(1)
 }
 
-func (s *Scanner) updateIndent(c rune) {
+func (s *Scanner) isNeededKeepPreviousIndentNum(ctx *Context, c rune) bool {
+	if !s.isChangedToIndentStateUp() {
+		return false
+	}
+	if ctx.isDocument() {
+		return true
+	}
+	if c == '-' && ctx.bufferedSrc() != "" {
+		return true
+	}
+	return false
+}
+
+func (s *Scanner) updateIndent(ctx *Context, c rune) {
 	if s.isFirstCharAtLine && c == ' ' {
 		s.indentNum++
 		return
@@ -119,10 +133,13 @@ func (s *Scanner) updateIndent(c rune) {
 			s.indentState = IndentStateDown
 		}
 	}
+	s.isFirstCharAtLine = false
+	if s.isNeededKeepPreviousIndentNum(ctx, c) {
+		return
+	}
 	s.prevIndentNum = s.indentNum
 	s.prevIndentColumn = 0
 	s.prevIndentLevel = s.indentLevel
-	s.isFirstCharAtLine = false
 }
 
 func (s *Scanner) isChangedToIndentStateDown() bool {
@@ -142,6 +159,7 @@ func (s *Scanner) addBufferedTokenIfExists(ctx *Context) {
 }
 
 func (s *Scanner) breakLiteral(ctx *Context) {
+	s.docStartColumn = 0
 	ctx.breakLiteral()
 }
 
@@ -212,6 +230,7 @@ func (s *Scanner) scanLiteral(ctx *Context, c rune) {
 	if ctx.isEOS() {
 		value := ctx.bufferedSrc()
 		ctx.addToken(token.New(value, string(ctx.obuf), s.pos()))
+		ctx.resetBuffer()
 	}
 	if c == '\n' {
 		if ctx.isLiteral {
@@ -221,8 +240,14 @@ func (s *Scanner) scanLiteral(ctx *Context, c rune) {
 		}
 		s.progressLine(ctx)
 	} else if s.isFirstCharAtLine && c == ' ' {
+		if 0 < s.docStartColumn && s.docStartColumn <= s.column {
+			ctx.addBuf(c)
+		}
 		s.progressColumn(ctx, 1)
 	} else {
+		if s.docStartColumn == 0 {
+			s.docStartColumn = s.column
+		}
 		ctx.addBuf(c)
 		s.progressColumn(ctx, 1)
 	}
@@ -280,13 +305,18 @@ func (s *Scanner) scan(ctx *Context) (pos int) {
 	for ctx.next() {
 		pos = ctx.nextPos()
 		c := ctx.currentChar()
-		s.updateIndent(c)
-		if s.isChangedToIndentStateDown() {
+		s.updateIndent(ctx, c)
+		if ctx.isDocument() {
+			if s.isChangedToIndentStateEqual() ||
+				s.isChangedToIndentStateDown() {
+				s.addBufferedTokenIfExists(ctx)
+				s.breakLiteral(ctx)
+			} else {
+				s.scanLiteral(ctx, c)
+				continue
+			}
+		} else if s.isChangedToIndentStateDown() {
 			s.addBufferedTokenIfExists(ctx)
-			s.breakLiteral(ctx)
-		} else if ctx.isLiteral || ctx.isFolded || ctx.isRawFolded {
-			s.scanLiteral(ctx, c)
-			continue
 		} else if s.isChangedToIndentStateEqual() {
 			// if first character is \n, buffer expect to raw folded literal
 			if len(ctx.obuf) > 0 && ctx.obuf[0] != '\n' {

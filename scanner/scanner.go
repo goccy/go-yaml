@@ -227,12 +227,14 @@ func (s *Scanner) scanComment(ctx *Context) (tk *token.Token, pos int) {
 }
 
 func (s *Scanner) scanLiteral(ctx *Context, c rune) {
+	ctx.addOriginBuf(c)
 	if ctx.isEOS() {
+		ctx.addBuf(c)
 		value := ctx.bufferedSrc()
 		ctx.addToken(token.New(value, string(ctx.obuf), s.pos()))
 		ctx.resetBuffer()
-	}
-	if c == '\n' {
+		s.progressColumn(ctx, 1)
+	} else if c == '\n' {
 		if ctx.isLiteral {
 			ctx.addBuf(c)
 		} else {
@@ -251,7 +253,6 @@ func (s *Scanner) scanLiteral(ctx *Context, c rune) {
 		ctx.addBuf(c)
 		s.progressColumn(ctx, 1)
 	}
-	ctx.addOriginBuf(c)
 }
 
 func (s *Scanner) scanLiteralHeader(ctx *Context) (pos int, err error) {
@@ -275,6 +276,7 @@ func (s *Scanner) scanLiteralHeader(ctx *Context) (pos int, err error) {
 					ctx.addToken(token.Folded(">"+opt, string(ctx.obuf), s.pos()))
 					ctx.isFolded = true
 				}
+				s.indentState = IndentStateKeep
 				ctx.resetBuffer()
 				ctx.literalOpt = opt
 				return

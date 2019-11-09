@@ -534,6 +534,14 @@ func TestDecoder(t *testing.T) {
 			"hello: world\n",
 			map[string]string{"hello": "world"},
 		},
+		{
+			"hello: world\r\n",
+			map[string]string{"hello": "world"},
+		},
+		{
+			"hello: world\rGo: Gopher",
+			map[string]string{"hello": "world", "Go": "Gopher"},
+		},
 
 		// Structs and type conversions.
 		{

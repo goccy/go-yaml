@@ -263,6 +263,14 @@ d: e
 		},
 		{
 			`
+a: b#notcomment
+`,
+			`
+a: b#notcomment
+`,
+		},
+		{
+			`
 anchored: &anchor foo
 aliased: *anchor
 `,

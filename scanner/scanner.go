@@ -476,13 +476,15 @@ func (s *Scanner) scan(ctx *Context) (pos int) {
 				return
 			}
 		case '#':
-			s.addBufferedTokenIfExists(ctx)
-			token, progress := s.scanComment(ctx)
-			ctx.addToken(token)
-			s.progressColumn(ctx, progress)
-			s.progressLine(ctx)
-			pos += progress
-			return
+			if ctx.bufferedSrc() == "" || ctx.previousChar() == ' ' {
+				s.addBufferedTokenIfExists(ctx)
+				token, progress := s.scanComment(ctx)
+				ctx.addToken(token)
+				s.progressColumn(ctx, progress)
+				s.progressLine(ctx)
+				pos += progress
+				return
+			}
 		case '\'', '"':
 			if ctx.bufferedSrc() == "" {
 				token, progress := s.scanQuote(ctx, c)

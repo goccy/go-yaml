@@ -26,10 +26,19 @@ type StructField struct {
 }
 
 func structField(field reflect.StructField) *StructField {
+	// If struct tag `yaml` exist, use that. If no `yaml`
+	// exists, but `json` does, use that and try the best to
+	// adhere to its rules
+
 	tag := field.Tag.Get(StructTagName)
 	if tag == "" && strings.Index(string(field.Tag), ":") < 0 {
 		tag = string(field.Tag)
 	}
+
+	if tag == "" {
+		tag = field.Tag.Get(`json`)
+	}
+
 	fieldName := strings.ToLower(field.Name)
 	options := strings.Split(tag, ",")
 	if len(options) > 0 {

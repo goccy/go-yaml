@@ -1058,3 +1058,27 @@ a:
 	t.Logf("%s", yaml.FormatError(err, false, true))
 	t.Logf("%s", yaml.FormatError(err, true, true))
 }
+
+func TestDecoder_JSONTags(t *testing.T) {
+	var v struct {
+		A string `json:"a_json"` // no YAML tag
+		B string `json:"b_json" yaml:"b_yaml"` // both tags
+	}
+
+	const src = `---
+a_json: a_json_value
+b_json: b_json_value
+b_yaml: b_yaml_value
+`
+	if err := yaml.NewDecoder(strings.NewReader(src)).Decode(&v); err != nil {
+		t.Fatalf(`parsing should succeed: %s`, err)
+	}
+
+	if v.A != "a_json_value" {
+		t.Fatalf("v.A should be `a_json_value`, got `%s`", v.A)
+	}
+
+	if v.B != "b_yaml_value" {
+		t.Fatalf("v.B should be `b_yaml_value`, got `%s`", v.B)
+	}
+}

@@ -31,10 +31,6 @@ func structField(field reflect.StructField) *StructField {
 	// adhere to its rules
 
 	tag := field.Tag.Get(StructTagName)
-	if tag == "" && strings.Index(string(field.Tag), ":") < 0 {
-		tag = string(field.Tag)
-	}
-
 	if tag == "" {
 		tag = field.Tag.Get(`json`)
 	}

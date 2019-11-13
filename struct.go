@@ -27,9 +27,6 @@ type StructField struct {
 
 func structField(field reflect.StructField) *StructField {
 	tag := field.Tag.Get(StructTagName)
-	if tag == "" && strings.Index(string(field.Tag), ":") < 0 {
-		tag = string(field.Tag)
-	}
 	fieldName := strings.ToLower(field.Name)
 	options := strings.Split(tag, ",")
 	if len(options) > 0 {

@@ -591,7 +591,7 @@ func TestDecoder(t *testing.T) {
 		{
 			"a: 1",
 			struct {
-				B int "a"
+				B int `yaml:"a"`
 			}{1},
 		},
 

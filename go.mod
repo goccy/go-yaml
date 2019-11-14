@@ -12,4 +12,5 @@ require (
 	golang.org/x/xerrors v0.0.0-20191011141410-1b5146add898
 	gopkg.in/go-playground/assert.v1 v1.2.1 // indirect
 	gopkg.in/go-playground/validator.v9 v9.30.0
+	gopkg.in/yaml.v3 v3.0.0-20191107175235-0b070bb63a18
 )

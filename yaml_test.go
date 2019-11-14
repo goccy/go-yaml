@@ -5,6 +5,8 @@ import (
 
 	"github.com/goccy/go-yaml"
 	"golang.org/x/xerrors"
+	niemeyer2 "gopkg.in/yaml.v3"
+	niemeyer3 "gopkg.in/yaml.v3"
 )
 
 func TestMarshal(t *testing.T) {
@@ -200,4 +202,42 @@ b:
 	if !v.B.c {
 		t.Fatal("failed to UnmarshalYAML")
 	}
+}
+
+func Benchmark(b *testing.B) {
+	const src = `---
+id: 1
+message: Hello, World
+verified: true
+`
+	type T struct {
+		ID       int    `yaml:"id"`
+		Message  string `yaml:"message"`
+		Verified bool   `yaml:"verified,omitempty"`
+	}
+
+	b.Run("gopkg.in/yaml.v2", func(b *testing.B) {
+		var t T
+		for i := 0; i < b.N; i++ {
+			if err := niemeyer2.Unmarshal([]byte(src), &t); err != nil {
+				b.Fatal(err)
+			}
+		}
+	})
+	b.Run("gopkg.in/yaml.v3", func(b *testing.B) {
+		var t T
+		for i := 0; i < b.N; i++ {
+			if err := niemeyer3.Unmarshal([]byte(src), &t); err != nil {
+				b.Fatal(err)
+			}
+		}
+	})
+	b.Run("github.com/goccy/go-yaml", func(b *testing.B) {
+		var t T
+		for i := 0; i < b.N; i++ {
+			if err := yaml.Unmarshal([]byte(src), &t); err != nil {
+				b.Fatal(err)
+			}
+		}
+	})
 }

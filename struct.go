@@ -25,16 +25,19 @@ type StructField struct {
 	IsInline     bool
 }
 
-func structField(field reflect.StructField) *StructField {
+func getTag(field reflect.StructField) string {
 	// If struct tag `yaml` exist, use that. If no `yaml`
 	// exists, but `json` does, use that and try the best to
 	// adhere to its rules
-
 	tag := field.Tag.Get(StructTagName)
 	if tag == "" {
 		tag = field.Tag.Get(`json`)
 	}
+	return tag
+}
 
+func structField(field reflect.StructField) *StructField {
+	tag := getTag(field)
 	fieldName := strings.ToLower(field.Name)
 	options := strings.Split(tag, ",")
 	if len(options) > 0 {
@@ -81,7 +84,7 @@ func isIgnoredStructField(field reflect.StructField) bool {
 		// private field
 		return true
 	}
-	tag := field.Tag.Get(StructTagName)
+	tag := getTag(field)
 	if tag == "-" {
 		return true
 	}

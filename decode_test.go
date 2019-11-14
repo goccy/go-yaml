@@ -3,6 +3,7 @@ package yaml_test
 import (
 	"bytes"
 	"fmt"
+	"log"
 	"math"
 	"reflect"
 	"strings"
@@ -1057,4 +1058,68 @@ a:
 	t.Logf("%s", yaml.FormatError(err, true, false))
 	t.Logf("%s", yaml.FormatError(err, false, true))
 	t.Logf("%s", yaml.FormatError(err, true, true))
+}
+
+func TestDecoder_JSONTags(t *testing.T) {
+	var v struct {
+		A string `json:"a_json"`               // no YAML tag
+		B string `json:"b_json" yaml:"b_yaml"` // both tags
+	}
+
+	const src = `---
+a_json: a_json_value
+b_json: b_json_value
+b_yaml: b_yaml_value
+`
+	if err := yaml.NewDecoder(strings.NewReader(src)).Decode(&v); err != nil {
+		t.Fatalf(`parsing should succeed: %s`, err)
+	}
+
+	if v.A != "a_json_value" {
+		t.Fatalf("v.A should be `a_json_value`, got `%s`", v.A)
+	}
+
+	if v.B != "b_yaml_value" {
+		t.Fatalf("v.B should be `b_yaml_value`, got `%s`", v.B)
+	}
+}
+
+func Example_YAMLTags() {
+	yml := `---
+foo: 1
+bar: c
+A: 2
+B: d
+`
+	var v struct {
+		A int    `yaml:"foo" json:"A"`
+		B string `yaml:"bar" json:"B"`
+	}
+	if err := yaml.Unmarshal([]byte(yml), &v); err != nil {
+		log.Fatal(err)
+	}
+	fmt.Println(v.A)
+	fmt.Println(v.B)
+	// OUTPUT:
+	// 1
+	// c
+}
+
+func Example_JSONTags() {
+	yml := `---
+foo: 1
+bar: c
+`
+	var v struct {
+		A int    `json:"foo"`
+		B string `json:"bar"`
+	}
+	if err := yaml.Unmarshal([]byte(yml), &v); err != nil {
+		log.Fatal(err)
+	}
+	fmt.Println(v.A)
+	fmt.Println(v.B)
+	// OUTPUT:
+	// 1
+	// c
 }

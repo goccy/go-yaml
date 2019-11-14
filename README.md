@@ -60,6 +60,40 @@ if err := yaml.Unmarshal([]byte(yml), &v); err != nil {
 }
 ```
 
+To control marshal/unmarshal behavior, you can use the `yaml` tag
+
+```go
+	yml := `---
+foo: 1
+bar: c
+`
+var v struct {
+	A int    `yaml:"foo"`
+	B string `yaml:"bar"`
+}
+if err := yaml.Unmarshal([]byte(yml), &v); err != nil {
+	...
+}
+```
+
+For convenience, we also accept the `json` tag. Note that not all options from
+the `json` tag will have significance when parsing YAML documents. If both
+tags exist, `yaml` tag will take precedence.
+
+```go
+	yml := `---
+foo: 1
+bar: c
+`
+var v struct {
+	A int    `json:"foo"`
+	B string `json:"bar"`
+}
+if err := yaml.Unmarshal([]byte(yml), &v); err != nil {
+	...
+}
+```
+
 For custom marshal/unmarshaling, implement one of Bytes or Interface Marshaler/Unmarshaler. The difference is that while BytesMarshaler/BytesUnmarshaler behave  like `encoding.json`, InterfaceMarshaler/InterfaceUnmarshaler behave like `gopkg.in/yaml.v2`.
 
 Semantically both are the same, but they differ in performance. Because indentation matter in YAML, you cannot simply accept a valid YAML fragment from a Marshaler, and expect it to work when it is attached to the parent container's serialized form. Therefore when we receive use the BytesMarshaler, which returns []byte, we must decode it once to figure out how to make it work in the given context. If you use the InterfaceMarshaler, we can skip the decoding.

@@ -3,6 +3,7 @@ package yaml_test
 import (
 	"bytes"
 	"fmt"
+	"log"
 	"math"
 	"reflect"
 	"strings"
@@ -1061,7 +1062,7 @@ a:
 
 func TestDecoder_JSONTags(t *testing.T) {
 	var v struct {
-		A string `json:"a_json"` // no YAML tag
+		A string `json:"a_json"`               // no YAML tag
 		B string `json:"b_json" yaml:"b_yaml"` // both tags
 	}
 
@@ -1081,4 +1082,44 @@ b_yaml: b_yaml_value
 	if v.B != "b_yaml_value" {
 		t.Fatalf("v.B should be `b_yaml_value`, got `%s`", v.B)
 	}
+}
+
+func Example_YAMLTags() {
+	yml := `---
+foo: 1
+bar: c
+A: 2
+B: d
+`
+	var v struct {
+		A int    `yaml:"foo" json:"A"`
+		B string `yaml:"bar" json:"B"`
+	}
+	if err := yaml.Unmarshal([]byte(yml), &v); err != nil {
+		log.Fatal(err)
+	}
+	fmt.Println(v.A)
+	fmt.Println(v.B)
+	// OUTPUT:
+	// 1
+	// c
+}
+
+func Example_JSONTags() {
+	yml := `---
+foo: 1
+bar: c
+`
+	var v struct {
+		A int    `json:"foo"`
+		B string `json:"bar"`
+	}
+	if err := yaml.Unmarshal([]byte(yml), &v); err != nil {
+		log.Fatal(err)
+	}
+	fmt.Println(v.A)
+	fmt.Println(v.B)
+	// OUTPUT:
+	// 1
+	// c
 }

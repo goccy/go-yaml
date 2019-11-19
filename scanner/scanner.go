@@ -102,6 +102,9 @@ func (s *Scanner) isNeededKeepPreviousIndentNum(ctx *Context, c rune) bool {
 }
 
 func (s *Scanner) updateIndent(ctx *Context, c rune) {
+	if s.isFirstCharAtLine && c == '\n' && ctx.isDocument() {
+		return
+	}
 	if s.isFirstCharAtLine && c == ' ' {
 		s.indentNum++
 		return

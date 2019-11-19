@@ -416,6 +416,24 @@ a:
     piyo
 `,
 		},
+		{
+			`
+a: |
+   bbbbbbb
+
+
+   ccccccc
+d: eeeeeeeeeeeeeeeee
+`,
+			`
+a: |
+   bbbbbbb
+
+
+   ccccccc
+d: eeeeeeeeeeeeeeeee
+`,
+		},
 	}
 	for _, test := range tests {
 		tokens := lexer.Tokenize(test.source)

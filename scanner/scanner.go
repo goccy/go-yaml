@@ -3,6 +3,8 @@ package scanner
 import (
 	"io"
 	"strings"
+	"sync"
+	"unicode/utf8"
 
 	"github.com/goccy/go-yaml/token"
 	"golang.org/x/xerrors"
@@ -530,9 +532,33 @@ func (s *Scanner) scan(ctx *Context) (pos int) {
 	return
 }
 
+var runeSlicePool = sync.Pool{
+	New: func() interface{} { return make([]rune, 64) },
+}
+
+// Copied from bytes.Runes -- modified to reuse the buffer
+func bytesToRunes(s []byte) []rune {
+	t := runeSlicePool.Get().([]rune)
+	cnt := utf8.RuneCount(s)
+	if cap(t) < cnt {
+		runeSlicePool.Put(t)
+		t = make([]rune, cnt)
+	}
+	t = t[:cnt]
+
+	i := 0
+	for len(s) > 0 {
+		r, l := utf8.DecodeRune(s)
+		t[i] = r
+		i++
+		s = s[l:]
+	}
+	return t
+}
+
 // Init prepares the scanner s to tokenize the text src by setting the scanner at the beginning of src.
-func (s *Scanner) Init(text string) {
-	src := []rune(text)
+func (s *Scanner) Init(text []byte) {
+	src := bytesToRunes(text)
 	s.source = src
 	s.sourcePos = 0
 	s.sourceSize = len(src)
@@ -545,6 +571,10 @@ func (s *Scanner) Init(text string) {
 	s.indentLevel = 0
 	s.indentNum = 0
 	s.isFirstCharAtLine = true
+}
+
+func (s *Scanner) Release() {
+			runeSlicePool.Put(s.source)
 }
 
 // Scan scans the next token and returns the token collection. The source end is indicated by io.EOF.

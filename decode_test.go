@@ -860,18 +860,21 @@ func TestDecoder(t *testing.T) {
 		},
 	}
 	for _, test := range tests {
-		buf := bytes.NewBufferString(test.source)
-		dec := yaml.NewDecoder(buf)
-		typ := reflect.ValueOf(test.value).Type()
-		value := reflect.New(typ)
-		if err := dec.Decode(value.Interface()); err != nil {
-			t.Fatalf("%s: %+v", test.source, err)
-		}
-		actual := fmt.Sprintf("%+v", value.Elem().Interface())
-		expect := fmt.Sprintf("%+v", test.value)
-		if actual != expect {
-			t.Fatalf("failed to test [%s], actual=[%s], expect=[%s]", test.source, actual, expect)
-		}
+		thisTest := test
+		t.Run(thisTest.source, func(t *testing.T) {
+			buf := bytes.NewBufferString(thisTest.source)
+			dec := yaml.NewDecoder(buf)
+			typ := reflect.ValueOf(thisTest.value).Type()
+			value := reflect.New(typ)
+			if err := dec.Decode(value.Interface()); err != nil {
+				t.Fatalf("%s: %+v", thisTest.source, err)
+			}
+			actual := fmt.Sprintf("%+v", value.Elem().Interface())
+			expect := fmt.Sprintf("%+v", thisTest.value)
+			if actual != expect {
+				t.Fatalf("failed to test [%s], actual=[%s], expect=[%s]", thisTest.source, actual, expect)
+			}
+		})
 	}
 }
 

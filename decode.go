@@ -38,9 +38,9 @@ func NewDecoder(r io.Reader, opts ...DecodeOption) *Decoder {
 		reader:              r,
 		anchorMap:           map[string]ast.Node{},
 		opts:                opts,
-		referenceReaders:    []io.Reader{},
-		referenceFiles:      []string{},
-		referenceDirs:       []string{},
+		referenceReaders:    nil,
+		referenceFiles:      nil,
+		referenceDirs:       nil,
 		isRecursiveDir:      false,
 		isResolvedReference: false,
 	}
@@ -85,55 +85,55 @@ func (d *Decoder) nodeToValue(node ast.Node) interface{} {
 	case *ast.NullNode:
 		return nil
 	case *ast.StringNode:
-		return n.GetValue()
+		return n.Value()
 	case *ast.IntegerNode:
-		return n.GetValue()
+		return n.Value()
 	case *ast.FloatNode:
-		return n.GetValue()
+		return n.Value()
 	case *ast.BoolNode:
-		return n.GetValue()
+		return n.Value()
 	case *ast.InfinityNode:
-		return n.GetValue()
+		return n.Value()
 	case *ast.NanNode:
-		return n.GetValue()
+		return n.Value()
 	case *ast.TagNode:
-		switch n.Start.Value {
+		switch n.Token().Value {
 		case token.TimestampTag:
-			t, _ := d.castToTime(n.Value)
+			t, _ := d.castToTime(n.Value())
 			return t
 		case token.FloatTag:
-			return d.castToFloat(d.nodeToValue(n.Value))
+			return d.castToFloat(d.nodeToValue(n.Value()))
 		case token.NullTag:
 			return nil
 		case token.BinaryTag:
-			b, _ := base64.StdEncoding.DecodeString(d.nodeToValue(n.Value).(string))
+			b, _ := base64.StdEncoding.DecodeString(d.nodeToValue(n.Value()).(string))
 			return b
 		}
 	case *ast.AnchorNode:
-		anchorName := n.Name.GetToken().Value
-		anchorValue := d.nodeToValue(n.Value)
-		d.anchorMap[anchorName] = n.Value
+		anchorName := n.Name().Token().Value
+		anchorValue := d.nodeToValue(n.Value())
+		d.anchorMap[anchorName] = n.Value()
 		return anchorValue
 	case *ast.AliasNode:
-		aliasName := n.Value.GetToken().Value
+		aliasName := n.Value().Token().Value
 		return d.nodeToValue(d.anchorMap[aliasName])
 	case *ast.LiteralNode:
-		return n.Value.GetValue()
+		return n.Value()
 	case *ast.MappingValueNode:
 		m := map[string]interface{}{}
-		if n.Key.Type() == ast.MergeKeyType {
-			mapValue := d.nodeToValue(n.Value).(map[string]interface{})
+		if n.Key().Type() == ast.MergeKeyType {
+			mapValue := d.nodeToValue(n.Value()).(map[string]interface{})
 			for k, v := range mapValue {
 				m[k] = v
 			}
 		} else {
-			key := n.Key.GetToken().Value
-			m[key] = d.nodeToValue(n.Value)
+			key := n.Key().Token().Value
+			m[key] = d.nodeToValue(n.Value())
 		}
 		return m
 	case *ast.MappingNode:
 		m := map[string]interface{}{}
-		for _, value := range n.Values {
+		for _, value := range n.Values() {
 			subMap := d.nodeToValue(value).(map[string]interface{})
 			for k, v := range subMap {
 				m[k] = v
@@ -142,7 +142,7 @@ func (d *Decoder) nodeToValue(node ast.Node) interface{} {
 		return m
 	case *ast.SequenceNode:
 		v := []interface{}{}
-		for _, value := range n.Values {
+		for _, value := range n.Values() {
 			v = append(v, d.nodeToValue(value))
 		}
 		return v
@@ -155,14 +155,14 @@ func (d *Decoder) getMapNode(node ast.Node) (ast.MapNode, error) {
 		return nil, nil
 	}
 	if anchor, ok := node.(*ast.AnchorNode); ok {
-		mapNode, ok := anchor.Value.(ast.MapNode)
+		mapNode, ok := anchor.Value().(ast.MapNode)
 		if ok {
 			return mapNode, nil
 		}
-		return nil, xerrors.Errorf("%s node doesn't MapNode", anchor.Value.Type())
+		return nil, xerrors.Errorf("%s node doesn't MapNode", anchor.Value().Type())
 	}
 	if alias, ok := node.(*ast.AliasNode); ok {
-		aliasName := alias.Value.GetToken().Value
+		aliasName := alias.Value().Token().Value
 		anchorNode := d.anchorMap[aliasName]
 		mapNode, ok := anchorNode.(ast.MapNode)
 		if ok {
@@ -182,14 +182,14 @@ func (d *Decoder) getArrayNode(node ast.Node) (ast.ArrayNode, error) {
 		return nil, nil
 	}
 	if anchor, ok := node.(*ast.AnchorNode); ok {
-		arrayNode, ok := anchor.Value.(ast.ArrayNode)
+		arrayNode, ok := anchor.Value().(ast.ArrayNode)
 		if ok {
 			return arrayNode, nil
 		}
-		return nil, xerrors.Errorf("%s node doesn't ArrayNode", anchor.Value.Type())
+		return nil, xerrors.Errorf("%s node doesn't ArrayNode", anchor.Value().Type())
 	}
 	if alias, ok := node.(*ast.AliasNode); ok {
-		aliasName := alias.Value.GetToken().Value
+		aliasName := alias.Value().Token().Value
 		anchorNode := d.anchorMap[aliasName]
 		arrayNode, ok := anchorNode.(ast.ArrayNode)
 		if ok {
@@ -206,8 +206,8 @@ func (d *Decoder) getArrayNode(node ast.Node) (ast.ArrayNode, error) {
 
 func (d *Decoder) fileToNode(f *ast.File) ast.Node {
 	for _, doc := range f.Docs {
-		if v := d.nodeToValue(doc.Body); v != nil {
-			return doc.Body
+		if v := d.nodeToValue(doc.Body()); v != nil {
+			return doc.Body()
 		}
 	}
 	return nil
@@ -547,7 +547,7 @@ func (d *Decoder) decodeStruct(dst reflect.Value, src ast.Node) error {
 					node, exists := keyToNodeMap[structField.RenderName]
 					if exists {
 						// TODO: to make FieldError message cutomizable
-						return errors.ErrSyntax(fmt.Sprintf("%s", err), node.GetToken())
+						return errors.ErrSyntax(fmt.Sprintf("%s", err), node.Token())
 					}
 				}
 			}
@@ -774,7 +774,27 @@ func (d *Decoder) decode(bytes []byte) (ast.Node, error) {
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to parse yaml")
 	}
-	return d.fileToNode(f), nil
+
+	var target = -1
+	// This is inlined so that we can release the resources
+	for i, doc := range f.Docs {
+		if v := d.nodeToValue(doc.Body()); v != nil {
+			// DO NOT free this
+			target = i
+			break
+		}
+	}
+
+	if target == -1 {
+		return nil, nil
+	}
+
+	doc := f.Docs[target]
+	f.Docs[target] = nil // avoid releasing
+	defer f.Release(true)
+	defer doc.Release(false)
+
+	return doc.Body(), nil
 }
 
 // Decode reads the next YAML-encoded value from its input
@@ -788,14 +808,17 @@ func (d *Decoder) Decode(v interface{}) error {
 			return errors.Wrapf(err, "failed to resolve reference")
 		}
 	}
+
 	rv := reflect.ValueOf(v)
 	if rv.Type().Kind() != reflect.Ptr {
 		return errors.ErrDecodeRequiredPointerType
 	}
+
 	bytes, err := ioutil.ReadAll(d.reader)
 	if err != nil {
 		return errors.Wrapf(err, "failed to read buffer")
 	}
+
 	node, err := d.decode(bytes)
 	if err != nil {
 		return errors.Wrapf(err, "failed to decode")
@@ -803,6 +826,8 @@ func (d *Decoder) Decode(v interface{}) error {
 	if node == nil {
 		return nil
 	}
+	defer node.Release(true)
+
 	if err := d.decodeValue(rv.Elem(), node); err != nil {
 		return errors.Wrapf(err, "failed to decode value")
 	}

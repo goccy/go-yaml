@@ -85,8 +85,8 @@ func (e *Encoder) encodeDocument(doc []byte) (ast.Node, error) {
 		return nil, errors.Wrapf(err, "failed to parse yaml")
 	}
 	for _, docNode := range f.Docs {
-		if docNode.Body != nil {
-			return docNode.Body, nil
+		if docNode.Body() != nil {
+			return docNode.Body(), nil
 		}
 	}
 	return nil, nil
@@ -230,14 +230,15 @@ func (e *Encoder) encodeBool(v bool) ast.Node {
 }
 
 func (e *Encoder) encodeSlice(value reflect.Value) (ast.Node, error) {
-	sequence := ast.Sequence(token.New("-", "-", e.pos(e.column)), e.isFlowStyle)
+	var values []ast.Node
 	for i := 0; i < value.Len(); i++ {
 		node, err := e.encodeValue(value.Index(i), e.column)
 		if err != nil {
 			return nil, errors.Wrapf(err, "failed to encode value for slice")
 		}
-		sequence.Values = append(sequence.Values, node)
+		values = append(values, node)
 	}
+	sequence := ast.Sequence(token.New("-", "-", e.pos(e.column)), nil, e.isFlowStyle, values...)
 	return sequence, nil
 }
 
@@ -249,31 +250,32 @@ func (e *Encoder) encodeMapItem(item MapItem, column int) (*ast.MappingValueNode
 		return nil, errors.Wrapf(err, "failed to encode MapItem")
 	}
 	if m, ok := value.(*ast.MappingNode); ok {
-		for _, value := range m.Values {
-			value.Key.GetToken().Position.Column += e.indent
+		for _, value := range m.Values() {
+			value.Key().Token().Position.Column += e.indent
 		}
 	}
-	return &ast.MappingValueNode{
-		Start: token.New("", "", e.pos(column)),
-		Key:   e.encodeString(k.Interface().(string), column),
-		Value: value,
-	}, nil
+	return ast.MappingValue(
+		token.New("", "", e.pos(column)),
+		e.encodeString(k.Interface().(string), column),
+		value,
+	), nil
 }
 
 func (e *Encoder) encodeMapSlice(value MapSlice, column int) (ast.Node, error) {
-	node := ast.Mapping(token.New("", "", e.pos(column)), e.isFlowStyle)
+	var values []*ast.MappingValueNode
 	for _, item := range value {
 		value, err := e.encodeMapItem(item, column)
 		if err != nil {
 			return nil, errors.Wrapf(err, "failed to encode MapItem for MapSlice")
 		}
-		node.Values = append(node.Values, value)
+		values = append(values, value)
 	}
+	node := ast.Mapping(token.New("", "", e.pos(column)), nil, e.isFlowStyle, values...)
 	return node, nil
 }
 
 func (e *Encoder) encodeMap(value reflect.Value, column int) ast.Node {
-	node := ast.Mapping(token.New("", "", e.pos(column)), e.isFlowStyle)
+	var values []*ast.MappingValueNode
 	keys := []string{}
 	for _, k := range value.MapKeys() {
 		keys = append(keys, k.Interface().(string))
@@ -287,15 +289,17 @@ func (e *Encoder) encodeMap(value reflect.Value, column int) ast.Node {
 			return nil
 		}
 		if m, ok := value.(*ast.MappingNode); ok {
-			for _, value := range m.Values {
-				value.Key.GetToken().Position.Column += e.indent
+			for _, value := range m.Values() {
+				value.Key().Token().Position.Column += e.indent
 			}
 		}
-		node.Values = append(node.Values, &ast.MappingValueNode{
-			Key:   e.encodeString(k.Interface().(string), column),
-			Value: value,
-		})
+		values = append(values, ast.MappingValue(
+			nil,
+			e.encodeString(k.Interface().(string), column),
+			value,
+		))
 	}
+	node := ast.Mapping(token.New("", "", e.pos(column)), nil, e.isFlowStyle, values...)
 	return node
 }
 
@@ -352,7 +356,7 @@ func (e *Encoder) encodeTime(v time.Time, column int) ast.Node {
 }
 
 func (e *Encoder) encodeStruct(value reflect.Value, column int) (ast.Node, error) {
-	node := ast.Mapping(token.New("", "", e.pos(column)), e.isFlowStyle)
+	var values []*ast.MappingValueNode
 	structType := value.Type()
 	structFieldMap, err := structFieldMap(structType)
 	if err != nil {
@@ -375,15 +379,15 @@ func (e *Encoder) encodeStruct(value reflect.Value, column int) (ast.Node, error
 		}
 		if m, ok := value.(*ast.MappingNode); ok {
 			if !e.isFlowStyle && structField.IsFlow {
-				m.IsFlowStyle = true
+				m.SetFlowStyle(true)
 			}
-			for _, value := range m.Values {
-				value.Key.GetToken().Position.Column += e.indent
-				value.Value.GetToken().Position.Column += e.indent
+			for _, value := range m.Values() {
+				value.Key().Token().Position.Column += e.indent
+				value.Value().Token().Position.Column += e.indent
 			}
 		} else if s, ok := value.(*ast.SequenceNode); ok {
 			if !e.isFlowStyle && structField.IsFlow {
-				s.IsFlowStyle = true
+				s.SetFlowStyle(true)
 			}
 		}
 		key := e.encodeString(structField.RenderName, column)
@@ -393,21 +397,21 @@ func (e *Encoder) encodeStruct(value reflect.Value, column int) (ast.Node, error
 			if fieldValue.Kind() == reflect.Ptr {
 				e.anchorPtrToNameMap[fieldValue.Pointer()] = anchorName
 			}
-			value = &ast.AnchorNode{
-				Start: token.New("&", "&", e.pos(column)),
-				Name:  ast.String(token.New(anchorName, anchorName, e.pos(column))),
-				Value: value,
-			}
+			value = ast.Anchor(
+				token.New("&", "&", e.pos(column)),
+				ast.String(token.New(anchorName, anchorName, e.pos(column))),
+				value,
+			)
 		case structField.IsAutoAnchor:
 			anchorName := structField.RenderName
 			if fieldValue.Kind() == reflect.Ptr {
 				e.anchorPtrToNameMap[fieldValue.Pointer()] = anchorName
 			}
-			value = &ast.AnchorNode{
-				Start: token.New("&", "&", e.pos(column)),
-				Name:  ast.String(token.New(anchorName, anchorName, e.pos(column))),
-				Value: value,
-			}
+			value = ast.Anchor(
+				token.New("&", "&", e.pos(column)),
+				ast.String(token.New(anchorName, anchorName, e.pos(column))),
+				value,
+			)
 		case structField.IsAutoAlias:
 			if fieldValue.Kind() != reflect.Ptr {
 				return nil, xerrors.Errorf(
@@ -422,20 +426,20 @@ func (e *Encoder) encodeStruct(value reflect.Value, column int) (ast.Node, error
 				)
 			}
 			aliasName := anchorName
-			value = &ast.AliasNode{
-				Start: token.New("*", "*", e.pos(column)),
-				Value: ast.String(token.New(aliasName, aliasName, e.pos(column))),
-			}
+			value = ast.Alias(
+				token.New("*", "*", e.pos(column)),
+				ast.String(token.New(aliasName, aliasName, e.pos(column))),
+			)
 			if structField.IsInline {
 				// if both used alias and inline, output `<<: *alias`
 				key = ast.MergeKey(token.New("<<", "<<", e.pos(column)))
 			}
 		case structField.AliasName != "":
 			aliasName := structField.AliasName
-			value = &ast.AliasNode{
-				Start: token.New("*", "*", e.pos(column)),
-				Value: ast.String(token.New(aliasName, aliasName, e.pos(column))),
-			}
+			value = ast.Alias(
+				token.New("*", "*", e.pos(column)),
+				ast.String(token.New(aliasName, aliasName, e.pos(column))),
+			)
 			if structField.IsInline {
 				// if both used alias and inline, output `<<: *alias`
 				key = ast.MergeKey(token.New("<<", "<<", e.pos(column)))
@@ -449,24 +453,27 @@ func (e *Encoder) encodeStruct(value reflect.Value, column int) (ast.Node, error
 			for mapIter.Next() {
 				key := mapIter.Key()
 				value := mapIter.Value()
-				keyName := key.GetToken().Value
+				keyName := key.Token().Value
 				if structFieldMap.isIncludedRenderName(keyName) {
 					// if declared same key name, skip encoding this field
 					continue
 				}
-				key.GetToken().Position.Column -= e.indent
-				value.GetToken().Position.Column -= e.indent
-				node.Values = append(node.Values, &ast.MappingValueNode{
-					Key:   key,
-					Value: value,
-				})
+				key.Token().Position.Column -= e.indent
+				value.Token().Position.Column -= e.indent
+				values = append(values, ast.MappingValue(
+					nil,
+					key,
+					value,
+				))
 			}
 			continue
 		}
-		node.Values = append(node.Values, &ast.MappingValueNode{
-			Key:   key,
-			Value: value,
-		})
+		values = append(values, ast.MappingValue(
+			nil,
+			key,
+			value,
+		))
 	}
+	node := ast.Mapping(token.New("", "", e.pos(column)), nil, e.isFlowStyle, values...)
 	return node, nil
 }

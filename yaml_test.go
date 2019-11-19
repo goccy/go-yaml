@@ -209,6 +209,11 @@ func Benchmark(b *testing.B) {
 id: 1
 message: Hello, World
 verified: true
+elements:
+  - one
+  - 0.02
+  - null
+  - -inf
 `
 	type T struct {
 		ID       int    `yaml:"id"`

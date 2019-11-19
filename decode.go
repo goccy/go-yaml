@@ -204,8 +204,8 @@ func (d *Decoder) getArrayNode(node ast.Node) (ast.ArrayNode, error) {
 	return arrayNode, nil
 }
 
-func (d *Decoder) fileToNode(f *ast.File) ast.Node {
-	for _, doc := range f.Docs {
+func (d *Decoder) fileToNode(f *ast.FileNode) ast.Node {
+	for _, doc := range f.Documents() {
 		if v := d.nodeToValue(doc.Body()); v != nil {
 			return doc.Body()
 		}
@@ -777,7 +777,7 @@ func (d *Decoder) decode(bytes []byte) (ast.Node, error) {
 
 	var target = -1
 	// This is inlined so that we can release the resources
-	for i, doc := range f.Docs {
+	for i, doc := range f.Documents() {
 		if v := d.nodeToValue(doc.Body()); v != nil {
 			// DO NOT free this
 			target = i
@@ -789,8 +789,9 @@ func (d *Decoder) decode(bytes []byte) (ast.Node, error) {
 		return nil, nil
 	}
 
-	doc := f.Docs[target]
-	f.Docs[target] = nil // avoid releasing
+	docs := f.Documents()
+	doc := docs[target]
+	docs[target] = nil // avoid releasing
 	defer f.Release(true)
 	defer doc.Release(false)
 

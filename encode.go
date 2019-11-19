@@ -84,7 +84,7 @@ func (e *Encoder) encodeDocument(doc []byte) (ast.Node, error) {
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to parse yaml")
 	}
-	for _, docNode := range f.Docs {
+	for _, docNode := range f.Documents() {
 		if docNode.Body() != nil {
 			return docNode.Body(), nil
 		}

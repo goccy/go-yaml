@@ -358,9 +358,9 @@ func (p *parser) parseToken(ctx *context, tk *token.Token) (ast.Node, error) {
 	return nil, nil
 }
 
-func (p *parser) parse(tokens token.Tokens, mode Mode) (*ast.File, error) {
+func (p *parser) parse(tokens token.Tokens, mode Mode) (*ast.FileNode, error) {
 	ctx := newContext(tokens, mode)
-	file := &ast.File{Docs: []*ast.DocumentNode{}}
+	var docs []*ast.DocumentNode
 	for ctx.next() {
 		node, err := p.parseToken(ctx, ctx.currentToken())
 		if err != nil {
@@ -371,11 +371,12 @@ func (p *parser) parse(tokens token.Tokens, mode Mode) (*ast.File, error) {
 			continue
 		}
 		if doc, ok := node.(*ast.DocumentNode); ok {
-			file.Docs = append(file.Docs, doc)
+			docs = append(docs, doc)
 		} else {
-			file.Docs = append(file.Docs, ast.Document(nil, nil, node))
+			docs = append(docs, ast.Document(nil, nil, node))
 		}
 	}
+	file := ast.File(docs...)
 	return file, nil
 }
 
@@ -385,8 +386,8 @@ const (
 	ParseComments Mode = 1 << iota // parse comments and add them to AST
 )
 
-// ParseBytes parse from byte slice, and returns ast.File
-func ParseBytes(bytes []byte, mode Mode) (*ast.File, error) {
+// ParseBytes parse from byte slice, and returns ast.FileNode
+func ParseBytes(bytes []byte, mode Mode) (*ast.FileNode, error) {
 	tokens := lexer.Tokenize(bytes)
 	f, err := Parse(tokens, mode)
 	if err != nil {
@@ -395,8 +396,8 @@ func ParseBytes(bytes []byte, mode Mode) (*ast.File, error) {
 	return f, nil
 }
 
-// Parse parse from token instances, and returns ast.File
-func Parse(tokens token.Tokens, mode Mode) (*ast.File, error) {
+// Parse parse from token instances, and returns ast.FileNode
+func Parse(tokens token.Tokens, mode Mode) (*ast.FileNode, error) {
 	var p parser
 	f, err := p.parse(tokens, mode)
 	if err != nil {
@@ -405,8 +406,8 @@ func Parse(tokens token.Tokens, mode Mode) (*ast.File, error) {
 	return f, nil
 }
 
-// Parse parse from filename, and returns ast.File
-func ParseFile(filename string, mode Mode) (*ast.File, error) {
+// Parse parse from filename, and returns ast.FileNode
+func ParseFile(filename string, mode Mode) (*ast.FileNode, error) {
 	file, err := ioutil.ReadFile(filename)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to read file: %s", filename)
@@ -415,6 +416,6 @@ func ParseFile(filename string, mode Mode) (*ast.File, error) {
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to parse")
 	}
-	f.Name = filename
+	f.SetName(filename)
 	return f, nil
 }

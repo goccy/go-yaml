@@ -2,6 +2,7 @@ package ast
 
 import (
 	"strings"
+	"sync"
 )
 
 // NodeType type identifier of node
@@ -89,29 +90,49 @@ func (t NodeType) String() string {
 	return ""
 }
 
-// File contains all documents in YAML file
-type File struct {
-	Name string
-	Docs []*DocumentNode
+// FileNode contains all documents in YAML file
+type FileNode struct {
+	name string
+	docs []*DocumentNode
 }
 
-func (n *File) Release(recurse bool) {
+var fileNodePool = sync.Pool{
+	New: func() interface{} { return &FileNode{} },
+}
+
+func File(docs ...*DocumentNode) *FileNode {
+	n := fileNodePool.Get().(*FileNode)
+	n.docs = docs
+	return n
+}
+
+func (n *FileNode) Documents() []*DocumentNode {
+	return n.docs
+}
+
+func (n *FileNode) Release(recurse bool) {
 	if n == nil {
 		return
 	}
 
 	if recurse {
-		for _, v := range n.Docs {
+		for _, v := range n.docs {
 			v.Release(recurse)
 		}
 	}
-	n.Docs = nil
+	n.docs = nil
+	n.name = ""
+	fileNodePool.Put(n)
+}
+
+func (f *FileNode) SetName(n string) {
+	f.name = n
 }
 
 // String all documents to text
-func (f *File) String() string {
+func (f *FileNode) String() string {
 	docs := []string{}
-	for _, doc := range f.Docs {
+	for _, doc := range f.docs {
 		docs = append(docs, doc.String())
 	}
 	return strings.Join(docs, "\n")

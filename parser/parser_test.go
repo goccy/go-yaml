@@ -67,8 +67,7 @@ func TestParser(t *testing.T) {
 		"v:\n- A\n- >-\n  B\n  C\n",
 	}
 	for _, src := range sources {
-		fmt.Printf(src)
-		tokens := lexer.Tokenize(src)
+		tokens := lexer.Tokenize([]byte(src))
 		var printer printer.Printer
 		fmt.Println(printer.PrintTokens(tokens))
 		ast, err := parser.Parse(tokens, 0)
@@ -418,15 +417,15 @@ a:
 		},
 	}
 	for _, test := range tests {
-		tokens := lexer.Tokenize(test.source)
+		tokens := lexer.Tokenize([]byte(test.source))
 		tokens.Dump()
 		f, err := parser.Parse(tokens, 0)
 		if err != nil {
 			t.Fatalf("%+v", err)
 		}
 		var v Visitor
-		for _, doc := range f.Docs {
-			ast.Walk(&v, doc.Body)
+		for _, doc := range f.Documents() {
+			ast.Walk(&v, doc.Body())
 		}
 		expect := fmt.Sprintf("\n%+v\n", f)
 		if test.expect != expect {
@@ -452,7 +451,7 @@ type Visitor struct {
 }
 
 func (v *Visitor) Visit(node ast.Node) ast.Visitor {
-	tk := node.GetToken()
+	tk := node.Token()
 	tk.Prev = nil
 	tk.Next = nil
 	return v

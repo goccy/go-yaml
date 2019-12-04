@@ -8,26 +8,28 @@ import (
 
 // Context context at scanning
 type Context struct {
-	idx         int
-	size        int
-	src         []rune
-	buf         []rune
-	obuf        []rune
-	tokens      token.Tokens
-	isRawFolded bool
-	isLiteral   bool
-	isFolded    bool
-	literalOpt  string
+	idx          int
+	size         int
+	src          []rune
+	buf          []rune
+	obuf         []rune
+	tokens       token.Tokens
+	isRawFolded  bool
+	isLiteral    bool
+	isFolded     bool
+	isSingleLine bool
+	literalOpt   string
 }
 
 func newContext(src []rune) *Context {
 	return &Context{
-		idx:    0,
-		size:   len(src),
-		src:    src,
-		tokens: token.Tokens{},
-		buf:    make([]rune, 0, len(src)),
-		obuf:   make([]rune, 0, len(src)),
+		idx:          0,
+		size:         len(src),
+		src:          src,
+		tokens:       token.Tokens{},
+		buf:          make([]rune, 0, len(src)),
+		obuf:         make([]rune, 0, len(src)),
+		isSingleLine: true,
 	}
 }
 

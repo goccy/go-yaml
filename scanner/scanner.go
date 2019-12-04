@@ -303,6 +303,7 @@ func (s *Scanner) scanNewLine(ctx *Context, c rune) {
 	}
 	ctx.addBuf(' ')
 	ctx.addOriginBuf(c)
+	ctx.isSingleLine = false
 	s.progressLine(ctx)
 }
 
@@ -373,6 +374,13 @@ func (s *Scanner) scan(ctx *Context) (pos int) {
 			if ctx.bufferedSrc() != "" && s.isChangedToIndentStateUp() {
 				// raw folded
 				ctx.isRawFolded = true
+				ctx.addBuf(c)
+				ctx.addOriginBuf(c)
+				s.progressColumn(ctx, 1)
+				continue
+			}
+			if ctx.bufferedSrc() != "" && ctx.isSingleLine {
+				// '-' is literal
 				ctx.addBuf(c)
 				ctx.addOriginBuf(c)
 				s.progressColumn(ctx, 1)

@@ -45,6 +45,16 @@ func Validator(v StructValidator) DecodeOption {
 	}
 }
 
+// DisallowUnknownField causes the Decoder to return an error when the destination
+// is a struct and the input contains object keys which do not match any
+// non-ignored, exported fields in the destination.
+func DisallowUnknownField() DecodeOption {
+	return func(d *Decoder) error {
+		d.disallowUnknownField = true
+		return nil
+	}
+}
+
 // EncodeOption functional option type for Encoder
 type EncodeOption func(e *Encoder) error
 

@@ -21,28 +21,30 @@ import (
 
 // Decoder reads and decodes YAML values from an input stream.
 type Decoder struct {
-	reader              io.Reader
-	referenceReaders    []io.Reader
-	anchorMap           map[string]ast.Node
-	opts                []DecodeOption
-	referenceFiles      []string
-	referenceDirs       []string
-	isRecursiveDir      bool
-	isResolvedReference bool
-	validator           StructValidator
+	reader               io.Reader
+	referenceReaders     []io.Reader
+	anchorMap            map[string]ast.Node
+	opts                 []DecodeOption
+	referenceFiles       []string
+	referenceDirs        []string
+	isRecursiveDir       bool
+	isResolvedReference  bool
+	validator            StructValidator
+	disallowUnknownField bool
 }
 
 // NewDecoder returns a new decoder that reads from r.
 func NewDecoder(r io.Reader, opts ...DecodeOption) *Decoder {
 	return &Decoder{
-		reader:              r,
-		anchorMap:           map[string]ast.Node{},
-		opts:                opts,
-		referenceReaders:    []io.Reader{},
-		referenceFiles:      []string{},
-		referenceDirs:       []string{},
-		isRecursiveDir:      false,
-		isResolvedReference: false,
+		reader:               r,
+		anchorMap:            map[string]ast.Node{},
+		opts:                 opts,
+		referenceReaders:     []io.Reader{},
+		referenceFiles:       []string{},
+		referenceDirs:        []string{},
+		isRecursiveDir:       false,
+		isResolvedReference:  false,
+		disallowUnknownField: false,
 	}
 }
 
@@ -372,7 +374,7 @@ func (d *Decoder) castToAssignableValue(value reflect.Value, target reflect.Type
 	return value
 }
 
-func (d *Decoder) keyToNodeMap(node ast.Node) (map[string]ast.Node, error) {
+func (d *Decoder) keyToNodeMap(node ast.Node, filter func(*ast.MapNodeIter) ast.Node) (map[string]ast.Node, error) {
 	mapNode, err := d.getMapNode(node)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to get map node")
@@ -385,7 +387,7 @@ func (d *Decoder) keyToNodeMap(node ast.Node) (map[string]ast.Node, error) {
 	for mapIter.Next() {
 		keyNode := mapIter.Key()
 		if keyNode.Type() == ast.MergeKeyType {
-			mergeMap, err := d.keyToNodeMap(mapIter.Value())
+			mergeMap, err := d.keyToNodeMap(mapIter.Value(), filter)
 			if err != nil {
 				return nil, errors.Wrapf(err, "failed to get keyToNodeMap by MergeKey node")
 			}
@@ -397,7 +399,7 @@ func (d *Decoder) keyToNodeMap(node ast.Node) (map[string]ast.Node, error) {
 			if !ok {
 				return nil, errors.Wrapf(err, "failed to decode map key")
 			}
-			keyToNodeMap[key] = mapIter.Value()
+			keyToNodeMap[key] = filter(mapIter)
 		}
 	}
 	return keyToNodeMap, nil
@@ -481,10 +483,22 @@ func (d *Decoder) decodeStruct(dst reflect.Value, src ast.Node) error {
 	if err != nil {
 		return errors.Wrapf(err, "failed to create struct field map")
 	}
-	keyToNodeMap, err := d.keyToNodeMap(src)
+	keyToNodeMap, err := d.keyToNodeMap(src, func(iter *ast.MapNodeIter) ast.Node {
+		return iter.Value()
+	})
 	if err != nil {
 		return errors.Wrapf(err, "failed to get keyToNodeMap")
 	}
+	var uncalledKeys map[string]ast.Node
+	if d.disallowUnknownField {
+		uncalledKeys, err = d.keyToNodeMap(src, func(iter *ast.MapNodeIter) ast.Node {
+			return iter.Key()
+		})
+		if err != nil {
+			return errors.Wrapf(err, "failed to get keyToKeyNodeMap")
+		}
+	}
+
 	for i := 0; i < structType.NumField(); i++ {
 		field := structType.Field(i)
 		if isIgnoredStructField(field) {
@@ -517,6 +531,7 @@ func (d *Decoder) decodeStruct(dst reflect.Value, src ast.Node) error {
 		if !exists {
 			continue
 		}
+		delete(uncalledKeys, structField.RenderName)
 		fieldValue := structValue.Elem().FieldByName(field.Name)
 		if fieldValue.Type().Kind() == reflect.Ptr && src.Type() == ast.NullType {
 			// set nil value to pointer
@@ -551,6 +566,11 @@ func (d *Decoder) decodeStruct(dst reflect.Value, src ast.Node) error {
 					}
 				}
 			}
+		}
+	}
+	if len(uncalledKeys) != 0 && d.disallowUnknownField {
+		for key, node := range uncalledKeys {
+			return errors.ErrSyntax(fmt.Sprintf("unknown field \"%s\"", key), node.GetToken())
 		}
 	}
 	dst.Set(structValue.Elem())

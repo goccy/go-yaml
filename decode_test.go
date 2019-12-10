@@ -191,14 +191,8 @@ func TestDecoder(t *testing.T) {
 			"v: 42",
 			map[string]uint{"v": 42},
 		}, {
-			"v: -42",
-			map[string]uint{},
-		}, {
 			"v: 4294967296",
 			map[string]uint64{"v": 4294967296},
-		}, {
-			"v: -4294967296",
-			map[string]uint64{},
 		},
 
 		// int
@@ -238,10 +232,6 @@ func TestDecoder(t *testing.T) {
 			"v: 4294967295",
 			map[string]uint{"v": math.MaxUint32},
 		},
-		{
-			"v: -1",
-			map[string]uint{},
-		},
 
 		// uint64
 		{
@@ -259,10 +249,6 @@ func TestDecoder(t *testing.T) {
 		{
 			"v: 9223372036854775807",
 			map[string]uint64{"v": math.MaxInt64},
-		},
-		{
-			"v: -1",
-			map[string]uint64{},
 		},
 
 		// float32
@@ -326,15 +312,6 @@ func TestDecoder(t *testing.T) {
 			// space separate, no time zone
 			"v: 2015-02-24 18:19:39\n",
 			map[string]time.Time{"v": time.Date(2015, 2, 24, 18, 19, 39, 0, time.UTC)},
-		},
-
-		// Overflow cases.
-		{
-			"v: 4294967297",
-			map[string]int32{},
-		}, {
-			"v: 128",
-			map[string]int8{},
 		},
 
 		// Quoted values.
@@ -480,10 +457,6 @@ func TestDecoder(t *testing.T) {
 		},
 		{
 			"v: [A,1,C]",
-			map[string][]int{"v": []int{1}},
-		},
-		{
-			"v: [A,1,C]",
 			map[string]interface{}{"v": []interface{}{"A", 1, "C"}},
 		},
 
@@ -499,10 +472,6 @@ func TestDecoder(t *testing.T) {
 		{
 			"v:\n - A\n - 1\n - C",
 			map[string][]string{"v": []string{"A", "1", "C"}},
-		},
-		{
-			"v:\n - A\n - 1\n - C",
-			map[string][]int{"v": []int{1}},
 		},
 		{
 			"v:\n - A\n - 1\n - C",
@@ -873,6 +842,133 @@ func TestDecoder(t *testing.T) {
 			t.Fatalf("failed to test [%s], actual=[%s], expect=[%s]", test.source, actual, expect)
 		}
 	}
+}
+
+func TestDecoder_TypeConversionError(t *testing.T) {
+	t.Run("type conversion for struct", func(t *testing.T) {
+		type T struct {
+			A int
+			B uint
+			C float32
+			D bool
+		}
+		t.Run("string to int", func(t *testing.T) {
+			var v T
+			err := yaml.Unmarshal([]byte(`a: str`), &v)
+			if err == nil {
+				t.Fatal("expected to error")
+			}
+			msg := "cannot unmarshal string into Go struct field T.A of type int"
+			if err.Error() != msg {
+				t.Fatalf("unexpected error message: %s. expect: %s", err.Error(), msg)
+			}
+		})
+		t.Run("string to bool", func(t *testing.T) {
+			var v T
+			err := yaml.Unmarshal([]byte(`d: str`), &v)
+			if err == nil {
+				t.Fatal("expected to error")
+			}
+			msg := "cannot unmarshal string into Go struct field T.D of type bool"
+			if err.Error() != msg {
+				t.Fatalf("unexpected error message: %s. expect: %s", err.Error(), msg)
+			}
+		})
+	})
+	t.Run("type conversion for array", func(t *testing.T) {
+		t.Run("string to int", func(t *testing.T) {
+			var v map[string][]int
+			err := yaml.Unmarshal([]byte(`v: [A,1,C]`), &v)
+			if err == nil {
+				t.Fatal("expected to error")
+			}
+			msg := "cannot unmarshal string into Go value of type int"
+			if err.Error() != msg {
+				t.Fatalf("unexpected error message: %s. expect: %s", err.Error(), msg)
+			}
+			if len(v) == 0 || len(v["v"]) == 0 {
+				t.Fatal("failed to decode value")
+			}
+			if v["v"][0] != 1 {
+				t.Fatal("failed to decode value")
+			}
+		})
+		t.Run("string to int", func(t *testing.T) {
+			var v map[string][]int
+			err := yaml.Unmarshal([]byte("v:\n - A\n - 1\n - C"), &v)
+			if err == nil {
+				t.Fatal("expected to error")
+			}
+			msg := "cannot unmarshal string into Go value of type int"
+			if err.Error() != msg {
+				t.Fatalf("unexpected error message: %s. expect: %s", err.Error(), msg)
+			}
+			if len(v) == 0 || len(v["v"]) == 0 {
+				t.Fatal("failed to decode value")
+			}
+			if v["v"][0] != 1 {
+				t.Fatal("failed to decode value")
+			}
+		})
+	})
+	t.Run("overflow error", func(t *testing.T) {
+		t.Run("negative number to uint", func(t *testing.T) {
+			var v map[string]uint
+			err := yaml.Unmarshal([]byte("v: -42"), &v)
+			if err == nil {
+				t.Fatal("expected to error")
+			}
+			msg := "cannot unmarshal -42 into Go value of type uint ( overflow )"
+			if err.Error() != msg {
+				t.Fatalf("unexpected error message: %s. expect: %s", err.Error(), msg)
+			}
+			if v["v"] != 0 {
+				t.Fatal("failed to decode value")
+			}
+		})
+		t.Run("negative number to uint64", func(t *testing.T) {
+			var v map[string]uint64
+			err := yaml.Unmarshal([]byte("v: -4294967296"), &v)
+			if err == nil {
+				t.Fatal("expected to error")
+			}
+			msg := "cannot unmarshal -4294967296 into Go value of type uint64 ( overflow )"
+			if err.Error() != msg {
+				t.Fatalf("unexpected error message: %s. expect: %s", err.Error(), msg)
+			}
+			if v["v"] != 0 {
+				t.Fatal("failed to decode value")
+			}
+		})
+		t.Run("larger number for int32", func(t *testing.T) {
+			var v map[string]int32
+			err := yaml.Unmarshal([]byte("v: 4294967297"), &v)
+			if err == nil {
+				t.Fatal("expected to error")
+			}
+			msg := "cannot unmarshal 4294967297 into Go value of type int32 ( overflow )"
+			if err.Error() != msg {
+				t.Fatalf("unexpected error message: %s. expect: %s", err.Error(), msg)
+			}
+			if v["v"] != 0 {
+				t.Fatal("failed to decode value")
+			}
+		})
+		t.Run("larger number for int8", func(t *testing.T) {
+			var v map[string]int8
+			err := yaml.Unmarshal([]byte("v: 128"), &v)
+			if err == nil {
+				t.Fatal("expected to error")
+			}
+			msg := "cannot unmarshal 128 into Go value of type int8 ( overflow )"
+			if err.Error() != msg {
+				t.Fatalf("unexpected error message: %s. expect: %s", err.Error(), msg)
+			}
+			if v["v"] != 0 {
+				t.Fatal("failed to decode value")
+			}
+		})
+	})
 }
 
 func TestDecoder_AnchorReferenceDirs(t *testing.T) {

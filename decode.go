@@ -370,7 +370,7 @@ func (d *Decoder) decodeValue(dst reflect.Value, src ast.Node) error {
 	if v.IsValid() {
 		convertedValue, err := d.convertValue(v, dst.Type())
 		if err != nil {
-			return err // no wrap error
+			return errors.Wrapf(err, "failed to convert value")
 		}
 		dst.Set(convertedValue)
 	}
@@ -546,8 +546,13 @@ func (d *Decoder) decodeStruct(dst reflect.Value, src ast.Node) error {
 				}
 				var te *typeError
 				if xerrors.As(err, &te) {
-					fieldName := fmt.Sprintf("%s.%s", structType.Name(), field.Name)
-					te.structFieldName = &fieldName
+					if te.structFieldName != nil {
+						fieldName := fmt.Sprintf("%s.%s", structType.Name(), *te.structFieldName)
+						te.structFieldName = &fieldName
+					} else {
+						fieldName := fmt.Sprintf("%s.%s", structType.Name(), field.Name)
+						te.structFieldName = &fieldName
+					}
 					foundErr = te
 				} else {
 					foundErr = err

@@ -852,6 +852,9 @@ func TestDecoder_TypeConversionError(t *testing.T) {
 			C float32
 			D bool
 		}
+		type U struct {
+			*T `yaml:",inline"`
+		}
 		t.Run("string to int", func(t *testing.T) {
 			var v T
 			err := yaml.Unmarshal([]byte(`a: str`), &v)
@@ -870,6 +873,17 @@ func TestDecoder_TypeConversionError(t *testing.T) {
 				t.Fatal("expected to error")
 			}
 			msg := "cannot unmarshal string into Go struct field T.D of type bool"
+			if err.Error() != msg {
+				t.Fatalf("unexpected error message: %s. expect: %s", err.Error(), msg)
+			}
+		})
+		t.Run("string to int at inline", func(t *testing.T) {
+			var v U
+			err := yaml.Unmarshal([]byte(`a: str`), &v)
+			if err == nil {
+				t.Fatal("expected to error")
+			}
+			msg := "cannot unmarshal string into Go struct field U.T.A of type int"
 			if err.Error() != msg {
 				t.Fatalf("unexpected error message: %s. expect: %s", err.Error(), msg)
 			}

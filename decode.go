@@ -441,11 +441,19 @@ func (d *Decoder) keyToNodeMap(node ast.Node, filter func(*ast.MapNodeIter) ast.
 }
 
 func (d *Decoder) keyToKeyNodeMap(node ast.Node) (map[string]ast.Node, error) {
-	return d.keyToNodeMap(node, func(nodeMap *ast.MapNodeIter) ast.Node { return nodeMap.Key() })
+	m, err := d.keyToNodeMap(node, func(nodeMap *ast.MapNodeIter) ast.Node { return nodeMap.Key() })
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to get keyToNodeMap")
+	}
+	return m, nil
 }
 
 func (d *Decoder) keyToValueNodeMap(node ast.Node) (map[string]ast.Node, error) {
-	return d.keyToNodeMap(node, func(nodeMap *ast.MapNodeIter) ast.Node { return nodeMap.Value() })
+	m, err := d.keyToNodeMap(node, func(nodeMap *ast.MapNodeIter) ast.Node { return nodeMap.Value() })
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to get keyToNodeMap")
+	}
+	return m, nil
 }
 
 func (d *Decoder) setDefaultValueIfConflicted(v reflect.Value, fieldMap StructFieldMap) error {

@@ -409,7 +409,7 @@ func (d *Decoder) castToAssignableValue(value reflect.Value, target reflect.Type
 	return value
 }
 
-func (d *Decoder) keyToNodeMap(node ast.Node, filter func(*ast.MapNodeIter) ast.Node) (map[string]ast.Node, error) {
+func (d *Decoder) keyToNodeMap(node ast.Node, getKeyOrValueNode func(*ast.MapNodeIter) ast.Node) (map[string]ast.Node, error) {
 	mapNode, err := d.getMapNode(node)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to get map node")
@@ -422,7 +422,7 @@ func (d *Decoder) keyToNodeMap(node ast.Node, filter func(*ast.MapNodeIter) ast.
 	for mapIter.Next() {
 		keyNode := mapIter.Key()
 		if keyNode.Type() == ast.MergeKeyType {
-			mergeMap, err := d.keyToNodeMap(mapIter.Value(), filter)
+			mergeMap, err := d.keyToNodeMap(mapIter.Value(), getKeyOrValueNode)
 			if err != nil {
 				return nil, errors.Wrapf(err, "failed to get keyToNodeMap by MergeKey node")
 			}
@@ -434,7 +434,7 @@ func (d *Decoder) keyToNodeMap(node ast.Node, filter func(*ast.MapNodeIter) ast.
 			if !ok {
 				return nil, errors.Wrapf(err, "failed to decode map key")
 			}
-			keyToNodeMap[key] = filter(mapIter)
+			keyToNodeMap[key] = getKeyOrValueNode(mapIter)
 		}
 	}
 	return keyToNodeMap, nil
@@ -638,7 +638,7 @@ func (d *Decoder) decodeStruct(dst reflect.Value, src ast.Node) error {
 	}
 	if len(unknownFields) != 0 && d.disallowUnknownField {
 		for key, node := range unknownFields {
-			return errors.ErrSyntax(fmt.Sprintf("unknown field \"%s\"", key), node.GetToken())
+			return errors.ErrSyntax(fmt.Sprintf(`unknown field "%s"`, key), node.GetToken())
 		}
 	}
 	dst.Set(structValue.Elem())

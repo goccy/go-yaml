@@ -442,6 +442,35 @@ a: |
 d: eeeeeeeeeeeeeeeee
 `,
 		},
+		{
+			`
+a: b    
+  c
+`,
+			`
+a: b c
+`,
+		},
+		{
+			`
+a:    
+  b: c
+`,
+			`
+a:
+  b: c
+`,
+		},
+		{
+			`
+a: b    
+c: d
+`,
+			`
+a: b
+c: d
+`,
+		},
 	}
 	for _, test := range tests {
 		tokens := lexer.Tokenize(test.source)

@@ -64,6 +64,17 @@ func (c *Context) addOriginBuf(r rune) {
 	c.obuf = append(c.obuf, r)
 }
 
+func (c *Context) removeRightSpaceFromBuf() int {
+	trimmedBuf := strings.TrimRight(string(c.obuf), " ")
+	buflen := len([]rune(trimmedBuf))
+	diff := len(c.obuf) - buflen
+	if diff > 0 {
+		c.obuf = c.obuf[:buflen]
+		c.buf = []rune(c.bufferedSrc())
+	}
+	return diff
+}
+
 func (c *Context) isDocument() bool {
 	return c.isLiteral || c.isFolded || c.isRawFolded
 }

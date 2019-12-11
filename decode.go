@@ -405,6 +405,14 @@ func (d *Decoder) keyToNodeMap(node ast.Node, filter func(*ast.MapNodeIter) ast.
 	return keyToNodeMap, nil
 }
 
+func (d *Decoder) keyToKeyNodeMap(node ast.Node) (map[string]ast.Node, error) {
+	return d.keyToNodeMap(node, func(nodeMap *ast.MapNodeIter) ast.Node { return nodeMap.Key() })
+}
+
+func (d *Decoder) keyToValueNodeMap(node ast.Node) (map[string]ast.Node, error) {
+	return d.keyToNodeMap(node, func(nodeMap *ast.MapNodeIter) ast.Node { return nodeMap.Value() })
+}
+
 func (d *Decoder) setDefaultValueIfConflicted(v reflect.Value, fieldMap StructFieldMap) error {
 	typ := v.Type()
 	if typ.Kind() != reflect.Struct {
@@ -483,17 +491,13 @@ func (d *Decoder) decodeStruct(dst reflect.Value, src ast.Node) error {
 	if err != nil {
 		return errors.Wrapf(err, "failed to create struct field map")
 	}
-	keyToNodeMap, err := d.keyToNodeMap(src, func(iter *ast.MapNodeIter) ast.Node {
-		return iter.Value()
-	})
+	keyToNodeMap, err := d.keyToValueNodeMap(src)
 	if err != nil {
-		return errors.Wrapf(err, "failed to get keyToNodeMap")
+		return errors.Wrapf(err, "failed to get keyToValueNodeMap")
 	}
 	var uncalledKeys map[string]ast.Node
 	if d.disallowUnknownField {
-		uncalledKeys, err = d.keyToNodeMap(src, func(iter *ast.MapNodeIter) ast.Node {
-			return iter.Key()
-		})
+		uncalledKeys, err = d.keyToKeyNodeMap(src)
 		if err != nil {
 			return errors.Wrapf(err, "failed to get keyToKeyNodeMap")
 		}

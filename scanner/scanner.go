@@ -296,6 +296,19 @@ func (s *Scanner) scanNewLine(ctx *Context, c rune) {
 		s.savedPos = s.pos()
 		s.savedPos.Column -= len([]rune(ctx.bufferedSrc()))
 	}
+
+	// if the following case, origin buffer has unnecessary two spaces.
+	// So, `removeRightSpaceFromOriginBuf` remove them, also fix column number too.
+	// ---
+	// a:[space][space]
+	//   b: c
+	removedNum := ctx.removeRightSpaceFromBuf()
+	if removedNum > 0 {
+		s.column -= removedNum
+		s.offset -= removedNum
+		s.savedPos.Column -= removedNum
+	}
+
 	if ctx.isEOS() {
 		s.addBufferedTokenIfExists(ctx)
 	} else if s.isAnchor {

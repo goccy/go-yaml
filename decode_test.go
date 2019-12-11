@@ -1237,20 +1237,20 @@ bar: c
 func Example_DisallowUnknownField() {
 	var v struct {
 		A string `yaml:"simple"`
-		C string `yaml:"complicate"`
+		C string `yaml:"complicated"`
 	}
 
 	const src = `---
 simple: string
-complecate: string
+complecated: string
 `
 	err := yaml.NewDecoder(strings.NewReader(src), yaml.DisallowUnknownField()).Decode(&v)
 	fmt.Printf("%v\n", err)
 
 	// OUTPUT:
-	// [3:1] unknown field "complecate"
+	// [3:1] unknown field "complecated"
 	//        1 | ---
 	//        2 | simple: string
-	//     >  3 | complecate: string
+	//     >  3 | complecated: string
 	//           ^
 }

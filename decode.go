@@ -538,9 +538,9 @@ func (d *Decoder) decodeStruct(dst reflect.Value, src ast.Node) error {
 	if err != nil {
 		return errors.Wrapf(err, "failed to get keyToValueNodeMap")
 	}
-	var uncalledKeys map[string]ast.Node
+	var unknownFields map[string]ast.Node
 	if d.disallowUnknownField {
-		uncalledKeys, err = d.keyToKeyNodeMap(src)
+		unknownFields, err = d.keyToKeyNodeMap(src)
 		if err != nil {
 			return errors.Wrapf(err, "failed to get keyToKeyNodeMap")
 		}
@@ -592,7 +592,7 @@ func (d *Decoder) decodeStruct(dst reflect.Value, src ast.Node) error {
 		if !exists {
 			continue
 		}
-		delete(uncalledKeys, structField.RenderName)
+		delete(unknownFields, structField.RenderName)
 		fieldValue := structValue.Elem().FieldByName(field.Name)
 		if fieldValue.Type().Kind() == reflect.Ptr && src.Type() == ast.NullType {
 			// set nil value to pointer
@@ -636,8 +636,8 @@ func (d *Decoder) decodeStruct(dst reflect.Value, src ast.Node) error {
 			}
 		}
 	}
-	if len(uncalledKeys) != 0 && d.disallowUnknownField {
-		for key, node := range uncalledKeys {
+	if len(unknownFields) != 0 && d.disallowUnknownField {
+		for key, node := range unknownFields {
 			return errors.ErrSyntax(fmt.Sprintf("unknown field \"%s\"", key), node.GetToken())
 		}
 	}

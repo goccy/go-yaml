@@ -215,28 +215,59 @@ func (d *Decoder) fileToNode(f *ast.File) ast.Node {
 	return nil
 }
 
-func (d *Decoder) convertValue(v reflect.Value, typ reflect.Type) reflect.Value {
+func (d *Decoder) convertValue(v reflect.Value, typ reflect.Type) (reflect.Value, error) {
 	if typ.Kind() != reflect.String {
-		return v.Convert(typ)
+		if !v.Type().ConvertibleTo(typ) {
+			return reflect.Zero(typ), errTypeMismatch(typ, v.Type())
+		}
+		return v.Convert(typ), nil
 	}
 	// cast value to string
 	switch v.Type().Kind() {
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-		return reflect.ValueOf(fmt.Sprint(v.Int()))
+		return reflect.ValueOf(fmt.Sprint(v.Int())), nil
 	case reflect.Float32, reflect.Float64:
-		return reflect.ValueOf(fmt.Sprint(v.Float()))
+		return reflect.ValueOf(fmt.Sprint(v.Float())), nil
 	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr:
-		return reflect.ValueOf(fmt.Sprint(v.Uint()))
+		return reflect.ValueOf(fmt.Sprint(v.Uint())), nil
 	case reflect.Bool:
-		return reflect.ValueOf(fmt.Sprint(v.Bool()))
+		return reflect.ValueOf(fmt.Sprint(v.Bool())), nil
 	}
-	return v.Convert(typ)
+	if !v.Type().ConvertibleTo(typ) {
+		return reflect.Zero(typ), errTypeMismatch(typ, v.Type())
+	}
+	return v.Convert(typ), nil
 }
 
-var (
-	errOverflowNumber = xerrors.New("overflow number")
-	errTypeMismatch   = xerrors.New("type mismatch")
-)
+type overflowError struct {
+	dstType reflect.Type
+	srcNum  string
+}
+
+func (e *overflowError) Error() string {
+	return fmt.Sprintf("cannot unmarshal %s into Go value of type %s ( overflow )", e.srcNum, e.dstType)
+}
+
+func errOverflow(dstType reflect.Type, num string) *overflowError {
+	return &overflowError{dstType: dstType, srcNum: num}
+}
+
+type typeError struct {
+	dstType         reflect.Type
+	srcType         reflect.Type
+	structFieldName *string
+}
+
+func (e *typeError) Error() string {
+	if e.structFieldName != nil {
+		return fmt.Sprintf("cannot unmarshal %s into Go struct field %s of type %s", e.srcType, *e.structFieldName, e.dstType)
+	}
+	return fmt.Sprintf("cannot unmarshal %s into Go value of type %s", e.srcType, e.dstType)
+}
+
+func errTypeMismatch(dstType, srcType reflect.Type) *typeError {
+	return &typeError{dstType: dstType, srcType: srcType}
+}
 
 func (d *Decoder) decodeValue(dst reflect.Value, src ast.Node) error {
 	valueType := dst.Type()
@@ -311,9 +342,9 @@ func (d *Decoder) decodeValue(dst reflect.Value, src ast.Node) error {
 				return nil
 			}
 		default:
-			return errTypeMismatch
+			return errTypeMismatch(valueType, reflect.TypeOf(v))
 		}
-		return errOverflowNumber
+		return errOverflow(valueType, fmt.Sprint(v))
 	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
 		v := d.nodeToValue(src)
 		switch vv := v.(type) {
@@ -333,13 +364,17 @@ func (d *Decoder) decodeValue(dst reflect.Value, src ast.Node) error {
 				return nil
 			}
 		default:
-			return errTypeMismatch
+			return errTypeMismatch(valueType, reflect.TypeOf(v))
 		}
-		return errOverflowNumber
+		return errOverflow(valueType, fmt.Sprint(v))
 	}
 	v := reflect.ValueOf(d.nodeToValue(src))
 	if v.IsValid() {
-		dst.Set(d.convertValue(v, dst.Type()))
+		convertedValue, err := d.convertValue(v, dst.Type())
+		if err != nil {
+			return errors.Wrapf(err, "failed to convert value")
+		}
+		dst.Set(convertedValue)
 	}
 	return nil
 }
@@ -459,7 +494,7 @@ func (d *Decoder) castToTime(src ast.Node) (time.Time, error) {
 	}
 	s, ok := v.(string)
 	if !ok {
-		return time.Time{}, errTypeMismatch
+		return time.Time{}, errTypeMismatch(reflect.TypeOf(time.Time{}), reflect.TypeOf(v))
 	}
 	for _, format := range allowedTimestampFormats {
 		t, err := time.Parse(format, s)
@@ -503,6 +538,8 @@ func (d *Decoder) decodeStruct(dst reflect.Value, src ast.Node) error {
 		}
 	}
 
+	var foundErr error
+
 	for i := 0; i < structType.NumField(); i++ {
 		field := structType.Field(i)
 		if isIgnoredStructField(field) {
@@ -521,11 +558,23 @@ func (d *Decoder) decodeStruct(dst reflect.Value, src ast.Node) error {
 			}
 			newFieldValue := d.createDecodableValue(fieldValue.Type())
 			if err := d.decodeValue(newFieldValue, src); err != nil {
-				if xerrors.Is(err, errTypeMismatch) || xerrors.Is(err, errOverflowNumber) {
-					// skip decoding if an error occurs
+				if foundErr != nil {
 					continue
 				}
-				return errors.Wrapf(err, "failed to decode value")
+				var te *typeError
+				if xerrors.As(err, &te) {
+					if te.structFieldName != nil {
+						fieldName := fmt.Sprintf("%s.%s", structType.Name(), *te.structFieldName)
+						te.structFieldName = &fieldName
+					} else {
+						fieldName := fmt.Sprintf("%s.%s", structType.Name(), field.Name)
+						te.structFieldName = &fieldName
+					}
+					foundErr = te
+				} else {
+					foundErr = err
+				}
+				continue
 			}
 			d.setDefaultValueIfConflicted(newFieldValue, structFieldMap)
 			fieldValue.Set(d.castToAssignableValue(newFieldValue, fieldValue.Type()))
@@ -544,11 +593,18 @@ func (d *Decoder) decodeStruct(dst reflect.Value, src ast.Node) error {
 		}
 		newFieldValue := d.createDecodableValue(fieldValue.Type())
 		if err := d.decodeValue(newFieldValue, v); err != nil {
-			if xerrors.Is(err, errTypeMismatch) || xerrors.Is(err, errOverflowNumber) {
-				// skip decoding if an error occurs
+			if foundErr != nil {
 				continue
 			}
-			return errors.Wrapf(err, "failed to decode value")
+			var te *typeError
+			if xerrors.As(err, &te) {
+				fieldName := fmt.Sprintf("%s.%s", structType.Name(), field.Name)
+				te.structFieldName = &fieldName
+				foundErr = te
+			} else {
+				foundErr = err
+			}
+			continue
 		}
 		fieldValue.Set(d.castToAssignableValue(newFieldValue, fieldValue.Type()))
 	}
@@ -578,6 +634,9 @@ func (d *Decoder) decodeStruct(dst reflect.Value, src ast.Node) error {
 		}
 	}
 	dst.Set(structValue.Elem())
+	if foundErr != nil {
+		return errors.Wrapf(foundErr, "failed to decode value")
+	}
 	return nil
 }
 
@@ -594,6 +653,8 @@ func (d *Decoder) decodeArray(dst reflect.Value, src ast.Node) error {
 	arrayType := dst.Type()
 	elemType := arrayType.Elem()
 	idx := 0
+
+	var foundErr error
 	for iter.Next() {
 		v := iter.Value()
 		if elemType.Kind() == reflect.Ptr && v.Type() == ast.NullType {
@@ -602,10 +663,10 @@ func (d *Decoder) decodeArray(dst reflect.Value, src ast.Node) error {
 		} else {
 			dstValue := d.createDecodableValue(elemType)
 			if err := d.decodeValue(dstValue, v); err != nil {
-				if xerrors.Is(err, errTypeMismatch) || xerrors.Is(err, errOverflowNumber) {
-					// skip decoding if an error occurs
+				if foundErr == nil {
+					foundErr = err
 				}
-				return errors.Wrapf(err, "failed to decode value")
+				continue
 			} else {
 				arrayValue.Index(idx).Set(d.castToAssignableValue(dstValue, elemType))
 			}
@@ -613,6 +674,9 @@ func (d *Decoder) decodeArray(dst reflect.Value, src ast.Node) error {
 		idx++
 	}
 	dst.Set(arrayValue)
+	if foundErr != nil {
+		return errors.Wrapf(foundErr, "failed to decode value")
+	}
 	return nil
 }
 
@@ -628,6 +692,8 @@ func (d *Decoder) decodeSlice(dst reflect.Value, src ast.Node) error {
 	sliceType := dst.Type()
 	sliceValue := reflect.MakeSlice(sliceType, 0, iter.Len())
 	elemType := sliceType.Elem()
+
+	var foundErr error
 	for iter.Next() {
 		v := iter.Value()
 		if elemType.Kind() == reflect.Ptr && v.Type() == ast.NullType {
@@ -637,15 +703,17 @@ func (d *Decoder) decodeSlice(dst reflect.Value, src ast.Node) error {
 		}
 		dstValue := d.createDecodableValue(elemType)
 		if err := d.decodeValue(dstValue, v); err != nil {
-			if xerrors.Is(err, errTypeMismatch) || xerrors.Is(err, errOverflowNumber) {
-				// skip decoding if an error occurs
-				continue
+			if foundErr == nil {
+				foundErr = err
 			}
-			return errors.Wrapf(err, "failed to decode value")
+			continue
 		}
 		sliceValue = reflect.Append(sliceValue, d.castToAssignableValue(dstValue, elemType))
 	}
 	dst.Set(sliceValue)
+	if foundErr != nil {
+		return errors.Wrapf(foundErr, "failed to decode value")
+	}
 	return nil
 }
 
@@ -662,6 +730,8 @@ func (d *Decoder) decodeMap(dst reflect.Value, src ast.Node) error {
 	keyType := mapValue.Type().Key()
 	valueType := mapValue.Type().Elem()
 	mapIter := mapNode.MapRange()
+
+	var foundErr error
 	for mapIter.Next() {
 		key := mapIter.Key()
 		value := mapIter.Value()
@@ -676,11 +746,9 @@ func (d *Decoder) decodeMap(dst reflect.Value, src ast.Node) error {
 		}
 		dstValue := d.createDecodableValue(valueType)
 		if err := d.decodeValue(dstValue, value); err != nil {
-			if xerrors.Is(err, errTypeMismatch) || xerrors.Is(err, errOverflowNumber) {
-				// skip decoding if an error occurs
-				continue
+			if foundErr == nil {
+				foundErr = err
 			}
-			return errors.Wrapf(err, "failed to decode value")
 		}
 		if !k.IsValid() {
 			// expect nil key
@@ -690,6 +758,9 @@ func (d *Decoder) decodeMap(dst reflect.Value, src ast.Node) error {
 		mapValue.SetMapIndex(k, d.castToAssignableValue(dstValue, valueType))
 	}
 	dst.Set(mapValue)
+	if foundErr != nil {
+		return errors.Wrapf(foundErr, "failed to decode value")
+	}
 	return nil
 }
 

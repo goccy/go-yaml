@@ -73,6 +73,18 @@ type myprinter struct {
 	inclSource bool
 }
 
+func (e *wrapError) As(target interface{}) bool {
+	err := e.nextErr
+	for {
+		if wrapErr, ok := err.(*wrapError); ok {
+			err = wrapErr.nextErr
+			continue
+		}
+		break
+	}
+	return xerrors.As(err, target)
+}
+
 func (e *wrapError) PrettyPrint(p xerrors.Printer, colored, inclSource bool) error {
 	return e.FormatError(&myprinter{Printer: p, colored: colored, inclSource: inclSource})
 }

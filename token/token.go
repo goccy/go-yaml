@@ -664,6 +664,14 @@ func (t *Token) NextType() Type {
 	return UnknownType
 }
 
+// AddColumn append column number to current position of column
+func (t *Token) AddColumn(col int) {
+	if t == nil {
+		return
+	}
+	t.Position.Column += col
+}
+
 // Tokens type of token collection
 type Tokens []*Token
 

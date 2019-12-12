@@ -52,6 +52,9 @@ func (t *marshalTest) MarshalYAML() ([]byte, error) {
 		{
 			"c", true,
 		},
+		{
+			"d", map[string]string{"x": "y"},
+		},
 	})
 }
 
@@ -87,6 +90,8 @@ a:
   a: 1
   b: hello
   c: true
+  d:
+    x: y
 b:
   a: 2
   b: world

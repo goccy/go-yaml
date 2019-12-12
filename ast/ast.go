@@ -102,6 +102,8 @@ type Node interface {
 	GetToken() *token.Token
 	// Type returns type of node
 	Type() NodeType
+	// AddColumn add column number to child nodes recursively
+	AddColumn(int)
 }
 
 // File contains all documents in YAML file
@@ -129,6 +131,13 @@ type Document struct {
 // GetToken returns token instance
 func (d *Document) GetToken() *token.Token {
 	return d.Body.GetToken()
+}
+
+// AddColumn add column number to child nodes recursively
+func (d *Document) AddColumn(col int) {
+	if d.Body != nil {
+		d.Body.AddColumn(col)
+	}
 }
 
 // Type returns DocumentType
@@ -310,6 +319,11 @@ func (n *NullNode) GetToken() *token.Token {
 	return n.Token
 }
 
+// AddColumn add column number to child nodes recursively
+func (n *NullNode) AddColumn(col int) {
+	n.Token.AddColumn(col)
+}
+
 // GetValue returns nil value
 func (n *NullNode) GetValue() interface{} {
 	return nil
@@ -333,6 +347,11 @@ func (n *IntegerNode) Type() NodeType { return IntegerType }
 // GetToken returns token instance
 func (n *IntegerNode) GetToken() *token.Token {
 	return n.Token
+}
+
+// AddColumn add column number to child nodes recursively
+func (n *IntegerNode) AddColumn(col int) {
+	n.Token.AddColumn(col)
 }
 
 // GetValue returns int64 value
@@ -361,6 +380,11 @@ func (n *FloatNode) GetToken() *token.Token {
 	return n.Token
 }
 
+// AddColumn add column number to child nodes recursively
+func (n *FloatNode) AddColumn(col int) {
+	n.Token.AddColumn(col)
+}
+
 // GetValue returns float64 value
 func (n *FloatNode) GetValue() interface{} {
 	return n.Value
@@ -384,6 +408,11 @@ func (n *StringNode) Type() NodeType { return StringType }
 // GetToken returns token instance
 func (n *StringNode) GetToken() *token.Token {
 	return n.Token
+}
+
+// AddColumn add column number to child nodes recursively
+func (n *StringNode) AddColumn(col int) {
+	n.Token.AddColumn(col)
 }
 
 // GetValue returns string value
@@ -415,6 +444,14 @@ func (n *LiteralNode) Type() NodeType { return LiteralType }
 // GetToken returns token instance
 func (n *LiteralNode) GetToken() *token.Token {
 	return n.Start
+}
+
+// AddColumn add column number to child nodes recursively
+func (n *LiteralNode) AddColumn(col int) {
+	n.Start.AddColumn(col)
+	if n.Value != nil {
+		n.Value.AddColumn(col)
+	}
 }
 
 // GetValue returns string value
@@ -467,6 +504,11 @@ func (n *BoolNode) GetToken() *token.Token {
 	return n.Token
 }
 
+// AddColumn add column number to child nodes recursively
+func (n *BoolNode) AddColumn(col int) {
+	n.Token.AddColumn(col)
+}
+
 // GetValue returns boolean value
 func (n *BoolNode) GetValue() interface{} {
 	return n.Value
@@ -492,6 +534,11 @@ func (n *InfinityNode) GetToken() *token.Token {
 	return n.Token
 }
 
+// AddColumn add column number to child nodes recursively
+func (n *InfinityNode) AddColumn(col int) {
+	n.Token.AddColumn(col)
+}
+
 // GetValue returns math.Inf(0) or math.Inf(-1)
 func (n *InfinityNode) GetValue() interface{} {
 	return n.Value
@@ -514,6 +561,11 @@ func (n *NanNode) Type() NodeType { return NanType }
 // GetToken returns token instance
 func (n *NanNode) GetToken() *token.Token {
 	return n.Token
+}
+
+// AddColumn add column number to child nodes recursively
+func (n *NanNode) AddColumn(col int) {
+	n.Token.AddColumn(col)
 }
 
 // GetValue returns math.NaN()
@@ -575,6 +627,15 @@ func (n *MappingNode) GetToken() *token.Token {
 	return n.Start
 }
 
+// AddColumn add column number to child nodes recursively
+func (n *MappingNode) AddColumn(col int) {
+	n.Start.AddColumn(col)
+	n.End.AddColumn(col)
+	for _, value := range n.Values {
+		value.AddColumn(col)
+	}
+}
+
 func (n *MappingNode) flowStyleString() string {
 	if len(n.Values) == 0 {
 		return "{}"
@@ -626,6 +687,17 @@ func (n *MappingValueNode) Type() NodeType { return MappingValueType }
 // GetToken returns token instance
 func (n *MappingValueNode) GetToken() *token.Token {
 	return n.Start
+}
+
+// AddColumn add column number to child nodes recursively
+func (n *MappingValueNode) AddColumn(col int) {
+	n.Start.AddColumn(col)
+	if n.Key != nil {
+		n.Key.AddColumn(col)
+	}
+	if n.Value != nil {
+		n.Value.AddColumn(col)
+	}
 }
 
 // String mapping value to text
@@ -702,6 +774,15 @@ func (n *SequenceNode) GetToken() *token.Token {
 	return n.Start
 }
 
+// AddColumn add column number to child nodes recursively
+func (n *SequenceNode) AddColumn(col int) {
+	n.Start.AddColumn(col)
+	n.End.AddColumn(col)
+	for _, value := range n.Values {
+		value.AddColumn(col)
+	}
+}
+
 func (n *SequenceNode) flowStyleString() string {
 	values := []string{}
 	for _, value := range n.Values {
@@ -760,6 +841,17 @@ func (n *AnchorNode) GetToken() *token.Token {
 	return n.Start
 }
 
+// AddColumn add column number to child nodes recursively
+func (n *AnchorNode) AddColumn(col int) {
+	n.Start.AddColumn(col)
+	if n.Name != nil {
+		n.Name.AddColumn(col)
+	}
+	if n.Value != nil {
+		n.Value.AddColumn(col)
+	}
+}
+
 // String anchor to text
 func (n *AnchorNode) String() string {
 	value := n.Value.String()
@@ -783,6 +875,14 @@ func (n *AliasNode) GetToken() *token.Token {
 	return n.Start
 }
 
+// AddColumn add column number to child nodes recursively
+func (n *AliasNode) AddColumn(col int) {
+	n.Start.AddColumn(col)
+	if n.Value != nil {
+		n.Value.AddColumn(col)
+	}
+}
+
 // String alias to text
 func (n *AliasNode) String() string {
 	return fmt.Sprintf("*%s", n.Value.String())
@@ -802,6 +902,13 @@ func (n *DirectiveNode) GetToken() *token.Token {
 	return n.Start
 }
 
+// AddColumn add column number to child nodes recursively
+func (n *DirectiveNode) AddColumn(col int) {
+	if n.Value != nil {
+		n.Value.AddColumn(col)
+	}
+}
+
 // String directive to text
 func (n *DirectiveNode) String() string {
 	return fmt.Sprintf("%s%s", n.Start.Value, n.Value.String())
@@ -819,6 +926,14 @@ func (n *TagNode) Type() NodeType { return TagType }
 // GetToken returns token instance
 func (n *TagNode) GetToken() *token.Token {
 	return n.Start
+}
+
+// AddColumn add column number to child nodes recursively
+func (n *TagNode) AddColumn(col int) {
+	n.Start.AddColumn(col)
+	if n.Value != nil {
+		n.Value.AddColumn(col)
+	}
 }
 
 // String tag to text

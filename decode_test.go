@@ -1194,6 +1194,47 @@ b_yaml: b_yaml_value
 	}
 }
 
+func TestDecoder_DisallowUnknownField(t *testing.T) {
+	t.Run("duplicate key but different level", func(t *testing.T) {
+		var v struct {
+			C Child `yaml:"c"`
+		}
+		yml := `---
+b: 1
+c:
+  b: 1
+`
+
+		err := yaml.NewDecoder(strings.NewReader(yml), yaml.DisallowUnknownField()).Decode(&v)
+		if err == nil {
+			t.Fatalf("error expected")
+		}
+	})
+	t.Run("inline", func(t *testing.T) {
+		var v struct {
+			Child `yaml:",inline"`
+			A     string `yaml:"a"`
+		}
+		yml := `---
+a: a
+b: 1
+`
+
+		if err := yaml.NewDecoder(strings.NewReader(yml), yaml.DisallowUnknownField()).Decode(&v); err != nil {
+			t.Fatalf(`parsing should succeed: %s`, err)
+		}
+		if v.A != "a" {
+			t.Fatalf("v.A should be `a`, got `%s`", v.A)
+		}
+		if v.B != 1 {
+			t.Fatalf("v.B should be 1, got %d", v.B)
+		}
+		if v.C != 0 {
+			t.Fatalf("v.C should be 0, got %d", v.C)
+		}
+	})
+}
+
 func Example_YAMLTags() {
 	yml := `---
 foo: 1

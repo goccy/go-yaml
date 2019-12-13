@@ -269,6 +269,14 @@ func errTypeMismatch(dstType, srcType reflect.Type) *typeError {
 	return &typeError{dstType: dstType, srcType: srcType}
 }
 
+type unknownFieldError struct {
+	*errors.SyntaxError
+}
+
+func errUnknowField(msg string, tk *token.Token) *unknownFieldError {
+	return &unknownFieldError{SyntaxError: errors.ErrSyntax(msg, tk)}
+}
+
 func (d *Decoder) decodeValue(dst reflect.Value, src ast.Node) error {
 	valueType := dst.Type()
 	if unmarshaler, ok := dst.Addr().Interface().(BytesUnmarshaler); ok {
@@ -530,7 +538,7 @@ func (d *Decoder) decodeStruct(dst reflect.Value, src ast.Node) error {
 	}
 	structType := dst.Type()
 	structValue := reflect.New(structType)
-	structFieldMap, err := structFieldMap(structType)
+	structFieldMaps, err := structFieldMap(structType)
 	if err != nil {
 		return errors.Wrapf(err, "failed to create struct field map")
 	}
@@ -553,7 +561,7 @@ func (d *Decoder) decodeStruct(dst reflect.Value, src ast.Node) error {
 		if isIgnoredStructField(field) {
 			continue
 		}
-		structField := structFieldMap[field.Name]
+		structField := structFieldMaps[field.Name]
 		if structField.IsInline {
 			fieldValue := structValue.Elem().FieldByName(field.Name)
 			if !fieldValue.CanSet() {
@@ -569,8 +577,8 @@ func (d *Decoder) decodeStruct(dst reflect.Value, src ast.Node) error {
 				if foundErr != nil {
 					continue
 				}
-				var te *typeError
-				if xerrors.As(err, &te) {
+				switch te := err.(type) {
+				case *typeError:
 					if te.structFieldName != nil {
 						fieldName := fmt.Sprintf("%s.%s", structType.Name(), *te.structFieldName)
 						te.structFieldName = &fieldName
@@ -579,12 +587,30 @@ func (d *Decoder) decodeStruct(dst reflect.Value, src ast.Node) error {
 						te.structFieldName = &fieldName
 					}
 					foundErr = te
-				} else {
+					continue
+				case *unknownFieldError:
+					structFieldMaps, err := structFieldMap(fieldValue.Type())
+					if err != nil {
+						return errors.Wrapf(err, "failed to create struct field map")
+					}
+
+					for j := 0; j < fieldValue.Type().NumField(); j++ {
+						field := fieldValue.Type().Field(j)
+						if isIgnoredStructField(field) {
+							continue
+						}
+
+						structField, ok := structFieldMaps[field.Name]
+						if ok {
+							delete(unknownFields, structField.RenderName)
+						}
+					}
+				default:
 					foundErr = err
+					continue
 				}
-				continue
 			}
-			d.setDefaultValueIfConflicted(newFieldValue, structFieldMap)
+			d.setDefaultValueIfConflicted(newFieldValue, structFieldMaps)
 			fieldValue.Set(d.castToAssignableValue(newFieldValue, fieldValue.Type()))
 			continue
 		}
@@ -626,7 +652,7 @@ func (d *Decoder) decodeStruct(dst reflect.Value, src ast.Node) error {
 						continue
 					}
 					fieldName := fieldErr.StructField()
-					structField := structFieldMap[fieldName]
+					structField := structFieldMaps[fieldName]
 					node, exists := keyToNodeMap[structField.RenderName]
 					if exists {
 						// TODO: to make FieldError message cutomizable
@@ -636,12 +662,12 @@ func (d *Decoder) decodeStruct(dst reflect.Value, src ast.Node) error {
 			}
 		}
 	}
+	dst.Set(structValue.Elem())
 	if len(unknownFields) != 0 && d.disallowUnknownField {
 		for key, node := range unknownFields {
-			return errors.ErrSyntax(fmt.Sprintf(`unknown field "%s"`, key), node.GetToken())
+			return errUnknowField(fmt.Sprintf(`unknown field "%s"`, key), node.GetToken())
 		}
 	}
-	dst.Set(structValue.Elem())
 	if foundErr != nil {
 		return errors.Wrapf(foundErr, "failed to decode value")
 	}

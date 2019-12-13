@@ -1195,7 +1195,7 @@ b_yaml: b_yaml_value
 }
 
 func TestDecoder_DisallowUnknownField(t *testing.T) {
-	t.Run("duplicate key but different level", func(t *testing.T) {
+	t.Run("different level keys with same name", func(t *testing.T) {
 		var v struct {
 			C Child `yaml:"c"`
 		}

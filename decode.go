@@ -619,7 +619,7 @@ func (d *Decoder) decodeStruct(dst reflect.Value, src ast.Node) error {
 
 				err = d.deleteStructKeys(fieldValue, unknownFields)
 				if err != nil {
-					return err
+					return errors.Wrapf(err, "cannot delete struct keys")
 				}
 			}
 			d.setDefaultValueIfConflicted(newFieldValue, structFieldMap)

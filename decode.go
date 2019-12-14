@@ -562,7 +562,6 @@ func (d *Decoder) decodeStruct(dst reflect.Value, src ast.Node) error {
 		return nil
 	}
 	structType := dst.Type()
-	structValue := reflect.New(structType)
 	structFieldMap, err := structFieldMap(structType)
 	if err != nil {
 		return errors.Wrapf(err, "failed to create struct field map")
@@ -588,7 +587,7 @@ func (d *Decoder) decodeStruct(dst reflect.Value, src ast.Node) error {
 		}
 		structField := structFieldMap[field.Name]
 		if structField.IsInline {
-			fieldValue := structValue.Elem().FieldByName(field.Name)
+			fieldValue := dst.FieldByName(field.Name)
 			if !fieldValue.CanSet() {
 				return xerrors.Errorf("cannot set embedded type as unexported field %s.%s", field.PkgPath, field.Name)
 			}
@@ -635,7 +634,7 @@ func (d *Decoder) decodeStruct(dst reflect.Value, src ast.Node) error {
 			continue
 		}
 		delete(unknownFields, structField.RenderName)
-		fieldValue := structValue.Elem().FieldByName(field.Name)
+		fieldValue := dst.FieldByName(field.Name)
 		if fieldValue.Type().Kind() == reflect.Ptr && src.Type() == ast.NullType {
 			// set nil value to pointer
 			fieldValue.Set(reflect.Zero(fieldValue.Type()))
@@ -659,7 +658,7 @@ func (d *Decoder) decodeStruct(dst reflect.Value, src ast.Node) error {
 		fieldValue.Set(d.castToAssignableValue(newFieldValue, fieldValue.Type()))
 	}
 	if d.validator != nil {
-		if err := d.validator.Struct(structValue.Interface()); err != nil {
+		if err := d.validator.Struct(dst.Interface()); err != nil {
 			ev := reflect.ValueOf(err)
 			if ev.Type().Kind() == reflect.Slice {
 				for i := 0; i < ev.Len(); i++ {
@@ -678,7 +677,6 @@ func (d *Decoder) decodeStruct(dst reflect.Value, src ast.Node) error {
 			}
 		}
 	}
-	dst.Set(structValue.Elem())
 	if len(unknownFields) != 0 && d.disallowUnknownField {
 		for key, node := range unknownFields {
 			return errUnknownField(fmt.Sprintf(`unknown field "%s"`, key), node.GetToken())

@@ -29,8 +29,8 @@ func Wrapf(err error, msg string, args ...interface{}) error {
 }
 
 // ErrSyntax create syntax error instance with message and token
-func ErrSyntax(msg string, tk *token.Token) *SyntaxError {
-	return &SyntaxError{
+func ErrSyntax(msg string, tk *token.Token) *syntaxError {
+	return &syntaxError{
 		baseError: &baseError{},
 		msg:       msg,
 		token:     tk,
@@ -53,7 +53,7 @@ func (e *baseError) chainStateAndVerb(err error) {
 		wrapErr.state = e.state
 		wrapErr.verb = e.verb
 	}
-	syntaxErr, ok := err.(*SyntaxError)
+	syntaxErr, ok := err.(*syntaxError)
 	if ok {
 		syntaxErr.state = e.state
 		syntaxErr.verb = e.verb
@@ -159,18 +159,18 @@ func (e *wrapError) Error() string {
 	return buf.String()
 }
 
-type SyntaxError struct {
+type syntaxError struct {
 	*baseError
 	msg   string
 	token *token.Token
 	frame xerrors.Frame
 }
 
-func (e *SyntaxError) PrettyPrint(p xerrors.Printer, colored, inclSource bool) error {
+func (e *syntaxError) PrettyPrint(p xerrors.Printer, colored, inclSource bool) error {
 	return e.FormatError(&myprinter{Printer: p, colored: colored, inclSource: inclSource})
 }
 
-func (e *SyntaxError) FormatError(p xerrors.Printer) error {
+func (e *syntaxError) FormatError(p xerrors.Printer) error {
 	var pp printer.Printer
 
 	var colored, inclSource bool
@@ -211,7 +211,7 @@ func (es *Sink) Detail() bool {
 	return false
 }
 
-func (e *SyntaxError) Error() string {
+func (e *syntaxError) Error() string {
 	var buf bytes.Buffer
 	e.PrettyPrint(&Sink{&buf}, defaultColorize, defaultIncludeSource)
 	return buf.String()

@@ -270,11 +270,15 @@ func errTypeMismatch(dstType, srcType reflect.Type) *typeError {
 }
 
 type unknownFieldError struct {
-	*errors.SyntaxError
+	err error
 }
 
-func errUnknowField(msg string, tk *token.Token) *unknownFieldError {
-	return &unknownFieldError{SyntaxError: errors.ErrSyntax(msg, tk)}
+func (e *unknownFieldError) Error() string {
+	return e.err.Error()
+}
+
+func errUnknownField(msg string, tk *token.Token) *unknownFieldError {
+	return &unknownFieldError{err: errors.ErrSyntax(msg, tk)}
 }
 
 func (d *Decoder) deleteStructKeys(str reflect.Value, unknownFields map[string]ast.Node) error {
@@ -677,7 +681,7 @@ func (d *Decoder) decodeStruct(dst reflect.Value, src ast.Node) error {
 	dst.Set(structValue.Elem())
 	if len(unknownFields) != 0 && d.disallowUnknownField {
 		for key, node := range unknownFields {
-			return errUnknowField(fmt.Sprintf(`unknown field "%s"`, key), node.GetToken())
+			return errUnknownField(fmt.Sprintf(`unknown field "%s"`, key), node.GetToken())
 		}
 	}
 	if foundErr != nil {

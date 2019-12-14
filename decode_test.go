@@ -1194,6 +1194,35 @@ b_yaml: b_yaml_value
 	}
 }
 
+func TestDecoder_DefaultValues(t *testing.T) {
+	v := struct {
+		A string `yaml:"a"`
+		B string `yaml:"b"`
+		c string // private
+	}{
+		B: "defaultBValue",
+		c: "defaultCValue",
+	}
+
+	const src = `---
+a: a_value
+`
+	if err := yaml.NewDecoder(strings.NewReader(src)).Decode(&v); err != nil {
+		t.Fatalf(`parsing should succeed: %s`, err)
+	}
+	if v.A != "a_value" {
+		t.Fatalf("v.A should be `a_value`, got `%s`", v.A)
+	}
+
+	if v.B != "defaultBValue" {
+		t.Fatalf("v.B should be `defaultValue`, got `%s`", v.B)
+	}
+
+	if v.c != "defaultCValue" {
+		t.Fatalf("v.c should be `defaultCValue`, got `%s`", v.c)
+	}
+}
+
 func Example_YAMLTags() {
 	yml := `---
 foo: 1

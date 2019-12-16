@@ -281,21 +281,27 @@ func errUnknownField(msg string, tk *token.Token) *unknownFieldError {
 	return &unknownFieldError{err: errors.ErrSyntax(msg, tk)}
 }
 
-func (d *Decoder) deleteStructKeys(str reflect.Value, unknownFields map[string]ast.Node) error {
-	strType := str.Type()
+func (d *Decoder) deleteStructKeys(structValue reflect.Value, unknownFields map[string]ast.Node) error {
+	strType := structValue.Type()
 	structFieldMap, err := structFieldMap(strType)
 	if err != nil {
 		return errors.Wrapf(err, "failed to create struct field map")
 	}
 
 	for j := 0; j < strType.NumField(); j++ {
-		field := str.Type().Field(j)
+		field := structValue.Type().Field(j)
 		if isIgnoredStructField(field) {
 			continue
 		}
 
 		structField, ok := structFieldMap[field.Name]
-		if ok {
+		if !ok {
+			continue
+		}
+
+		if structField.IsInline {
+			d.deleteStructKeys(structValue.FieldByName(field.Name), unknownFields)
+		} else {
 			delete(unknownFields, structField.RenderName)
 		}
 	}
@@ -614,15 +620,19 @@ func (d *Decoder) decodeStruct(dst reflect.Value, src ast.Node) error {
 					continue
 				}
 
-				var ufe *unknownFieldError
-				if !xerrors.As(err, &ufe) {
-					foundErr = err
-					continue
-				}
+				if d.disallowUnknownField {
+					var ufe *unknownFieldError
+					if !xerrors.As(err, &ufe) {
+						foundErr = err
+						continue
+					}
 
-				err = d.deleteStructKeys(fieldValue, unknownFields)
-				if err != nil {
-					return errors.Wrapf(err, "cannot delete struct keys")
+					err = d.deleteStructKeys(fieldValue, unknownFields)
+					if err != nil {
+						return errors.Wrapf(err, "cannot delete struct keys")
+					}
+				} else {
+					continue
 				}
 			}
 			d.setDefaultValueIfConflicted(newFieldValue, structFieldMap)

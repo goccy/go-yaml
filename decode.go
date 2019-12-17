@@ -627,8 +627,7 @@ func (d *Decoder) decodeStruct(dst reflect.Value, src ast.Node) error {
 						continue
 					}
 
-					err = d.deleteStructKeys(fieldValue, unknownFields)
-					if err != nil {
+					if err = d.deleteStructKeys(fieldValue, unknownFields); err != nil {
 						return errors.Wrapf(err, "cannot delete struct keys")
 					}
 				} else {

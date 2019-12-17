@@ -269,6 +269,45 @@ func errTypeMismatch(dstType, srcType reflect.Type) *typeError {
 	return &typeError{dstType: dstType, srcType: srcType}
 }
 
+type unknownFieldError struct {
+	err error
+}
+
+func (e *unknownFieldError) Error() string {
+	return e.err.Error()
+}
+
+func errUnknownField(msg string, tk *token.Token) *unknownFieldError {
+	return &unknownFieldError{err: errors.ErrSyntax(msg, tk)}
+}
+
+func (d *Decoder) deleteStructKeys(structValue reflect.Value, unknownFields map[string]ast.Node) error {
+	strType := structValue.Type()
+	structFieldMap, err := structFieldMap(strType)
+	if err != nil {
+		return errors.Wrapf(err, "failed to create struct field map")
+	}
+
+	for j := 0; j < strType.NumField(); j++ {
+		field := structValue.Type().Field(j)
+		if isIgnoredStructField(field) {
+			continue
+		}
+
+		structField, ok := structFieldMap[field.Name]
+		if !ok {
+			continue
+		}
+
+		if structField.IsInline {
+			d.deleteStructKeys(structValue.FieldByName(field.Name), unknownFields)
+		} else {
+			delete(unknownFields, structField.RenderName)
+		}
+	}
+	return nil
+}
+
 func (d *Decoder) decodeValue(dst reflect.Value, src ast.Node) error {
 	valueType := dst.Type()
 	if unmarshaler, ok := dst.Addr().Interface().(BytesUnmarshaler); ok {
@@ -578,10 +617,22 @@ func (d *Decoder) decodeStruct(dst reflect.Value, src ast.Node) error {
 						te.structFieldName = &fieldName
 					}
 					foundErr = te
-				} else {
-					foundErr = err
+					continue
 				}
-				continue
+
+				if d.disallowUnknownField {
+					var ufe *unknownFieldError
+					if !xerrors.As(err, &ufe) {
+						foundErr = err
+						continue
+					}
+
+					if err = d.deleteStructKeys(fieldValue, unknownFields); err != nil {
+						return errors.Wrapf(err, "cannot delete struct keys")
+					}
+				} else {
+					continue
+				}
 			}
 			d.setDefaultValueIfConflicted(newFieldValue, structFieldMap)
 			fieldValue.Set(d.castToAssignableValue(newFieldValue, fieldValue.Type()))
@@ -637,7 +688,7 @@ func (d *Decoder) decodeStruct(dst reflect.Value, src ast.Node) error {
 	}
 	if len(unknownFields) != 0 && d.disallowUnknownField {
 		for key, node := range unknownFields {
-			return errors.ErrSyntax(fmt.Sprintf(`unknown field "%s"`, key), node.GetToken())
+			return errUnknownField(fmt.Sprintf(`unknown field "%s"`, key), node.GetToken())
 		}
 	}
 	if foundErr != nil {

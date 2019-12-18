@@ -1233,6 +1233,37 @@ b: 1
 			t.Fatalf("v.C should be 0, got %d", v.C)
 		}
 	})
+	t.Run("list", func(t *testing.T) {
+		type C struct {
+			Child `yaml:",inline"`
+		}
+
+		var v struct {
+			Children []C `yaml:"children"`
+		}
+
+		yml := `---
+children:
+- b: 1
+- b: 2
+`
+
+		if err := yaml.NewDecoder(strings.NewReader(yml), yaml.DisallowUnknownField()).Decode(&v); err != nil {
+			t.Fatalf(`parsing should succeed: %s`, err)
+		}
+
+		if len(v.Children) != 2 {
+			t.Fatalf(`len(v.Children) should be 2, got %d`, len(v.Children))
+		}
+
+		if v.Children[0].B != 1 {
+			t.Fatalf(`v.Children[0].B should be 1, got %d`, v.Children[0].B)
+		}
+
+		if v.Children[1].B != 2 {
+			t.Fatalf(`v.Children[1].B should be 2, got %d`, v.Children[1].B)
+		}
+	})
 }
 
 func TestDecoder_DefaultValues(t *testing.T) {

@@ -603,7 +603,20 @@ func (d *Decoder) decodeStruct(dst reflect.Value, src ast.Node) error {
 				continue
 			}
 			newFieldValue := d.createDecodableValue(fieldValue.Type())
-			if err := d.decodeValue(newFieldValue, src); err != nil {
+			err := d.decodeValue(newFieldValue, src)
+
+			if d.disallowUnknownField {
+				var ufe *unknownFieldError
+				if xerrors.As(err, &ufe) {
+					err = nil
+				}
+
+				if err = d.deleteStructKeys(fieldValue, unknownFields); err != nil {
+					return errors.Wrapf(err, "cannot delete struct keys")
+				}
+			}
+
+			if err != nil {
 				if foundErr != nil {
 					continue
 				}
@@ -618,21 +631,10 @@ func (d *Decoder) decodeStruct(dst reflect.Value, src ast.Node) error {
 					}
 					foundErr = te
 					continue
-				}
-
-				if d.disallowUnknownField {
-					var ufe *unknownFieldError
-					if !xerrors.As(err, &ufe) {
-						foundErr = err
-						continue
-					}
-
-					if err = d.deleteStructKeys(fieldValue, unknownFields); err != nil {
-						return errors.Wrapf(err, "cannot delete struct keys")
-					}
 				} else {
-					continue
+					foundErr = err
 				}
+				continue
 			}
 			d.setDefaultValueIfConflicted(newFieldValue, structFieldMap)
 			fieldValue.Set(d.castToAssignableValue(newFieldValue, fieldValue.Type()))

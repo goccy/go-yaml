@@ -2,7 +2,6 @@ package parser_test
 
 import (
 	"fmt"
-	"io/ioutil"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -498,11 +497,7 @@ func TestNewLineChar(t *testing.T) {
 		"cr.yml",
 		"crlf.yml",
 	} {
-		file, err := ioutil.ReadFile(filepath.Join("testdata", f))
-		if err != nil {
-			t.Fatalf("%+v", err)
-		}
-		ast, err := parser.ParseBytes(file, 0)
+		ast, err := parser.ParseFile(filepath.Join("testdata", f), 0)
 		if err != nil {
 			t.Fatalf("%+v", err)
 		}

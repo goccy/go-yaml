@@ -502,8 +502,16 @@ func TestNewLineChar(t *testing.T) {
 		if err != nil {
 			t.Fatalf("%+v", err)
 		}
-		if _, err := parser.ParseBytes(file, 0); err != nil {
+		ast, err := parser.ParseBytes(file, 0)
+		if err != nil {
 			t.Fatalf("%+v", err)
+		}
+		actual := fmt.Sprintf("%v\n", ast)
+		expect := `a: "a"
+b: 1
+`
+		if expect != actual {
+			t.Fatal("unexpected result")
 		}
 	}
 }

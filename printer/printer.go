@@ -35,19 +35,6 @@ func defaultLineNumberFormat(num int) string {
 	return fmt.Sprintf("%2d | ", num)
 }
 
-func (p *Printer) lineTexts(tk *token.Token, prop *Property) []string {
-	texts := []string{}
-	for idx, src := range strings.Split(tk.Origin, "\n") {
-		header := ""
-		if p.LineNumber {
-			header = p.LineNumberFormat(tk.Position.Line + idx)
-		}
-		lineText := prop.Prefix + src + prop.Suffix
-		texts = append(texts, fmt.Sprintf("%s%s", header, lineText))
-	}
-	return texts
-}
-
 func (p *Printer) property(tk *token.Token) *Property {
 	prop := &Property{}
 	switch tk.PreviousType() {

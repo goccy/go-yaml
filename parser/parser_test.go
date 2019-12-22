@@ -2,6 +2,7 @@ package parser_test
 
 import (
 	"fmt"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -486,6 +487,26 @@ c: d
 		expect := fmt.Sprintf("\n%+v\n", f)
 		if test.expect != expect {
 			t.Fatalf("unexpected output: [%s] != [%s]", test.expect, expect)
+		}
+	}
+}
+
+func TestNewLineChar(t *testing.T) {
+	for _, f := range []string{
+		"lf.yml",
+		"cr.yml",
+		"crlf.yml",
+	} {
+		ast, err := parser.ParseFile(filepath.Join("testdata", f), 0)
+		if err != nil {
+			t.Fatalf("%+v", err)
+		}
+		actual := fmt.Sprintf("%v\n", ast)
+		expect := `a: "a"
+b: 1
+`
+		if expect != actual {
+			t.Fatal("unexpected result")
 		}
 	}
 }

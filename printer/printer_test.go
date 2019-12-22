@@ -101,4 +101,13 @@ alias: *x
 			t.Logf("%s", p.PrintErrorToken(tokens[12], true))
 		})
 	})
+	t.Run("print error message", func(t *testing.T) {
+		var p printer.Printer
+		src := "message"
+		msg := p.PrintErrorMessage(src, false)
+		if msg != src {
+			t.Fatal("unexpected result")
+		}
+		p.PrintErrorMessage(src, true)
+	})
 }

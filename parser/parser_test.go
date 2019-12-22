@@ -2,6 +2,8 @@ package parser_test
 
 import (
 	"fmt"
+	"io/ioutil"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -486,6 +488,22 @@ c: d
 		expect := fmt.Sprintf("\n%+v\n", f)
 		if test.expect != expect {
 			t.Fatalf("unexpected output: [%s] != [%s]", test.expect, expect)
+		}
+	}
+}
+
+func TestNewLineChar(t *testing.T) {
+	for _, f := range []string{
+		"lf.yml",
+		"cr.yml",
+		"crlf.yml",
+	} {
+		file, err := ioutil.ReadFile(filepath.Join("testdata", f))
+		if err != nil {
+			t.Fatalf("%+v", err)
+		}
+		if _, err := parser.ParseBytes(file, 0); err != nil {
+			t.Fatalf("%+v", err)
 		}
 	}
 }

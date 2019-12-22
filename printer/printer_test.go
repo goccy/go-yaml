@@ -20,6 +20,10 @@ text3: ffff
  hhhh
  iiii
  jjjj
+bool: true
+number: 10
+anchor: &x 1
+alias: *x
 `
 	t.Run("print starting from tokens[3]", func(t *testing.T) {
 		tokens := lexer.Tokenize(yml)
@@ -74,14 +78,27 @@ text3: ffff
    9 |  gggg
   10 |  hhhh
   11 |  iiii
-  12 |  jjjj`
+  12 |  jjjj
+  13 | `
 		if actual != expect {
 			t.Fatalf("unexpected output: expect:[%s]\n actual:[%s]", expect, actual)
 		}
 	})
 	t.Run("output with color", func(t *testing.T) {
-		tokens := lexer.Tokenize(yml)
-		var p printer.Printer
-		t.Logf("%s", p.PrintErrorToken(tokens[6], true))
+		t.Run("token6", func(t *testing.T) {
+			tokens := lexer.Tokenize(yml)
+			var p printer.Printer
+			t.Logf("%s", p.PrintErrorToken(tokens[6], true))
+		})
+		t.Run("token9", func(t *testing.T) {
+			tokens := lexer.Tokenize(yml)
+			var p printer.Printer
+			t.Logf("%s", p.PrintErrorToken(tokens[9], true))
+		})
+		t.Run("token12", func(t *testing.T) {
+			tokens := lexer.Tokenize(yml)
+			var p printer.Printer
+			t.Logf("%s", p.PrintErrorToken(tokens[12], true))
+		})
 	})
 }

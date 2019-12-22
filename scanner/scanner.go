@@ -111,6 +111,24 @@ func (s *Scanner) isNewLineChar(c rune) bool {
 	return false
 }
 
+func (s *Scanner) newLineCount(src []rune) int {
+	size := len(src)
+	cnt := 0
+	for i := 0; i < size; i++ {
+		c := src[i]
+		switch c {
+		case '\r':
+			if i+1 < size && src[i+1] == '\n' {
+				i++
+			}
+			cnt++
+		case '\n':
+			cnt++
+		}
+	}
+	return cnt
+}
+
 func (s *Scanner) updateIndent(ctx *Context, c rune) {
 	if s.isFirstCharAtLine && s.isNewLineChar(c) && ctx.isDocument() {
 		return
@@ -348,7 +366,7 @@ func (s *Scanner) scan(ctx *Context) (pos int) {
 			s.addBufferedTokenIfExists(ctx)
 		} else if s.isChangedToIndentStateEqual() {
 			// if first character is new line character, buffer expect to raw folded literal
-			if len(ctx.obuf) > 0 && !s.isNewLineChar(ctx.obuf[0]) {
+			if len(ctx.obuf) > 0 && s.newLineCount(ctx.obuf) <= 1 {
 				// doesn't raw folded literal
 				s.addBufferedTokenIfExists(ctx)
 			}

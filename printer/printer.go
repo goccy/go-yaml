@@ -213,13 +213,54 @@ func (p *Printer) PrintErrorMessage(msg string, isColored bool) string {
 	return msg
 }
 
+func (p *Printer) removeLeftSideNewLineChar(src string) string {
+	return strings.TrimLeft(strings.TrimLeft(src, "\r"), "\n")
+}
+
+func (p *Printer) removeRightSideNewLineChar(src string) string {
+	return strings.TrimRight(strings.TrimRight(src, "\r"), "\n")
+}
+
+func (p *Printer) removeRightSideWhiteSpaceChar(src string) string {
+	return p.removeRightSideNewLineChar(strings.TrimRight(src, " "))
+}
+
+func (p *Printer) newLineCount(s string) int {
+	src := []rune(s)
+	size := len(src)
+	cnt := 0
+	for i := 0; i < size; i++ {
+		c := src[i]
+		switch c {
+		case '\r':
+			if i+1 < size && src[i+1] == '\n' {
+				i++
+			}
+			cnt++
+		case '\n':
+			cnt++
+		}
+	}
+	return cnt
+}
+
+func (p *Printer) isNewLineChar(c byte) bool {
+	if c == '\n' {
+		return true
+	}
+	if c == '\r' {
+		return true
+	}
+	return false
+}
+
 func (p *Printer) PrintErrorToken(tk *token.Token, isColored bool) string {
 	errToken := tk
 	pos := tk.Position
 	curLine := pos.Line
-	curExtLine := curLine + len(strings.Split(strings.TrimLeft(tk.Origin, "\n"), "\n")) - 1
-	if tk.Origin[len(tk.Origin)-1] == '\n' {
-		// if last character is '\n', ignore it.
+	curExtLine := curLine + p.newLineCount(p.removeLeftSideNewLineChar(tk.Origin))
+	if p.isNewLineChar(tk.Origin[len(tk.Origin)-1]) {
+		// if last character is new line character, ignore it.
 		curExtLine--
 	}
 	minLine := int(math.Max(float64(curLine-3), 1))
@@ -244,10 +285,10 @@ func (p *Printer) PrintErrorToken(tk *token.Token, isColored bool) string {
 		}
 	}
 	org := lastTk.Origin
-	trimmed := strings.TrimRight(strings.TrimRight(lastTk.Origin, " "), "\n")
+	trimmed := p.removeRightSideWhiteSpaceChar(org)
 	lastTk.Origin = trimmed
 	if tk != nil {
-		tk.Origin = org[len(trimmed)+1:] + tk.Origin
+		tk.Origin = p.removeLeftSideNewLineChar(tk.Origin)
 	}
 	p.LineNumber = true
 	p.LineNumberFormat = func(num int) string {

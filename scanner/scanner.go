@@ -101,8 +101,18 @@ func (s *Scanner) isNeededKeepPreviousIndentNum(ctx *Context, c rune) bool {
 	return false
 }
 
+func (s *Scanner) isNewLineChar(c rune) bool {
+	if c == '\n' {
+		return true
+	}
+	if c == '\r' {
+		return true
+	}
+	return false
+}
+
 func (s *Scanner) updateIndent(ctx *Context, c rune) {
-	if s.isFirstCharAtLine && c == '\n' && ctx.isDocument() {
+	if s.isFirstCharAtLine && s.isNewLineChar(c) && ctx.isDocument() {
 		return
 	}
 	if s.isFirstCharAtLine && c == ' ' {
@@ -199,7 +209,7 @@ func (s *Scanner) scanTag(ctx *Context) (tk *token.Token, pos int) {
 		pos = idx + 1
 		ctx.addOriginBuf(c)
 		switch c {
-		case ' ', '\n':
+		case ' ', '\n', '\r':
 			value := ctx.source(ctx.idx-1, ctx.idx+idx)
 			tk = token.Tag(value, string(ctx.obuf), s.pos())
 			pos = len([]rune(value))
@@ -216,7 +226,7 @@ func (s *Scanner) scanComment(ctx *Context) (tk *token.Token, pos int) {
 		pos = idx + 1
 		ctx.addOriginBuf(c)
 		switch c {
-		case '\n':
+		case '\n', '\r':
 			if ctx.previousChar() == '\\' {
 				continue
 			}
@@ -237,7 +247,7 @@ func (s *Scanner) scanLiteral(ctx *Context, c rune) {
 		ctx.addToken(token.New(value, string(ctx.obuf), s.pos()))
 		ctx.resetBuffer()
 		s.progressColumn(ctx, 1)
-	} else if c == '\n' {
+	} else if s.isNewLineChar(c) {
 		if ctx.isLiteral {
 			ctx.addBuf(c)
 		} else {
@@ -266,7 +276,7 @@ func (s *Scanner) scanLiteralHeader(ctx *Context) (pos int, err error) {
 		pos = idx
 		ctx.addOriginBuf(c)
 		switch c {
-		case '\n':
+		case '\n', '\r':
 			value := ctx.source(ctx.idx, ctx.idx+idx)
 			opt := strings.TrimRight(value, " ")
 			switch opt {
@@ -337,8 +347,8 @@ func (s *Scanner) scan(ctx *Context) (pos int) {
 		} else if s.isChangedToIndentStateDown() {
 			s.addBufferedTokenIfExists(ctx)
 		} else if s.isChangedToIndentStateEqual() {
-			// if first character is \n, buffer expect to raw folded literal
-			if len(ctx.obuf) > 0 && ctx.obuf[0] != '\n' {
+			// if first character is new line character, buffer expect to raw folded literal
+			if len(ctx.obuf) > 0 && !s.isNewLineChar(ctx.obuf[0]) {
 				// doesn't raw folded literal
 				s.addBufferedTokenIfExists(ctx)
 			}
@@ -436,7 +446,7 @@ func (s *Scanner) scan(ctx *Context) (pos int) {
 			}
 		case ':':
 			nc := ctx.nextChar()
-			if nc == ' ' || nc == '\n' || ctx.isNextEOS() {
+			if nc == ' ' || s.isNewLineChar(nc) || ctx.isNextEOS() {
 				// mapping value
 				tk := s.bufferedToken(ctx)
 				if tk != nil {
@@ -463,7 +473,7 @@ func (s *Scanner) scan(ctx *Context) (pos int) {
 				token, progress := s.scanTag(ctx)
 				ctx.addToken(token)
 				s.progressColumn(ctx, progress)
-				if c := ctx.previousChar(); c == '\n' {
+				if c := ctx.previousChar(); s.isNewLineChar(c) {
 					s.progressLine(ctx)
 				}
 				pos += progress

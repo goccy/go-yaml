@@ -74,12 +74,26 @@ func (p *parser) parseTag(ctx *context) (ast.Node, error) {
 	return node, nil
 }
 
+func (p *parser) removeLeftSideNewLineCharacter(src string) string {
+	return strings.TrimLeft(strings.TrimLeft(src, "\r"), "\n")
+}
+
+func (p *parser) existsNewLineCharacter(src string) bool {
+	if strings.Index(src, "\n") > 0 {
+		return true
+	}
+	if strings.Index(src, "\r") > 0 {
+		return true
+	}
+	return false
+}
+
 func (p *parser) validateMapKey(tk *token.Token) error {
 	if tk.Type != token.StringType {
 		return nil
 	}
-	origin := strings.TrimLeft(tk.Origin, "\n")
-	if strings.Index(origin, "\n") > 0 {
+	origin := p.removeLeftSideNewLineCharacter(tk.Origin)
+	if p.existsNewLineCharacter(origin) {
 		return errors.ErrSyntax("unexpected key name", tk)
 	}
 	return nil

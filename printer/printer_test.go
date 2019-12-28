@@ -8,7 +8,7 @@ import (
 )
 
 func Test_Printer(t *testing.T) {
-	yml := `---
+	yml := []byte(`---
 text: aaaa
 text2: aaaa
  bbbb
@@ -24,7 +24,7 @@ bool: true
 number: 10
 anchor: &x 1
 alias: *x
-`
+`)
 	t.Run("print starting from tokens[3]", func(t *testing.T) {
 		tokens := lexer.Tokenize(yml)
 		var p printer.Printer

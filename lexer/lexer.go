@@ -8,7 +8,7 @@ import (
 )
 
 // Tokenize split to token instances from string
-func Tokenize(src string) token.Tokens {
+func Tokenize(src []byte) token.Tokens {
 	var s scanner.Scanner
 	s.Init(src)
 	var tokens token.Tokens

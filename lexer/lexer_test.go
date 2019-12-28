@@ -56,6 +56,6 @@ func TestTokenize(t *testing.T) {
 		"a: bogus\n",
 	}
 	for _, src := range sources {
-		lexer.Tokenize(src).Dump()
+		lexer.Tokenize([]byte(src)).Dump()
 	}
 }

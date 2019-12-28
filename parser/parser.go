@@ -393,7 +393,7 @@ const (
 
 // ParseBytes parse from byte slice, and returns ast.File
 func ParseBytes(bytes []byte, mode Mode) (*ast.File, error) {
-	tokens := lexer.Tokenize(string(bytes))
+	tokens := lexer.Tokenize(bytes)
 	f, err := Parse(tokens, mode)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to parse")

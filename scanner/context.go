@@ -106,7 +106,7 @@ func (c *Context) removeRightSpaceFromBuf() int {
 	diff := len(c.obuf) - buflen
 	if diff > 0 {
 		c.obuf = c.obuf[:buflen]
-		c.buf = []rune(c.bufferedSrc())
+		c.buf = c.bufferedSrc()
 	}
 	return diff
 }
@@ -169,13 +169,17 @@ func (c *Context) nextPos() int {
 	return c.idx + 1
 }
 
-func (c *Context) bufferedSrc() string {
+func (c *Context) existsBuffer() bool {
+	return len(c.bufferedSrc()) != 0
+}
+
+func (c *Context) bufferedSrc() []rune {
 	src := c.buf[:c.notSpaceCharPos]
 	if len(src) > 0 && src[len(src)-1] == '\n' && c.isDocument() && c.literalOpt == "-" {
 		// remove end '\n' character
 		src = src[:len(src)-1]
 	}
-	return string(src)
+	return src
 }
 
 func (c *Context) bufferedToken(pos *token.Position) *token.Token {
@@ -186,7 +190,7 @@ func (c *Context) bufferedToken(pos *token.Position) *token.Token {
 	if len(source) == 0 {
 		return nil
 	}
-	tk := token.New(source, string(c.obuf), pos)
+	tk := token.New(string(source), string(c.obuf), pos)
 	c.resetBuffer()
 	return tk
 }

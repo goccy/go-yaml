@@ -334,7 +334,9 @@ func (s *Scanner) scanNewLine(ctx *Context, c rune) {
 	if removedNum > 0 {
 		s.column -= removedNum
 		s.offset -= removedNum
-		s.savedPos.Column -= removedNum
+		if s.savedPos != nil {
+			s.savedPos.Column -= removedNum
+		}
 	}
 
 	if ctx.isEOS() {
@@ -607,5 +609,6 @@ func (s *Scanner) Scan() (token.Tokens, error) {
 	ctx := newContext(s.source[s.sourcePos:])
 	progress := s.scan(ctx)
 	s.sourcePos += progress
+	ctx.release()
 	return ctx.tokens, nil
 }

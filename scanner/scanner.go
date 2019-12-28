@@ -61,8 +61,7 @@ func (s *Scanner) bufferedToken(ctx *Context) *token.Token {
 		s.savedPos = nil
 		return tk
 	}
-	trimmedSrc := strings.TrimLeft(string(ctx.buf), " ")
-	size := len([]rune(trimmedSrc))
+	size := len(ctx.buf)
 	return ctx.bufferedToken(&token.Position{
 		Line:        s.line,
 		Column:      s.column - size,

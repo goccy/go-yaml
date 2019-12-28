@@ -1,6 +1,7 @@
 package yaml
 
 import (
+	"bytes"
 	"encoding/base64"
 	"fmt"
 	"io"
@@ -957,11 +958,11 @@ func (d *Decoder) Decode(v interface{}) error {
 	if rv.Type().Kind() != reflect.Ptr {
 		return errors.ErrDecodeRequiredPointerType
 	}
-	bytes, err := ioutil.ReadAll(d.reader)
-	if err != nil {
-		return errors.Wrapf(err, "failed to read buffer")
+	var buf bytes.Buffer
+	if _, err := io.Copy(&buf, d.reader); err != nil {
+		return errors.Wrapf(err, "failed to copy from reader")
 	}
-	node, err := d.decode(bytes)
+	node, err := d.decode(buf.Bytes())
 	if err != nil {
 		return errors.Wrapf(err, "failed to decode")
 	}

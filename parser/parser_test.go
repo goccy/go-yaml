@@ -69,7 +69,7 @@ func TestParser(t *testing.T) {
 	}
 	for _, src := range sources {
 		fmt.Printf(src)
-		tokens := lexer.Tokenize([]byte(src))
+		tokens := lexer.Tokenize(src)
 		var printer printer.Printer
 		fmt.Println(printer.PrintTokens(tokens))
 		ast, err := parser.Parse(tokens, 0)
@@ -474,7 +474,7 @@ c: d
 		},
 	}
 	for _, test := range tests {
-		tokens := lexer.Tokenize([]byte(test.source))
+		tokens := lexer.Tokenize(test.source)
 		tokens.Dump()
 		f, err := parser.Parse(tokens, 0)
 		if err != nil {

@@ -584,8 +584,8 @@ func (s *Scanner) scan(ctx *Context) (pos int) {
 }
 
 // Init prepares the scanner s to tokenize the text src by setting the scanner at the beginning of src.
-func (s *Scanner) Init(text []byte) {
-	src := []rune(string(text))
+func (s *Scanner) Init(text string) {
+	src := []rune(text)
 	s.source = src
 	s.sourcePos = 0
 	s.sourceSize = len(src)

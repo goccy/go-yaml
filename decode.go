@@ -1,6 +1,7 @@
 package yaml
 
 import (
+	"bytes"
 	"encoding/base64"
 	"fmt"
 	"io"
@@ -82,6 +83,22 @@ func (d *Decoder) castToFloat(v interface{}) interface{} {
 	return 0
 }
 
+func (d *Decoder) setToMapValue(node ast.Node, m map[string]interface{}) {
+	switch n := node.(type) {
+	case *ast.MappingValueNode:
+		if n.Key.Type() == ast.MergeKeyType {
+			d.setToMapValue(n.Value, m)
+		} else {
+			key := n.Key.GetToken().Value
+			m[key] = d.nodeToValue(n.Value)
+		}
+	case *ast.MappingNode:
+		for _, value := range n.Values {
+			d.setToMapValue(value, m)
+		}
+	}
+}
+
 func (d *Decoder) nodeToValue(node ast.Node) interface{} {
 	switch n := node.(type) {
 	case *ast.NullNode:
@@ -122,28 +139,23 @@ func (d *Decoder) nodeToValue(node ast.Node) interface{} {
 	case *ast.LiteralNode:
 		return n.Value.GetValue()
 	case *ast.MappingValueNode:
-		m := map[string]interface{}{}
 		if n.Key.Type() == ast.MergeKeyType {
-			mapValue := d.nodeToValue(n.Value).(map[string]interface{})
-			for k, v := range mapValue {
-				m[k] = v
-			}
-		} else {
-			key := n.Key.GetToken().Value
-			m[key] = d.nodeToValue(n.Value)
+			m := map[string]interface{}{}
+			d.setToMapValue(n.Value, m)
+			return m
 		}
-		return m
+		key := n.Key.GetToken().Value
+		return map[string]interface{}{
+			key: d.nodeToValue(n.Value),
+		}
 	case *ast.MappingNode:
-		m := map[string]interface{}{}
+		m := make(map[string]interface{}, len(n.Values))
 		for _, value := range n.Values {
-			subMap := d.nodeToValue(value).(map[string]interface{})
-			for k, v := range subMap {
-				m[k] = v
-			}
+			d.setToMapValue(value, m)
 		}
 		return m
 	case *ast.SequenceNode:
-		v := []interface{}{}
+		v := make([]interface{}, 0, len(n.Values))
 		for _, value := range n.Values {
 			v = append(v, d.nodeToValue(value))
 		}
@@ -946,11 +958,11 @@ func (d *Decoder) Decode(v interface{}) error {
 	if rv.Type().Kind() != reflect.Ptr {
 		return errors.ErrDecodeRequiredPointerType
 	}
-	bytes, err := ioutil.ReadAll(d.reader)
-	if err != nil {
-		return errors.Wrapf(err, "failed to read buffer")
+	var buf bytes.Buffer
+	if _, err := io.Copy(&buf, d.reader); err != nil {
+		return errors.Wrapf(err, "failed to copy from reader")
 	}
-	node, err := d.decode(bytes)
+	node, err := d.decode(buf.Bytes())
 	if err != nil {
 		return errors.Wrapf(err, "failed to decode")
 	}

@@ -61,8 +61,7 @@ func (s *Scanner) bufferedToken(ctx *Context) *token.Token {
 		s.savedPos = nil
 		return tk
 	}
-	trimmedSrc := strings.TrimLeft(string(ctx.buf), " ")
-	size := len([]rune(trimmedSrc))
+	size := len(ctx.buf)
 	return ctx.bufferedToken(&token.Position{
 		Line:        s.line,
 		Column:      s.column - size,
@@ -95,7 +94,7 @@ func (s *Scanner) isNeededKeepPreviousIndentNum(ctx *Context, c rune) bool {
 	if ctx.isDocument() {
 		return true
 	}
-	if c == '-' && ctx.bufferedSrc() != "" {
+	if c == '-' && ctx.existsBuffer() {
 		return true
 	}
 	return false
@@ -262,7 +261,7 @@ func (s *Scanner) scanLiteral(ctx *Context, c rune) {
 	if ctx.isEOS() {
 		ctx.addBuf(c)
 		value := ctx.bufferedSrc()
-		ctx.addToken(token.New(value, string(ctx.obuf), s.pos()))
+		ctx.addToken(token.New(string(value), string(ctx.obuf), s.pos()))
 		ctx.resetBuffer()
 		s.progressColumn(ctx, 1)
 	} else if s.isNewLineChar(c) {
@@ -322,7 +321,7 @@ func (s *Scanner) scanLiteralHeader(ctx *Context) (pos int, err error) {
 func (s *Scanner) scanNewLine(ctx *Context, c rune) {
 	if len(ctx.buf) > 0 && s.savedPos == nil {
 		s.savedPos = s.pos()
-		s.savedPos.Column -= len([]rune(ctx.bufferedSrc()))
+		s.savedPos.Column -= len(ctx.bufferedSrc())
 	}
 
 	// if the following case, origin buffer has unnecessary two spaces.
@@ -334,7 +333,9 @@ func (s *Scanner) scanNewLine(ctx *Context, c rune) {
 	if removedNum > 0 {
 		s.column -= removedNum
 		s.offset -= removedNum
-		s.savedPos.Column -= removedNum
+		if s.savedPos != nil {
+			s.savedPos.Column -= removedNum
+		}
 	}
 
 	if ctx.isEOS() {
@@ -373,7 +374,7 @@ func (s *Scanner) scan(ctx *Context) (pos int) {
 		}
 		switch c {
 		case '{':
-			if ctx.bufferedSrc() == "" {
+			if !ctx.existsBuffer() {
 				ctx.addOriginBuf(c)
 				ctx.addToken(token.MappingStart(string(ctx.obuf), s.pos()))
 				s.startedFlowMapNum++
@@ -381,7 +382,7 @@ func (s *Scanner) scan(ctx *Context) (pos int) {
 				return
 			}
 		case '}':
-			if ctx.bufferedSrc() == "" || s.startedFlowMapNum > 0 {
+			if !ctx.existsBuffer() || s.startedFlowMapNum > 0 {
 				ctx.addToken(s.bufferedToken(ctx))
 				ctx.addOriginBuf(c)
 				ctx.addToken(token.MappingEnd(string(ctx.obuf), s.pos()))
@@ -412,7 +413,7 @@ func (s *Scanner) scan(ctx *Context) (pos int) {
 				pos += 2
 				return
 			}
-			if ctx.bufferedSrc() != "" && s.isChangedToIndentStateUp() {
+			if ctx.existsBuffer() && s.isChangedToIndentStateUp() {
 				// raw folded
 				ctx.isRawFolded = true
 				ctx.addBuf(c)
@@ -420,7 +421,7 @@ func (s *Scanner) scan(ctx *Context) (pos int) {
 				s.progressColumn(ctx, 1)
 				continue
 			}
-			if ctx.bufferedSrc() != "" && ctx.isSingleLine {
+			if ctx.existsBuffer() && ctx.isSingleLine {
 				// '-' is literal
 				ctx.addBuf(c)
 				ctx.addOriginBuf(c)
@@ -438,7 +439,7 @@ func (s *Scanner) scan(ctx *Context) (pos int) {
 				return
 			}
 		case '[':
-			if ctx.bufferedSrc() == "" {
+			if !ctx.existsBuffer() {
 				ctx.addOriginBuf(c)
 				ctx.addToken(token.SequenceStart(string(ctx.obuf), s.pos()))
 				s.startedFlowSequenceNum++
@@ -446,7 +447,7 @@ func (s *Scanner) scan(ctx *Context) (pos int) {
 				return
 			}
 		case ']':
-			if ctx.bufferedSrc() == "" || s.startedFlowSequenceNum > 0 {
+			if !ctx.existsBuffer() || s.startedFlowSequenceNum > 0 {
 				s.addBufferedTokenIfExists(ctx)
 				ctx.addOriginBuf(c)
 				ctx.addToken(token.SequenceEnd(string(ctx.obuf), s.pos()))
@@ -476,7 +477,7 @@ func (s *Scanner) scan(ctx *Context) (pos int) {
 				return
 			}
 		case '|', '>':
-			if ctx.bufferedSrc() == "" {
+			if !ctx.existsBuffer() {
 				progress, err := s.scanLiteralHeader(ctx)
 				if err != nil {
 					// TODO: returns syntax error object
@@ -487,7 +488,7 @@ func (s *Scanner) scan(ctx *Context) (pos int) {
 				continue
 			}
 		case '!':
-			if ctx.bufferedSrc() == "" {
+			if !ctx.existsBuffer() {
 				token, progress := s.scanTag(ctx)
 				ctx.addToken(token)
 				s.progressColumn(ctx, progress)
@@ -498,20 +499,20 @@ func (s *Scanner) scan(ctx *Context) (pos int) {
 				return
 			}
 		case '%':
-			if ctx.bufferedSrc() == "" && s.indentNum == 0 {
+			if !ctx.existsBuffer() && s.indentNum == 0 {
 				ctx.addToken(token.Directive(s.pos()))
 				s.progressColumn(ctx, 1)
 				return
 			}
 		case '?':
 			nc := ctx.nextChar()
-			if ctx.bufferedSrc() == "" && nc == ' ' {
+			if !ctx.existsBuffer() && nc == ' ' {
 				ctx.addToken(token.Directive(s.pos()))
 				s.progressColumn(ctx, 1)
 				return
 			}
 		case '&':
-			if ctx.bufferedSrc() == "" {
+			if !ctx.existsBuffer() {
 				s.addBufferedTokenIfExists(ctx)
 				ctx.addOriginBuf(c)
 				ctx.addToken(token.Anchor(string(ctx.obuf), s.pos()))
@@ -520,7 +521,7 @@ func (s *Scanner) scan(ctx *Context) (pos int) {
 				return
 			}
 		case '*':
-			if ctx.bufferedSrc() == "" {
+			if !ctx.existsBuffer() {
 				s.addBufferedTokenIfExists(ctx)
 				ctx.addOriginBuf(c)
 				ctx.addToken(token.Alias(string(ctx.obuf), s.pos()))
@@ -528,7 +529,7 @@ func (s *Scanner) scan(ctx *Context) (pos int) {
 				return
 			}
 		case '#':
-			if ctx.bufferedSrc() == "" || ctx.previousChar() == ' ' {
+			if !ctx.existsBuffer() || ctx.previousChar() == ' ' {
 				s.addBufferedTokenIfExists(ctx)
 				token, progress := s.scanComment(ctx)
 				ctx.addToken(token)
@@ -538,7 +539,7 @@ func (s *Scanner) scan(ctx *Context) (pos int) {
 				return
 			}
 		case '\'', '"':
-			if ctx.bufferedSrc() == "" {
+			if !ctx.existsBuffer() {
 				token, progress := s.scanQuote(ctx, c)
 				ctx.addToken(token)
 				s.progressColumn(ctx, progress)
@@ -605,7 +606,10 @@ func (s *Scanner) Scan() (token.Tokens, error) {
 		return nil, io.EOF
 	}
 	ctx := newContext(s.source[s.sourcePos:])
+	defer ctx.release()
 	progress := s.scan(ctx)
 	s.sourcePos += progress
-	return ctx.tokens, nil
+	var tokens token.Tokens
+	tokens = append(tokens, ctx.tokens...)
+	return tokens, nil
 }

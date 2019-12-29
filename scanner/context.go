@@ -1,41 +1,68 @@
 package scanner
 
 import (
-	"strings"
+	"sync"
 
 	"github.com/goccy/go-yaml/token"
 )
 
 // Context context at scanning
 type Context struct {
-	idx          int
-	size         int
-	src          []rune
-	buf          []rune
-	obuf         []rune
-	tokens       token.Tokens
-	isRawFolded  bool
-	isLiteral    bool
-	isFolded     bool
-	isSingleLine bool
-	literalOpt   string
+	idx                int
+	size               int
+	notSpaceCharPos    int
+	notSpaceOrgCharPos int
+	src                []rune
+	buf                []rune
+	obuf               []rune
+	tokens             token.Tokens
+	isRawFolded        bool
+	isLiteral          bool
+	isFolded           bool
+	isSingleLine       bool
+	literalOpt         string
+}
+
+var (
+	ctxPool = sync.Pool{
+		New: func() interface{} {
+			return createContext()
+		},
+	}
+)
+
+func createContext() *Context {
+	return &Context{
+		idx:          0,
+		tokens:       token.Tokens{},
+		isSingleLine: true,
+	}
 }
 
 func newContext(src []rune) *Context {
-	return &Context{
-		idx:          0,
-		size:         len(src),
-		src:          src,
-		tokens:       token.Tokens{},
-		buf:          make([]rune, 0, len(src)),
-		obuf:         make([]rune, 0, len(src)),
-		isSingleLine: true,
-	}
+	ctx := ctxPool.Get().(*Context)
+	ctx.reset(src)
+	return ctx
+}
+
+func (c *Context) release() {
+	ctxPool.Put(c)
+}
+
+func (c *Context) reset(src []rune) {
+	c.idx = 0
+	c.size = len(src)
+	c.src = src
+	c.tokens = c.tokens[:0]
+	c.resetBuffer()
+	c.isSingleLine = true
 }
 
 func (c *Context) resetBuffer() {
 	c.buf = c.buf[:0]
 	c.obuf = c.obuf[:0]
+	c.notSpaceCharPos = 0
+	c.notSpaceOrgCharPos = 0
 }
 
 func (c *Context) isSaveIndentMode() bool {
@@ -57,20 +84,29 @@ func (c *Context) addToken(tk *token.Token) {
 }
 
 func (c *Context) addBuf(r rune) {
+	if len(c.buf) == 0 && r == ' ' {
+		return
+	}
 	c.buf = append(c.buf, r)
+	if r != ' ' {
+		c.notSpaceCharPos = len(c.buf)
+	}
 }
 
 func (c *Context) addOriginBuf(r rune) {
 	c.obuf = append(c.obuf, r)
+	if r != ' ' {
+		c.notSpaceOrgCharPos = len(c.obuf)
+	}
 }
 
 func (c *Context) removeRightSpaceFromBuf() int {
-	trimmedBuf := strings.TrimRight(string(c.obuf), " ")
-	buflen := len([]rune(trimmedBuf))
+	trimmedBuf := c.obuf[:c.notSpaceOrgCharPos]
+	buflen := len(trimmedBuf)
 	diff := len(c.obuf) - buflen
 	if diff > 0 {
 		c.obuf = c.obuf[:buflen]
-		c.buf = []rune(c.bufferedSrc())
+		c.buf = c.bufferedSrc()
 	}
 	return diff
 }
@@ -133,9 +169,12 @@ func (c *Context) nextPos() int {
 	return c.idx + 1
 }
 
-func (c *Context) bufferedSrc() string {
-	src := strings.TrimLeft(string(c.buf), " ")
-	src = strings.TrimRight(src, " ")
+func (c *Context) existsBuffer() bool {
+	return len(c.bufferedSrc()) != 0
+}
+
+func (c *Context) bufferedSrc() []rune {
+	src := c.buf[:c.notSpaceCharPos]
 	if len(src) > 0 && src[len(src)-1] == '\n' && c.isDocument() && c.literalOpt == "-" {
 		// remove end '\n' character
 		src = src[:len(src)-1]
@@ -151,8 +190,7 @@ func (c *Context) bufferedToken(pos *token.Position) *token.Token {
 	if len(source) == 0 {
 		return nil
 	}
-	tk := token.New(source, string(c.obuf), pos)
-	c.buf = c.buf[:0]
-	c.obuf = c.obuf[:0]
+	tk := token.New(string(source), string(c.obuf), pos)
+	c.resetBuffer()
 	return tk
 }

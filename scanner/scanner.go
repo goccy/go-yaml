@@ -606,8 +606,10 @@ func (s *Scanner) Scan() (token.Tokens, error) {
 		return nil, io.EOF
 	}
 	ctx := newContext(s.source[s.sourcePos:])
+	defer ctx.release()
 	progress := s.scan(ctx)
 	s.sourcePos += progress
-	ctx.release()
-	return ctx.tokens, nil
+	var tokens token.Tokens
+	tokens = append(tokens, ctx.tokens...)
+	return tokens, nil
 }

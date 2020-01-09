@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/goccy/go-yaml"
+	"github.com/goccy/go-yaml/ast"
 )
 
 func TestEncoder(t *testing.T) {
@@ -564,6 +565,85 @@ func TestEncoder_Flow(t *testing.T) {
 	actual := "\n" + buf.String()
 	if expect != actual {
 		t.Fatalf("flow style marshal error: expect=[%s] actual=[%s]", expect, actual)
+	}
+}
+
+func TestEncoder_MarshalAnchor(t *testing.T) {
+	type Host struct {
+		Hostname string
+		Username string
+		Password string
+	}
+	type HostDecl struct {
+		Host *Host `yaml:",anchor"`
+	}
+	type Queue struct {
+		Name  string `yaml:","`
+		*Host `yaml:",alias"`
+	}
+	var doc struct {
+		Hosts  []*HostDecl `yaml:"hosts"`
+		Queues []*Queue    `yaml:"queues"`
+	}
+	host1 := &Host{
+		Hostname: "host1.example.com",
+		Username: "userA",
+		Password: "pass1",
+	}
+	host2 := &Host{
+		Hostname: "host2.example.com",
+		Username: "userB",
+		Password: "pass2",
+	}
+	doc.Hosts = []*HostDecl{
+		{
+			Host: host1,
+		},
+		{
+			Host: host2,
+		},
+	}
+	doc.Queues = []*Queue{
+		{
+			Name: "queue",
+			Host: host1,
+		}, {
+			Name: "queue2",
+			Host: host2,
+		},
+	}
+	hostIdx := 1
+	opt := yaml.MarshalAnchor(func(anchor *ast.AnchorNode, value interface{}) error {
+		if _, ok := value.(*Host); ok {
+			nameNode := anchor.Name.(*ast.StringNode)
+			nameNode.Value = fmt.Sprintf("host%d", hostIdx)
+			hostIdx++
+		}
+		return nil
+	})
+
+	var buf bytes.Buffer
+	if err := yaml.NewEncoder(&buf, opt).Encode(doc); err != nil {
+		t.Fatalf("%+v", err)
+	}
+	expect := `
+hosts:
+- host: &host1
+    hostname: host1.example.com
+    username: userA
+    password: pass1
+- host: &host2
+    hostname: host2.example.com
+    username: userB
+    password: pass2
+queues:
+- name: queue
+  host: *host1
+- name: queue2
+  host: *host2
+`
+	if "\n"+buf.String() != expect {
+		t.Fatalf("unexpected output. %s", buf.String())
 	}
 }
 

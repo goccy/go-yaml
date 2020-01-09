@@ -29,6 +29,7 @@ type Encoder struct {
 	opts               []EncodeOption
 	indent             int
 	isFlowStyle        bool
+	anchorCallback     func(*ast.AnchorNode, interface{}) error
 	anchorPtrToNameMap map[uintptr]string
 
 	line        int
@@ -347,6 +348,26 @@ func (e *Encoder) encodeTime(v time.Time, column int) ast.Node {
 	return ast.String(token.New(value, value, e.pos(column)))
 }
 
+func (e *Encoder) encodeAnchor(anchorName string, value ast.Node, fieldValue reflect.Value, column int) (ast.Node, error) {
+	anchorNode := &ast.AnchorNode{
+		Start: token.New("&", "&", e.pos(column)),
+		Name:  ast.String(token.New(anchorName, anchorName, e.pos(column))),
+		Value: value,
+	}
+	if e.anchorCallback != nil {
+		if err := e.anchorCallback(anchorNode, fieldValue.Interface()); err != nil {
+			return nil, errors.Wrapf(err, "failed to marshal anchor")
+		}
+		if snode, ok := anchorNode.Name.(*ast.StringNode); ok {
+			anchorName = snode.Value
+		}
+	}
+	if fieldValue.Kind() == reflect.Ptr {
+		e.anchorPtrToNameMap[fieldValue.Pointer()] = anchorName
+	}
+	return anchorNode, nil
+}
+
 func (e *Encoder) encodeStruct(value reflect.Value, column int) (ast.Node, error) {
 	node := ast.Mapping(token.New("", "", e.pos(column)), e.isFlowStyle)
 	structType := value.Type()
@@ -382,25 +403,17 @@ func (e *Encoder) encodeStruct(value reflect.Value, column int) (ast.Node, error
 		key := e.encodeString(structField.RenderName, column)
 		switch {
 		case structField.AnchorName != "":
-			anchorName := structField.AnchorName
-			if fieldValue.Kind() == reflect.Ptr {
-				e.anchorPtrToNameMap[fieldValue.Pointer()] = anchorName
+			anchorNode, err := e.encodeAnchor(structField.AnchorName, value, fieldValue, column)
+			if err != nil {
+				return nil, errors.Wrapf(err, "failed to encode anchor")
 			}
-			value = &ast.AnchorNode{
-				Start: token.New("&", "&", e.pos(column)),
-				Name:  ast.String(token.New(anchorName, anchorName, e.pos(column))),
-				Value: value,
-			}
+			value = anchorNode
 		case structField.IsAutoAnchor:
-			anchorName := structField.RenderName
-			if fieldValue.Kind() == reflect.Ptr {
-				e.anchorPtrToNameMap[fieldValue.Pointer()] = anchorName
+			anchorNode, err := e.encodeAnchor(structField.RenderName, value, fieldValue, column)
+			if err != nil {
+				return nil, errors.Wrapf(err, "failed to encode anchor")
 			}
-			value = &ast.AnchorNode{
-				Start: token.New("&", "&", e.pos(column)),
-				Name:  ast.String(token.New(anchorName, anchorName, e.pos(column))),
-				Value: value,
-			}
+			value = anchorNode
 		case structField.IsAutoAlias:
 			if fieldValue.Kind() != reflect.Ptr {
 				return nil, xerrors.Errorf(

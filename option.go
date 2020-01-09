@@ -1,6 +1,10 @@
 package yaml
 
-import "io"
+import (
+	"io"
+
+	"github.com/goccy/go-yaml/ast"
+)
 
 // DecodeOption functional option type for Decoder
 type DecodeOption func(d *Decoder) error
@@ -70,6 +74,14 @@ func Indent(spaces int) EncodeOption {
 func Flow(isFlowStyle bool) EncodeOption {
 	return func(e *Encoder) error {
 		e.isFlowStyle = isFlowStyle
+		return nil
+	}
+}
+
+// MarshalAnchor call back if encoder find an anchor during encoding
+func MarshalAnchor(callback func(*ast.AnchorNode, interface{}) error) EncodeOption {
+	return func(e *Encoder) error {
+		e.anchorCallback = callback
 		return nil
 	}
 }

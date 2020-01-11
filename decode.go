@@ -2,6 +2,7 @@ package yaml
 
 import (
 	"bytes"
+	"encoding"
 	"encoding/base64"
 	"fmt"
 	"io"
@@ -355,6 +356,14 @@ func (d *Decoder) decodeValue(dst reflect.Value, src ast.Node) error {
 			return errors.Wrapf(err, "failed to UnmarshalYAML")
 		}
 		return nil
+	} else if _, ok := dst.Addr().Interface().(*time.Time); ok {
+		return d.decodeTime(dst, src)
+	} else if unmarshaler, isText := dst.Addr().Interface().(encoding.TextUnmarshaler); isText {
+		b := fmt.Sprintf("%v", src)
+		if err := unmarshaler.UnmarshalText([]byte(b)); err != nil {
+			return errors.Wrapf(err, "failed to UnmarshalText")
+		}
+		return nil
 	}
 	switch valueType.Kind() {
 	case reflect.Ptr:
@@ -383,9 +392,6 @@ func (d *Decoder) decodeValue(dst reflect.Value, src ast.Node) error {
 	case reflect.Slice:
 		return d.decodeSlice(dst, src)
 	case reflect.Struct:
-		if _, ok := dst.Addr().Interface().(*time.Time); ok {
-			return d.decodeTime(dst, src)
-		}
 		return d.decodeStruct(dst, src)
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
 		v := d.nodeToValue(src)

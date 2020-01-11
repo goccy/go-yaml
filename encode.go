@@ -1,6 +1,7 @@
 package yaml
 
 import (
+	"encoding"
 	"fmt"
 	"io"
 	"math"
@@ -128,6 +129,18 @@ func (e *Encoder) encodeValue(v reflect.Value, column int) (ast.Node, error) {
 				return nil, errors.Wrapf(err, "failed to MarshalYAML")
 			}
 			return e.encodeValue(reflect.ValueOf(marshalV), column)
+		} else if t, ok := v.Interface().(time.Time); ok {
+			return e.encodeTime(t, column), nil
+		} else if marshaler, ok := v.Interface().(encoding.TextMarshaler); ok {
+			doc, err := marshaler.MarshalText()
+			if err != nil {
+				return nil, errors.Wrapf(err, "failed to MarshalText")
+			}
+			node, err := e.encodeDocument(doc)
+			if err != nil {
+				return nil, errors.Wrapf(err, "failed to encode document")
+			}
+			return node, nil
 		}
 	}
 	switch v.Type().Kind() {

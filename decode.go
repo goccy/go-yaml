@@ -359,7 +359,12 @@ func (d *Decoder) decodeValue(dst reflect.Value, src ast.Node) error {
 	} else if _, ok := dst.Addr().Interface().(*time.Time); ok {
 		return d.decodeTime(dst, src)
 	} else if unmarshaler, isText := dst.Addr().Interface().(encoding.TextUnmarshaler); isText {
-		b := fmt.Sprintf("%v", src)
+		var b string
+		if scalar, isScalar := src.(ast.ScalarNode); isScalar {
+			b = scalar.GetValue().(string)
+		} else {
+			b = src.String()
+		}
 		if err := unmarshaler.UnmarshalText([]byte(b)); err != nil {
 			return errors.Wrapf(err, "failed to UnmarshalText")
 		}

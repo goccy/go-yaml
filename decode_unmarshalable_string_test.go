@@ -31,7 +31,15 @@ func TestUnmarshalableString(t *testing.T) {
 			t.Fatalf("failed to unmarshal %v", err)
 		}
 		if container.V != "aaa" {
-			t.Fatalf("expected empty string, but %q is set", container.V)
+			t.Fatalf("expected \"aaa\", but %q is set", container.V)
+		}
+	})
+	t.Run("single-quoted string", func(t *testing.T) {
+		if err := Unmarshal([]byte(`value: 'aaa'`), &container); err != nil {
+			t.Fatalf("failed to unmarshal %v", err)
+		}
+		if container.V != "aaa" {
+			t.Fatalf("expected \"aaa\", but %q is set", container.V)
 		}
 	})
 	t.Run("(json) empty string", func(t *testing.T) {
@@ -47,7 +55,7 @@ func TestUnmarshalableString(t *testing.T) {
 			t.Fatalf("failed to unmarshal %v", err)
 		}
 		if container.V != "aaa" {
-			t.Fatalf("expected empty string, but %q is set", container.V)
+			t.Fatalf("expected \"aaa\", but %q is set", container.V)
 		}
 	})
 }

@@ -1005,3 +1005,135 @@ func (d *Decoder) Decode(v interface{}) error {
 	}
 	return nil
 }
+
+type unmarshalableStringValue string
+
+func (v *unmarshalableStringValue) UnmarshalYAML(raw []byte) error {
+	*v = unmarshalableStringValue(string(raw))
+	return nil
+}
+
+type unmarshalableStringContainer struct {
+	V unmarshalableStringValue `yaml:"value" json:"value"`
+}
+
+func TestUnmarshalableString(t *testing.T) {
+	t.Run("empty string", func(t *testing.T) {
+		t.Parallel()
+		var container unmarshalableStringContainer
+		if err := Unmarshal([]byte(`value: ""`), &container); err != nil {
+			t.Fatalf("failed to unmarshal %v", err)
+		}
+		if container.V != "" {
+			t.Fatalf("expected empty string, but %q is set", container.V)
+		}
+	})
+	t.Run("filled string", func(t *testing.T) {
+		t.Parallel()
+		var container unmarshalableStringContainer
+		if err := Unmarshal([]byte(`value: "aaa"`), &container); err != nil {
+			t.Fatalf("failed to unmarshal %v", err)
+		}
+		if container.V != "aaa" {
+			t.Fatalf("expected \"aaa\", but %q is set", container.V)
+		}
+	})
+	t.Run("single-quoted string", func(t *testing.T) {
+		t.Parallel()
+		var container unmarshalableStringContainer
+		if err := Unmarshal([]byte(`value: 'aaa'`), &container); err != nil {
+			t.Fatalf("failed to unmarshal %v", err)
+		}
+		if container.V != "aaa" {
+			t.Fatalf("expected \"aaa\", but %q is set", container.V)
+		}
+	})
+	t.Run("(json) empty string", func(t *testing.T) {
+		t.Parallel()
+		var container unmarshalableStringContainer
+		if err := json.Unmarshal([]byte(`{"value": ""}`), &container); err != nil {
+			t.Fatalf("failed to unmarshal %v", err)
+		}
+		if container.V != "" {
+			t.Fatalf("expected empty string, but %q is set", container.V)
+		}
+	})
+	t.Run("(json) filled string", func(t *testing.T) {
+		t.Parallel()
+		var container unmarshalableStringContainer
+		if err := json.Unmarshal([]byte(`{"value": "aaa"}`), &container); err != nil {
+			t.Fatalf("failed to unmarshal %v", err)
+		}
+		if container.V != "aaa" {
+			t.Fatalf("expected \"aaa\", but %q is set", container.V)
+		}
+	})
+}
+
+type unmarshalableIntValue int
+
+func (v *unmarshalableIntValue) UnmarshalYAML(raw []byte) error {
+	i, err := strconv.Atoi(string(raw))
+	if err != nil {
+		return err
+	}
+	*v = unmarshalableIntValue(i)
+	return nil
+}
+
+type unmarshalableIntContainer struct {
+	V unmarshalableIntValue `yaml:"value" json:"value"`
+}
+
+func TestUnmarshalableInt(t *testing.T) {
+	t.Run("empty int", func(t *testing.T) {
+		t.Parallel()
+		var container unmarshalableIntContainer
+		if err := Unmarshal([]byte(``), &container); err != nil {
+			t.Fatalf("failed to unmarshal %v", err)
+		}
+		if container.V != 0 {
+			t.Fatalf("expected empty int, but %d is set", container.V)
+		}
+	})
+	t.Run("filled int", func(t *testing.T) {
+		t.Parallel()
+		var container unmarshalableIntContainer
+		if err := Unmarshal([]byte(`value: 9`), &container); err != nil {
+			t.Fatalf("failed to unmarshal %v", err)
+		}
+		if container.V != 9 {
+			t.Fatalf("expected 9, but %d is set", container.V)
+		}
+	})
+	t.Run("filled number", func(t *testing.T) {
+		t.Parallel()
+		var container unmarshalableIntContainer
+		if err := Unmarshal([]byte(`value: 9`), &container); err != nil {
+			t.Fatalf("failed to unmarshal %v", err)
+		}
+		if container.V != 9 {
+			t.Fatalf("expected 9, but %d is set", container.V)
+		}
+	})
+	t.Run("(json) empty int", func(t *testing.T) {
+		t.Parallel()
+		var container unmarshalableIntContainer
+		if err := json.Unmarshal([]byte(`{}`), &container); err != nil {
+			t.Fatalf("failed to unmarshal %v", err)
+		}
+		if container.V != 0 {
+			t.Fatalf("expected empty int, but %d is set", container.V)
+		}
+	})
+	t.Run("(json) filled int", func(t *testing.T) {
+		t.Parallel()
+		var container unmarshalableIntContainer
+		if err := json.Unmarshal([]byte(`{"value": 9}`), &container); err != nil {
+			t.Fatalf("failed to unmarshal %v", err)
+		}
+		if container.V != 9 {
+			t.Fatalf("expected 9, but %d is set", container.V)
+		}
+	})
+}

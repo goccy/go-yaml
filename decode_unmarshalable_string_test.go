@@ -17,8 +17,9 @@ type unmarshalableStringContainer struct {
 }
 
 func TestUnmarshalableString(t *testing.T) {
-	var container unmarshalableStringContainer
 	t.Run("empty string", func(t *testing.T) {
+		t.Parallel()
+		var container unmarshalableStringContainer
 		if err := Unmarshal([]byte(`value: ""`), &container); err != nil {
 			t.Fatalf("failed to unmarshal %v", err)
 		}
@@ -27,6 +28,8 @@ func TestUnmarshalableString(t *testing.T) {
 		}
 	})
 	t.Run("filled string", func(t *testing.T) {
+		t.Parallel()
+		var container unmarshalableStringContainer
 		if err := Unmarshal([]byte(`value: "aaa"`), &container); err != nil {
 			t.Fatalf("failed to unmarshal %v", err)
 		}
@@ -35,6 +38,8 @@ func TestUnmarshalableString(t *testing.T) {
 		}
 	})
 	t.Run("single-quoted string", func(t *testing.T) {
+		t.Parallel()
+		var container unmarshalableStringContainer
 		if err := Unmarshal([]byte(`value: 'aaa'`), &container); err != nil {
 			t.Fatalf("failed to unmarshal %v", err)
 		}
@@ -43,6 +48,8 @@ func TestUnmarshalableString(t *testing.T) {
 		}
 	})
 	t.Run("(json) empty string", func(t *testing.T) {
+		t.Parallel()
+		var container unmarshalableStringContainer
 		if err := json.Unmarshal([]byte(`{"value": ""}`), &container); err != nil {
 			t.Fatalf("failed to unmarshal %v", err)
 		}
@@ -51,6 +58,8 @@ func TestUnmarshalableString(t *testing.T) {
 		}
 	})
 	t.Run("(json) filled string", func(t *testing.T) {
+		t.Parallel()
+		var container unmarshalableStringContainer
 		if err := json.Unmarshal([]byte(`{"value": "aaa"}`), &container); err != nil {
 			t.Fatalf("failed to unmarshal %v", err)
 		}

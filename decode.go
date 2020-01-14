@@ -338,7 +338,7 @@ func (d *Decoder) decodeValue(dst reflect.Value, src ast.Node) error {
 	if unmarshaler, ok := dst.Addr().Interface().(BytesUnmarshaler); ok {
 		var b string
 		if scalar, isScalar := src.(ast.ScalarNode); isScalar {
-			b = scalar.GetValue().(string)
+			b = fmt.Sprint(scalar.GetValue())
 		} else {
 			b = src.String()
 		}

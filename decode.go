@@ -336,7 +336,12 @@ func (d *Decoder) decodeValue(dst reflect.Value, src ast.Node) error {
 	}
 	valueType := dst.Type()
 	if unmarshaler, ok := dst.Addr().Interface().(BytesUnmarshaler); ok {
-		b := fmt.Sprintf("%v", src)
+		var b string
+		if scalar, isScalar := src.(ast.ScalarNode); isScalar {
+			b = fmt.Sprint(scalar.GetValue())
+		} else {
+			b = src.String()
+		}
 		if err := unmarshaler.UnmarshalYAML([]byte(b)); err != nil {
 			return errors.Wrapf(err, "failed to UnmarshalYAML")
 		}

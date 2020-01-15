@@ -2,7 +2,6 @@ package yaml_test
 
 import (
 	"bytes"
-	"encoding/json"
 	"fmt"
 	"log"
 	"math"
@@ -1400,26 +1399,6 @@ func TestUnmarshalableString(t *testing.T) {
 			t.Fatalf("expected \"aaa\", but %q is set", container.V)
 		}
 	})
-	t.Run("(json) empty string", func(t *testing.T) {
-		t.Parallel()
-		var container unmarshalableStringContainer
-		if err := json.Unmarshal([]byte(`{"value": ""}`), &container); err != nil {
-			t.Fatalf("failed to unmarshal %v", err)
-		}
-		if container.V != "" {
-			t.Fatalf("expected empty string, but %q is set", container.V)
-		}
-	})
-	t.Run("(json) filled string", func(t *testing.T) {
-		t.Parallel()
-		var container unmarshalableStringContainer
-		if err := json.Unmarshal([]byte(`{"value": "aaa"}`), &container); err != nil {
-			t.Fatalf("failed to unmarshal %v", err)
-		}
-		if container.V != "aaa" {
-			t.Fatalf("expected \"aaa\", but %q is set", container.V)
-		}
-	})
 }
 
 type unmarshalableIntValue int
@@ -1462,26 +1441,6 @@ func TestUnmarshalableInt(t *testing.T) {
 		t.Parallel()
 		var container unmarshalableIntContainer
 		if err := yaml.Unmarshal([]byte(`value: 9`), &container); err != nil {
-			t.Fatalf("failed to unmarshal %v", err)
-		}
-		if container.V != 9 {
-			t.Fatalf("expected 9, but %d is set", container.V)
-		}
-	})
-	t.Run("(json) empty int", func(t *testing.T) {
-		t.Parallel()
-		var container unmarshalableIntContainer
-		if err := json.Unmarshal([]byte(`{}`), &container); err != nil {
-			t.Fatalf("failed to unmarshal %v", err)
-		}
-		if container.V != 0 {
-			t.Fatalf("expected empty int, but %d is set", container.V)
-		}
-	})
-	t.Run("(json) filled int", func(t *testing.T) {
-		t.Parallel()
-		var container unmarshalableIntContainer
-		if err := json.Unmarshal([]byte(`{"value": 9}`), &container); err != nil {
 			t.Fatalf("failed to unmarshal %v", err)
 		}
 		if container.V != 9 {

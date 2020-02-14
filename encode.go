@@ -231,7 +231,11 @@ func (e *Encoder) encodeBool(v bool) ast.Node {
 }
 
 func (e *Encoder) encodeSlice(value reflect.Value) (ast.Node, error) {
-	sequence := ast.Sequence(token.New("-", "-", e.pos(e.column)), e.isFlowStyle)
+	isFlowStyle := e.isFlowStyle
+	if value.Len() == 0 {
+		isFlowStyle = true
+	}
+	sequence := ast.Sequence(token.New("-", "-", e.pos(e.column)), isFlowStyle)
 	for i := 0; i < value.Len(); i++ {
 		node, err := e.encodeValue(value.Index(i), e.column)
 		if err != nil {

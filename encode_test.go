@@ -745,7 +745,10 @@ type FastMarshaler struct {
 	A string
 	B int
 }
-
+type TextMarshaler int64
+type TextMarshalerContainer struct {
+	Field TextMarshaler `yaml:"field"`
+	}
 func (v SlowMarshaler) MarshalYAML() ([]byte, error) {
 	var buf bytes.Buffer
 	buf.WriteString("tags:\n")
@@ -761,6 +764,10 @@ func (v FastMarshaler) MarshalYAML() (interface{}, error) {
 		{"a", v.A},
 		{"b", v.B},
 	}, nil
+}
+
+func (t TextMarshaler) MarshalText() ([]byte, error) {
+	return []byte(strconv.FormatInt(int64(t), 8)), nil
 }
 
 func Example_MarshalYAML() {
@@ -783,6 +790,16 @@ func Example_MarshalYAML() {
 	}
 
 	fmt.Println(string(buf))
+
+	text := TextMarshalerContainer{
+		Field: 11,
+	}
+	buf, err = yaml.Marshal(text)
+	if err != nil {
+		panic(err.Error())
+	}
+
+	fmt.Println(string(buf))
 	// OUTPUT:
 	// tags:
 	// - slow-marshaler
@@ -793,4 +810,6 @@ func Example_MarshalYAML() {
 	// - fast-marshaler
 	// a: Hello speed demon
 	// b: 100
+	//
+	// field: 13
 }

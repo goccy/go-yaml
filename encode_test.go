@@ -189,7 +189,24 @@ func TestEncoder(t *testing.T) {
 				},
 			},
 		},
-
+		{
+			"a: 1\nb: []\n",
+			struct {
+				A int
+				B []string
+			}{
+				1, ([]string)(nil),
+			},
+		},
+		{
+			"a: 1\nb: []\n",
+			struct {
+				A int
+				B []string
+			}{
+				1, []string{},
+			},
+		},
 		{
 			"a: b\nc: d\n",
 			struct {
@@ -264,6 +281,15 @@ func TestEncoder(t *testing.T) {
 				A float64 `yaml:"a,omitempty"`
 				B float64 `yaml:"b,omitempty"`
 			}{1, 0},
+		},
+		{
+			"a: 1\n",
+			struct {
+				A int
+				B []string `yaml:"b,omitempty"`
+			}{
+				1, []string{},
+			},
 		},
 
 		// Flow flag

@@ -585,6 +585,20 @@ func IsNeedQuoted(value string) bool {
 	return false
 }
 
+// LiteralBlockHeader detect literal block scalar header
+func LiteralBlockHeader(value string) string {
+	switch {
+	case !strings.Contains(value, "\n"):
+		return ""
+	case strings.HasSuffix(value, "\n\n"):
+		return "|+"
+	case strings.HasSuffix(value, "\n"):
+		return "|"
+	default:
+		return "|-"
+	}
+}
+
 // New create reserved keyword token or number token and other string token
 func New(value string, org string, pos *Position) *Token {
 	fn := reservedKeywordMap[value]

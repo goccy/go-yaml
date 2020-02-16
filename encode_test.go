@@ -106,6 +106,22 @@ func TestEncoder(t *testing.T) {
 			map[string]string{"hello": "world"},
 		},
 		{
+			"hello: |\n  hello\n  world\n",
+			map[string]string{"hello": "hello\nworld\n"},
+		},
+		{
+			"hello: |-\n  hello\n  world\n",
+			map[string]string{"hello": "hello\nworld"},
+		},
+		{
+			"hello: |+\n  hello\n  world\n\n",
+			map[string]string{"hello": "hello\nworld\n\n"},
+		},
+		{
+			"hello:\n  hello: |\n    hello\n    world\n",
+			map[string]map[string]string{"hello": {"hello": "hello\nworld\n"}},
+		},
+		{
 			"v:\n- A\n- 1\n- B:\n  - 2\n  - 3\n",
 			map[string]interface{}{
 				"v": []interface{}{
@@ -774,7 +790,8 @@ type FastMarshaler struct {
 type TextMarshaler int64
 type TextMarshalerContainer struct {
 	Field TextMarshaler `yaml:"field"`
-	}
+}
+
 func (v SlowMarshaler) MarshalYAML() ([]byte, error) {
 	var buf bytes.Buffer
 	buf.WriteString("tags:\n")

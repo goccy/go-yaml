@@ -420,7 +420,7 @@ func (n *StringNode) GetValue() interface{} {
 	return n.Value
 }
 
-// String string value to text with quote if required
+// String string value to text with quote or literal header if required
 func (n *StringNode) String() string {
 	switch n.Token.Type {
 	case token.SingleQuoteType:
@@ -428,6 +428,18 @@ func (n *StringNode) String() string {
 	case token.DoubleQuoteType:
 		return fmt.Sprintf(`"%s"`, n.Value)
 	}
+
+	if strings.Contains(n.Value, "\n") {
+		header := token.LiteralBlockHeader(n.Value)
+		space := strings.Repeat(" ", n.Token.Position.Column-1)
+		values := []string{}
+		for _, v := range strings.Split(n.Value, "\n") {
+			values = append(values, fmt.Sprintf("%s  %s", space, v))
+		}
+		block := strings.TrimSuffix(strings.TrimSuffix(strings.Join(values, "\n"), fmt.Sprintf("\n  %s", space)), fmt.Sprintf("  %s", space))
+		return fmt.Sprintf("%s\n%s", header, block)
+	}
+
 	return n.Value
 }
 

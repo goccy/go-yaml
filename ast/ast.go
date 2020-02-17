@@ -429,15 +429,16 @@ func (n *StringNode) String() string {
 		return fmt.Sprintf(`"%s"`, n.Value)
 	}
 
-	if strings.Contains(n.Value, "\n") {
+	lbc := token.DetectLineBreakCharacter(n.Value)
+	if strings.Contains(n.Value, lbc) {
 		header := token.LiteralBlockHeader(n.Value)
 		space := strings.Repeat(" ", n.Token.Position.Column-1)
 		values := []string{}
-		for _, v := range strings.Split(n.Value, "\n") {
+		for _, v := range strings.Split(n.Value, lbc) {
 			values = append(values, fmt.Sprintf("%s  %s", space, v))
 		}
-		block := strings.TrimSuffix(strings.TrimSuffix(strings.Join(values, "\n"), fmt.Sprintf("\n  %s", space)), fmt.Sprintf("  %s", space))
-		return fmt.Sprintf("%s\n%s", header, block)
+		block := strings.TrimSuffix(strings.TrimSuffix(strings.Join(values, lbc), fmt.Sprintf("%s  %s", lbc, space)), fmt.Sprintf("  %s", space))
+		return fmt.Sprintf("%s%s%s", header, lbc, block)
 	}
 
 	return n.Value

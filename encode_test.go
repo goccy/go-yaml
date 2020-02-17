@@ -122,6 +122,14 @@ func TestEncoder(t *testing.T) {
 			map[string]map[string]string{"hello": {"hello": "hello\nworld\n"}},
 		},
 		{
+			"hello: |\r  hello\r  world\n",
+			map[string]string{"hello": "hello\rworld\r"},
+		},
+		{
+			"hello: |\r\n  hello\r\n  world\n",
+			map[string]string{"hello": "hello\r\nworld\r\n"},
+		},
+		{
 			"v:\n- A\n- 1\n- B:\n  - 2\n  - 3\n",
 			map[string]interface{}{
 				"v": []interface{}{

@@ -980,7 +980,7 @@ func DetectLineBreakCharacter(src string) string {
 	rc := strings.Count(src, "\r")
 	rnc := strings.Count(src, "\r\n")
 	switch {
-	case nc == rc && rc == rnc:
+	case nc == rnc && rc == rnc:
 		return "\r\n"
 	case rc > nc:
 		return "\r"

@@ -420,7 +420,7 @@ func (n *StringNode) GetValue() interface{} {
 	return n.Value
 }
 
-// String string value to text with quote if required
+// String string value to text with quote or literal header if required
 func (n *StringNode) String() string {
 	switch n.Token.Type {
 	case token.SingleQuoteType:
@@ -428,6 +428,21 @@ func (n *StringNode) String() string {
 	case token.DoubleQuoteType:
 		return fmt.Sprintf(`"%s"`, n.Value)
 	}
+
+	lbc := token.DetectLineBreakCharacter(n.Value)
+	if strings.Contains(n.Value, lbc) {
+		// This block assumes that the line breaks in this inside scalar content and the Outside scalar content are the same.
+		// It works mostly, but inconsistencies occur if line break characters are mixed.
+		header := token.LiteralBlockHeader(n.Value)
+		space := strings.Repeat(" ", n.Token.Position.Column-1)
+		values := []string{}
+		for _, v := range strings.Split(n.Value, lbc) {
+			values = append(values, fmt.Sprintf("%s  %s", space, v))
+		}
+		block := strings.TrimSuffix(strings.TrimSuffix(strings.Join(values, lbc), fmt.Sprintf("%s  %s", lbc, space)), fmt.Sprintf("  %s", space))
+		return fmt.Sprintf("%s%s%s", header, lbc, block)
+	}
+
 	return n.Value
 }
 

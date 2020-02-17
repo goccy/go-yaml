@@ -585,6 +585,22 @@ func IsNeedQuoted(value string) bool {
 	return false
 }
 
+// LiteralBlockHeader detect literal block scalar header
+func LiteralBlockHeader(value string) string {
+	lbc := DetectLineBreakCharacter(value)
+
+	switch {
+	case !strings.Contains(value, lbc):
+		return ""
+	case strings.HasSuffix(value, fmt.Sprintf("%s%s", lbc, lbc)):
+		return "|+"
+	case strings.HasSuffix(value, lbc):
+		return "|"
+	default:
+		return "|-"
+	}
+}
+
 // New create reserved keyword token or number token and other string token
 func New(value string, org string, pos *Position) *Token {
 	fn := reservedKeywordMap[value]
@@ -955,5 +971,20 @@ func DocumentEnd(pos *Position) *Token {
 		Value:         "...",
 		Origin:        "...",
 		Position:      pos,
+	}
+}
+
+// DetectLineBreakCharacter detect line break character in only one inside scalar content scope.
+func DetectLineBreakCharacter(src string) string {
+	nc := strings.Count(src, "\n")
+	rc := strings.Count(src, "\r")
+	rnc := strings.Count(src, "\r\n")
+	switch {
+	case nc == rnc && rc == rnc:
+		return "\r\n"
+	case rc > nc:
+		return "\r"
+	default:
+		return "\n"
 	}
 }

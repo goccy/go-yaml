@@ -431,6 +431,8 @@ func (n *StringNode) String() string {
 
 	lbc := token.DetectLineBreakCharacter(n.Value)
 	if strings.Contains(n.Value, lbc) {
+		// This block assumes that the line breaks in this inside scalar content and the Outside scalar content are the same.
+		// It works mostly, but inconsistencies occur if line break characters are mixed.
 		header := token.LiteralBlockHeader(n.Value)
 		space := strings.Repeat(" ", n.Token.Position.Column-1)
 		values := []string{}

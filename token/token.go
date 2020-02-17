@@ -974,7 +974,7 @@ func DocumentEnd(pos *Position) *Token {
 	}
 }
 
-// DetectLineBreakCharacter detect line break character
+// DetectLineBreakCharacter detect line break character in only one inside scalar content scope.
 func DetectLineBreakCharacter(src string) string {
 	nc := strings.Count(src, "\n")
 	rc := strings.Count(src, "\r")

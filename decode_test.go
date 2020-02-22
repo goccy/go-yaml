@@ -1401,6 +1401,34 @@ func TestUnmarshalableString(t *testing.T) {
 	})
 }
 
+type unmarshalablePtrStringContainer struct {
+	V *string `yaml:"value" json:"value"`
+}
+
+func TestUnmarshalablePtrString(t *testing.T) {
+	t.Run("empty string", func(t *testing.T) {
+		t.Parallel()
+		var container unmarshalablePtrStringContainer
+		if err := yaml.Unmarshal([]byte(`value: ""`), &container); err != nil {
+			t.Fatalf("failed to unmarshal %v", err)
+		}
+		if *container.V != "" {
+			t.Fatalf("expected empty string, but %q is set", *container.V)
+		}
+	})
+
+	t.Run("null", func(t *testing.T) {
+		t.Parallel()
+		var container unmarshalablePtrStringContainer
+		if err := yaml.Unmarshal([]byte(`value: null`), &container); err != nil {
+			t.Fatalf("failed to unmarshal %v", err)
+		}
+		if container.V != (*string)(nil) {
+			t.Fatalf("expected nil, but %q is set", *container.V)
+		}
+	})
+}
+
 type unmarshalableIntValue int
 
 func (v *unmarshalableIntValue) UnmarshalYAML(raw []byte) error {
@@ -1445,6 +1473,34 @@ func TestUnmarshalableInt(t *testing.T) {
 		}
 		if container.V != 9 {
 			t.Fatalf("expected 9, but %d is set", container.V)
+		}
+	})
+}
+
+type unmarshalablePtrIntContainer struct {
+	V *int `yaml:"value" json:"value"`
+}
+
+func TestUnmarshalablePtrInt(t *testing.T) {
+	t.Run("empty int", func(t *testing.T) {
+		t.Parallel()
+		var container unmarshalablePtrIntContainer
+		if err := yaml.Unmarshal([]byte(`value: 0`), &container); err != nil {
+			t.Fatalf("failed to unmarshal %v", err)
+		}
+		if *container.V != 0 {
+			t.Fatalf("expected 0, but %q is set", *container.V)
+		}
+	})
+
+	t.Run("null", func(t *testing.T) {
+		t.Parallel()
+		var container unmarshalablePtrIntContainer
+		if err := yaml.Unmarshal([]byte(`value: null`), &container); err != nil {
+			t.Fatalf("failed to unmarshal %v", err)
+		}
+		if container.V != (*int)(nil) {
+			t.Fatalf("expected nil, but %q is set", *container.V)
 		}
 	})
 }

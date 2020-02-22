@@ -12,6 +12,9 @@ import (
 	"github.com/goccy/go-yaml/ast"
 )
 
+var zero = 0
+var emptyStr = ""
+
 func TestEncoder(t *testing.T) {
 	tests := []struct {
 		source string
@@ -247,6 +250,46 @@ func TestEncoder(t *testing.T) {
 				B int `yaml:"-"`
 			}{
 				1, 0,
+			},
+		},
+		{
+			"a: \"\"\n",
+			struct {
+				A string
+			}{
+				"",
+			},
+		},
+		{
+			"a: null\n",
+			struct {
+				A *string
+			}{
+				nil,
+			},
+		},
+		{
+			"a: \"\"\n",
+			struct {
+				A *string
+			}{
+				&emptyStr,
+			},
+		},
+		{
+			"a: null\n",
+			struct {
+				A *int
+			}{
+				nil,
+			},
+		},
+		{
+			"a: 0\n",
+			struct {
+				A *int
+			}{
+				&zero,
 			},
 		},
 

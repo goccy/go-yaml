@@ -497,6 +497,9 @@ func (d *Decoder) createDecodedNewValue(typ reflect.Type, node ast.Node) (reflec
 			return newValue, nil
 		}
 	}
+	if node.Type() == ast.NullType {
+		return reflect.Zero(typ), nil
+	}
 	newValue := d.createDecodableValue(typ)
 	if err := d.decodeValue(newValue, node); err != nil {
 		return newValue, errors.Wrapf(err, "failed to decode value")

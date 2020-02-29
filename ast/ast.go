@@ -441,8 +441,9 @@ func (n *StringNode) String() string {
 		}
 		block := strings.TrimSuffix(strings.TrimSuffix(strings.Join(values, lbc), fmt.Sprintf("%s  %s", lbc, space)), fmt.Sprintf("  %s", space))
 		return fmt.Sprintf("%s%s%s", header, lbc, block)
+	} else if len(n.Value) > 0 && (n.Value[0] == '{' || n.Value[0] == '[') {
+		return fmt.Sprintf(`'%s'`, n.Value)
 	}
-
 	return n.Value
 }
 

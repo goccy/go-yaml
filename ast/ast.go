@@ -873,6 +873,8 @@ func (n *AnchorNode) String() string {
 	value := n.Value.String()
 	if len(strings.Split(value, "\n")) > 1 {
 		return fmt.Sprintf("&%s\n%s", n.Name.String(), value)
+	} else if _, ok := n.Value.(*SequenceNode); ok {
+		return fmt.Sprintf("&%s\n%s", n.Name.String(), value)
 	}
 	return fmt.Sprintf("&%s %s", n.Name.String(), value)
 }

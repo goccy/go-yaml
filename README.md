@@ -11,7 +11,7 @@
 
 As of this writing, there already exists a defacto standard library for YAML processing Go: [https://github.com/go-yaml/yaml](https://github.com/go-yaml/yaml). However we feel that some features are lacking, namely:
 
-- Pretty format for error notifacations
+- Pretty format for error notifications
 - Directly manipulate the YAML abstract syntax tree
 - Support `Anchor` and `Alias` when marshaling
 - Allow referencing elements declared in another file via anchors
@@ -19,7 +19,7 @@ As of this writing, there already exists a defacto standard library for YAML pro
 
 # Features
 
-- Pretty format for error notifacations
+- Pretty format for error notifications
 - Support `Scanner` or `Lexer` or `Parser` as public API
 - Support `Anchor` and `Alias` to Marshaler
 - Allow referencing elements declared in another file via anchors

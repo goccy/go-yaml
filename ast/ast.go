@@ -505,6 +505,11 @@ func (n *MergeKeyNode) String() string {
 	return n.Token.Value
 }
 
+// AddColumn add column number to child nodes recursively
+func (n *MergeKeyNode) AddColumn(col int) {
+	n.Token.AddColumn(col)
+}
+
 // BoolNode type of boolean node
 type BoolNode struct {
 	ScalarNode

@@ -880,6 +880,8 @@ func (n *AnchorNode) String() string {
 		return fmt.Sprintf("&%s\n%s", n.Name.String(), value)
 	} else if _, ok := n.Value.(*SequenceNode); ok {
 		return fmt.Sprintf("&%s\n%s", n.Name.String(), value)
+	} else if _, ok := n.Value.(*MappingNode); ok {
+		return fmt.Sprintf("&%s\n%s", n.Name.String(), value)
 	}
 	return fmt.Sprintf("&%s %s", n.Name.String(), value)
 }

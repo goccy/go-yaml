@@ -633,6 +633,26 @@ func (d *Decoder) decodeTime(dst reflect.Value, src ast.Node) error {
 	return nil
 }
 
+// getMergeAliasName support single alias only
+func (d *Decoder) getMergeAliasName(src ast.Node) string {
+	mapNode, err := d.getMapNode(src)
+	if err != nil {
+		return ""
+	}
+	if mapNode == nil {
+		return ""
+	}
+	mapIter := mapNode.MapRange()
+	for mapIter.Next() {
+		key := mapIter.Key()
+		value := mapIter.Value()
+		if key.Type() == ast.MergeKeyType && value.Type() == ast.AliasType {
+			return value.(*ast.AliasNode).Value.GetToken().Value
+		}
+	}
+	return ""
+}
+
 func (d *Decoder) decodeStruct(dst reflect.Value, src ast.Node) error {
 	if src == nil {
 		return nil
@@ -655,6 +675,7 @@ func (d *Decoder) decodeStruct(dst reflect.Value, src ast.Node) error {
 		}
 	}
 
+	aliasName := d.getMergeAliasName(src)
 	var foundErr error
 
 	for i := 0; i < structType.NumField(); i++ {
@@ -665,6 +686,15 @@ func (d *Decoder) decodeStruct(dst reflect.Value, src ast.Node) error {
 		structField := structFieldMap[field.Name]
 		if structField.IsInline {
 			fieldValue := dst.FieldByName(field.Name)
+			if structField.IsAutoAlias {
+				if aliasName != "" {
+					newFieldValue := d.anchorValueMap[aliasName]
+					if newFieldValue.IsValid() {
+						fieldValue.Set(d.castToAssignableValue(newFieldValue, fieldValue.Type()))
+					}
+				}
+				continue
+			}
 			if !fieldValue.CanSet() {
 				return xerrors.Errorf("cannot set embedded type as unexported field %s.%s", field.PkgPath, field.Name)
 			}
@@ -673,7 +703,14 @@ func (d *Decoder) decodeStruct(dst reflect.Value, src ast.Node) error {
 				fieldValue.Set(reflect.Zero(fieldValue.Type()))
 				continue
 			}
-			newFieldValue, err := d.createDecodedNewValue(fieldValue.Type(), src)
+			mapNode := ast.Mapping(nil, false)
+			for k, v := range keyToNodeMap {
+				mapNode.Values = append(mapNode.Values, &ast.MappingValueNode{
+					Key:   &ast.StringNode{Value: k},
+					Value: v,
+				})
+			}
+			newFieldValue, err := d.createDecodedNewValue(fieldValue.Type(), mapNode)
 			if d.disallowUnknownField {
 				var ufe *unknownFieldError
 				if xerrors.As(err, &ufe) {

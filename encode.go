@@ -150,7 +150,17 @@ func (e *Encoder) encodeValue(v reflect.Value, column int) (ast.Node, error) {
 		return e.encodeUint(v.Uint()), nil
 	case reflect.Float32, reflect.Float64:
 		return e.encodeFloat(v.Float()), nil
-	case reflect.Ptr, reflect.Interface:
+	case reflect.Ptr:
+		anchorName := e.anchorPtrToNameMap[v.Pointer()]
+		if anchorName != "" {
+			aliasName := anchorName
+			return &ast.AliasNode{
+				Start: token.New("*", "*", e.pos(column)),
+				Value: ast.String(token.New(aliasName, aliasName, e.pos(column))),
+			}, nil
+		}
+		return e.encodeValue(v.Elem(), column)
+	case reflect.Interface:
 		return e.encodeValue(v.Elem(), column)
 	case reflect.String:
 		return e.encodeString(v.String(), column), nil
@@ -392,6 +402,8 @@ func (e *Encoder) encodeStruct(value reflect.Value, column int) (ast.Node, error
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to get struct field map")
 	}
+	hasInlineAnchorField := false
+	var inlineAnchorValue reflect.Value
 	for i := 0; i < value.NumField(); i++ {
 		field := structType.Field(i)
 		if isIgnoredStructField(field) {
@@ -421,12 +433,6 @@ func (e *Encoder) encodeStruct(value reflect.Value, column int) (ast.Node, error
 		switch {
 		case structField.AnchorName != "":
 			anchorNode, err := e.encodeAnchor(structField.AnchorName, value, fieldValue, column)
-			if err != nil {
-				return nil, errors.Wrapf(err, "failed to encode anchor")
-			}
-			value = anchorNode
-		case structField.IsAutoAnchor:
-			anchorNode, err := e.encodeAnchor(structField.RenderName, value, fieldValue, column)
 			if err != nil {
 				return nil, errors.Wrapf(err, "failed to encode anchor")
 			}
@@ -464,6 +470,13 @@ func (e *Encoder) encodeStruct(value reflect.Value, column int) (ast.Node, error
 				key = ast.MergeKey(token.New("<<", "<<", e.pos(column)))
 			}
 		case structField.IsInline:
+			isAutoAnchor := structField.IsAutoAnchor
+			if !hasInlineAnchorField {
+				hasInlineAnchorField = isAutoAnchor
+			}
+			if isAutoAnchor {
+				inlineAnchorValue = fieldValue
+			}
 			mapNode, ok := value.(ast.MapNode)
 			if !ok {
 				return nil, xerrors.Errorf("inline value is must be map or struct type")
@@ -485,11 +498,38 @@ func (e *Encoder) encodeStruct(value reflect.Value, column int) (ast.Node, error
 				})
 			}
 			continue
+		case structField.IsAutoAnchor:
+			anchorNode, err := e.encodeAnchor(structField.RenderName, value, fieldValue, column)
+			if err != nil {
+				return nil, errors.Wrapf(err, "failed to encode anchor")
+			}
+			value = anchorNode
 		}
 		node.Values = append(node.Values, &ast.MappingValueNode{
 			Key:   key,
 			Value: value,
 		})
+	}
+	if hasInlineAnchorField {
+		node.AddColumn(e.indent)
+		anchorName := "anchor"
+		anchorNode := &ast.AnchorNode{
+			Start: token.New("&", "&", e.pos(column)),
+			Name:  ast.String(token.New(anchorName, anchorName, e.pos(column))),
+			Value: node,
+		}
+		if e.anchorCallback != nil {
+			if err := e.anchorCallback(anchorNode, value.Addr().Interface()); err != nil {
+				return nil, errors.Wrapf(err, "failed to marshal anchor")
+			}
+			if snode, ok := anchorNode.Name.(*ast.StringNode); ok {
+				anchorName = snode.Value
+			}
+		}
+		if inlineAnchorValue.Kind() == reflect.Ptr {
+			e.anchorPtrToNameMap[inlineAnchorValue.Pointer()] = anchorName
+		}
+		return anchorNode, nil
 	}
 	return node, nil
 }

@@ -1082,6 +1082,87 @@ items:
 	if v.Items[1].B != 1 || v.Items[1].C != "world" {
 		t.Fatal("failed to decode with merge key")
 	}
+	t.Run("decode with interface{}", func(t *testing.T) {
+		buf := bytes.NewBufferString(yml)
+		dec := yaml.NewDecoder(buf)
+		var v interface{}
+		if err := dec.Decode(&v); err != nil {
+			t.Fatalf("%+v", err)
+		}
+		items := v.(map[string]interface{})["items"].([]interface{})
+		if len(items) != 2 {
+			t.Fatal("failed to decode with merge key")
+		}
+		b0 := items[0].(map[string]interface{})["b"]
+		if _, ok := b0.(uint64); !ok {
+			t.Fatal("failed to decode with merge key")
+		}
+		if b0.(uint64) != 1 {
+			t.Fatal("failed to decode with merge key")
+		}
+		c0 := items[0].(map[string]interface{})["c"]
+		if _, ok := c0.(string); !ok {
+			t.Fatal("failed to decode with merge key")
+		}
+		if c0.(string) != "hello" {
+			t.Fatal("failed to decode with merge key")
+		}
+		b1 := items[1].(map[string]interface{})["b"]
+		if _, ok := b1.(uint64); !ok {
+			t.Fatal("failed to decode with merge key")
+		}
+		if b1.(uint64) != 1 {
+			t.Fatal("failed to decode with merge key")
+		}
+		c1 := items[1].(map[string]interface{})["c"]
+		if _, ok := c1.(string); !ok {
+			t.Fatal("failed to decode with merge key")
+		}
+		if c1.(string) != "world" {
+			t.Fatal("failed to decode with merge key")
+		}
+	})
+	t.Run("decode with map", func(t *testing.T) {
+		var v struct {
+			Items []map[string]interface{}
+		}
+		buf := bytes.NewBufferString(yml)
+		dec := yaml.NewDecoder(buf)
+		if err := dec.Decode(&v); err != nil {
+			t.Fatalf("%+v", err)
+		}
+		if len(v.Items) != 2 {
+			t.Fatal("failed to decode with merge key")
+		}
+		b0 := v.Items[0]["b"]
+		if _, ok := b0.(uint64); !ok {
+			t.Fatal("failed to decode with merge key")
+		}
+		if b0.(uint64) != 1 {
+			t.Fatal("failed to decode with merge key")
+		}
+		c0 := v.Items[0]["c"]
+		if _, ok := c0.(string); !ok {
+			t.Fatal("failed to decode with merge key")
+		}
+		if c0.(string) != "hello" {
+			t.Fatal("failed to decode with merge key")
+		}
+		b1 := v.Items[1]["b"]
+		if _, ok := b1.(uint64); !ok {
+			t.Fatal("failed to decode with merge key")
+		}
+		if b1.(uint64) != 1 {
+			t.Fatal("failed to decode with merge key")
+		}
+		c1 := v.Items[1]["c"]
+		if _, ok := c1.(string); !ok {
+			t.Fatal("failed to decode with merge key")
+		}
+		if c1.(string) != "world" {
+			t.Fatal("failed to decode with merge key")
+		}
+	})
 }
 
 func TestDecoder_Inline(t *testing.T) {

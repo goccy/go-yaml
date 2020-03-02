@@ -89,8 +89,11 @@ func (d *Decoder) castToFloat(v interface{}) interface{} {
 func (d *Decoder) setToMapValue(node ast.Node, m map[string]interface{}) {
 	switch n := node.(type) {
 	case *ast.MappingValueNode:
-		if n.Key.Type() == ast.MergeKeyType {
-			d.setToMapValue(n.Value, m)
+		if n.Key.Type() == ast.MergeKeyType && n.Value.Type() == ast.AliasType {
+			aliasNode := n.Value.(*ast.AliasNode)
+			aliasName := aliasNode.Value.GetToken().Value
+			node := d.anchorNodeMap[aliasName]
+			d.setToMapValue(node, m)
 		} else {
 			key := n.Key.GetToken().Value
 			m[key] = d.nodeToValue(n.Value)
@@ -143,9 +146,12 @@ func (d *Decoder) nodeToValue(node ast.Node) interface{} {
 	case *ast.LiteralNode:
 		return n.Value.GetValue()
 	case *ast.MappingValueNode:
-		if n.Key.Type() == ast.MergeKeyType {
+		if n.Key.Type() == ast.MergeKeyType && n.Value.Type() == ast.AliasType {
+			aliasNode := n.Value.(*ast.AliasNode)
+			aliasName := aliasNode.Value.GetToken().Value
+			node := d.anchorNodeMap[aliasName]
 			m := map[string]interface{}{}
-			d.setToMapValue(n.Value, m)
+			d.setToMapValue(node, m)
 			return m
 		}
 		key := n.Key.GetToken().Value
@@ -846,11 +852,20 @@ func (d *Decoder) decodeMap(dst reflect.Value, src ast.Node) error {
 	keyType := mapValue.Type().Key()
 	valueType := mapValue.Type().Elem()
 	mapIter := mapNode.MapRange()
-
 	var foundErr error
 	for mapIter.Next() {
 		key := mapIter.Key()
 		value := mapIter.Value()
+		if key.Type() == ast.MergeKeyType {
+			if err := d.decodeMap(dst, value); err != nil {
+				return errors.Wrapf(err, "failed to decode map with merge key")
+			}
+			iter := dst.MapRange()
+			for iter.Next() {
+				mapValue.SetMapIndex(iter.Key(), iter.Value())
+			}
+			continue
+		}
 		k := reflect.ValueOf(d.nodeToValue(key))
 		if k.IsValid() && k.Type().ConvertibleTo(keyType) {
 			k = k.Convert(keyType)

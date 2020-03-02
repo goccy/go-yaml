@@ -441,8 +441,9 @@ func (n *StringNode) String() string {
 		}
 		block := strings.TrimSuffix(strings.TrimSuffix(strings.Join(values, lbc), fmt.Sprintf("%s  %s", lbc, space)), fmt.Sprintf("  %s", space))
 		return fmt.Sprintf("%s%s%s", header, lbc, block)
+	} else if len(n.Value) > 0 && (n.Value[0] == '{' || n.Value[0] == '[') {
+		return fmt.Sprintf(`'%s'`, n.Value)
 	}
-
 	return n.Value
 }
 
@@ -871,6 +872,8 @@ func (n *AnchorNode) AddColumn(col int) {
 func (n *AnchorNode) String() string {
 	value := n.Value.String()
 	if len(strings.Split(value, "\n")) > 1 {
+		return fmt.Sprintf("&%s\n%s", n.Name.String(), value)
+	} else if _, ok := n.Value.(*SequenceNode); ok {
 		return fmt.Sprintf("&%s\n%s", n.Name.String(), value)
 	}
 	return fmt.Sprintf("&%s %s", n.Name.String(), value)

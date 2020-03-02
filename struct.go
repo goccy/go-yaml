@@ -102,6 +102,15 @@ func (m StructFieldMap) isIncludedRenderName(name string) bool {
 	return false
 }
 
+func (m StructFieldMap) hasMergeProperty() bool {
+	for _, v := range m {
+		if v.IsOmitEmpty && v.IsInline && v.IsAutoAlias {
+			return true
+		}
+	}
+	return false
+}
+
 func structFieldMap(structType reflect.Type) (StructFieldMap, error) {
 	structFieldMap := StructFieldMap{}
 	renderNameMap := map[string]struct{}{}

@@ -515,7 +515,7 @@ func (d *Decoder) createDecodedNewValue(typ reflect.Type, node ast.Node) (reflec
 	return newValue, nil
 }
 
-func (d *Decoder) keyToNodeMap(node ast.Node, getKeyOrValueNode func(*ast.MapNodeIter) ast.Node) (map[string]ast.Node, error) {
+func (d *Decoder) keyToNodeMap(node ast.Node, ignoreMergeKey bool, getKeyOrValueNode func(*ast.MapNodeIter) ast.Node) (map[string]ast.Node, error) {
 	mapNode, err := d.getMapNode(node)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to get map node")
@@ -528,7 +528,10 @@ func (d *Decoder) keyToNodeMap(node ast.Node, getKeyOrValueNode func(*ast.MapNod
 	for mapIter.Next() {
 		keyNode := mapIter.Key()
 		if keyNode.Type() == ast.MergeKeyType {
-			mergeMap, err := d.keyToNodeMap(mapIter.Value(), getKeyOrValueNode)
+			if ignoreMergeKey {
+				continue
+			}
+			mergeMap, err := d.keyToNodeMap(mapIter.Value(), ignoreMergeKey, getKeyOrValueNode)
 			if err != nil {
 				return nil, errors.Wrapf(err, "failed to get keyToNodeMap by MergeKey node")
 			}
@@ -546,16 +549,16 @@ func (d *Decoder) keyToNodeMap(node ast.Node, getKeyOrValueNode func(*ast.MapNod
 	return keyToNodeMap, nil
 }
 
-func (d *Decoder) keyToKeyNodeMap(node ast.Node) (map[string]ast.Node, error) {
-	m, err := d.keyToNodeMap(node, func(nodeMap *ast.MapNodeIter) ast.Node { return nodeMap.Key() })
+func (d *Decoder) keyToKeyNodeMap(node ast.Node, ignoreMergeKey bool) (map[string]ast.Node, error) {
+	m, err := d.keyToNodeMap(node, ignoreMergeKey, func(nodeMap *ast.MapNodeIter) ast.Node { return nodeMap.Key() })
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to get keyToNodeMap")
 	}
 	return m, nil
 }
 
-func (d *Decoder) keyToValueNodeMap(node ast.Node) (map[string]ast.Node, error) {
-	m, err := d.keyToNodeMap(node, func(nodeMap *ast.MapNodeIter) ast.Node { return nodeMap.Value() })
+func (d *Decoder) keyToValueNodeMap(node ast.Node, ignoreMergeKey bool) (map[string]ast.Node, error) {
+	m, err := d.keyToNodeMap(node, ignoreMergeKey, func(nodeMap *ast.MapNodeIter) ast.Node { return nodeMap.Value() })
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to get keyToNodeMap")
 	}
@@ -639,13 +642,14 @@ func (d *Decoder) decodeStruct(dst reflect.Value, src ast.Node) error {
 	if err != nil {
 		return errors.Wrapf(err, "failed to create struct field map")
 	}
-	keyToNodeMap, err := d.keyToValueNodeMap(src)
+	ignoreMergeKey := structFieldMap.hasMergeProperty()
+	keyToNodeMap, err := d.keyToValueNodeMap(src, ignoreMergeKey)
 	if err != nil {
 		return errors.Wrapf(err, "failed to get keyToValueNodeMap")
 	}
 	var unknownFields map[string]ast.Node
 	if d.disallowUnknownField {
-		unknownFields, err = d.keyToKeyNodeMap(src)
+		unknownFields, err = d.keyToKeyNodeMap(src, ignoreMergeKey)
 		if err != nil {
 			return errors.Wrapf(err, "failed to get keyToKeyNodeMap")
 		}

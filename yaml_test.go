@@ -1,9 +1,11 @@
 package yaml_test
 
 import (
+	"bytes"
 	"testing"
 
 	"github.com/goccy/go-yaml"
+	"github.com/goccy/go-yaml/ast"
 	"golang.org/x/xerrors"
 )
 
@@ -204,5 +206,77 @@ b:
 	}
 	if !v.B.c {
 		t.Fatal("failed to UnmarshalYAML")
+	}
+}
+
+type ObjectMap map[string]*Object
+type ObjectDecl struct {
+	Name    string `yaml:"-"`
+	*Object `yaml:",inline,anchor"`
+}
+
+func (m ObjectMap) MarshalYAML() (interface{}, error) {
+	newMap := map[string]*ObjectDecl{}
+	for k, v := range m {
+		newMap[k] = &ObjectDecl{Name: k, Object: v}
+	}
+	return newMap, nil
+}
+
+type rootObject struct {
+	Single     ObjectMap            `yaml:"single"`
+	Collection map[string][]*Object `yaml:"collection"`
+}
+
+type Object struct {
+	*Object  `yaml:",omitempty,inline,alias"`
+	MapValue map[string]interface{} `yaml:",omitempty,inline"`
+}
+
+func TestInlineAnchorAndAlias(t *testing.T) {
+	yml := `---
+single:
+  default: &default
+    id: 1
+    name: john
+  user_1: &user_1
+    id: 1
+    name: ken
+  user_2: &user_2
+    <<: *default
+    id: 2
+collection:
+  defaults:
+  - *default
+  - <<: *default
+  - <<: *default
+    id: 2
+  users:
+  - <<: *user_1
+  - <<: *user_2
+  - <<: *user_1
+    id: 3
+  - <<: *user_1
+    id: 4
+  - <<: *user_1
+    id: 5
+`
+	var v rootObject
+	if err := yaml.Unmarshal([]byte(yml), &v); err != nil {
+		panic(err)
+	}
+	opt := yaml.MarshalAnchor(func(anchor *ast.AnchorNode, value interface{}) error {
+		if o, ok := value.(*ObjectDecl); ok {
+			anchor.Name.(*ast.StringNode).Value = o.Name
+		}
+		return nil
+	})
+	var buf bytes.Buffer
+	if err := yaml.NewEncoder(&buf, opt).Encode(v); err != nil {
+		t.Fatalf("%+v", err)
+	}
+	actual := "---\n" + buf.String()
+	if yml != actual {
+		t.Fatalf("failed to marshal: expected:[%s] actual:[%s]", yml, actual)
 	}
 }

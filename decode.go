@@ -339,7 +339,9 @@ func (d *Decoder) deleteStructKeys(structValue reflect.Value, unknownFields map[
 func (d *Decoder) decodeValue(dst reflect.Value, src ast.Node) error {
 	if src.Type() == ast.AnchorType {
 		anchorName := src.(*ast.AnchorNode).Name.GetToken().Value
-		d.anchorValueMap[anchorName] = dst
+		if _, exists := d.anchorValueMap[anchorName]; !exists {
+			d.anchorValueMap[anchorName] = dst
+		}
 	}
 	valueType := dst.Type()
 	if unmarshaler, ok := dst.Addr().Interface().(BytesUnmarshaler); ok {

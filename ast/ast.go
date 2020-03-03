@@ -878,9 +878,9 @@ func (n *AnchorNode) String() string {
 	value := n.Value.String()
 	if len(strings.Split(value, "\n")) > 1 {
 		return fmt.Sprintf("&%s\n%s", n.Name.String(), value)
-	} else if _, ok := n.Value.(*SequenceNode); ok {
+	} else if s, ok := n.Value.(*SequenceNode); ok && !s.IsFlowStyle {
 		return fmt.Sprintf("&%s\n%s", n.Name.String(), value)
-	} else if _, ok := n.Value.(*MappingNode); ok {
+	} else if m, ok := n.Value.(*MappingNode); ok && !m.IsFlowStyle {
 		return fmt.Sprintf("&%s\n%s", n.Name.String(), value)
 	}
 	return fmt.Sprintf("&%s %s", n.Name.String(), value)

@@ -339,7 +339,9 @@ func (d *Decoder) deleteStructKeys(structValue reflect.Value, unknownFields map[
 func (d *Decoder) decodeValue(dst reflect.Value, src ast.Node) error {
 	if src.Type() == ast.AnchorType {
 		anchorName := src.(*ast.AnchorNode).Name.GetToken().Value
-		d.anchorValueMap[anchorName] = dst
+		if _, exists := d.anchorValueMap[anchorName]; !exists {
+			d.anchorValueMap[anchorName] = dst
+		}
 	}
 	valueType := dst.Type()
 	if unmarshaler, ok := dst.Addr().Interface().(BytesUnmarshaler); ok {
@@ -513,7 +515,7 @@ func (d *Decoder) createDecodedNewValue(typ reflect.Type, node ast.Node) (reflec
 	return newValue, nil
 }
 
-func (d *Decoder) keyToNodeMap(node ast.Node, getKeyOrValueNode func(*ast.MapNodeIter) ast.Node) (map[string]ast.Node, error) {
+func (d *Decoder) keyToNodeMap(node ast.Node, ignoreMergeKey bool, getKeyOrValueNode func(*ast.MapNodeIter) ast.Node) (map[string]ast.Node, error) {
 	mapNode, err := d.getMapNode(node)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to get map node")
@@ -526,7 +528,10 @@ func (d *Decoder) keyToNodeMap(node ast.Node, getKeyOrValueNode func(*ast.MapNod
 	for mapIter.Next() {
 		keyNode := mapIter.Key()
 		if keyNode.Type() == ast.MergeKeyType {
-			mergeMap, err := d.keyToNodeMap(mapIter.Value(), getKeyOrValueNode)
+			if ignoreMergeKey {
+				continue
+			}
+			mergeMap, err := d.keyToNodeMap(mapIter.Value(), ignoreMergeKey, getKeyOrValueNode)
 			if err != nil {
 				return nil, errors.Wrapf(err, "failed to get keyToNodeMap by MergeKey node")
 			}
@@ -544,16 +549,16 @@ func (d *Decoder) keyToNodeMap(node ast.Node, getKeyOrValueNode func(*ast.MapNod
 	return keyToNodeMap, nil
 }
 
-func (d *Decoder) keyToKeyNodeMap(node ast.Node) (map[string]ast.Node, error) {
-	m, err := d.keyToNodeMap(node, func(nodeMap *ast.MapNodeIter) ast.Node { return nodeMap.Key() })
+func (d *Decoder) keyToKeyNodeMap(node ast.Node, ignoreMergeKey bool) (map[string]ast.Node, error) {
+	m, err := d.keyToNodeMap(node, ignoreMergeKey, func(nodeMap *ast.MapNodeIter) ast.Node { return nodeMap.Key() })
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to get keyToNodeMap")
 	}
 	return m, nil
 }
 
-func (d *Decoder) keyToValueNodeMap(node ast.Node) (map[string]ast.Node, error) {
-	m, err := d.keyToNodeMap(node, func(nodeMap *ast.MapNodeIter) ast.Node { return nodeMap.Value() })
+func (d *Decoder) keyToValueNodeMap(node ast.Node, ignoreMergeKey bool) (map[string]ast.Node, error) {
+	m, err := d.keyToNodeMap(node, ignoreMergeKey, func(nodeMap *ast.MapNodeIter) ast.Node { return nodeMap.Value() })
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to get keyToNodeMap")
 	}
@@ -628,6 +633,26 @@ func (d *Decoder) decodeTime(dst reflect.Value, src ast.Node) error {
 	return nil
 }
 
+// getMergeAliasName support single alias only
+func (d *Decoder) getMergeAliasName(src ast.Node) string {
+	mapNode, err := d.getMapNode(src)
+	if err != nil {
+		return ""
+	}
+	if mapNode == nil {
+		return ""
+	}
+	mapIter := mapNode.MapRange()
+	for mapIter.Next() {
+		key := mapIter.Key()
+		value := mapIter.Value()
+		if key.Type() == ast.MergeKeyType && value.Type() == ast.AliasType {
+			return value.(*ast.AliasNode).Value.GetToken().Value
+		}
+	}
+	return ""
+}
+
 func (d *Decoder) decodeStruct(dst reflect.Value, src ast.Node) error {
 	if src == nil {
 		return nil
@@ -637,18 +662,20 @@ func (d *Decoder) decodeStruct(dst reflect.Value, src ast.Node) error {
 	if err != nil {
 		return errors.Wrapf(err, "failed to create struct field map")
 	}
-	keyToNodeMap, err := d.keyToValueNodeMap(src)
+	ignoreMergeKey := structFieldMap.hasMergeProperty()
+	keyToNodeMap, err := d.keyToValueNodeMap(src, ignoreMergeKey)
 	if err != nil {
 		return errors.Wrapf(err, "failed to get keyToValueNodeMap")
 	}
 	var unknownFields map[string]ast.Node
 	if d.disallowUnknownField {
-		unknownFields, err = d.keyToKeyNodeMap(src)
+		unknownFields, err = d.keyToKeyNodeMap(src, ignoreMergeKey)
 		if err != nil {
 			return errors.Wrapf(err, "failed to get keyToKeyNodeMap")
 		}
 	}
 
+	aliasName := d.getMergeAliasName(src)
 	var foundErr error
 
 	for i := 0; i < structType.NumField(); i++ {
@@ -659,6 +686,15 @@ func (d *Decoder) decodeStruct(dst reflect.Value, src ast.Node) error {
 		structField := structFieldMap[field.Name]
 		if structField.IsInline {
 			fieldValue := dst.FieldByName(field.Name)
+			if structField.IsAutoAlias {
+				if aliasName != "" {
+					newFieldValue := d.anchorValueMap[aliasName]
+					if newFieldValue.IsValid() {
+						fieldValue.Set(d.castToAssignableValue(newFieldValue, fieldValue.Type()))
+					}
+				}
+				continue
+			}
 			if !fieldValue.CanSet() {
 				return xerrors.Errorf("cannot set embedded type as unexported field %s.%s", field.PkgPath, field.Name)
 			}
@@ -667,7 +703,14 @@ func (d *Decoder) decodeStruct(dst reflect.Value, src ast.Node) error {
 				fieldValue.Set(reflect.Zero(fieldValue.Type()))
 				continue
 			}
-			newFieldValue, err := d.createDecodedNewValue(fieldValue.Type(), src)
+			mapNode := ast.Mapping(nil, false)
+			for k, v := range keyToNodeMap {
+				mapNode.Values = append(mapNode.Values, &ast.MappingValueNode{
+					Key:   &ast.StringNode{Value: k},
+					Value: v,
+				})
+			}
+			newFieldValue, err := d.createDecodedNewValue(fieldValue.Type(), mapNode)
 			if d.disallowUnknownField {
 				var ufe *unknownFieldError
 				if xerrors.As(err, &ufe) {

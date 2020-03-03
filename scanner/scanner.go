@@ -421,7 +421,7 @@ func (s *Scanner) scan(ctx *Context) (pos int) {
 				s.progressColumn(ctx, 1)
 				continue
 			}
-			if ctx.existsBuffer() && ctx.isSingleLine {
+			if ctx.existsBuffer() && (ctx.isSingleLine || strings.TrimSpace(string(ctx.buf)) != "") {
 				// '-' is literal
 				ctx.addBuf(c)
 				ctx.addOriginBuf(c)

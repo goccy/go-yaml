@@ -472,7 +472,7 @@ func (n *LiteralNode) AddColumn(col int) {
 
 // GetValue returns string value
 func (n *LiteralNode) GetValue() interface{} {
-	return n.Value.GetValue()
+	return n.String()
 }
 
 // String literal to text

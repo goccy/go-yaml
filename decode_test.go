@@ -1585,3 +1585,35 @@ func TestUnmarshalablePtrInt(t *testing.T) {
 		}
 	})
 }
+
+type literalContainer struct {
+	v string
+}
+
+func (c *literalContainer) UnmarshalYAML(v []byte) error {
+	var lit string
+	if err := yaml.Unmarshal(v, &lit); err != nil {
+		return err
+	}
+	c.v = lit
+	return nil
+}
+
+func TestDecode_Literal(t *testing.T) {
+	yml := `---
+value: |
+  {
+     "key": "value"
+  }
+`
+	var v map[string]*literalContainer
+	if err := yaml.Unmarshal([]byte(yml), &v); err != nil {
+		t.Fatalf("failed to unmarshal %+v", err)
+	}
+	if v["value"] == nil {
+		t.Fatal("failed to unmarshal literal with bytes unmarshaler")
+	}
+	if v["value"].v == "" {
+		t.Fatal("failed to unmarshal literal with bytes unmarshaler")
+	}
+}

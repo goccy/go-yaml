@@ -828,6 +828,16 @@ func TestDecoder(t *testing.T) {
 			"v: あいうえお\nv2: かきくけこ",
 			map[string]string{"v": "あいうえお", "v2": "かきくけこ"},
 		},
+
+		// key with spaces and dash
+		{
+			"a: {b with - dash: c}",
+			map[string]interface{}{
+				"a": map[string]string{
+					"b with - dash": "c",
+				},
+			},
+		},
 	}
 	for _, test := range tests {
 		buf := bytes.NewBufferString(test.source)

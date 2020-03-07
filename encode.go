@@ -299,7 +299,11 @@ func (e *Encoder) encodeMapSlice(value MapSlice, column int) (ast.Node, error) {
 }
 
 func (e *Encoder) encodeMap(value reflect.Value, column int) ast.Node {
-	node := ast.Mapping(token.New("", "", e.pos(column)), e.isFlowStyle)
+	isFlowStyle := e.isFlowStyle
+	if value.Len() == 0 {
+		isFlowStyle = true
+	}
+	node := ast.Mapping(token.New("", "", e.pos(column)), isFlowStyle)
 	keys := []string{}
 	for _, k := range value.MapKeys() {
 		keys = append(keys, k.Interface().(string))

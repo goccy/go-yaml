@@ -235,6 +235,14 @@ func TestEncoder(t *testing.T) {
 			},
 		},
 		{
+			"a: {}\n",
+			struct {
+				A map[string]interface{}
+			}{
+				map[string]interface{}{},
+			},
+		},
+		{
 			"a: b\nc: d\n",
 			struct {
 				A string

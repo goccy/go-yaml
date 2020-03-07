@@ -499,6 +499,24 @@ a - b - c: value
 a - b - c: value
 `,
 		},
+		{
+			`
+a:
+-
+  b: c
+  d: e
+-
+  f: g
+  h: i
+`,
+			`
+a:
+- b: c
+  d: e
+- f: g
+  h: i
+`,
+		},
 	}
 	for _, test := range tests {
 		tokens := lexer.Tokenize(test.source)

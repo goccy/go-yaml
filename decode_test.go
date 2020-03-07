@@ -688,6 +688,10 @@ func TestDecoder(t *testing.T) {
 			(*struct{})(nil),
 		},
 		{
+			"---\n",
+			(*struct{})(nil),
+		},
+		{
 			"a: !!binary gIGC\n",
 			map[string]string{"a": "\x80\x81\x82"},
 		},

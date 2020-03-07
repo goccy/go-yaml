@@ -335,6 +335,9 @@ func (p *parser) parseDocument(ctx *context) (*ast.Document, error) {
 }
 
 func (p *parser) parseToken(ctx *context, tk *token.Token) (ast.Node, error) {
+	if tk == nil {
+		return nil, nil
+	}
 	if tk.NextType() == token.MappingValueType {
 		return p.parseMappingValue(ctx)
 	}

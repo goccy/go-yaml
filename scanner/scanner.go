@@ -431,7 +431,7 @@ func (s *Scanner) scan(ctx *Context) (pos int) {
 				continue
 			}
 			nc := ctx.nextChar()
-			if nc == ' ' {
+			if nc == ' ' || s.isNewLineChar(nc) {
 				s.addBufferedTokenIfExists(ctx)
 				ctx.addOriginBuf(c)
 				tk := token.SequenceEntry(string(ctx.obuf), s.pos())

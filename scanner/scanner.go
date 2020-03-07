@@ -259,7 +259,9 @@ func (s *Scanner) scanComment(ctx *Context) (tk *token.Token, pos int) {
 func (s *Scanner) scanLiteral(ctx *Context, c rune) {
 	ctx.addOriginBuf(c)
 	if ctx.isEOS() {
-		ctx.addBuf(c)
+		if c != '\r' && c != '\n' {
+			ctx.addBuf(c)
+		}
 		value := ctx.bufferedSrc()
 		ctx.addToken(token.New(string(value), string(ctx.obuf), s.pos()))
 		ctx.resetBuffer()
@@ -421,7 +423,7 @@ func (s *Scanner) scan(ctx *Context) (pos int) {
 				s.progressColumn(ctx, 1)
 				continue
 			}
-			if ctx.existsBuffer() && ctx.isSingleLine {
+			if ctx.existsBuffer() {
 				// '-' is literal
 				ctx.addBuf(c)
 				ctx.addOriginBuf(c)

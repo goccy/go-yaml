@@ -730,13 +730,9 @@ func (n *MappingValueNode) String() string {
 		return fmt.Sprintf("%s%s: %s", space, n.Key.String(), n.Value.String())
 	} else if keyIndentLevel < valueIndentLevel {
 		return fmt.Sprintf("%s%s:\n%s", space, n.Key.String(), n.Value.String())
-	} else if m, ok := n.Value.(*MappingNode); ok && m.IsFlowStyle {
+	} else if m, ok := n.Value.(*MappingNode); ok && (m.IsFlowStyle || len(m.Values) == 0) {
 		return fmt.Sprintf("%s%s: %s", space, n.Key.String(), n.Value.String())
-	} else if m, ok := n.Value.(*MappingNode); ok && len(m.Values) == 0 {
-		return fmt.Sprintf("%s%s: %s", space, n.Key.String(), n.Value.String())
-	} else if s, ok := n.Value.(*SequenceNode); ok && s.IsFlowStyle {
-		return fmt.Sprintf("%s%s: %s", space, n.Key.String(), n.Value.String())
-	} else if s, ok := n.Value.(*SequenceNode); ok && len(s.Values) == 0 {
+	} else if s, ok := n.Value.(*SequenceNode); ok && (s.IsFlowStyle || len(s.Values) == 0) {
 		return fmt.Sprintf("%s%s: %s", space, n.Key.String(), n.Value.String())
 	} else if _, ok := n.Value.(*AnchorNode); ok {
 		return fmt.Sprintf("%s%s: %s", space, n.Key.String(), n.Value.String())

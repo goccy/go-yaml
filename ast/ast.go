@@ -681,7 +681,7 @@ func (n *MappingNode) blockStyleString() string {
 
 // String mapping values to text
 func (n *MappingNode) String() string {
-	if n.IsFlowStyle {
+	if n.IsFlowStyle || len(n.Values) == 0 {
 		return n.flowStyleString()
 	}
 	return n.blockStyleString()

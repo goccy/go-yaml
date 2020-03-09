@@ -318,6 +318,32 @@ func TestEncoder(t *testing.T) {
 		},
 
 		{
+			"a:\n  y: \"\"\n",
+			struct {
+				A *struct {
+					X string `yaml:"x,omitempty"`
+					Y string
+				}
+			}{&struct {
+				X string `yaml:"x,omitempty"`
+				Y string
+			}{}},
+		},
+
+		{
+			"a: {}\n",
+			struct {
+				A *struct {
+					X string `yaml:"x,omitempty"`
+					Y string `yaml:"y,omitempty"`
+				}
+			}{&struct {
+				X string `yaml:"x,omitempty"`
+				Y string `yaml:"y,omitempty"`
+			}{}},
+		},
+
+		{
 			"a: {x: 1}\n",
 			struct {
 				A *struct{ X, y int } `yaml:"a,omitempty,flow"`

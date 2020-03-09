@@ -406,6 +406,7 @@ func (e *Encoder) encodeStruct(value reflect.Value, column int) (ast.Node, error
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to get struct field map")
 	}
+	emptyFields := true
 	hasInlineAnchorField := false
 	var inlineAnchorValue reflect.Value
 	for i := 0; i < value.NumField(); i++ {
@@ -419,6 +420,7 @@ func (e *Encoder) encodeStruct(value reflect.Value, column int) (ast.Node, error
 			// omit encoding
 			continue
 		}
+		emptyFields = false
 		value, err := e.encodeValue(fieldValue, column)
 		if err != nil {
 			return nil, errors.Wrapf(err, "failed to encode value")
@@ -513,6 +515,9 @@ func (e *Encoder) encodeStruct(value reflect.Value, column int) (ast.Node, error
 			Key:   key,
 			Value: value,
 		})
+	}
+	if emptyFields {
+		node.IsFlowStyle = true
 	}
 	if hasInlineAnchorField {
 		node.AddColumn(e.indent)

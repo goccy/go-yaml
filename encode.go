@@ -254,11 +254,7 @@ func (e *Encoder) encodeBool(v bool) ast.Node {
 }
 
 func (e *Encoder) encodeSlice(value reflect.Value) (ast.Node, error) {
-	isFlowStyle := e.isFlowStyle
-	if value.Len() == 0 {
-		isFlowStyle = true
-	}
-	sequence := ast.Sequence(token.New("-", "-", e.pos(e.column)), isFlowStyle)
+	sequence := ast.Sequence(token.New("-", "-", e.pos(e.column)), e.isFlowStyle)
 	for i := 0; i < value.Len(); i++ {
 		node, err := e.encodeValue(value.Index(i), e.column)
 		if err != nil {
@@ -299,11 +295,7 @@ func (e *Encoder) encodeMapSlice(value MapSlice, column int) (ast.Node, error) {
 }
 
 func (e *Encoder) encodeMap(value reflect.Value, column int) ast.Node {
-	isFlowStyle := e.isFlowStyle
-	if value.Len() == 0 {
-		isFlowStyle = true
-	}
-	node := ast.Mapping(token.New("", "", e.pos(column)), isFlowStyle)
+	node := ast.Mapping(token.New("", "", e.pos(column)), e.isFlowStyle)
 	keys := []string{}
 	for _, k := range value.MapKeys() {
 		keys = append(keys, k.Interface().(string))

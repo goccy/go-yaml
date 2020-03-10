@@ -681,7 +681,7 @@ func (n *MappingNode) blockStyleString() string {
 
 // String mapping values to text
 func (n *MappingNode) String() string {
-	if n.IsFlowStyle {
+	if n.IsFlowStyle || len(n.Values) == 0 {
 		return n.flowStyleString()
 	}
 	return n.blockStyleString()
@@ -730,9 +730,9 @@ func (n *MappingValueNode) String() string {
 		return fmt.Sprintf("%s%s: %s", space, n.Key.String(), n.Value.String())
 	} else if keyIndentLevel < valueIndentLevel {
 		return fmt.Sprintf("%s%s:\n%s", space, n.Key.String(), n.Value.String())
-	} else if m, ok := n.Value.(*MappingNode); ok && m.IsFlowStyle {
+	} else if m, ok := n.Value.(*MappingNode); ok && (m.IsFlowStyle || len(m.Values) == 0) {
 		return fmt.Sprintf("%s%s: %s", space, n.Key.String(), n.Value.String())
-	} else if s, ok := n.Value.(*SequenceNode); ok && s.IsFlowStyle {
+	} else if s, ok := n.Value.(*SequenceNode); ok && (s.IsFlowStyle || len(s.Values) == 0) {
 		return fmt.Sprintf("%s%s: %s", space, n.Key.String(), n.Value.String())
 	} else if _, ok := n.Value.(*AnchorNode); ok {
 		return fmt.Sprintf("%s%s: %s", space, n.Key.String(), n.Value.String())
@@ -833,7 +833,7 @@ func (n *SequenceNode) blockStyleString() string {
 
 // String sequence to text
 func (n *SequenceNode) String() string {
-	if n.IsFlowStyle {
+	if n.IsFlowStyle || len(n.Values) == 0 {
 		return n.flowStyleString()
 	}
 	return n.blockStyleString()

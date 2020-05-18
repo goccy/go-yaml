@@ -85,6 +85,10 @@ func (e *wrapError) As(target interface{}) bool {
 	return xerrors.As(err, target)
 }
 
+func (e *wrapError) Unwrap() error {
+	return e.nextErr
+}
+
 func (e *wrapError) PrettyPrint(p xerrors.Printer, colored, inclSource bool) error {
 	return e.FormatError(&myprinter{Printer: p, colored: colored, inclSource: inclSource})
 }

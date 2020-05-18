@@ -1070,7 +1070,7 @@ func (d *Decoder) Decode(v interface{}) error {
 		return errors.Wrapf(err, "failed to decode")
 	}
 	if node == nil {
-		return nil
+		return io.EOF
 	}
 	if err := d.decodeValue(rv.Elem(), node); err != nil {
 		return errors.Wrapf(err, "failed to decode value")

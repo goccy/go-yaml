@@ -408,8 +408,14 @@ func (d *Decoder) decodeValue(dst reflect.Value, src ast.Node) error {
 	case reflect.Array:
 		return d.decodeArray(dst, src)
 	case reflect.Slice:
+		if mapSlice, ok := dst.Addr().Interface().(*MapSlice); ok {
+			return d.decodeMapSlice(mapSlice, src)
+		}
 		return d.decodeSlice(dst, src)
 	case reflect.Struct:
+		if mapItem, ok := dst.Addr().Interface().(*MapItem); ok {
+			return d.decodeMapItem(mapItem, src)
+		}
 		return d.decodeStruct(dst, src)
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
 		v := d.nodeToValue(src)
@@ -879,6 +885,65 @@ func (d *Decoder) decodeSlice(dst reflect.Value, src ast.Node) error {
 	if foundErr != nil {
 		return errors.Wrapf(foundErr, "failed to decode value")
 	}
+	return nil
+}
+
+func (d *Decoder) decodeMapItem(dst *MapItem, src ast.Node) error {
+	mapNode, err := d.getMapNode(src)
+	if err != nil {
+		return errors.Wrapf(err, "failed to get map node")
+	}
+	if mapNode == nil {
+		return nil
+	}
+	mapIter := mapNode.MapRange()
+	if !mapIter.Next() {
+		return nil
+	}
+	key := mapIter.Key()
+	value := mapIter.Value()
+	if key.Type() == ast.MergeKeyType {
+		if err := d.decodeMapItem(dst, value); err != nil {
+			return errors.Wrapf(err, "failed to decode map with merge key")
+		}
+		return nil
+	}
+	*dst = MapItem{
+		Key:   d.nodeToValue(key),
+		Value: d.nodeToValue(value),
+	}
+	return nil
+}
+
+func (d *Decoder) decodeMapSlice(dst *MapSlice, src ast.Node) error {
+	mapNode, err := d.getMapNode(src)
+	if err != nil {
+		return errors.Wrapf(err, "failed to get map node")
+	}
+	if mapNode == nil {
+		return nil
+	}
+	mapSlice := MapSlice{}
+	mapIter := mapNode.MapRange()
+	for mapIter.Next() {
+		key := mapIter.Key()
+		value := mapIter.Value()
+		if key.Type() == ast.MergeKeyType {
+			var m MapSlice
+			if err := d.decodeMapSlice(&m, value); err != nil {
+				return errors.Wrapf(err, "failed to decode map with merge key")
+			}
+			for _, v := range m {
+				mapSlice = append(mapSlice, v)
+			}
+			continue
+		}
+		mapSlice = append(mapSlice, MapItem{
+			Key:   d.nodeToValue(key),
+			Value: d.nodeToValue(value),
+		})
+	}
+	*dst = mapSlice
 	return nil
 }
 

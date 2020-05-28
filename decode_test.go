@@ -567,6 +567,18 @@ func TestDecoder(t *testing.T) {
 		},
 
 		{
+			"a: 1\n",
+			yaml.MapItem{Key: "a", Value: 1},
+		},
+		{
+			"a: 1\nb: 2\nc: 3\n",
+			yaml.MapSlice{
+				{Key: "a", Value: 1},
+				{Key: "b", Value: 2},
+				{Key: "c", Value: 3},
+			},
+		},
+		{
 			"v:\n- A\n- 1\n- B:\n  - 2\n  - 3\n",
 			map[string]interface{}{
 				"v": []interface{}{

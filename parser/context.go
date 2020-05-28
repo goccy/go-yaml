@@ -28,18 +28,41 @@ func (c *context) currentToken() *token.Token {
 	return c.tokens[c.idx]
 }
 
+func (c *context) nextNotCommentToken() *token.Token {
+	for i := c.idx; i+1 < c.size; i++ {
+		tk := c.tokens[i+1]
+		if tk.Type == token.CommentType {
+			continue
+		}
+		return tk
+	}
+	return nil
+
+}
+
 func (c *context) nextToken() *token.Token {
-	if c.size > c.idx+1 {
-		return c.tokens[c.idx+1]
+	if c.idx+1 >= c.size {
+		return nil
+	}
+	return c.tokens[c.idx+1]
+}
+
+func (c *context) afterNextNotCommentToken() *token.Token {
+	for i := c.idx; i+2 < c.size; i++ {
+		tk := c.tokens[i+2]
+		if tk.Type == token.CommentType {
+			continue
+		}
+		return tk
 	}
 	return nil
 }
 
 func (c *context) afterNextToken() *token.Token {
-	if c.size > c.idx+2 {
-		return c.tokens[c.idx+2]
+	if c.idx+2 >= c.size {
+		return nil
 	}
-	return nil
+	return c.tokens[c.idx+2]
 }
 
 func (c *context) enabledComment() bool {

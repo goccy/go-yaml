@@ -569,6 +569,30 @@ func TestSyntaxError(t *testing.T) {
 	}
 }
 
+func TestComment(t *testing.T) {
+	yml := `
+# commentA
+a: #commentB
+  # commentC
+  b: c # commentD
+  # commentE
+  d: e # commentF
+  # commentG
+  f: g # commentH
+# commentI
+f: g # commentJ
+# commentK
+`
+	f, err := parser.ParseBytes([]byte(yml), parser.ParseComments)
+	if err != nil {
+		t.Fatalf("%+v", err)
+	}
+	var v Visitor
+	for _, doc := range f.Docs {
+		ast.Walk(&v, doc.Body)
+	}
+}
+
 type Visitor struct {
 }
 
@@ -576,5 +600,9 @@ func (v *Visitor) Visit(node ast.Node) ast.Visitor {
 	tk := node.GetToken()
 	tk.Prev = nil
 	tk.Next = nil
+	if comment := node.GetComment(); comment != nil {
+		comment.Prev = nil
+		comment.Next = nil
+	}
 	return v
 }

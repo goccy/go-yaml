@@ -7,6 +7,11 @@ import (
 	"strings"
 
 	"github.com/goccy/go-yaml/token"
+	"golang.org/x/xerrors"
+)
+
+var (
+	ErrInvalidTokenType = xerrors.New("invalid token type")
 )
 
 // NodeType type identifier of node
@@ -49,6 +54,8 @@ const (
 	DirectiveType
 	// TagType type identifier for tag node
 	TagType
+	// CommentType type identifier for comment node
+	CommentType
 )
 
 // String node type identifier to text
@@ -90,6 +97,8 @@ func (t NodeType) String() string {
 		return "Directive"
 	case TagType:
 		return "Tag"
+	case CommentType:
+		return "Comment"
 	}
 	return ""
 }
@@ -104,6 +113,10 @@ type Node interface {
 	Type() NodeType
 	// AddColumn add column number to child nodes recursively
 	AddColumn(int)
+	// SetComment set comment token to node
+	SetComment(*token.Token) error
+	// Comment returns comment token instance
+	GetComment() *token.Token
 }
 
 // File contains all documents in YAML file
@@ -123,9 +136,10 @@ func (f *File) String() string {
 
 // Document type of Document
 type Document struct {
-	Start *token.Token // position of DocumentHeader ( `---` )
-	End   *token.Token // position of DocumentEnd ( `...` )
-	Body  Node
+	Comment *token.Token // position of Comment ( `#comment` )
+	Start   *token.Token // position of DocumentHeader ( `---` )
+	End     *token.Token // position of DocumentEnd ( `...` )
+	Body    Node
 }
 
 // GetToken returns token instance
@@ -133,11 +147,25 @@ func (d *Document) GetToken() *token.Token {
 	return d.Body.GetToken()
 }
 
+// GetComment returns comment token instance
+func (d *Document) GetComment() *token.Token {
+	return d.Comment
+}
+
 // AddColumn add column number to child nodes recursively
 func (d *Document) AddColumn(col int) {
 	if d.Body != nil {
 		d.Body.AddColumn(col)
 	}
+}
+
+// SetComment set comment token
+func (d *Document) SetComment(tk *token.Token) error {
+	if tk.Type != token.CommentType {
+		return ErrInvalidTokenType
+	}
+	d.Comment = tk
+	return nil
 }
 
 // Type returns DocumentType
@@ -280,6 +308,11 @@ func String(tk *token.Token) Node {
 	}
 }
 
+// Comment create node for comment
+func Comment(tk *token.Token) Node {
+	return &CommentNode{Comment: tk}
+}
+
 // MergeKey create node for merge key ( << )
 func MergeKey(tk *token.Token) Node {
 	return &MergeKeyNode{
@@ -308,7 +341,8 @@ func Sequence(tk *token.Token, isFlowStyle bool) *SequenceNode {
 // NullNode type of null node
 type NullNode struct {
 	ScalarNode
-	Token *token.Token
+	Comment *token.Token // position of Comment ( `#comment` )
+	Token   *token.Token
 }
 
 // Type returns NullType
@@ -319,9 +353,23 @@ func (n *NullNode) GetToken() *token.Token {
 	return n.Token
 }
 
+// GetComment returns comment token instance
+func (n *NullNode) GetComment() *token.Token {
+	return n.Comment
+}
+
 // AddColumn add column number to child nodes recursively
 func (n *NullNode) AddColumn(col int) {
 	n.Token.AddColumn(col)
+}
+
+// SetComment set comment token
+func (n *NullNode) SetComment(tk *token.Token) error {
+	if tk.Type != token.CommentType {
+		return ErrInvalidTokenType
+	}
+	n.Comment = tk
+	return nil
 }
 
 // GetValue returns nil value
@@ -337,8 +385,9 @@ func (n *NullNode) String() string {
 // IntegerNode type of integer node
 type IntegerNode struct {
 	ScalarNode
-	Token *token.Token
-	Value interface{} // int64 or uint64 value
+	Comment *token.Token // position of Comment ( `#comment` )
+	Token   *token.Token
+	Value   interface{} // int64 or uint64 value
 }
 
 // Type returns IntegerType
@@ -349,9 +398,23 @@ func (n *IntegerNode) GetToken() *token.Token {
 	return n.Token
 }
 
+// GetComment returns comment token instance
+func (n *IntegerNode) GetComment() *token.Token {
+	return n.Comment
+}
+
 // AddColumn add column number to child nodes recursively
 func (n *IntegerNode) AddColumn(col int) {
 	n.Token.AddColumn(col)
+}
+
+// SetComment set comment token
+func (n *IntegerNode) SetComment(tk *token.Token) error {
+	if tk.Type != token.CommentType {
+		return ErrInvalidTokenType
+	}
+	n.Comment = tk
+	return nil
 }
 
 // GetValue returns int64 value
@@ -367,6 +430,7 @@ func (n *IntegerNode) String() string {
 // FloatNode type of float node
 type FloatNode struct {
 	ScalarNode
+	Comment   *token.Token // position of Comment ( `#comment` )
 	Token     *token.Token
 	Precision int
 	Value     float64
@@ -380,9 +444,23 @@ func (n *FloatNode) GetToken() *token.Token {
 	return n.Token
 }
 
+// GetComment returns comment token instance
+func (n *FloatNode) GetComment() *token.Token {
+	return n.Comment
+}
+
 // AddColumn add column number to child nodes recursively
 func (n *FloatNode) AddColumn(col int) {
 	n.Token.AddColumn(col)
+}
+
+// SetComment set comment token
+func (n *FloatNode) SetComment(tk *token.Token) error {
+	if tk.Type != token.CommentType {
+		return ErrInvalidTokenType
+	}
+	n.Comment = tk
+	return nil
 }
 
 // GetValue returns float64 value
@@ -398,8 +476,9 @@ func (n *FloatNode) String() string {
 // StringNode type of string node
 type StringNode struct {
 	ScalarNode
-	Token *token.Token
-	Value string
+	Comment *token.Token // position of Comment ( `#comment` )
+	Token   *token.Token
+	Value   string
 }
 
 // Type returns StringType
@@ -410,9 +489,23 @@ func (n *StringNode) GetToken() *token.Token {
 	return n.Token
 }
 
+// GetComment returns comment token instance
+func (n *StringNode) GetComment() *token.Token {
+	return n.Comment
+}
+
 // AddColumn add column number to child nodes recursively
 func (n *StringNode) AddColumn(col int) {
 	n.Token.AddColumn(col)
+}
+
+// SetComment set comment token
+func (n *StringNode) SetComment(tk *token.Token) error {
+	if tk.Type != token.CommentType {
+		return ErrInvalidTokenType
+	}
+	n.Comment = tk
+	return nil
 }
 
 // GetValue returns string value
@@ -450,8 +543,9 @@ func (n *StringNode) String() string {
 // LiteralNode type of literal node
 type LiteralNode struct {
 	ScalarNode
-	Start *token.Token
-	Value *StringNode
+	Comment *token.Token // position of Comment ( `#comment` )
+	Start   *token.Token
+	Value   *StringNode
 }
 
 // Type returns LiteralType
@@ -462,12 +556,26 @@ func (n *LiteralNode) GetToken() *token.Token {
 	return n.Start
 }
 
+// GetComment returns comment token instance
+func (n *LiteralNode) GetComment() *token.Token {
+	return n.Comment
+}
+
 // AddColumn add column number to child nodes recursively
 func (n *LiteralNode) AddColumn(col int) {
 	n.Start.AddColumn(col)
 	if n.Value != nil {
 		n.Value.AddColumn(col)
 	}
+}
+
+// SetComment set comment token
+func (n *LiteralNode) SetComment(tk *token.Token) error {
+	if tk.Type != token.CommentType {
+		return ErrInvalidTokenType
+	}
+	n.Comment = tk
+	return nil
 }
 
 // GetValue returns string value
@@ -484,7 +592,8 @@ func (n *LiteralNode) String() string {
 // MergeKeyNode type of merge key node
 type MergeKeyNode struct {
 	ScalarNode
-	Token *token.Token
+	Comment *token.Token // position of Comment ( `#comment` )
+	Token   *token.Token
 }
 
 // Type returns MergeKeyType
@@ -493,6 +602,11 @@ func (n *MergeKeyNode) Type() NodeType { return MergeKeyType }
 // GetToken returns token instance
 func (n *MergeKeyNode) GetToken() *token.Token {
 	return n.Token
+}
+
+// GetComment returns comment token instance
+func (n *MergeKeyNode) GetComment() *token.Token {
+	return n.Comment
 }
 
 // GetValue returns '<<' value
@@ -510,11 +624,21 @@ func (n *MergeKeyNode) AddColumn(col int) {
 	n.Token.AddColumn(col)
 }
 
+// SetComment set comment token
+func (n *MergeKeyNode) SetComment(tk *token.Token) error {
+	if tk.Type != token.CommentType {
+		return ErrInvalidTokenType
+	}
+	n.Comment = tk
+	return nil
+}
+
 // BoolNode type of boolean node
 type BoolNode struct {
 	ScalarNode
-	Token *token.Token
-	Value bool
+	Comment *token.Token // position of Comment ( `#comment` )
+	Token   *token.Token
+	Value   bool
 }
 
 // Type returns BoolType
@@ -525,9 +649,23 @@ func (n *BoolNode) GetToken() *token.Token {
 	return n.Token
 }
 
+// GetComment returns comment token instance
+func (n *BoolNode) GetComment() *token.Token {
+	return n.Comment
+}
+
 // AddColumn add column number to child nodes recursively
 func (n *BoolNode) AddColumn(col int) {
 	n.Token.AddColumn(col)
+}
+
+// SetComment set comment token
+func (n *BoolNode) SetComment(tk *token.Token) error {
+	if tk.Type != token.CommentType {
+		return ErrInvalidTokenType
+	}
+	n.Comment = tk
+	return nil
 }
 
 // GetValue returns boolean value
@@ -543,8 +681,9 @@ func (n *BoolNode) String() string {
 // InfinityNode type of infinity node
 type InfinityNode struct {
 	ScalarNode
-	Token *token.Token
-	Value float64
+	Comment *token.Token // position of Comment ( `#comment` )
+	Token   *token.Token
+	Value   float64
 }
 
 // Type returns InfinityType
@@ -555,9 +694,23 @@ func (n *InfinityNode) GetToken() *token.Token {
 	return n.Token
 }
 
+// GetComment returns comment token instance
+func (n *InfinityNode) GetComment() *token.Token {
+	return n.Comment
+}
+
 // AddColumn add column number to child nodes recursively
 func (n *InfinityNode) AddColumn(col int) {
 	n.Token.AddColumn(col)
+}
+
+// SetComment set comment token
+func (n *InfinityNode) SetComment(tk *token.Token) error {
+	if tk.Type != token.CommentType {
+		return ErrInvalidTokenType
+	}
+	n.Comment = tk
+	return nil
 }
 
 // GetValue returns math.Inf(0) or math.Inf(-1)
@@ -573,7 +726,8 @@ func (n *InfinityNode) String() string {
 // NanNode type of nan node
 type NanNode struct {
 	ScalarNode
-	Token *token.Token
+	Comment *token.Token // position of Comment ( `#comment` )
+	Token   *token.Token
 }
 
 // Type returns NanType
@@ -584,9 +738,23 @@ func (n *NanNode) GetToken() *token.Token {
 	return n.Token
 }
 
+// GetComment returns comment token instance
+func (n *NanNode) GetComment() *token.Token {
+	return n.Comment
+}
+
 // AddColumn add column number to child nodes recursively
 func (n *NanNode) AddColumn(col int) {
 	n.Token.AddColumn(col)
+}
+
+// SetComment set comment token
+func (n *NanNode) SetComment(tk *token.Token) error {
+	if tk.Type != token.CommentType {
+		return ErrInvalidTokenType
+	}
+	n.Comment = tk
+	return nil
 }
 
 // GetValue returns math.NaN()
@@ -634,6 +802,7 @@ func (m *MapNodeIter) Value() Node {
 
 // MappingNode type of mapping node
 type MappingNode struct {
+	Comment     *token.Token // position of Comment ( `#comment` )
 	Start       *token.Token
 	End         *token.Token
 	IsFlowStyle bool
@@ -648,6 +817,11 @@ func (n *MappingNode) GetToken() *token.Token {
 	return n.Start
 }
 
+// GetComment returns comment token instance
+func (n *MappingNode) GetComment() *token.Token {
+	return n.Comment
+}
+
 // AddColumn add column number to child nodes recursively
 func (n *MappingNode) AddColumn(col int) {
 	n.Start.AddColumn(col)
@@ -655,6 +829,15 @@ func (n *MappingNode) AddColumn(col int) {
 	for _, value := range n.Values {
 		value.AddColumn(col)
 	}
+}
+
+// SetComment set comment token
+func (n *MappingNode) SetComment(tk *token.Token) error {
+	if tk.Type != token.CommentType {
+		return ErrInvalidTokenType
+	}
+	n.Comment = tk
+	return nil
 }
 
 func (n *MappingNode) flowStyleString() string {
@@ -697,9 +880,10 @@ func (n *MappingNode) MapRange() *MapNodeIter {
 
 // MappingValueNode type of mapping value
 type MappingValueNode struct {
-	Start *token.Token
-	Key   Node
-	Value Node
+	Comment *token.Token // position of Comment ( `#comment` )
+	Start   *token.Token
+	Key     Node
+	Value   Node
 }
 
 // Type returns MappingValueType
@@ -708,6 +892,11 @@ func (n *MappingValueNode) Type() NodeType { return MappingValueType }
 // GetToken returns token instance
 func (n *MappingValueNode) GetToken() *token.Token {
 	return n.Start
+}
+
+// GetComment returns comment token instance
+func (n *MappingValueNode) GetComment() *token.Token {
+	return n.Comment
 }
 
 // AddColumn add column number to child nodes recursively
@@ -719,6 +908,15 @@ func (n *MappingValueNode) AddColumn(col int) {
 	if n.Value != nil {
 		n.Value.AddColumn(col)
 	}
+}
+
+// SetComment set comment token
+func (n *MappingValueNode) SetComment(tk *token.Token) error {
+	if tk.Type != token.CommentType {
+		return ErrInvalidTokenType
+	}
+	n.Comment = tk
+	return nil
 }
 
 // String mapping value to text
@@ -781,6 +979,7 @@ func (m *ArrayNodeIter) Len() int {
 
 // SequenceNode type of sequence node
 type SequenceNode struct {
+	Comment     *token.Token // position of Comment ( `#comment` )
 	Start       *token.Token
 	End         *token.Token
 	IsFlowStyle bool
@@ -795,6 +994,11 @@ func (n *SequenceNode) GetToken() *token.Token {
 	return n.Start
 }
 
+// GetComment returns comment token instance
+func (n *SequenceNode) GetComment() *token.Token {
+	return n.Comment
+}
+
 // AddColumn add column number to child nodes recursively
 func (n *SequenceNode) AddColumn(col int) {
 	n.Start.AddColumn(col)
@@ -802,6 +1006,15 @@ func (n *SequenceNode) AddColumn(col int) {
 	for _, value := range n.Values {
 		value.AddColumn(col)
 	}
+}
+
+// SetComment set comment token
+func (n *SequenceNode) SetComment(tk *token.Token) error {
+	if tk.Type != token.CommentType {
+		return ErrInvalidTokenType
+	}
+	n.Comment = tk
+	return nil
 }
 
 func (n *SequenceNode) flowStyleString() string {
@@ -849,9 +1062,10 @@ func (n *SequenceNode) ArrayRange() *ArrayNodeIter {
 
 // AnchorNode type of anchor node
 type AnchorNode struct {
-	Start *token.Token
-	Name  Node
-	Value Node
+	Comment *token.Token // position of Comment ( `#comment` )
+	Start   *token.Token
+	Name    Node
+	Value   Node
 }
 
 // Type returns AnchorType
@@ -860,6 +1074,11 @@ func (n *AnchorNode) Type() NodeType { return AnchorType }
 // GetToken returns token instance
 func (n *AnchorNode) GetToken() *token.Token {
 	return n.Start
+}
+
+// GetComment returns comment token instance
+func (n *AnchorNode) GetComment() *token.Token {
+	return n.Comment
 }
 
 // AddColumn add column number to child nodes recursively
@@ -871,6 +1090,15 @@ func (n *AnchorNode) AddColumn(col int) {
 	if n.Value != nil {
 		n.Value.AddColumn(col)
 	}
+}
+
+// SetComment set comment token
+func (n *AnchorNode) SetComment(tk *token.Token) error {
+	if tk.Type != token.CommentType {
+		return ErrInvalidTokenType
+	}
+	n.Comment = tk
+	return nil
 }
 
 // String anchor to text
@@ -888,8 +1116,9 @@ func (n *AnchorNode) String() string {
 
 // AliasNode type of alias node
 type AliasNode struct {
-	Start *token.Token
-	Value Node
+	Comment *token.Token // position of Comment ( `#comment` )
+	Start   *token.Token
+	Value   Node
 }
 
 // Type returns AliasType
@@ -900,12 +1129,26 @@ func (n *AliasNode) GetToken() *token.Token {
 	return n.Start
 }
 
+// GetComment returns comment token instance
+func (n *AliasNode) GetComment() *token.Token {
+	return n.Comment
+}
+
 // AddColumn add column number to child nodes recursively
 func (n *AliasNode) AddColumn(col int) {
 	n.Start.AddColumn(col)
 	if n.Value != nil {
 		n.Value.AddColumn(col)
 	}
+}
+
+// SetComment set comment token
+func (n *AliasNode) SetComment(tk *token.Token) error {
+	if tk.Type != token.CommentType {
+		return ErrInvalidTokenType
+	}
+	n.Comment = tk
+	return nil
 }
 
 // String alias to text
@@ -915,8 +1158,9 @@ func (n *AliasNode) String() string {
 
 // DirectiveNode type of directive node
 type DirectiveNode struct {
-	Start *token.Token
-	Value Node
+	Comment *token.Token // position of Comment ( `#comment` )
+	Start   *token.Token
+	Value   Node
 }
 
 // Type returns DirectiveType
@@ -927,11 +1171,25 @@ func (n *DirectiveNode) GetToken() *token.Token {
 	return n.Start
 }
 
+// GetComment returns comment token instance
+func (n *DirectiveNode) GetComment() *token.Token {
+	return n.Comment
+}
+
 // AddColumn add column number to child nodes recursively
 func (n *DirectiveNode) AddColumn(col int) {
 	if n.Value != nil {
 		n.Value.AddColumn(col)
 	}
+}
+
+// SetComment set comment token
+func (n *DirectiveNode) SetComment(tk *token.Token) error {
+	if tk.Type != token.CommentType {
+		return ErrInvalidTokenType
+	}
+	n.Comment = tk
+	return nil
 }
 
 // String directive to text
@@ -941,8 +1199,9 @@ func (n *DirectiveNode) String() string {
 
 // TagNode type of tag node
 type TagNode struct {
-	Start *token.Token
-	Value Node
+	Comment *token.Token // position of Comment ( `#comment` )
+	Start   *token.Token
+	Value   Node
 }
 
 // Type returns TagType
@@ -953,6 +1212,11 @@ func (n *TagNode) GetToken() *token.Token {
 	return n.Start
 }
 
+// GetComment returns comment token instance
+func (n *TagNode) GetComment() *token.Token {
+	return n.Comment
+}
+
 // AddColumn add column number to child nodes recursively
 func (n *TagNode) AddColumn(col int) {
 	n.Start.AddColumn(col)
@@ -961,9 +1225,51 @@ func (n *TagNode) AddColumn(col int) {
 	}
 }
 
+// SetComment set comment token
+func (n *TagNode) SetComment(tk *token.Token) error {
+	if tk.Type != token.CommentType {
+		return ErrInvalidTokenType
+	}
+	n.Comment = tk
+	return nil
+}
+
 // String tag to text
 func (n *TagNode) String() string {
 	return fmt.Sprintf("%s %s", n.Start.Value, n.Value.String())
+}
+
+// CommentNode type of comment node
+type CommentNode struct {
+	Comment *token.Token // position of Comment ( `#comment` )
+}
+
+// Type returns TagType
+func (n *CommentNode) Type() NodeType { return CommentType }
+
+// GetToken returns token instance
+func (n *CommentNode) GetToken() *token.Token { return n.Comment }
+
+// GetComment returns comment token instance
+func (n *CommentNode) GetComment() *token.Token { return n.Comment }
+
+// AddColumn add column number to child nodes recursively
+func (n *CommentNode) AddColumn(col int) {
+	n.Comment.AddColumn(col)
+}
+
+// SetComment set comment token
+func (n *CommentNode) SetComment(tk *token.Token) error {
+	if tk.Type != token.CommentType {
+		return ErrInvalidTokenType
+	}
+	n.Comment = tk
+	return nil
+}
+
+// String comment to text
+func (n *CommentNode) String() string {
+	return n.Comment.Value
 }
 
 // Visitor has Visit method that is invokded for each node encountered by Walk.

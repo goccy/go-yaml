@@ -34,6 +34,7 @@ type Decoder struct {
 	isResolvedReference  bool
 	validator            StructValidator
 	disallowUnknownField bool
+	useOrderedMap        bool
 }
 
 // NewDecoder returns a new decoder that reads from r.
@@ -49,6 +50,7 @@ func NewDecoder(r io.Reader, opts ...DecodeOption) *Decoder {
 		isRecursiveDir:       false,
 		isResolvedReference:  false,
 		disallowUnknownField: false,
+		useOrderedMap:        false,
 	}
 }
 
@@ -105,6 +107,25 @@ func (d *Decoder) setToMapValue(node ast.Node, m map[string]interface{}) {
 	}
 }
 
+func (d *Decoder) setToOrderedMapValue(node ast.Node, m *MapSlice) {
+	switch n := node.(type) {
+	case *ast.MappingValueNode:
+		if n.Key.Type() == ast.MergeKeyType && n.Value.Type() == ast.AliasType {
+			aliasNode := n.Value.(*ast.AliasNode)
+			aliasName := aliasNode.Value.GetToken().Value
+			node := d.anchorNodeMap[aliasName]
+			d.setToOrderedMapValue(node, m)
+		} else {
+			key := n.Key.GetToken().Value
+			*m = append(*m, MapItem{Key: key, Value: d.nodeToValue(n.Value)})
+		}
+	case *ast.MappingNode:
+		for _, value := range n.Values {
+			d.setToOrderedMapValue(value, m)
+		}
+	}
+}
+
 func (d *Decoder) nodeToValue(node ast.Node) interface{} {
 	switch n := node.(type) {
 	case *ast.NullNode:
@@ -150,15 +171,30 @@ func (d *Decoder) nodeToValue(node ast.Node) interface{} {
 			aliasNode := n.Value.(*ast.AliasNode)
 			aliasName := aliasNode.Value.GetToken().Value
 			node := d.anchorNodeMap[aliasName]
+			if d.useOrderedMap {
+				m := MapSlice{}
+				d.setToOrderedMapValue(node, &m)
+				return m
+			}
 			m := map[string]interface{}{}
 			d.setToMapValue(node, m)
 			return m
 		}
 		key := n.Key.GetToken().Value
+		if d.useOrderedMap {
+			return MapSlice{{Key: key, Value: d.nodeToValue(n.Value)}}
+		}
 		return map[string]interface{}{
 			key: d.nodeToValue(n.Value),
 		}
 	case *ast.MappingNode:
+		if d.useOrderedMap {
+			m := make(MapSlice, 0, len(n.Values))
+			for _, value := range n.Values {
+				d.setToOrderedMapValue(value, &m)
+			}
+			return m
+		}
 		m := make(map[string]interface{}, len(n.Values))
 		for _, value := range n.Values {
 			d.setToMapValue(value, m)

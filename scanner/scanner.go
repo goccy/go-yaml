@@ -211,6 +211,7 @@ func (s *Scanner) scanSingleQuote(ctx *Context) (tk *token.Token, pos int) {
 		if idx+1 < len(ctx.src) && ctx.src[idx+1] == '\'' {
 			// '' handle as ' character
 			value = append(value, c)
+			ctx.addOriginBuf(c)
 			idx++
 			continue
 		}

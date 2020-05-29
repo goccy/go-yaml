@@ -315,11 +315,81 @@ func TestDecoder(t *testing.T) {
 			map[string]time.Time{"v": time.Date(2015, 2, 24, 18, 19, 39, 0, time.UTC)},
 		},
 
-		// Quoted values.
+		// Single Quoted values.
 		{
-			"'1': '\"2\"'",
-			map[interface{}]interface{}{"1": "\"2\""},
+			`'1': '2'`,
+			map[interface{}]interface{}{"1": `2`},
 		},
+		{
+			`'1': '"2"'`,
+			map[interface{}]interface{}{"1": `"2"`},
+		},
+		{
+			`'1': ''''`,
+			map[interface{}]interface{}{"1": `'`},
+		},
+		{
+			`'1': '''2'''`,
+			map[interface{}]interface{}{"1": `'2'`},
+		},
+		{
+			`'1': 'B''z'`,
+			map[interface{}]interface{}{"1": `B'z`},
+		},
+		{
+			`'1': '\'`,
+			map[interface{}]interface{}{"1": `\`},
+		},
+		{
+			`'1': '\\'`,
+			map[interface{}]interface{}{"1": `\\`},
+		},
+		{
+			`'1': '\"2\"'`,
+			map[interface{}]interface{}{"1": `\"2\"`},
+		},
+		{
+			`'1': '\\"2\\"'`,
+			map[interface{}]interface{}{"1": `\\"2\\"`},
+		},
+
+		// Double Quoted values.
+		{
+			`"1": "2"`,
+			map[interface{}]interface{}{"1": `2`},
+		},
+		{
+			`"1": "\"2\""`,
+			map[interface{}]interface{}{"1": `"2"`},
+		},
+		{
+			`"1": "\""`,
+			map[interface{}]interface{}{"1": `"`},
+		},
+		{
+			`"1": "X\"z"`,
+			map[interface{}]interface{}{"1": `X"z`},
+		},
+		{
+			`"1": "\\"`,
+			map[interface{}]interface{}{"1": `\`},
+		},
+		{
+			`"1": "\\\\"`,
+			map[interface{}]interface{}{"1": `\\`},
+		},
+		{
+			`"1": "\\\"2\\\""`,
+			map[interface{}]interface{}{"1": `\"2\"`},
+		},
+
+		/*
+			// TODO: Escape string
+			{
+				`"1": "a\x2Fb\u002Fc\U0000002Fd"`,
+				map[interface{}]interface{}{"1": `a/b/c/d`},
+			},
+		*/
 
 		{
 			"a: -b_c",

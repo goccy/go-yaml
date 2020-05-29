@@ -193,30 +193,78 @@ func (s *Scanner) breakLiteral(ctx *Context) {
 	ctx.breakLiteral()
 }
 
-func (s *Scanner) scanQuote(ctx *Context, ch rune) (tk *token.Token, pos int) {
-	ctx.addOriginBuf(ch)
+func (s *Scanner) scanSingleQuote(ctx *Context) (tk *token.Token, pos int) {
+	ctx.addOriginBuf('\'')
 	startIndex := ctx.idx + 1
 	ctx.progress(1)
-	for idx, c := range ctx.src[startIndex:] {
+	src := ctx.src
+	size := len(src)
+	value := []rune{}
+	for idx := startIndex; idx < size; idx++ {
+		c := src[idx]
 		pos = idx + 1
 		ctx.addOriginBuf(c)
-		switch c {
-		case ch:
-			if ctx.previousChar() == '\\' {
-				continue
-			}
-			value := ctx.source(startIndex, startIndex+idx)
-			switch ch {
-			case '\'':
-				tk = token.SingleQuote(value, string(ctx.obuf), s.pos())
-			case '"':
-				tk = token.DoubleQuote(value, string(ctx.obuf), s.pos())
-			}
-			pos = len([]rune(value)) + 1
-			return
+		if c != '\'' {
+			value = append(value, c)
+			continue
 		}
+		if idx+1 < len(ctx.src) && ctx.src[idx+1] == '\'' {
+			// '' handle as ' character
+			value = append(value, c)
+			idx++
+			continue
+		}
+		tk = token.SingleQuote(string(value), string(ctx.obuf), s.pos())
+		pos = len([]rune(value)) + 1
+		return
 	}
 	return
+}
+
+func (s *Scanner) scanDoubleQuote(ctx *Context) (tk *token.Token, pos int) {
+	ctx.addOriginBuf('"')
+	startIndex := ctx.idx + 1
+	ctx.progress(1)
+	src := ctx.src
+	size := len(src)
+	value := []rune{}
+	for idx := startIndex; idx < size; idx++ {
+		c := src[idx]
+		pos = idx + 1
+		ctx.addOriginBuf(c)
+		if c == '\\' {
+			if idx+1 < size {
+				nextChar := src[idx+1]
+				switch nextChar {
+				case '"':
+					ctx.addOriginBuf(nextChar)
+					value = append(value, nextChar)
+					idx++
+					continue
+				case '\\':
+					ctx.addOriginBuf(nextChar)
+					idx++
+				}
+			}
+			value = append(value, c)
+			continue
+		} else if c != '"' {
+			value = append(value, c)
+			continue
+		}
+
+		tk = token.DoubleQuote(string(value), string(ctx.obuf), s.pos())
+		pos = len([]rune(value)) + 1
+		return
+	}
+	return
+}
+
+func (s *Scanner) scanQuote(ctx *Context, ch rune) (tk *token.Token, pos int) {
+	if ch == '\'' {
+		return s.scanSingleQuote(ctx)
+	}
+	return s.scanDoubleQuote(ctx)
 }
 
 func (s *Scanner) scanTag(ctx *Context) (tk *token.Token, pos int) {

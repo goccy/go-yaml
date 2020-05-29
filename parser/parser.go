@@ -113,8 +113,8 @@ func (p *parser) parseMappingValue(ctx *context) (ast.Node, error) {
 	ctx.progress(1)          // progress to mapping value token
 	tk := ctx.currentToken() // get mapping value token
 	ctx.progress(1)          // progress to value token
-	if err := p.setCommentIfExists(ctx, key); err != nil {
-		return nil, errors.Wrapf(err, "failed to set comment token to node")
+	if err := p.setSameLineCommentIfExists(ctx, key); err != nil {
+		return nil, errors.Wrapf(err, "failed to set same line comment to node")
 	}
 	if key.GetComment() != nil {
 		// if current token is comment, GetComment() is not nil.
@@ -284,10 +284,10 @@ func (p *parser) parseScalarValueWithComment(ctx *context, tk *token.Token) (ast
 	if node == nil {
 		return nil, nil
 	}
-	if ntk := ctx.nextToken(); ntk != nil && ntk.Type == token.CommentType {
+	if p.isSameLineComment(ctx.nextToken(), node) {
 		ctx.progress(1)
-		if err := p.setCommentIfExists(ctx, node); err != nil {
-			return nil, errors.Wrapf(err, "failed to set comment to node")
+		if err := p.setSameLineCommentIfExists(ctx, node); err != nil {
+			return nil, errors.Wrapf(err, "failed to set same line comment to node")
 		}
 	}
 	return node, nil
@@ -347,15 +347,19 @@ func (p *parser) parseLiteral(ctx *context) (ast.Node, error) {
 	return node, nil
 }
 
-func (p *parser) setCommentIfExists(ctx *context, node ast.Node) error {
-	tk := ctx.currentToken()
+func (p *parser) isSameLineComment(tk *token.Token, node ast.Node) bool {
 	if tk == nil {
-		return nil
+		return false
 	}
 	if tk.Type != token.CommentType {
-		return nil
+		return false
 	}
-	if node.GetToken().Position.Line != tk.Position.Line {
+	return tk.Position.Line == node.GetToken().Position.Line
+}
+
+func (p *parser) setSameLineCommentIfExists(ctx *context, node ast.Node) error {
+	tk := ctx.currentToken()
+	if !p.isSameLineComment(tk, node) {
 		return nil
 	}
 	if err := node.SetComment(tk); err != nil {

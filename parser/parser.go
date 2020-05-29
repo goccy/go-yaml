@@ -16,7 +16,6 @@ type parser struct{}
 func (p *parser) parseMapping(ctx *context) (ast.Node, error) {
 	node := ast.Mapping(ctx.currentToken(), true)
 	ctx.progress(1) // skip MappingStart token
-	p.setCommentIfExists(ctx, node)
 	for ctx.next() {
 		tk := ctx.currentToken()
 		if tk.Type == token.MappingEndType {
@@ -198,8 +197,10 @@ func (p *parser) parseSequenceEntry(ctx *context) (ast.Node, error) {
 		Values: []ast.Node{},
 	}
 	curColumn := tk.Position.Column
-	for tk.Type == token.SequenceEntryType {
-		ctx.progress(1) // skip sequence token
+	for tk.Type == token.SequenceEntryType || tk.Type == token.CommentType {
+		if tk.Type != token.CommentType {
+			ctx.progress(1) // skip sequence token
+		}
 		value, err := p.parseToken(ctx, ctx.currentToken())
 		if err != nil {
 			return nil, errors.Wrapf(err, "failed to parse sequence")
@@ -208,6 +209,13 @@ func (p *parser) parseSequenceEntry(ctx *context) (ast.Node, error) {
 		tk = ctx.nextToken()
 		if tk == nil {
 			break
+		}
+		if tk.Type == token.CommentType {
+			ctx.progress(1)
+			if err := p.setCommentIfExists(ctx, value); err != nil {
+				return nil, errors.Wrapf(err, "failed to set comment token to node")
+			}
+			continue
 		}
 		if tk.Type != token.SequenceEntryType {
 			break
@@ -243,6 +251,12 @@ func (p *parser) parseAnchor(ctx *context) (ast.Node, error) {
 		return nil, errors.Wrapf(err, "failed to parser anchor name node")
 	}
 	anchor.Value = value
+	if ntk := ctx.nextToken(); ntk != nil && ntk.Type == token.CommentType {
+		ctx.progress(1)
+		if err := p.setCommentIfExists(ctx, value); err != nil {
+			return nil, errors.Wrapf(err, "failed to set comment token to node")
+		}
+	}
 	return anchor, nil
 }
 
@@ -259,6 +273,12 @@ func (p *parser) parseAlias(ctx *context) (ast.Node, error) {
 		return nil, errors.Wrapf(err, "failed to parser alias name node")
 	}
 	alias.Value = name
+	if ntk := ctx.nextToken(); ntk != nil && ntk.Type == token.CommentType {
+		ctx.progress(1)
+		if err := p.setCommentIfExists(ctx, name); err != nil {
+			return nil, errors.Wrapf(err, "failed to set comment token to node")
+		}
+	}
 	return alias, nil
 }
 

@@ -570,7 +570,13 @@ func TestSyntaxError(t *testing.T) {
 }
 
 func TestComment(t *testing.T) {
-	yml := `
+	tests := []struct {
+		name string
+		yaml string
+	}{
+		{
+			name: "map with comment",
+			yaml: `
 # commentA
 a: #commentB
   # commentC
@@ -582,14 +588,40 @@ a: #commentB
 # commentI
 f: g # commentJ
 # commentK
-`
-	f, err := parser.ParseBytes([]byte(yml), parser.ParseComments)
-	if err != nil {
-		t.Fatalf("%+v", err)
+`,
+		},
+		{
+			name: "sequence with comment",
+			yaml: `
+# commentA
+- a # commentB
+# commentC
+- b: # commentD
+  # commentE
+  - d # commentF
+  - e # commentG
+# commentH
+`,
+		},
+		{
+			name: "anchor and alias",
+			yaml: `
+a: &x b # commentA
+c: *x # commentB
+`,
+		},
 	}
-	var v Visitor
-	for _, doc := range f.Docs {
-		ast.Walk(&v, doc.Body)
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			f, err := parser.ParseBytes([]byte(test.yaml), parser.ParseComments)
+			if err != nil {
+				t.Fatalf("%+v", err)
+			}
+			var v Visitor
+			for _, doc := range f.Docs {
+				ast.Walk(&v, doc.Body)
+			}
+		})
 	}
 }
 

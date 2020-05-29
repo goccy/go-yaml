@@ -28,16 +28,15 @@ func (c *context) currentToken() *token.Token {
 	return c.tokens[c.idx]
 }
 
-func (c *context) nextNotCommentToken() *token.Token {
-	for i := c.idx; i+1 < c.size; i++ {
-		tk := c.tokens[i+1]
+func (c *context) notCommentToken() *token.Token {
+	for i := c.idx; i < c.size; i++ {
+		tk := c.tokens[i]
 		if tk.Type == token.CommentType {
 			continue
 		}
 		return tk
 	}
 	return nil
-
 }
 
 func (c *context) nextToken() *token.Token {
@@ -47,13 +46,17 @@ func (c *context) nextToken() *token.Token {
 	return c.tokens[c.idx+1]
 }
 
-func (c *context) afterNextNotCommentToken() *token.Token {
-	for i := c.idx; i+2 < c.size; i++ {
-		tk := c.tokens[i+2]
+func (c *context) nextNotCommentToken() *token.Token {
+	notCommentTokenCount := 0
+	for i := c.idx + 1; i < c.size; i++ {
+		tk := c.tokens[i]
 		if tk.Type == token.CommentType {
 			continue
 		}
-		return tk
+		notCommentTokenCount++
+		if notCommentTokenCount == 1 {
+			return tk
+		}
 	}
 	return nil
 }
@@ -65,16 +68,46 @@ func (c *context) afterNextToken() *token.Token {
 	return c.tokens[c.idx+2]
 }
 
+func (c *context) afterNextNotCommentToken() *token.Token {
+	notCommentTokenCount := 0
+	for i := c.idx + 1; i < c.size; i++ {
+		tk := c.tokens[i]
+		if tk.Type == token.CommentType {
+			continue
+		}
+		notCommentTokenCount++
+		if notCommentTokenCount == 2 {
+			return tk
+		}
+	}
+	return nil
+}
+
 func (c *context) enabledComment() bool {
 	return c.mode&ParseComments != 0
 }
 
-func (c *context) progress(num int) {
+func (c *context) isCurrentCommentToken() bool {
+	tk := c.currentToken()
+	if tk == nil {
+		return false
+	}
+	return tk.Type == token.CommentType
+}
+
+func (c *context) progressIgnoreComment(num int) {
 	if c.size <= c.idx+num {
 		c.idx = c.size
 	} else {
 		c.idx += num
 	}
+}
+
+func (c *context) progress(num int) {
+	if c.isCurrentCommentToken() {
+		return
+	}
+	c.progressIgnoreComment(num)
 }
 
 func newContext(tokens token.Tokens, mode Mode) *context {

@@ -116,6 +116,11 @@ func (p *parser) parseMappingValue(ctx *context) (ast.Node, error) {
 	if err := p.setCommentIfExists(ctx, key); err != nil {
 		return nil, errors.Wrapf(err, "failed to set comment token to node")
 	}
+	if key.GetComment() != nil {
+		// if current token is comment, GetComment() is not nil.
+		// then progress to value token
+		ctx.progressIgnoreComment(1)
+	}
 	var value ast.Node
 	if vtk := ctx.currentToken(); vtk == nil {
 		value = ast.Null(token.New("null", "null", tk.Position))
@@ -130,7 +135,7 @@ func (p *parser) parseMappingValue(ctx *context) (ast.Node, error) {
 	valueColumn := value.GetToken().Position.Column
 	if keyColumn == valueColumn {
 		if value.Type() == ast.StringType {
-			ntk := ctx.nextNotCommentToken()
+			ntk := ctx.nextToken()
 			if ntk == nil || (ntk.Type != token.MappingValueType && ntk.Type != token.SequenceEntryType) {
 				return nil, errors.ErrSyntax("could not found expected ':' token", value.GetToken())
 			}
@@ -141,15 +146,7 @@ func (p *parser) parseMappingValue(ctx *context) (ast.Node, error) {
 		Key:   key,
 		Value: value,
 	}
-	ntk := ctx.nextToken()
-	if ntk != nil && ntk.Type == token.CommentType {
-		// next token is comment for map value
-		ctx.progress(1)
-		if err := p.setCommentIfExists(ctx, value); err != nil {
-			return nil, errors.Wrapf(err, "failed to set comment token to node")
-		}
-		ntk = ctx.nextToken()
-	}
+	ntk := ctx.nextNotCommentToken()
 	antk := ctx.afterNextNotCommentToken()
 	node := &ast.MappingNode{
 		Start:  tk,
@@ -157,9 +154,7 @@ func (p *parser) parseMappingValue(ctx *context) (ast.Node, error) {
 	}
 	for antk != nil && antk.Type == token.MappingValueType &&
 		ntk.Position.Column == key.GetToken().Position.Column {
-		if ctx.currentToken().Type != token.CommentType {
-			ctx.progress(1)
-		}
+		ctx.progressIgnoreComment(1)
 		value, err := p.parseToken(ctx, ctx.currentToken())
 		if err != nil {
 			return nil, errors.Wrapf(err, "failed to parse mapping node")
@@ -197,25 +192,16 @@ func (p *parser) parseSequenceEntry(ctx *context) (ast.Node, error) {
 		Values: []ast.Node{},
 	}
 	curColumn := tk.Position.Column
-	for tk.Type == token.SequenceEntryType || tk.Type == token.CommentType {
-		if tk.Type != token.CommentType {
-			ctx.progress(1) // skip sequence token
-		}
+	for tk.Type == token.SequenceEntryType {
+		ctx.progress(1) // skip sequence token
 		value, err := p.parseToken(ctx, ctx.currentToken())
 		if err != nil {
 			return nil, errors.Wrapf(err, "failed to parse sequence")
 		}
 		sequenceNode.Values = append(sequenceNode.Values, value)
-		tk = ctx.nextToken()
+		tk = ctx.nextNotCommentToken()
 		if tk == nil {
 			break
-		}
-		if tk.Type == token.CommentType {
-			ctx.progress(1)
-			if err := p.setCommentIfExists(ctx, value); err != nil {
-				return nil, errors.Wrapf(err, "failed to set comment token to node")
-			}
-			continue
 		}
 		if tk.Type != token.SequenceEntryType {
 			break
@@ -223,7 +209,7 @@ func (p *parser) parseSequenceEntry(ctx *context) (ast.Node, error) {
 		if tk.Position.Column != curColumn {
 			break
 		}
-		ctx.progress(1)
+		ctx.progressIgnoreComment(1)
 	}
 	return sequenceNode, nil
 }
@@ -251,12 +237,6 @@ func (p *parser) parseAnchor(ctx *context) (ast.Node, error) {
 		return nil, errors.Wrapf(err, "failed to parser anchor name node")
 	}
 	anchor.Value = value
-	if ntk := ctx.nextToken(); ntk != nil && ntk.Type == token.CommentType {
-		ctx.progress(1)
-		if err := p.setCommentIfExists(ctx, value); err != nil {
-			return nil, errors.Wrapf(err, "failed to set comment token to node")
-		}
-	}
 	return anchor, nil
 }
 
@@ -273,12 +253,6 @@ func (p *parser) parseAlias(ctx *context) (ast.Node, error) {
 		return nil, errors.Wrapf(err, "failed to parser alias name node")
 	}
 	alias.Value = name
-	if ntk := ctx.nextToken(); ntk != nil && ntk.Type == token.CommentType {
-		ctx.progress(1)
-		if err := p.setCommentIfExists(ctx, name); err != nil {
-			return nil, errors.Wrapf(err, "failed to set comment token to node")
-		}
-	}
 	return alias, nil
 }
 
@@ -303,6 +277,20 @@ func (p *parser) parseStringValue(tk *token.Token) ast.Node {
 		return ast.String(tk)
 	}
 	return nil
+}
+
+func (p *parser) parseScalarValueWithComment(ctx *context, tk *token.Token) (ast.Node, error) {
+	node := p.parseScalarValue(tk)
+	if node == nil {
+		return nil, nil
+	}
+	if ntk := ctx.nextToken(); ntk != nil && ntk.Type == token.CommentType {
+		ctx.progress(1)
+		if err := p.setCommentIfExists(ctx, node); err != nil {
+			return nil, errors.Wrapf(err, "failed to set comment to node")
+		}
+	}
+	return node, nil
 }
 
 func (p *parser) parseScalarValue(tk *token.Token) ast.Node {
@@ -373,7 +361,6 @@ func (p *parser) setCommentIfExists(ctx *context, node ast.Node) error {
 	if err := node.SetComment(tk); err != nil {
 		return errors.Wrapf(err, "failed to set comment token to ast.Node")
 	}
-	ctx.progress(1)
 	return nil
 }
 
@@ -393,16 +380,36 @@ func (p *parser) parseDocument(ctx *context) (*ast.Document, error) {
 }
 
 func (p *parser) parseComment(ctx *context) (ast.Node, error) {
-	tk := ctx.currentToken()
-	ctx.progress(1) // skip comment token
+	commentTokens := []*token.Token{}
+	for {
+		tk := ctx.currentToken()
+		if tk == nil {
+			break
+		}
+		if tk.Type != token.CommentType {
+			break
+		}
+		commentTokens = append(commentTokens, tk)
+		ctx.progressIgnoreComment(1) // skip comment token
+	}
+	// TODO: support token group. currently merge tokens to one token
+	firstToken := commentTokens[0]
+	values := []string{}
+	origins := []string{}
+	for _, tk := range commentTokens {
+		values = append(values, tk.Value)
+		origins = append(origins, tk.Origin)
+	}
+	firstToken.Value = strings.Join(values, "")
+	firstToken.Value = strings.Join(origins, "")
 	node, err := p.parseToken(ctx, ctx.currentToken())
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to parse node after comment")
 	}
 	if node == nil {
-		return ast.Comment(tk), nil
+		return ast.Comment(firstToken), nil
 	}
-	if err := node.SetComment(tk); err != nil {
+	if err := node.SetComment(firstToken); err != nil {
 		return nil, errors.Wrapf(err, "failed to set comment token to node")
 	}
 	return node, nil
@@ -416,7 +423,11 @@ func (p *parser) parseToken(ctx *context, tk *token.Token) (ast.Node, error) {
 		node, err := p.parseMappingValue(ctx)
 		return node, err
 	}
-	if node := p.parseScalarValue(tk); node != nil {
+	node, err := p.parseScalarValueWithComment(ctx, tk)
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to parse scalar value")
+	}
+	if node != nil {
 		return node, nil
 	}
 	switch tk.Type {
@@ -452,15 +463,9 @@ func (p *parser) parse(tokens token.Tokens, mode Mode) (*ast.File, error) {
 		if err != nil {
 			return nil, errors.Wrapf(err, "failed to parse")
 		}
-		tk := ctx.currentToken()
-		if tk != nil && tk.Type != token.CommentType {
-			ctx.progress(1)
-		}
+		ctx.progressIgnoreComment(1)
 		if node == nil {
 			continue
-		}
-		if err := p.setCommentIfExists(ctx, node); err != nil {
-			return nil, errors.Wrapf(err, "failed to set comment token to node")
 		}
 		if doc, ok := node.(*ast.Document); ok {
 			file.Docs = append(file.Docs, doc)

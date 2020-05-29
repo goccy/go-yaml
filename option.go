@@ -59,6 +59,15 @@ func DisallowUnknownField() DecodeOption {
 	}
 }
 
+// UseOrderedMap can be interpreted as a map,
+// and uses MapSlice ( ordered map ) aggressively if there is no type specification
+func UseOrderedMap() DecodeOption {
+	return func(d *Decoder) error {
+		d.useOrderedMap = true
+		return nil
+	}
+}
+
 // EncodeOption functional option type for Encoder
 type EncodeOption func(e *Encoder) error
 

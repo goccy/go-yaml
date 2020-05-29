@@ -1703,3 +1703,28 @@ value: |
 		t.Fatal("failed to unmarshal literal with bytes unmarshaler")
 	}
 }
+
+func TestDecoder_UseOrderedMap(t *testing.T) {
+	yml := `
+a: b
+c: d
+e:
+  f: g
+  h: i
+j: k
+`
+	var v interface{}
+	if err := yaml.NewDecoder(strings.NewReader(yml), yaml.UseOrderedMap()).Decode(&v); err != nil {
+		t.Fatalf("%+v", err)
+	}
+	if _, ok := v.(yaml.MapSlice); !ok {
+		t.Fatalf("failed to convert to ordered map: %T", v)
+	}
+	bytes, err := yaml.Marshal(v)
+	if err != nil {
+		t.Fatalf("%+v", err)
+	}
+	if string(yml) != "\n"+string(bytes) {
+		t.Fatalf("expected:[%s] actual:[%s]", string(yml), "\n"+string(bytes))
+	}
+}

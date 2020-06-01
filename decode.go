@@ -1056,8 +1056,10 @@ func (d *Decoder) decodeMap(dst reflect.Value, src ast.Node) error {
 		if k.IsValid() && k.Type().ConvertibleTo(keyType) {
 			k = k.Convert(keyType)
 		}
-		if err := d.validateMapKey(keyMap, k.Interface(), key); err != nil {
-			return errors.Wrapf(err, "invalid map key")
+		if k.IsValid() {
+			if err := d.validateMapKey(keyMap, k.Interface(), key); err != nil {
+				return errors.Wrapf(err, "invalid map key")
+			}
 		}
 		if valueType.Kind() == reflect.Ptr && value.Type() == ast.NullType {
 			// set nil value to pointer

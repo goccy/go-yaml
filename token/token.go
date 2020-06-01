@@ -628,14 +628,7 @@ func New(value string, org string, pos *Position) *Token {
 		}
 		return tk
 	}
-	return &Token{
-		Type:          StringType,
-		CharacterType: CharacterTypeMiscellaneous,
-		Indicator:     NotIndicator,
-		Value:         value,
-		Origin:        org,
-		Position:      pos,
-	}
+	return String(value, org, pos)
 }
 
 // Position type for position in YAML document
@@ -715,6 +708,18 @@ func (t *Tokens) Add(tks ...*Token) {
 func (t Tokens) Dump() {
 	for _, tk := range t {
 		fmt.Printf("- %+v\n", tk)
+	}
+}
+
+// String create token for String
+func String(value string, org string, pos *Position) *Token {
+	return &Token{
+		Type:          StringType,
+		CharacterType: CharacterTypeMiscellaneous,
+		Indicator:     NotIndicator,
+		Value:         value,
+		Origin:        org,
+		Position:      pos,
 	}
 }
 

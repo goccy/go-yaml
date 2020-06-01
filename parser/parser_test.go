@@ -66,6 +66,8 @@ func TestParser(t *testing.T) {
 		"- !tag\n  a: b\n  c: d\n",
 		"v:\n- A\n- |-\n  B\n  C\n",
 		"v:\n- A\n- >-\n  B\n  C\n",
+		"v: |-\n  0\n",
+		"v: |-\n  0\nx: 0",
 	}
 	for _, src := range sources {
 		fmt.Printf(src)

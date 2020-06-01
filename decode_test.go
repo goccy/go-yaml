@@ -3,6 +3,7 @@ package yaml_test
 import (
 	"bytes"
 	"fmt"
+	"io"
 	"log"
 	"math"
 	"reflect"
@@ -921,6 +922,9 @@ func TestDecoder(t *testing.T) {
 		typ := reflect.ValueOf(test.value).Type()
 		value := reflect.New(typ)
 		if err := dec.Decode(value.Interface()); err != nil {
+			if err == io.EOF {
+				continue
+			}
 			t.Fatalf("%s: %+v", test.source, err)
 		}
 		actual := fmt.Sprintf("%+v", value.Elem().Interface())
@@ -1726,5 +1730,43 @@ j: k
 	}
 	if string(yml) != "\n"+string(bytes) {
 		t.Fatalf("expected:[%s] actual:[%s]", string(yml), "\n"+string(bytes))
+	}
+}
+
+func TestDecoder_Stream(t *testing.T) {
+	yml := `
+---
+a: b
+c: d
+---
+e: f
+g: h
+---
+i: j
+k: l
+`
+	dec := yaml.NewDecoder(strings.NewReader(yml))
+	values := []map[string]string{}
+	for {
+		var v map[string]string
+		if err := dec.Decode(&v); err != nil {
+			if err == io.EOF {
+				break
+			}
+			t.Fatalf("%+v", err)
+		}
+		values = append(values, v)
+	}
+	if len(values) != 3 {
+		t.Fatal("failed to stream decoding")
+	}
+	if values[0]["a"] != "b" {
+		t.Fatal("failed to stream decoding")
+	}
+	if values[1]["e"] != "f" {
+		t.Fatal("failed to stream decoding")
+	}
+	if values[2]["i"] != "j" {
+		t.Fatal("failed to stream decoding")
 	}
 }

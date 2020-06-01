@@ -35,6 +35,8 @@ type Decoder struct {
 	validator            StructValidator
 	disallowUnknownField bool
 	useOrderedMap        bool
+	parsedFile           *ast.File
+	streamIndex          int
 }
 
 // NewDecoder returns a new decoder that reads from r.
@@ -1131,7 +1133,7 @@ func (d *Decoder) resolveReference() error {
 		}
 
 		// assign new anchor definition to anchorMap
-		if _, err := d.decode(bytes); err != nil {
+		if _, err := d.parse(bytes); err != nil {
 			return errors.Wrapf(err, "failed to decode")
 		}
 	}
@@ -1139,12 +1141,56 @@ func (d *Decoder) resolveReference() error {
 	return nil
 }
 
-func (d *Decoder) decode(bytes []byte) (ast.Node, error) {
+func (d *Decoder) parse(bytes []byte) (*ast.File, error) {
 	f, err := parser.ParseBytes(bytes, 0)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to parse yaml")
 	}
-	return d.fileToNode(f), nil
+	normalizedFile := &ast.File{}
+	for _, doc := range f.Docs {
+		// try to decode ast.Node to value and map anchor value to anchorMap
+		if v := d.nodeToValue(doc.Body); v != nil {
+			normalizedFile.Docs = append(normalizedFile.Docs, doc)
+		}
+	}
+	return normalizedFile, nil
+}
+
+func (d *Decoder) isInitialized() bool {
+	return d.parsedFile != nil
+}
+
+func (d *Decoder) decodeInit() error {
+	if !d.isResolvedReference {
+		if err := d.resolveReference(); err != nil {
+			return errors.Wrapf(err, "failed to resolve reference")
+		}
+	}
+	var buf bytes.Buffer
+	if _, err := io.Copy(&buf, d.reader); err != nil {
+		return errors.Wrapf(err, "failed to copy from reader")
+	}
+	file, err := d.parse(buf.Bytes())
+	if err != nil {
+		return errors.Wrapf(err, "failed to decode")
+	}
+	d.parsedFile = file
+	return nil
+}
+
+func (d *Decoder) decode(v reflect.Value) error {
+	if len(d.parsedFile.Docs) <= d.streamIndex {
+		return io.EOF
+	}
+	body := d.parsedFile.Docs[d.streamIndex].Body
+	if body == nil {
+		return nil
+	}
+	if err := d.decodeValue(v.Elem(), body); err != nil {
+		return errors.Wrapf(err, "failed to decode value")
+	}
+	d.streamIndex++
+	return nil
 }
 
 // Decode reads the next YAML-encoded value from its input
@@ -1153,28 +1199,27 @@ func (d *Decoder) decode(bytes []byte) (ast.Node, error) {
 // See the documentation for Unmarshal for details about the
 // conversion of YAML into a Go value.
 func (d *Decoder) Decode(v interface{}) error {
-	if !d.isResolvedReference {
-		if err := d.resolveReference(); err != nil {
-			return errors.Wrapf(err, "failed to resolve reference")
-		}
-	}
 	rv := reflect.ValueOf(v)
 	if rv.Type().Kind() != reflect.Ptr {
 		return errors.ErrDecodeRequiredPointerType
 	}
-	var buf bytes.Buffer
-	if _, err := io.Copy(&buf, d.reader); err != nil {
-		return errors.Wrapf(err, "failed to copy from reader")
-	}
-	node, err := d.decode(buf.Bytes())
-	if err != nil {
-		return errors.Wrapf(err, "failed to decode")
-	}
-	if node == nil {
+	if d.isInitialized() {
+		if err := d.decode(rv); err != nil {
+			if err == io.EOF {
+				return err
+			}
+			return errors.Wrapf(err, "failed to decode")
+		}
 		return nil
 	}
-	if err := d.decodeValue(rv.Elem(), node); err != nil {
-		return errors.Wrapf(err, "failed to decode value")
+	if err := d.decodeInit(); err != nil {
+		return errors.Wrapf(err, "failed to decodInit")
+	}
+	if err := d.decode(rv); err != nil {
+		if err == io.EOF {
+			return err
+		}
+		return errors.Wrapf(err, "failed to decode")
 	}
 	return nil
 }

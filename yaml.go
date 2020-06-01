@@ -2,6 +2,7 @@ package yaml
 
 import (
 	"bytes"
+	"io"
 
 	"github.com/goccy/go-yaml/internal/errors"
 	"golang.org/x/xerrors"
@@ -127,6 +128,9 @@ func Marshal(v interface{}) ([]byte, error) {
 func Unmarshal(data []byte, v interface{}) error {
 	dec := NewDecoder(bytes.NewBuffer(data))
 	if err := dec.Decode(v); err != nil {
+		if err == io.EOF {
+			return nil
+		}
 		return errors.Wrapf(err, "failed to unmarshal")
 	}
 	return nil

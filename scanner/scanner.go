@@ -312,7 +312,7 @@ func (s *Scanner) scanLiteral(ctx *Context, c rune) {
 			ctx.addBuf(c)
 		}
 		value := ctx.bufferedSrc()
-		ctx.addToken(token.New(string(value), string(ctx.obuf), s.pos()))
+		ctx.addToken(token.String(string(value), string(ctx.obuf), s.pos()))
 		ctx.resetBuffer()
 		s.progressColumn(ctx, 1)
 	} else if s.isNewLineChar(c) {

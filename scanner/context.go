@@ -190,7 +190,12 @@ func (c *Context) bufferedToken(pos *token.Position) *token.Token {
 	if len(source) == 0 {
 		return nil
 	}
-	tk := token.New(string(source), string(c.obuf), pos)
+	var tk *token.Token
+	if c.isDocument() {
+		tk = token.String(string(source), string(c.obuf), pos)
+	} else {
+		tk = token.New(string(source), string(c.obuf), pos)
+	}
 	c.resetBuffer()
 	return tk
 }

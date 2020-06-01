@@ -49,12 +49,29 @@ func Validator(v StructValidator) DecodeOption {
 	}
 }
 
+// Strict enable DisallowUnknownField and DisallowDuplicateKey
+func Strict() DecodeOption {
+	return func(d *Decoder) error {
+		d.disallowUnknownField = true
+		d.disallowDuplicateKey = true
+		return nil
+	}
+}
+
 // DisallowUnknownField causes the Decoder to return an error when the destination
 // is a struct and the input contains object keys which do not match any
 // non-ignored, exported fields in the destination.
 func DisallowUnknownField() DecodeOption {
 	return func(d *Decoder) error {
 		d.disallowUnknownField = true
+		return nil
+	}
+}
+
+// DisallowDuplicateKey causes an error when mapping keys that are duplicates
+func DisallowDuplicateKey() DecodeOption {
+	return func(d *Decoder) error {
+		d.disallowDuplicateKey = true
 		return nil
 	}
 }

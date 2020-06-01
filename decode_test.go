@@ -1438,6 +1438,26 @@ children:
 	})
 }
 
+func TestDecoder_DisallowDuplicateKey(t *testing.T) {
+	yml := `
+a: b
+a: c
+`
+	expected := `
+[3:1] duplicate key "a"
+   2 | 
+>  3 | a: b
+   4 | a: c
+      ^
+`
+	var v map[string]string
+	err := yaml.NewDecoder(strings.NewReader(yml), yaml.DisallowDuplicateKey()).Decode(&v)
+	actual := "\n" + err.Error()
+	if expected != actual {
+		t.Fatalf("expected:[%s] actual:[%s]", expected, actual)
+	}
+}
+
 func TestDecoder_DefaultValues(t *testing.T) {
 	v := struct {
 		A string `yaml:"a"`

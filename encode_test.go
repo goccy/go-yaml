@@ -695,6 +695,52 @@ func TestEncoder_Flow(t *testing.T) {
 	}
 }
 
+func TestEncoder_JSON(t *testing.T) {
+	var buf bytes.Buffer
+	enc := yaml.NewEncoder(&buf, yaml.JSON())
+	type st struct {
+		I int8
+		S string
+		F float32
+	}
+	if err := enc.Encode(struct {
+		I      int
+		U      uint
+		S      string
+		F      float64
+		Struct *st
+		Slice  []int
+		Map    map[string]interface{}
+		Time   time.Time
+	}{
+		I: -10,
+		U: 10,
+		S: "hello",
+		F: 3.14,
+		Struct: &st{
+			I: 2,
+			S: "world",
+			F: 1.23,
+		},
+		Slice: []int{1, 2, 3, 4, 5},
+		Map: map[string]interface{}{
+			"a": 1,
+			"b": 1.23,
+			"c": "json",
+		},
+		Time: time.Time{},
+	}); err != nil {
+		t.Fatalf("%+v", err)
+	}
+	expect := `
+{"i": -10, "u": 10, "s": "hello", "f": 3.14, "struct": {"i": 2, "s": "world", "f": 1.23}, "slice": [1, 2, 3, 4, 5], "map": {"a": 1, "b": 1.23, "c": "json"}, "time": "0001-01-01T00:00:00Z"}
+`
+	actual := "\n" + buf.String()
+	if expect != actual {
+		t.Fatalf("JSON style marshal error: expect=[%s] actual=[%s]", expect, actual)
+	}
+}
+
 func TestEncoder_MarshalAnchor(t *testing.T) {
 	type Host struct {
 		Hostname string

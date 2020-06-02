@@ -216,7 +216,7 @@ func (s *Scanner) scanSingleQuote(ctx *Context) (tk *token.Token, pos int) {
 			continue
 		}
 		tk = token.SingleQuote(string(value), string(ctx.obuf), s.pos())
-		pos = len([]rune(value)) + 1
+		pos = idx - startIndex + 1
 		return
 	}
 	return
@@ -237,6 +237,11 @@ func (s *Scanner) scanDoubleQuote(ctx *Context) (tk *token.Token, pos int) {
 			if idx+1 < size {
 				nextChar := src[idx+1]
 				switch nextChar {
+				case 'n':
+					ctx.addOriginBuf(nextChar)
+					value = append(value, '\n')
+					idx++
+					continue
 				case '"':
 					ctx.addOriginBuf(nextChar)
 					value = append(value, nextChar)
@@ -253,9 +258,8 @@ func (s *Scanner) scanDoubleQuote(ctx *Context) (tk *token.Token, pos int) {
 			value = append(value, c)
 			continue
 		}
-
 		tk = token.DoubleQuote(string(value), string(ctx.obuf), s.pos())
-		pos = len([]rune(value)) + 1
+		pos = idx - startIndex + 1
 		return
 	}
 	return

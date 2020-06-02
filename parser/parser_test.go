@@ -68,6 +68,7 @@ func TestParser(t *testing.T) {
 		"v:\n- A\n- >-\n  B\n  C\n",
 		"v: |-\n  0\n",
 		"v: |-\n  0\nx: 0",
+		`"a\n1\nb"`,
 	}
 	for _, src := range sources {
 		fmt.Printf(src)

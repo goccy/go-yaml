@@ -30,6 +30,7 @@ type Encoder struct {
 	opts               []EncodeOption
 	indent             int
 	isFlowStyle        bool
+	isJSONStyle        bool
 	anchorCallback     func(*ast.AnchorNode, interface{}) error
 	anchorPtrToNameMap map[uintptr]string
 
@@ -242,7 +243,7 @@ func (e *Encoder) encodeFloat(v float64) ast.Node {
 }
 
 func (e *Encoder) encodeString(v string, column int) ast.Node {
-	if token.IsNeedQuoted(v) {
+	if e.isJSONStyle || token.IsNeedQuoted(v) {
 		v = strconv.Quote(v)
 	}
 	return ast.String(token.New(v, v, e.pos(column)))
@@ -368,6 +369,9 @@ func (e *Encoder) isZeroValue(v reflect.Value) bool {
 
 func (e *Encoder) encodeTime(v time.Time, column int) ast.Node {
 	value := v.Format(time.RFC3339Nano)
+	if e.isJSONStyle {
+		value = strconv.Quote(value)
+	}
 	return ast.String(token.New(value, value, e.pos(column)))
 }
 

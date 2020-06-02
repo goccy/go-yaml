@@ -104,6 +104,15 @@ func Flow(isFlowStyle bool) EncodeOption {
 	}
 }
 
+// JSON encode in JSON format
+func JSON() EncodeOption {
+	return func(e *Encoder) error {
+		e.isJSONStyle = true
+		e.isFlowStyle = true
+		return nil
+	}
+}
+
 // MarshalAnchor call back if encoder find an anchor during encoding
 func MarshalAnchor(callback func(*ast.AnchorNode, interface{}) error) EncodeOption {
 	return func(e *Encoder) error {

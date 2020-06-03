@@ -909,6 +909,36 @@ func TestDecoder(t *testing.T) {
 				},
 			},
 		},
+		{
+			`---
+- a:
+    b:
+- c: d
+`,
+			[]map[string]interface{}{
+				{
+					"a": map[string]interface{}{
+						"b": nil,
+					},
+				},
+				{
+					"c": "d",
+				},
+			},
+		},
+		{
+			`---
+a:
+  b:
+c: d
+`,
+			map[string]interface{}{
+				"a": map[string]interface{}{
+					"b": nil,
+				},
+				"c": "d",
+			},
+		},
 
 		// Multi bytes
 		{

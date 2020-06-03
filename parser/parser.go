@@ -113,8 +113,21 @@ func (p *parser) parseMapValue(ctx *context, key ast.Node, colonToken *token.Tok
 		return ast.Null(nullToken), nil
 	}
 
+	if tk.Position.Column == key.GetToken().Position.Column && tk.Type == token.StringType {
+		// in this case,
+		// ----
+		// key: <value does not defined>
+		// next
+		nullToken := p.createNullToken(colonToken)
+		ctx.insertToken(ctx.idx, nullToken)
+		return ast.Null(nullToken), nil
+	}
+
 	if tk.Position.Column < key.GetToken().Position.Column {
-		// in this case, key: <value does not defined>
+		// in this case,
+		// ----
+		//   key: <value does not defined>
+		// next
 		nullToken := p.createNullToken(colonToken)
 		ctx.insertToken(ctx.idx, nullToken)
 		return ast.Null(nullToken), nil

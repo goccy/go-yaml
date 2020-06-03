@@ -939,6 +939,18 @@ c: d
 				"c": "d",
 			},
 		},
+		{
+			`---
+a:
+b:
+c:
+`,
+			map[string]interface{}{
+				"a": nil,
+				"b": nil,
+				"c": nil,
+			},
+		},
 
 		// Multi bytes
 		{

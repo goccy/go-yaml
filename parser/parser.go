@@ -99,6 +99,50 @@ func (p *parser) validateMapKey(tk *token.Token) error {
 	return nil
 }
 
+func (p *parser) createNullToken(base *token.Token) *token.Token {
+	pos := *(base.Position)
+	pos.Column++
+	return token.New("null", "null", &pos)
+}
+
+func (p *parser) parseMapValue(ctx *context, key ast.Node, colonToken *token.Token) (ast.Node, error) {
+	tk := ctx.currentToken()
+	if tk == nil {
+		nullToken := p.createNullToken(colonToken)
+		ctx.insertToken(ctx.idx, nullToken)
+		return ast.Null(nullToken), nil
+	}
+
+	if tk.Position.Column < key.GetToken().Position.Column {
+		// in this case, key: <value does not defined>
+		nullToken := p.createNullToken(colonToken)
+		ctx.insertToken(ctx.idx, nullToken)
+		return ast.Null(nullToken), nil
+	}
+
+	value, err := p.parseToken(ctx, ctx.currentToken())
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to parse mapping 'value' node")
+	}
+	return value, nil
+}
+
+func (p *parser) validateMapValue(ctx *context, key, value ast.Node) error {
+	keyColumn := key.GetToken().Position.Column
+	valueColumn := value.GetToken().Position.Column
+	if keyColumn != valueColumn {
+		return nil
+	}
+	if value.Type() != ast.StringType {
+		return nil
+	}
+	ntk := ctx.nextToken()
+	if ntk == nil || (ntk.Type != token.MappingValueType && ntk.Type != token.SequenceEntryType) {
+		return errors.ErrSyntax("could not found expected ':' token", value.GetToken())
+	}
+	return nil
+}
+
 func (p *parser) parseMappingValue(ctx *context) (ast.Node, error) {
 	key := p.parseMapKey(ctx.currentToken())
 	if key == nil {
@@ -121,37 +165,20 @@ func (p *parser) parseMappingValue(ctx *context) (ast.Node, error) {
 		// then progress to value token
 		ctx.progressIgnoreComment(1)
 	}
-	var value ast.Node
-	if vtk := ctx.currentToken(); vtk == nil {
-		value = ast.Null(token.New("null", "null", tk.Position))
-	} else {
-		v, err := p.parseToken(ctx, ctx.currentToken())
-		if err != nil {
-			return nil, errors.Wrapf(err, "failed to parse mapping 'value' node")
-		}
-		value = v
+
+	value, err := p.parseMapValue(ctx, key, tk)
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to parse map value")
 	}
-	keyColumn := key.GetToken().Position.Column
-	valueColumn := value.GetToken().Position.Column
-	if keyColumn == valueColumn {
-		if value.Type() == ast.StringType {
-			ntk := ctx.nextToken()
-			if ntk == nil || (ntk.Type != token.MappingValueType && ntk.Type != token.SequenceEntryType) {
-				return nil, errors.ErrSyntax("could not found expected ':' token", value.GetToken())
-			}
-		}
+	if err := p.validateMapValue(ctx, key, value); err != nil {
+		return nil, errors.Wrapf(err, "failed to validate map value")
 	}
-	mvnode := &ast.MappingValueNode{
-		Start: tk,
-		Key:   key,
-		Value: value,
-	}
+
+	mvnode := &ast.MappingValueNode{Start: tk, Key: key, Value: value}
+	node := &ast.MappingNode{Start: tk, Values: []*ast.MappingValueNode{mvnode}}
+
 	ntk := ctx.nextNotCommentToken()
 	antk := ctx.afterNextNotCommentToken()
-	node := &ast.MappingNode{
-		Start:  tk,
-		Values: []*ast.MappingValueNode{mvnode},
-	}
 	for antk != nil && antk.Type == token.MappingValueType &&
 		ntk.Position.Column == key.GetToken().Position.Column {
 		ctx.progressIgnoreComment(1)

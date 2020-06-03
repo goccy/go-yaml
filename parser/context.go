@@ -21,6 +21,29 @@ func (c *context) previousToken() *token.Token {
 	return nil
 }
 
+func (c *context) insertToken(idx int, tk *token.Token) {
+	if c.size < idx {
+		return
+	}
+	if c.size == idx {
+		curToken := c.tokens[c.size-1]
+		tk.Next = curToken
+		curToken.Prev = tk
+
+		c.tokens = append(c.tokens, tk)
+		c.size = len(c.tokens)
+		return
+	}
+
+	curToken := c.tokens[idx]
+	tk.Next = curToken
+	curToken.Prev = tk
+
+	c.tokens = append(c.tokens[:idx+1], c.tokens[idx:]...)
+	c.tokens[idx] = tk
+	c.size = len(c.tokens)
+}
+
 func (c *context) currentToken() *token.Token {
 	if c.idx >= c.size {
 		return nil

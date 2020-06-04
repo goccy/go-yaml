@@ -1,6 +1,8 @@
 package yaml_test
 
 import (
+	"fmt"
+	"log"
 	"reflect"
 	"strings"
 	"testing"
@@ -110,4 +112,29 @@ store:
 			})
 		}
 	})
+}
+
+func Example_YAMLPath() {
+	yml := `
+store:
+  book:
+    - author: john
+      price: 10
+    - author: ken
+      price: 12
+  bicycle:
+    color: red
+    price: 19.95
+`
+	path, err := yaml.PathString("$.store.book[*].author")
+	if err != nil {
+		log.Fatal(err)
+	}
+	var authors []string
+	if err := path.Read(strings.NewReader(yml), &authors); err != nil {
+		log.Fatal(err)
+	}
+	fmt.Println(authors)
+	// OUTPUT:
+	// [john ken]
 }

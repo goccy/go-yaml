@@ -23,6 +23,7 @@ As of this writing, there already exists a defacto standard library for YAML pro
 - Support `Scanner` or `Lexer` or `Parser` as public API
 - Support `Anchor` and `Alias` to Marshaler
 - Allow referencing elements declared in another file via anchors
+- Extract value or AST by YAMLPath ( YAMLPath is like a JSONPath )
 
 # Synopsis
 
@@ -271,6 +272,32 @@ using  `yaml.FormatError`, which accepts two boolean values to
 control turning on/off these features
 
 <img src="https://user-images.githubusercontent.com/209884/67358124-587f0980-f59a-11e9-96fc-7205aab77695.png"></img>
+
+# 5. Use YAMLPath
+
+```go
+	yml := `
+store:
+  book:
+    - author: john
+      price: 10
+    - author: ken
+      price: 12
+  bicycle:
+    color: red
+    price: 19.95
+`
+path, err := yaml.PathString("$.store.book[*].author")
+if err != nil {
+ ...
+}
+var authors []string
+if err := path.Read(strings.NewReader(yml), &authors); err != nil {
+ ...
+}
+fmt.Println(authors)
+// [john ken]
+```
 
 # Installation
 

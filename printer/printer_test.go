@@ -32,7 +32,7 @@ alias: *x
 		expect := `
    1 | ---
 >  2 | text: aaaa
-            ^
+             ^
    3 | text2: aaaa
    4 |  bbbb
    5 |  cccc
@@ -55,7 +55,7 @@ alias: *x
    5 |  cccc
    6 |  dddd
    7 |  eeee
-      ^
+       ^
 `
 		if actual != expect {
 			t.Fatalf("unexpected output: expect:[%s]\n actual:[%s]", expect, actual)
@@ -73,7 +73,7 @@ alias: *x
    5 |  cccc
    6 |  dddd
    7 |  eeee
-             ^
+              ^
    8 | text3: ffff
    9 |  gggg
   10 |  hhhh
@@ -84,21 +84,47 @@ alias: *x
 			t.Fatalf("unexpected output: expect:[%s]\n actual:[%s]", expect, actual)
 		}
 	})
+	t.Run("print error token with document header", func(t *testing.T) {
+		tokens := lexer.Tokenize(`---
+a:
+ b:
+  c:
+   d: e
+   f: g
+   h: i
+
+---
+`)
+		expect := `
+   3 |  b:
+   4 |   c:
+   5 |    d: e
+>  6 |    f: g
+             ^
+   7 |    h: i
+   8 | 
+   9 | ---`
+		var p printer.Printer
+		actual := "\n" + p.PrintErrorToken(tokens[12], false)
+		if actual != expect {
+			t.Fatalf("unexpected output: expect:[%s]\n actual:[%s]", expect, actual)
+		}
+	})
 	t.Run("output with color", func(t *testing.T) {
 		t.Run("token6", func(t *testing.T) {
 			tokens := lexer.Tokenize(yml)
 			var p printer.Printer
-			t.Logf("%s", p.PrintErrorToken(tokens[6], true))
+			t.Logf("\n%s", p.PrintErrorToken(tokens[6], true))
 		})
 		t.Run("token9", func(t *testing.T) {
 			tokens := lexer.Tokenize(yml)
 			var p printer.Printer
-			t.Logf("%s", p.PrintErrorToken(tokens[9], true))
+			t.Logf("\n%s", p.PrintErrorToken(tokens[9], true))
 		})
 		t.Run("token12", func(t *testing.T) {
 			tokens := lexer.Tokenize(yml)
 			var p printer.Printer
-			t.Logf("%s", p.PrintErrorToken(tokens[12], true))
+			t.Logf("\n%s", p.PrintErrorToken(tokens[12], true))
 		})
 	})
 	t.Run("print error message", func(t *testing.T) {

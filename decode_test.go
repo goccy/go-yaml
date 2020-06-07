@@ -1487,10 +1487,9 @@ a: c
 `
 	expected := `
 [3:1] duplicate key "a"
-   2 | 
->  3 | a: b
-   4 | a: c
-      ^
+   2 | a: b
+>  3 | a: c
+       ^
 `
 	var v map[string]string
 	err := yaml.NewDecoder(strings.NewReader(yml), yaml.DisallowDuplicateKey()).Decode(&v)
@@ -1587,7 +1586,7 @@ complecated: string
 	//        1 | ---
 	//        2 | simple: string
 	//     >  3 | complecated: string
-	//           ^
+	//            ^
 }
 
 type unmarshalableStringValue string

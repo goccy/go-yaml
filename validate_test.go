@@ -35,12 +35,11 @@ func ExampleStructValidator() {
 	fmt.Printf("%v", err)
 	// OUTPUT:
 	// [5:8] Key: 'Person.Age' Error:Field validation for 'Age' failed on the 'gte' tag
-	//        1 | ---
 	//        2 | - name: john
 	//        3 |   age: 20
 	//        4 | - name: tom
 	//     >  5 |   age: -1
-	//                  ^
+	//                   ^
 	//        6 | - name: ken
 	//        7 |   age: 10
 }

@@ -1426,8 +1426,8 @@ c:
 	})
 	t.Run("inline", func(t *testing.T) {
 		var v struct {
-			Child `yaml:",inline"`
-			A     string `yaml:"a"`
+			*Child `yaml:",inline"`
+			A      string `yaml:"a"`
 		}
 		yml := `---
 a: a

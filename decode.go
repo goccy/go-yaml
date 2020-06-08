@@ -362,14 +362,17 @@ func errDuplicateKey(msg string, tk *token.Token) *duplicateKeyError {
 }
 
 func (d *Decoder) deleteStructKeys(structValue reflect.Value, unknownFields map[string]ast.Node) error {
-	strType := structValue.Type()
-	structFieldMap, err := structFieldMap(strType)
+	structType := structValue.Type()
+	if structType.Kind() == reflect.Ptr {
+		structType = structType.Elem()
+	}
+	structFieldMap, err := structFieldMap(structType)
 	if err != nil {
 		return errors.Wrapf(err, "failed to create struct field map")
 	}
 
-	for j := 0; j < strType.NumField(); j++ {
-		field := structValue.Type().Field(j)
+	for j := 0; j < structType.NumField(); j++ {
+		field := structType.Field(j)
 		if isIgnoredStructField(field) {
 			continue
 		}

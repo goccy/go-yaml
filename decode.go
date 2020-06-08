@@ -581,6 +581,7 @@ func (d *Decoder) keyToNodeMap(node ast.Node, ignoreMergeKey bool, getKeyOrValue
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to get map node")
 	}
+	keyMap := map[string]struct{}{}
 	keyToNodeMap := map[string]ast.Node{}
 	if mapNode == nil {
 		return keyToNodeMap, nil
@@ -597,12 +598,18 @@ func (d *Decoder) keyToNodeMap(node ast.Node, ignoreMergeKey bool, getKeyOrValue
 				return nil, errors.Wrapf(err, "failed to get keyToNodeMap by MergeKey node")
 			}
 			for k, v := range mergeMap {
+				if err := d.validateDuplicateKey(keyMap, k, v); err != nil {
+					return nil, errors.Wrapf(err, "invalid struct key")
+				}
 				keyToNodeMap[k] = v
 			}
 		} else {
 			key, ok := d.nodeToValue(keyNode).(string)
 			if !ok {
 				return nil, errors.Wrapf(err, "failed to decode map key")
+			}
+			if err := d.validateDuplicateKey(keyMap, key, keyNode); err != nil {
+				return nil, errors.Wrapf(err, "invalid struct key")
 			}
 			keyToNodeMap[key] = getKeyOrValueNode(mapIter)
 		}
@@ -970,7 +977,7 @@ func (d *Decoder) decodeMapItem(dst *MapItem, src ast.Node) error {
 	return nil
 }
 
-func (d *Decoder) validateMapKey(keyMap map[string]struct{}, key interface{}, keyNode ast.Node) error {
+func (d *Decoder) validateDuplicateKey(keyMap map[string]struct{}, key interface{}, keyNode ast.Node) error {
 	k, ok := key.(string)
 	if !ok {
 		return nil
@@ -1004,7 +1011,7 @@ func (d *Decoder) decodeMapSlice(dst *MapSlice, src ast.Node) error {
 				return errors.Wrapf(err, "failed to decode map with merge key")
 			}
 			for _, v := range m {
-				if err := d.validateMapKey(keyMap, v.Key, value); err != nil {
+				if err := d.validateDuplicateKey(keyMap, v.Key, value); err != nil {
 					return errors.Wrapf(err, "invalid map key")
 				}
 				mapSlice = append(mapSlice, v)
@@ -1012,7 +1019,7 @@ func (d *Decoder) decodeMapSlice(dst *MapSlice, src ast.Node) error {
 			continue
 		}
 		k := d.nodeToValue(key)
-		if err := d.validateMapKey(keyMap, k, key); err != nil {
+		if err := d.validateDuplicateKey(keyMap, k, key); err != nil {
 			return errors.Wrapf(err, "invalid map key")
 		}
 		mapSlice = append(mapSlice, MapItem{
@@ -1048,7 +1055,7 @@ func (d *Decoder) decodeMap(dst reflect.Value, src ast.Node) error {
 			}
 			iter := dst.MapRange()
 			for iter.Next() {
-				if err := d.validateMapKey(keyMap, iter.Key(), value); err != nil {
+				if err := d.validateDuplicateKey(keyMap, iter.Key(), value); err != nil {
 					return errors.Wrapf(err, "invalid map key")
 				}
 				mapValue.SetMapIndex(iter.Key(), iter.Value())
@@ -1060,7 +1067,7 @@ func (d *Decoder) decodeMap(dst reflect.Value, src ast.Node) error {
 			k = k.Convert(keyType)
 		}
 		if k.IsValid() {
-			if err := d.validateMapKey(keyMap, k.Interface(), key); err != nil {
+			if err := d.validateDuplicateKey(keyMap, k.Interface(), key); err != nil {
 				return errors.Wrapf(err, "invalid map key")
 			}
 		}

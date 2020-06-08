@@ -1491,12 +1491,30 @@ a: c
 >  3 | a: c
        ^
 `
-	var v map[string]string
-	err := yaml.NewDecoder(strings.NewReader(yml), yaml.DisallowDuplicateKey()).Decode(&v)
-	actual := "\n" + err.Error()
-	if expected != actual {
-		t.Fatalf("expected:[%s] actual:[%s]", expected, actual)
-	}
+	t.Run("map", func(t *testing.T) {
+		var v map[string]string
+		err := yaml.NewDecoder(strings.NewReader(yml), yaml.DisallowDuplicateKey()).Decode(&v)
+		if err == nil {
+			t.Fatal("decoding should fail")
+		}
+		actual := "\n" + err.Error()
+		if expected != actual {
+			t.Fatalf("expected:[%s] actual:[%s]", expected, actual)
+		}
+	})
+	t.Run("struct", func(t *testing.T) {
+		var v struct {
+			A string
+		}
+		err := yaml.NewDecoder(strings.NewReader(yml), yaml.DisallowDuplicateKey()).Decode(&v)
+		if err == nil {
+			t.Fatal("decoding should fail")
+		}
+		actual := "\n" + err.Error()
+		if expected != actual {
+			t.Fatalf("expected:[%s] actual:[%s]", expected, actual)
+		}
+	})
 }
 
 func TestDecoder_DefaultValues(t *testing.T) {

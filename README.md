@@ -299,6 +299,67 @@ fmt.Println(authors)
 // [john ken]
 ```
 
+## 5.1 Print customized error with YAML source code in your tool
+
+```go
+package main
+
+import (
+  "fmt"
+
+  "github.com/goccy/go-yaml"
+  "github.com/goccy/go-yaml/parser"
+  "github.com/goccy/go-yaml/printer"
+)
+
+func yamlSourceByPath(originalSource string, pathStr string) (string, error) {
+  file, err := parser.ParseBytes([]byte(originalSource), 0)
+  if err != nil {
+    return "", err
+  }
+  path, err := yaml.PathString(pathStr)
+  if err != nil {
+    return "", err
+  }
+  node, err := path.FilterFile(file)
+  if err != nil {
+    return "", err
+  }
+  var p printer.Printer
+  return p.PrintErrorToken(node.GetToken(), true), nil
+}
+
+func main() {
+  yml := `
+a: 1
+b: "hello"
+`
+  var v struct {
+    A int
+    B string
+  }
+  if err := yaml.Unmarshal([]byte(yml), &v); err != nil {
+    panic(err)
+  }
+  if v.A != 2 {
+    // output error with YAML source
+    source, err := yamlSourceByPath(yml, "$.a")
+    if err != nil {
+      panic(err)
+    }
+    fmt.Printf("a value expected 2 but actual %d:\n%s\n", v.A, source)
+  }
+}
+```
+
+`printer.PrintErrorToken` can output YAML source with error point,
+and you can get `token.Token` of error point by `yaml.Path` .
+
+output result is following 
+
+<img src="https://user-images.githubusercontent.com/209884/84148813-7aca8680-aa9a-11ea-8fc9-37dece2ebdac.png"></img>
+
+
 # Installation
 
 ```

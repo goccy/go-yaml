@@ -75,7 +75,8 @@ func (p *parser) parseTag(ctx *context) (ast.Node, error) {
 }
 
 func (p *parser) removeLeftSideNewLineCharacter(src string) string {
-	return strings.TrimLeft(strings.TrimLeft(src, "\r"), "\n")
+	// CR or LF or CRLF
+	return strings.TrimLeft(strings.TrimLeft(strings.TrimLeft(src, "\r"), "\n"), "\r\n")
 }
 
 func (p *parser) existsNewLineCharacter(src string) bool {

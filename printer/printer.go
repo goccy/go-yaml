@@ -201,11 +201,11 @@ func (p *Printer) PrintErrorMessage(msg string, isColored bool) string {
 }
 
 func (p *Printer) removeLeftSideNewLineChar(src string) string {
-	return strings.TrimLeft(strings.TrimLeft(src, "\r"), "\n")
+	return strings.TrimLeft(strings.TrimLeft(strings.TrimLeft(src, "\r"), "\n"), "\r\n")
 }
 
 func (p *Printer) removeRightSideNewLineChar(src string) string {
-	return strings.TrimRight(strings.TrimRight(src, "\r"), "\n")
+	return strings.TrimRight(strings.TrimRight(strings.TrimRight(src, "\r"), "\n"), "\r\n")
 }
 
 func (p *Printer) removeRightSideWhiteSpaceChar(src string) string {

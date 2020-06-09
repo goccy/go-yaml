@@ -361,8 +361,7 @@ func errDuplicateKey(msg string, tk *token.Token) *duplicateKeyError {
 	return &duplicateKeyError{err: errors.ErrSyntax(msg, tk)}
 }
 
-func (d *Decoder) deleteStructKeys(structValue reflect.Value, unknownFields map[string]ast.Node) error {
-	structType := structValue.Type()
+func (d *Decoder) deleteStructKeys(structType reflect.Type, unknownFields map[string]ast.Node) error {
 	if structType.Kind() == reflect.Ptr {
 		structType = structType.Elem()
 	}
@@ -383,7 +382,7 @@ func (d *Decoder) deleteStructKeys(structValue reflect.Value, unknownFields map[
 		}
 
 		if structField.IsInline {
-			d.deleteStructKeys(structValue.FieldByName(field.Name), unknownFields)
+			d.deleteStructKeys(field.Type, unknownFields)
 		} else {
 			delete(unknownFields, structField.RenderName)
 		}
@@ -785,7 +784,7 @@ func (d *Decoder) decodeStruct(dst reflect.Value, src ast.Node) error {
 					err = nil
 				}
 
-				if err = d.deleteStructKeys(fieldValue, unknownFields); err != nil {
+				if err = d.deleteStructKeys(fieldValue.Type(), unknownFields); err != nil {
 					return errors.Wrapf(err, "cannot delete struct keys")
 				}
 			}

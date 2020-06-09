@@ -1323,6 +1323,32 @@ c: true
 	if !v.C {
 		t.Fatal("failed to decode with inline key")
 	}
+
+	t.Run("multiple inline with strict", func(t *testing.T) {
+		type Base struct {
+			A int
+			B string
+		}
+		type Base2 struct {
+			Base *Base `yaml:",inline"`
+		}
+		yml := `---
+a: 1
+b: hello
+`
+		var v struct {
+			Base2 *Base2 `yaml:",inline"`
+		}
+		if err := yaml.NewDecoder(strings.NewReader(yml), yaml.Strict()).Decode(&v); err != nil {
+			t.Fatalf("%+v", err)
+		}
+		if v.Base2.Base.A != 1 {
+			t.Fatal("failed to decode with inline key")
+		}
+		if v.Base2.Base.B != "hello" {
+			t.Fatal("failed to decode with inline key")
+		}
+	})
 }
 
 func TestDecoder_InlineAndConflictKey(t *testing.T) {

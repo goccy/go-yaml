@@ -299,7 +299,7 @@ fmt.Println(authors)
 // [john ken]
 ```
 
-## 5.1 Print customized error with YAML source code in your tool
+## 5.1 Print customized error with YAML source code
 
 ```go
 package main

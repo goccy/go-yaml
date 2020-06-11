@@ -214,6 +214,26 @@ func (d *Decoder) nodeToValue(node ast.Node) interface{} {
 	return nil
 }
 
+func (d *Decoder) resolveAlias(node ast.Node) ast.Node {
+	switch n := node.(type) {
+	case *ast.MappingNode:
+		for idx, value := range n.Values {
+			n.Values[idx] = d.resolveAlias(value).(*ast.MappingValueNode)
+		}
+	case *ast.MappingValueNode:
+		n.Key = d.resolveAlias(n.Key)
+		n.Value = d.resolveAlias(n.Value)
+	case *ast.SequenceNode:
+		for idx, value := range n.Values {
+			n.Values[idx] = d.resolveAlias(value)
+		}
+	case *ast.AliasNode:
+		aliasName := n.Value.GetToken().Value
+		return d.anchorNodeMap[aliasName]
+	}
+	return node
+}
+
 func (d *Decoder) getMapNode(node ast.Node) (ast.MapNode, error) {
 	if _, ok := node.(*ast.NullNode); ok {
 		return nil, nil
@@ -399,6 +419,7 @@ func (d *Decoder) decodeValue(dst reflect.Value, src ast.Node) error {
 	}
 	valueType := dst.Type()
 	if unmarshaler, ok := dst.Addr().Interface().(BytesUnmarshaler); ok {
+		src = d.resolveAlias(src)
 		var b string
 		if scalar, isScalar := src.(ast.ScalarNode); isScalar {
 			b = fmt.Sprint(scalar.GetValue())

@@ -1875,3 +1875,52 @@ k: l
 		t.Fatal("failed to stream decoding")
 	}
 }
+
+type unmarshalYAMLWithAliasString string
+
+func (v *unmarshalYAMLWithAliasString) UnmarshalYAML(b []byte) error {
+	var s string
+	if err := yaml.Unmarshal(b, &s); err != nil {
+		return err
+	}
+	*v = unmarshalYAMLWithAliasString(s)
+	return nil
+}
+
+type unmarshalYAMLWithAliasMap map[string]interface{}
+
+func (v *unmarshalYAMLWithAliasMap) UnmarshalYAML(b []byte) error {
+	var m map[string]interface{}
+	if err := yaml.Unmarshal(b, &m); err != nil {
+		return err
+	}
+	*v = unmarshalYAMLWithAliasMap(m)
+	return nil
+}
+
+func TestDecoder_UnmarshalYAMLWithAlias(t *testing.T) {
+	yml := `
+anchors:
+ x: &x hello
+ map: &y
+  a: b
+  c: d
+a: *x
+b:
+ <<: *y
+ e: f
+`
+	var v struct {
+		A unmarshalYAMLWithAliasString
+		B unmarshalYAMLWithAliasMap
+	}
+	if err := yaml.Unmarshal([]byte(yml), &v); err != nil {
+		t.Fatalf("%+v", err)
+	}
+	if v.A != "hello" {
+		t.Fatal("failed to unmarshal with alias")
+	}
+	if len(v.B) != 3 {
+		t.Fatal("failed to unmarshal with alias")
+	}
+}

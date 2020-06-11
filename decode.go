@@ -221,8 +221,17 @@ func (d *Decoder) resolveAlias(node ast.Node) ast.Node {
 			n.Values[idx] = d.resolveAlias(value).(*ast.MappingValueNode)
 		}
 	case *ast.MappingValueNode:
-		n.Key = d.resolveAlias(n.Key)
-		n.Value = d.resolveAlias(n.Value)
+		if n.Key.Type() == ast.MergeKeyType && n.Value.Type() == ast.AliasType {
+			value := d.resolveAlias(n.Value)
+			keyColumn := n.Key.GetToken().Position.Column
+			requiredColumn := keyColumn + 2
+			column := requiredColumn - value.GetToken().Position.Column + 1
+			value.AddColumn(column)
+			n.Value = value
+		} else {
+			n.Key = d.resolveAlias(n.Key)
+			n.Value = d.resolveAlias(n.Value)
+		}
 	case *ast.SequenceNode:
 		for idx, value := range n.Values {
 			n.Values[idx] = d.resolveAlias(value)

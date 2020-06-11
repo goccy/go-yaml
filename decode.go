@@ -95,11 +95,15 @@ func (d *Decoder) castToFloat(v interface{}) interface{} {
 func (d *Decoder) setToMapValue(node ast.Node, m map[string]interface{}) {
 	switch n := node.(type) {
 	case *ast.MappingValueNode:
-		if n.Key.Type() == ast.MergeKeyType && n.Value.Type() == ast.AliasType {
-			aliasNode := n.Value.(*ast.AliasNode)
-			aliasName := aliasNode.Value.GetToken().Value
-			node := d.anchorNodeMap[aliasName]
-			d.setToMapValue(node, m)
+		if n.Key.Type() == ast.MergeKeyType {
+			if n.Value.Type() == ast.AliasType {
+				aliasNode := n.Value.(*ast.AliasNode)
+				aliasName := aliasNode.Value.GetToken().Value
+				node := d.anchorNodeMap[aliasName]
+				d.setToMapValue(node, m)
+			} else {
+				d.setToMapValue(n.Value, m)
+			}
 		} else {
 			key := n.Key.GetToken().Value
 			m[key] = d.nodeToValue(n.Value)
@@ -114,11 +118,15 @@ func (d *Decoder) setToMapValue(node ast.Node, m map[string]interface{}) {
 func (d *Decoder) setToOrderedMapValue(node ast.Node, m *MapSlice) {
 	switch n := node.(type) {
 	case *ast.MappingValueNode:
-		if n.Key.Type() == ast.MergeKeyType && n.Value.Type() == ast.AliasType {
-			aliasNode := n.Value.(*ast.AliasNode)
-			aliasName := aliasNode.Value.GetToken().Value
-			node := d.anchorNodeMap[aliasName]
-			d.setToOrderedMapValue(node, m)
+		if n.Key.Type() == ast.MergeKeyType {
+			if n.Value.Type() == ast.AliasType {
+				aliasNode := n.Value.(*ast.AliasNode)
+				aliasName := aliasNode.Value.GetToken().Value
+				node := d.anchorNodeMap[aliasName]
+				d.setToOrderedMapValue(node, m)
+			} else {
+				d.setToOrderedMapValue(n.Value, m)
+			}
 		} else {
 			key := n.Key.GetToken().Value
 			*m = append(*m, MapItem{Key: key, Value: d.nodeToValue(n.Value)})
@@ -221,8 +229,16 @@ func (d *Decoder) resolveAlias(node ast.Node) ast.Node {
 			n.Values[idx] = d.resolveAlias(value).(*ast.MappingValueNode)
 		}
 	case *ast.MappingValueNode:
-		n.Key = d.resolveAlias(n.Key)
-		n.Value = d.resolveAlias(n.Value)
+		if n.Key.Type() == ast.MergeKeyType && n.Value.Type() == ast.AliasType {
+			value := d.resolveAlias(n.Value)
+			keyColumn := n.Key.GetToken().Position.Column
+			requiredColumn := keyColumn + 2
+			value.AddColumn(requiredColumn)
+			n.Value = value
+		} else {
+			n.Key = d.resolveAlias(n.Key)
+			n.Value = d.resolveAlias(n.Value)
+		}
 	case *ast.SequenceNode:
 		for idx, value := range n.Values {
 			n.Values[idx] = d.resolveAlias(value)

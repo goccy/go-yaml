@@ -1903,8 +1903,8 @@ func TestDecoder_UnmarshalYAMLWithAlias(t *testing.T) {
 anchors:
  x: &x hello
  map: &y
-  a: b
-  c: d
+   a: b
+   c: d
 a: *x
 b:
  <<: *y

@@ -681,6 +681,19 @@ func (t *Token) AddColumn(col int) {
 	t.Position.Column += col
 }
 
+// Clone copy token ( preserve Prev/Next reference )
+func (t *Token) Clone() *Token {
+	if t == nil {
+		return nil
+	}
+	copied := *t
+	if t.Position != nil {
+		pos := *(t.Position)
+		copied.Position = &pos
+	}
+	return &copied
+}
+
 // Tokens type of token collection
 type Tokens []*Token
 

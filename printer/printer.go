@@ -255,7 +255,7 @@ func (p *Printer) printBeforeTokens(tk *token.Token, minLine, extLine int) token
 		}
 		tk = tk.Prev
 	}
-	minTk := tk
+	minTk := tk.Clone()
 	if minTk.Prev != nil {
 		// add white spaces to minTk by prev token
 		prev := minTk.Prev
@@ -266,8 +266,9 @@ func (p *Printer) printBeforeTokens(tk *token.Token, minLine, extLine int) token
 	tokens := token.Tokens{minTk}
 	tk = minTk.Next
 	for tk != nil && tk.Position.Line <= extLine {
-		tokens.Add(tk)
-		tk = tk.Next
+		clonedTk := tk.Clone()
+		tokens.Add(clonedTk)
+		tk = clonedTk.Next
 	}
 	lastTk := tokens[len(tokens)-1]
 	trimmedOrigin := p.removeRightSideWhiteSpaceChar(lastTk.Origin)
@@ -275,11 +276,13 @@ func (p *Printer) printBeforeTokens(tk *token.Token, minLine, extLine int) token
 	lastTk.Origin = trimmedOrigin
 
 	if lastTk.Next != nil && len(suffix) > 1 {
+		next := lastTk.Next.Clone()
 		// add suffix to header of next token
 		if suffix[0] == '\n' || suffix[0] == '\r' {
 			suffix = suffix[1:]
 		}
-		lastTk.Next.Origin = suffix + lastTk.Next.Origin
+		next.Origin = suffix + next.Origin
+		lastTk.Next = next
 	}
 	return tokens
 }
@@ -307,14 +310,15 @@ func (p *Printer) printAfterTokens(tk *token.Token, maxLine int) token.Tokens {
 	if tk.Position.Line > maxLine {
 		return tokens
 	}
-	minTk := tk
+	minTk := tk.Clone()
 	minTk.Origin = p.removeLeftSideNewLineChar(minTk.Origin)
 	tokens.Add(minTk)
 	tk = minTk.Next
 	for tk != nil && tk.Position.Line <= maxLine {
-		p.addNewLineCharIfDocumentHeader(tk)
-		tokens.Add(tk)
-		tk = tk.Next
+		clonedTk := tk.Clone()
+		p.addNewLineCharIfDocumentHeader(clonedTk)
+		tokens.Add(clonedTk)
+		tk = clonedTk.Next
 	}
 	return tokens
 }

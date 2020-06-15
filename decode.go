@@ -92,18 +92,20 @@ func (d *Decoder) castToFloat(v interface{}) interface{} {
 	return 0
 }
 
+func (d *Decoder) mergeValueNode(value ast.Node) ast.Node {
+	if value.Type() == ast.AliasType {
+		aliasNode := value.(*ast.AliasNode)
+		aliasName := aliasNode.Value.GetToken().Value
+		return d.anchorNodeMap[aliasName]
+	}
+	return value
+}
+
 func (d *Decoder) setToMapValue(node ast.Node, m map[string]interface{}) {
 	switch n := node.(type) {
 	case *ast.MappingValueNode:
 		if n.Key.Type() == ast.MergeKeyType {
-			if n.Value.Type() == ast.AliasType {
-				aliasNode := n.Value.(*ast.AliasNode)
-				aliasName := aliasNode.Value.GetToken().Value
-				node := d.anchorNodeMap[aliasName]
-				d.setToMapValue(node, m)
-			} else {
-				d.setToMapValue(n.Value, m)
-			}
+			d.setToMapValue(d.mergeValueNode(n.Value), m)
 		} else {
 			key := n.Key.GetToken().Value
 			m[key] = d.nodeToValue(n.Value)
@@ -119,14 +121,7 @@ func (d *Decoder) setToOrderedMapValue(node ast.Node, m *MapSlice) {
 	switch n := node.(type) {
 	case *ast.MappingValueNode:
 		if n.Key.Type() == ast.MergeKeyType {
-			if n.Value.Type() == ast.AliasType {
-				aliasNode := n.Value.(*ast.AliasNode)
-				aliasName := aliasNode.Value.GetToken().Value
-				node := d.anchorNodeMap[aliasName]
-				d.setToOrderedMapValue(node, m)
-			} else {
-				d.setToOrderedMapValue(n.Value, m)
-			}
+			d.setToOrderedMapValue(d.mergeValueNode(n.Value), m)
 		} else {
 			key := n.Key.GetToken().Value
 			*m = append(*m, MapItem{Key: key, Value: d.nodeToValue(n.Value)})
@@ -179,17 +174,15 @@ func (d *Decoder) nodeToValue(node ast.Node) interface{} {
 	case *ast.LiteralNode:
 		return n.Value.GetValue()
 	case *ast.MappingValueNode:
-		if n.Key.Type() == ast.MergeKeyType && n.Value.Type() == ast.AliasType {
-			aliasNode := n.Value.(*ast.AliasNode)
-			aliasName := aliasNode.Value.GetToken().Value
-			node := d.anchorNodeMap[aliasName]
+		if n.Key.Type() == ast.MergeKeyType {
+			value := d.mergeValueNode(n.Value)
 			if d.useOrderedMap {
 				m := MapSlice{}
-				d.setToOrderedMapValue(node, &m)
+				d.setToOrderedMapValue(value, &m)
 				return m
 			}
 			m := map[string]interface{}{}
-			d.setToMapValue(node, m)
+			d.setToMapValue(value, m)
 			return m
 		}
 		key := n.Key.GetToken().Value

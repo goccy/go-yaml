@@ -1950,3 +1950,44 @@ b:
 		t.Fatal("failed to unmarshal with alias")
 	}
 }
+
+func TestDecoder_LiteralWithNewLine(t *testing.T) {
+	type A struct {
+		Node     string `yaml:"b"`
+		LastNode string `yaml:"last"`
+	}
+	tests := []A{
+		A{
+			Node: "hello\nworld",
+		},
+		A{
+			Node: "hello\nworld\n",
+		},
+		A{
+			Node: "hello\nworld\n\n",
+		},
+		A{
+			LastNode: "hello\nworld",
+		},
+		A{
+			LastNode: "hello\nworld\n",
+		},
+		A{
+			LastNode: "hello\nworld\n\n",
+		},
+	}
+	// struct(want) -> Marshal -> Unmarchal -> struct(got)
+	for _, want := range tests {
+		bytes, _ := yaml.Marshal(want)
+		got := A{}
+		if err := yaml.Unmarshal(bytes, &got); err != nil {
+			t.Fatal(err)
+		}
+		if want.Node != got.Node {
+			t.Fatalf("expected:%q but got %q", want.Node, got.Node)
+		}
+		if want.LastNode != got.LastNode {
+			t.Fatalf("expected:%q but got %q", want.LastNode, got.LastNode)
+		}
+	}
+}

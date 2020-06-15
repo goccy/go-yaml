@@ -238,7 +238,7 @@ func (d *Decoder) resolveAlias(node ast.Node) ast.Node {
 		}
 	case *ast.AliasNode:
 		aliasName := n.Value.GetToken().Value
-		return d.anchorNodeMap[aliasName]
+		return d.resolveAlias(d.anchorNodeMap[aliasName])
 	}
 	return node
 }

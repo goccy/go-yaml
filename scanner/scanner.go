@@ -200,12 +200,20 @@ func (s *Scanner) scanSingleQuote(ctx *Context) (tk *token.Token, pos int) {
 	src := ctx.src
 	size := len(src)
 	value := []rune{}
+	isFirstLineChar := false
 	for idx := startIndex; idx < size; idx++ {
 		c := src[idx]
 		pos = idx + 1
 		ctx.addOriginBuf(c)
-		if c != '\'' {
+		if s.isNewLineChar(c) {
+			value = append(value, ' ')
+			isFirstLineChar = true
+			continue
+		} else if c == ' ' && isFirstLineChar {
+			continue
+		} else if c != '\'' {
 			value = append(value, c)
+			isFirstLineChar = false
 			continue
 		}
 		if idx+1 < len(ctx.src) && ctx.src[idx+1] == '\'' {
@@ -229,11 +237,18 @@ func (s *Scanner) scanDoubleQuote(ctx *Context) (tk *token.Token, pos int) {
 	src := ctx.src
 	size := len(src)
 	value := []rune{}
+	isFirstLineChar := false
 	for idx := startIndex; idx < size; idx++ {
 		c := src[idx]
 		pos = idx + 1
 		ctx.addOriginBuf(c)
-		if c == '\\' {
+		if s.isNewLineChar(c) {
+			value = append(value, ' ')
+			isFirstLineChar = true
+			continue
+		} else if c == ' ' && isFirstLineChar {
+			continue
+		} else if c == '\\' {
 			if idx+1 < size {
 				nextChar := src[idx+1]
 				switch nextChar {
@@ -253,9 +268,11 @@ func (s *Scanner) scanDoubleQuote(ctx *Context) (tk *token.Token, pos int) {
 				}
 			}
 			value = append(value, c)
+			isFirstLineChar = false
 			continue
 		} else if c != '"' {
 			value = append(value, c)
+			isFirstLineChar = false
 			continue
 		}
 		tk = token.DoubleQuote(string(value), string(ctx.obuf), s.pos())

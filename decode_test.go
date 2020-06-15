@@ -1905,6 +1905,7 @@ anchors:
  map: &y
    a: b
    c: d
+   d: *x
 a: *x
 b:
  <<: *y
@@ -1920,7 +1921,16 @@ b:
 	if v.A != "hello" {
 		t.Fatal("failed to unmarshal with alias")
 	}
-	if len(v.B) != 3 {
+	if len(v.B) != 4 {
+		t.Fatal("failed to unmarshal with alias")
+	}
+	if v.B["a"] != "b" {
+		t.Fatal("failed to unmarshal with alias")
+	}
+	if v.B["c"] != "d" {
+		t.Fatal("failed to unmarshal with alias")
+	}
+	if v.B["d"] != "hello" {
 		t.Fatal("failed to unmarshal with alias")
 	}
 }

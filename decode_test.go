@@ -353,6 +353,14 @@ func TestDecoder(t *testing.T) {
 			`'1': '\\"2\\"'`,
 			map[interface{}]interface{}{"1": `\\"2\\"`},
 		},
+		{
+			"'1': '   1\n    2\n    3'",
+			map[interface{}]interface{}{"1": "   1 2 3"},
+		},
+		{
+			"'1': '\n    2\n    3'",
+			map[interface{}]interface{}{"1": " 2 3"},
+		},
 
 		// Double Quoted values.
 		{
@@ -382,6 +390,14 @@ func TestDecoder(t *testing.T) {
 		{
 			`"1": "\\\"2\\\""`,
 			map[interface{}]interface{}{"1": `\"2\"`},
+		},
+		{
+			"'1': \"   1\n    2\n    3\"",
+			map[interface{}]interface{}{"1": "   1 2 3"},
+		},
+		{
+			"'1': \"\n    2\n    3\"",
+			map[interface{}]interface{}{"1": " 2 3"},
 		},
 
 		/*

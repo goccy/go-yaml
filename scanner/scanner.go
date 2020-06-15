@@ -329,7 +329,7 @@ func (s *Scanner) scanComment(ctx *Context) (tk *token.Token, pos int) {
 func (s *Scanner) scanLiteral(ctx *Context, c rune) {
 	ctx.addOriginBuf(c)
 	if ctx.isEOS() {
-		if c != '\r' && c != '\n' {
+		if ctx.isLiteral {
 			ctx.addBuf(c)
 		}
 		value := ctx.bufferedSrc()

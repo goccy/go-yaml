@@ -520,6 +520,30 @@ a:
   h: i
 `,
 		},
+		{
+			`
+a: |-
+  value
+b: c
+`,
+			`
+a: |-
+  value
+b: c
+`,
+		},
+		{
+			`
+a:  |+
+  value
+b: c
+`,
+			`
+a: |+
+  value
+b: c
+`,
+		},
 	}
 	for _, test := range tests {
 		tokens := lexer.Tokenize(test.source)

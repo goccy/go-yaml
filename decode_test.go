@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/goccy/go-yaml"
+	"golang.org/x/xerrors"
 )
 
 type Child struct {
@@ -1895,11 +1896,7 @@ k: l
 type unmarshalYAMLWithAliasString string
 
 func (v *unmarshalYAMLWithAliasString) UnmarshalYAML(b []byte) error {
-	var s string
-	if err := yaml.Unmarshal(b, &s); err != nil {
-		return err
-	}
-	*v = unmarshalYAMLWithAliasString(s)
+	*v = unmarshalYAMLWithAliasString(string(b))
 	return nil
 }
 
@@ -1917,7 +1914,7 @@ func (v *unmarshalYAMLWithAliasMap) UnmarshalYAML(b []byte) error {
 func TestDecoder_UnmarshalYAMLWithAlias(t *testing.T) {
 	yml := `
 anchors:
- x: &x hello
+ x: &x "\"hello\" \"world\""
  map: &y
    a: b
    c: d
@@ -1934,7 +1931,7 @@ b:
 	if err := yaml.Unmarshal([]byte(yml), &v); err != nil {
 		t.Fatalf("%+v", err)
 	}
-	if v.A != "hello" {
+	if v.A != `"hello" "world"` {
 		t.Fatal("failed to unmarshal with alias")
 	}
 	if len(v.B) != 4 {
@@ -1946,8 +1943,61 @@ b:
 	if v.B["c"] != "d" {
 		t.Fatal("failed to unmarshal with alias")
 	}
-	if v.B["d"] != "hello" {
+	if v.B["d"] != `"hello" "world"` {
 		t.Fatal("failed to unmarshal with alias")
+	}
+}
+
+type unmarshalList struct {
+	v []map[string]string
+}
+
+func (u *unmarshalList) UnmarshalYAML(b []byte) error {
+	expected := `
+ - b: c
+   d: |
+     hello
+
+     hello
+   f: g
+ - h: i`
+	actual := "\n" + string(b)
+	if expected != actual {
+		return xerrors.Errorf("unexpected bytes: expected [%q] but got [%q]", expected, actual)
+	}
+	var v []map[string]string
+	if err := yaml.Unmarshal(b, &v); err != nil {
+		return err
+	}
+	u.v = v
+	return nil
+}
+
+func TestDecoder_UnmarshalBytesWithSeparatedList(t *testing.T) {
+	yml := `
+a:
+ - b: c
+   d: |
+     hello
+
+     hello
+   f: g
+ - h: i
+`
+	var v struct {
+		A unmarshalList
+	}
+	if err := yaml.Unmarshal([]byte(yml), &v); err != nil {
+		t.Fatal(err)
+	}
+	if len(v.A.v) != 2 {
+		t.Fatalf("failed to unmarshal %+v", v)
+	}
+	if len(v.A.v[0]) != 3 {
+		t.Fatalf("failed to unmarshal %+v", v.A.v[0])
+	}
+	if len(v.A.v[1]) != 1 {
+		t.Fatalf("failed to unmarshal %+v", v.A.v[1])
 	}
 }
 

@@ -519,7 +519,7 @@ func (n *StringNode) String() string {
 	case token.SingleQuoteType:
 		return fmt.Sprintf(`'%s'`, n.Value)
 	case token.DoubleQuoteType:
-		return fmt.Sprintf(`"%s"`, n.Value)
+		return strconv.Quote(n.Value)
 	}
 
 	lbc := token.DetectLineBreakCharacter(n.Value)
@@ -1035,6 +1035,11 @@ func (n *SequenceNode) blockStyleString() string {
 		diffLength := len(splittedValues[0]) - len(trimmedFirstValue)
 		newValues := []string{trimmedFirstValue}
 		for i := 1; i < len(splittedValues); i++ {
+			if len(splittedValues[i]) <= diffLength {
+				// this line is \n or white space only
+				newValues = append(newValues, "")
+				continue
+			}
 			trimmed := splittedValues[i][diffLength:]
 			newValues = append(newValues, fmt.Sprintf("%s  %s", space, trimmed))
 		}

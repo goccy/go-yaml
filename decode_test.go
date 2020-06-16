@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/goccy/go-yaml"
+	"golang.org/x/xerrors"
 )
 
 type Child struct {
@@ -1948,6 +1949,59 @@ b:
 	}
 	if v.B["d"] != "hello" {
 		t.Fatal("failed to unmarshal with alias")
+	}
+}
+
+type unmarshalList struct {
+	v []map[string]string
+}
+
+func (u *unmarshalList) UnmarshalYAML(b []byte) error {
+	expected := `
+ - b: c
+   d: |
+     hello
+
+     hello
+   f: g
+ - h: i`
+	actual := "\n" + string(b)
+	if expected != actual {
+		return xerrors.Errorf("unexpected bytes: expected [%q] but got [%q]", expected, actual)
+	}
+	var v []map[string]string
+	if err := yaml.Unmarshal(b, &v); err != nil {
+		return err
+	}
+	u.v = v
+	return nil
+}
+
+func TestDecoder_UnmarshalBytesWithSeparatedList(t *testing.T) {
+	yml := `
+a:
+ - b: c
+   d: |
+     hello
+
+     hello
+   f: g
+ - h: i
+`
+	var v struct {
+		A unmarshalList
+	}
+	if err := yaml.Unmarshal([]byte(yml), &v); err != nil {
+		t.Fatal(err)
+	}
+	if len(v.A.v) != 2 {
+		t.Fatalf("failed to unmarshal %+v", v)
+	}
+	if len(v.A.v[0]) != 3 {
+		t.Fatalf("failed to unmarshal %+v", v.A.v[0])
+	}
+	if len(v.A.v[1]) != 1 {
+		t.Fatalf("failed to unmarshal %+v", v.A.v[1])
 	}
 }
 

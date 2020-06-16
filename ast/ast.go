@@ -519,7 +519,7 @@ func (n *StringNode) String() string {
 	case token.SingleQuoteType:
 		return fmt.Sprintf(`'%s'`, n.Value)
 	case token.DoubleQuoteType:
-		return fmt.Sprintf(`"%s"`, n.Value)
+		return strconv.Quote(n.Value)
 	}
 
 	lbc := token.DetectLineBreakCharacter(n.Value)

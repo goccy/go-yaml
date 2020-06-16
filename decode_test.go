@@ -1896,11 +1896,7 @@ k: l
 type unmarshalYAMLWithAliasString string
 
 func (v *unmarshalYAMLWithAliasString) UnmarshalYAML(b []byte) error {
-	var s string
-	if err := yaml.Unmarshal(b, &s); err != nil {
-		return err
-	}
-	*v = unmarshalYAMLWithAliasString(s)
+	*v = unmarshalYAMLWithAliasString(string(b))
 	return nil
 }
 
@@ -1918,7 +1914,7 @@ func (v *unmarshalYAMLWithAliasMap) UnmarshalYAML(b []byte) error {
 func TestDecoder_UnmarshalYAMLWithAlias(t *testing.T) {
 	yml := `
 anchors:
- x: &x hello
+ x: &x "\"hello\" \"world\""
  map: &y
    a: b
    c: d
@@ -1935,7 +1931,7 @@ b:
 	if err := yaml.Unmarshal([]byte(yml), &v); err != nil {
 		t.Fatalf("%+v", err)
 	}
-	if v.A != "hello" {
+	if v.A != `"hello" "world"` {
 		t.Fatal("failed to unmarshal with alias")
 	}
 	if len(v.B) != 4 {
@@ -1947,7 +1943,7 @@ b:
 	if v.B["c"] != "d" {
 		t.Fatal("failed to unmarshal with alias")
 	}
-	if v.B["d"] != "hello" {
+	if v.B["d"] != `"hello" "world"` {
 		t.Fatal("failed to unmarshal with alias")
 	}
 }

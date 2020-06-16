@@ -419,6 +419,22 @@ func (d *Decoder) deleteStructKeys(structType reflect.Type, unknownFields map[st
 	return nil
 }
 
+func (d *Decoder) lastNode(node ast.Node) ast.Node {
+	switch n := node.(type) {
+	case *ast.MappingNode:
+		if len(n.Values) > 0 {
+			return d.lastNode(n.Values[len(n.Values)-1])
+		}
+	case *ast.MappingValueNode:
+		return d.lastNode(n.Value)
+	case *ast.SequenceNode:
+		if len(n.Values) > 0 {
+			return d.lastNode(n.Values[len(n.Values)-1])
+		}
+	}
+	return node
+}
+
 func (d *Decoder) decodeValue(dst reflect.Value, src ast.Node) error {
 	if src.Type() == ast.AnchorType {
 		anchorName := src.(*ast.AnchorNode).Name.GetToken().Value
@@ -434,6 +450,10 @@ func (d *Decoder) decodeValue(dst reflect.Value, src ast.Node) error {
 			b = fmt.Sprint(scalar.GetValue())
 		} else {
 			b = src.String()
+		}
+		last := d.lastNode(src)
+		if last != nil && last.Type() == ast.LiteralType {
+			b += "\n"
 		}
 		if err := unmarshaler.UnmarshalYAML([]byte(b)); err != nil {
 			return errors.Wrapf(err, "failed to UnmarshalYAML")

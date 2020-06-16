@@ -1948,8 +1948,15 @@ b:
 	}
 }
 
+type unmarshalString string
+
+func (u *unmarshalString) UnmarshalYAML(b []byte) error {
+	*u = unmarshalString(string(b))
+	return nil
+}
+
 type unmarshalList struct {
-	v []map[string]string
+	v []map[string]unmarshalString
 }
 
 func (u *unmarshalList) UnmarshalYAML(b []byte) error {
@@ -1965,7 +1972,7 @@ func (u *unmarshalList) UnmarshalYAML(b []byte) error {
 	if expected != actual {
 		return xerrors.Errorf("unexpected bytes: expected [%q] but got [%q]", expected, actual)
 	}
-	var v []map[string]string
+	var v []map[string]unmarshalString
 	if err := yaml.Unmarshal(b, &v); err != nil {
 		return err
 	}

@@ -360,7 +360,7 @@ func (s *Scanner) scanLiteral(ctx *Context, c rune) {
 func (s *Scanner) scanLiteralHeader(ctx *Context) (pos int, err error) {
 	header := ctx.currentChar()
 	ctx.addOriginBuf(header)
-	ctx.progress(1) // skip '|' or '<' character
+	ctx.progress(1) // skip '|' or '>' character
 	for idx, c := range ctx.src[ctx.idx:] {
 		pos = idx
 		ctx.addOriginBuf(c)

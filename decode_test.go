@@ -2048,3 +2048,20 @@ func TestDecoder_LiteralWithNewLine(t *testing.T) {
 		}
 	}
 }
+
+func TestDecoder_TabCharacterAtRight(t *testing.T) {
+	yml := `
+- a: [2 , 2] 			
+  b: [2 , 2] 			
+  c: [2 , 2]`
+	var v []map[string][]int
+	if err := yaml.Unmarshal([]byte(yml), &v); err != nil {
+		t.Fatal(err)
+	}
+	if len(v) != 1 {
+		t.Fatalf("failed to unmarshal %+v", v)
+	}
+	if len(v[0]) != 3 {
+		t.Fatalf("failed to unmarshal %+v", v)
+	}
+}

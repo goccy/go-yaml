@@ -88,14 +88,14 @@ func (c *Context) addBuf(r rune) {
 		return
 	}
 	c.buf = append(c.buf, r)
-	if r != ' ' {
+	if r != ' ' && r != '\t' {
 		c.notSpaceCharPos = len(c.buf)
 	}
 }
 
 func (c *Context) addOriginBuf(r rune) {
 	c.obuf = append(c.obuf, r)
-	if r != ' ' {
+	if r != ' ' && r != '\t' {
 		c.notSpaceOrgCharPos = len(c.obuf)
 	}
 }

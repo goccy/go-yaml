@@ -230,6 +230,24 @@ func (s *Scanner) scanSingleQuote(ctx *Context) (tk *token.Token, pos int) {
 	return
 }
 
+func hexToInt(b rune) int {
+	if b >= 'A' && b <= 'F' {
+		return int(b) - 'A' + 10
+	}
+	if b >= 'a' && b <= 'f' {
+		return int(b) - 'a' + 10
+	}
+	return int(b) - '0'
+}
+
+func hexRunesToInt(b []rune) int {
+	sum := 0
+	for i := 0; i < len(b); i++ {
+		sum += hexToInt(b[i]) << (uint(len(b)-i-1) * 4)
+	}
+	return sum
+}
+
 func (s *Scanner) scanDoubleQuote(ctx *Context) (tk *token.Token, pos int) {
 	ctx.addOriginBuf('"')
 	startIndex := ctx.idx + 1
@@ -249,12 +267,53 @@ func (s *Scanner) scanDoubleQuote(ctx *Context) (tk *token.Token, pos int) {
 		} else if c == ' ' && isFirstLineChar {
 			continue
 		} else if c == '\\' {
+			isFirstLineChar = false
 			if idx+1 < size {
 				nextChar := src[idx+1]
 				switch nextChar {
+				case 'b':
+					ctx.addOriginBuf(nextChar)
+					value = append(value, '\b')
+					idx++
+					continue
+				case 'e':
+					ctx.addOriginBuf(nextChar)
+					value = append(value, '\x1B')
+					idx++
+					continue
+				case 'f':
+					ctx.addOriginBuf(nextChar)
+					value = append(value, '\f')
+					idx++
+					continue
 				case 'n':
 					ctx.addOriginBuf(nextChar)
 					value = append(value, '\n')
+					idx++
+					continue
+				case 'v':
+					ctx.addOriginBuf(nextChar)
+					value = append(value, '\v')
+					idx++
+					continue
+				case 'L': // LS (#x2028)
+					ctx.addOriginBuf(nextChar)
+					value = append(value, []rune{'\xE2', '\x80', '\xA8'}...)
+					idx++
+					continue
+				case 'N': // NEL (#x85)
+					ctx.addOriginBuf(nextChar)
+					value = append(value, []rune{'\xC2', '\x85'}...)
+					idx++
+					continue
+				case 'P': // PS (#x2029)
+					ctx.addOriginBuf(nextChar)
+					value = append(value, []rune{'\xE2', '\x80', '\xA9'}...)
+					idx++
+					continue
+				case '_': // #xA0
+					ctx.addOriginBuf(nextChar)
+					value = append(value, []rune{'\xC2', '\xA0'}...)
 					idx++
 					continue
 				case '"':
@@ -262,13 +321,42 @@ func (s *Scanner) scanDoubleQuote(ctx *Context) (tk *token.Token, pos int) {
 					value = append(value, nextChar)
 					idx++
 					continue
+				case 'x':
+					if idx+3 >= size {
+						// TODO: need to return error
+						//err = xerrors.New("invalid escape character \\x")
+						return
+					}
+					codeNum := hexRunesToInt(src[idx+2 : idx+4])
+					value = append(value, rune(codeNum))
+					idx += 3
+					continue
+				case 'u':
+					if idx+5 >= size {
+						// TODO: need to return error
+						//err = xerrors.New("invalid escape character \\u")
+						return
+					}
+					codeNum := hexRunesToInt(src[idx+2 : idx+6])
+					value = append(value, rune(codeNum))
+					idx += 5
+					continue
+				case 'U':
+					if idx+9 >= size {
+						// TODO: need to return error
+						//err = xerrors.New("invalid escape character \\U")
+						return
+					}
+					codeNum := hexRunesToInt(src[idx+2 : idx+10])
+					value = append(value, rune(codeNum))
+					idx += 9
+					continue
 				case '\\':
 					ctx.addOriginBuf(nextChar)
 					idx++
 				}
 			}
 			value = append(value, c)
-			isFirstLineChar = false
 			continue
 		} else if c != '"' {
 			value = append(value, c)

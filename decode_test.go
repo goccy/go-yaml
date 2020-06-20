@@ -400,14 +400,18 @@ func TestDecoder(t *testing.T) {
 			"'1': \"\n    2\n    3\"",
 			map[interface{}]interface{}{"1": " 2 3"},
 		},
-
-		/*
-			// TODO: Escape string
-			{
-				`"1": "a\x2Fb\u002Fc\U0000002Fd"`,
-				map[interface{}]interface{}{"1": `a/b/c/d`},
-			},
-		*/
+		{
+			`"1": "a\x2Fb"`,
+			map[interface{}]interface{}{"1": `a/b`},
+		},
+		{
+			`"1": "a\u002Fb"`,
+			map[interface{}]interface{}{"1": `a/b`},
+		},
+		{
+			`"1": "a\x2Fb\u002Fc\U0000002Fd"`,
+			map[interface{}]interface{}{"1": `a/b/c/d`},
+		},
 
 		{
 			"a: -b_c",

@@ -308,26 +308,7 @@ import (
   "fmt"
 
   "github.com/goccy/go-yaml"
-  "github.com/goccy/go-yaml/parser"
-  "github.com/goccy/go-yaml/printer"
 )
-
-func yamlSourceByPath(originalSource string, pathStr string) (string, error) {
-  file, err := parser.ParseBytes([]byte(originalSource), 0)
-  if err != nil {
-    return "", err
-  }
-  path, err := yaml.PathString(pathStr)
-  if err != nil {
-    return "", err
-  }
-  node, err := path.FilterFile(file)
-  if err != nil {
-    return "", err
-  }
-  var p printer.Printer
-  return p.PrintErrorToken(node.GetToken(), true), nil
-}
 
 func main() {
   yml := `
@@ -343,17 +324,18 @@ b: "hello"
   }
   if v.A != 2 {
     // output error with YAML source
-    source, err := yamlSourceByPath(yml, "$.a")
+    path, err := yaml.PathString("$.a")
     if err != nil {
       panic(err)
     }
-    fmt.Printf("a value expected 2 but actual %d:\n%s\n", v.A, source)
+    source, err := path.AddAnnotationToSource([]byte(yml), true)
+    if err != nil {
+      panic(err)
+    }
+    fmt.Printf("a value expected 2 but actual %d:\n%s\n", v.A, string(source))
   }
 }
 ```
-
-`printer.PrintErrorToken` can output YAML source with error point,
-and you can get `token.Token` of error point by `yaml.Path` .
 
 output result is following 
 

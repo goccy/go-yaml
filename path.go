@@ -9,6 +9,7 @@ import (
 	"github.com/goccy/go-yaml/ast"
 	"github.com/goccy/go-yaml/internal/errors"
 	"github.com/goccy/go-yaml/parser"
+	"github.com/goccy/go-yaml/printer"
 	"golang.org/x/xerrors"
 )
 
@@ -25,7 +26,7 @@ var (
 // .     : child operator
 // ..    : recursive descent
 // [num] : object/element of array by number
-// [*]   : all objects/elements for array
+// [*]   : all objects/elements for array.
 func PathString(s string) (*Path, error) {
 	buf := []rune(s)
 	length := len(buf)
@@ -148,17 +149,17 @@ func parsePathIndex(b *PathBuilder, buf []rune, cursor int) (*PathBuilder, int, 
 	return nil, 0, errors.Wrapf(ErrInvalidPathString, "invalid character %s at %d", c, cursor)
 }
 
-// Path represent YAMLPath ( like a JSONPath )
+// Path represent YAMLPath ( like a JSONPath ).
 type Path struct {
 	node pathNode
 }
 
-// String path to text
+// String path to text.
 func (p *Path) String() string {
 	return p.node.String()
 }
 
-// Read decode from r and set extracted value by YAMLPath to v
+// Read decode from r and set extracted value by YAMLPath to v.
 func (p *Path) Read(r io.Reader, v interface{}) error {
 	node, err := p.ReadNode(r)
 	if err != nil {
@@ -170,7 +171,7 @@ func (p *Path) Read(r io.Reader, v interface{}) error {
 	return nil
 }
 
-// ReadNode create AST from r and extract node by YAMLPath
+// ReadNode create AST from r and extract node by YAMLPath.
 func (p *Path) ReadNode(r io.Reader) (ast.Node, error) {
 	if p.node == nil {
 		return nil, ErrInvalidPath
@@ -190,7 +191,7 @@ func (p *Path) ReadNode(r io.Reader) (ast.Node, error) {
 	return node, nil
 }
 
-// Filter filter from target by YAMLPath and set it to v
+// Filter filter from target by YAMLPath and set it to v.
 func (p *Path) Filter(target, v interface{}) error {
 	b, err := Marshal(target)
 	if err != nil {
@@ -202,7 +203,7 @@ func (p *Path) Filter(target, v interface{}) error {
 	return nil
 }
 
-// FilterFile filter from ast.File by YAMLPath
+// FilterFile filter from ast.File by YAMLPath.
 func (p *Path) FilterFile(f *ast.File) (ast.Node, error) {
 	for _, doc := range f.Docs {
 		node, err := p.FilterNode(doc.Body)
@@ -216,7 +217,7 @@ func (p *Path) FilterFile(f *ast.File) (ast.Node, error) {
 	return nil, nil
 }
 
-// FilterNode filter from node by YAMLPath
+// FilterNode filter from node by YAMLPath.
 func (p *Path) FilterNode(node ast.Node) (ast.Node, error) {
 	n, err := p.node.filter(node)
 	if err != nil {
@@ -225,43 +226,57 @@ func (p *Path) FilterNode(node ast.Node) (ast.Node, error) {
 	return n, nil
 }
 
-// PathBuilder represent builder for YAMLPath
+// AddAnnotationToSource add annotation to passed source ( see section 5.1 in README.md ).
+func (p *Path) AddAnnotationToSource(source []byte, colored bool) ([]byte, error) {
+	file, err := parser.ParseBytes([]byte(source), 0)
+	if err != nil {
+		return nil, err
+	}
+	node, err := p.FilterFile(file)
+	if err != nil {
+		return nil, err
+	}
+	var pp printer.Printer
+	return []byte(pp.PrintErrorToken(node.GetToken(), colored)), nil
+}
+
+// PathBuilder represent builder for YAMLPath.
 type PathBuilder struct {
 	root *rootNode
 	node pathNode
 }
 
-// Root add '$' to current path
+// Root add '$' to current path.
 func (b *PathBuilder) Root() *PathBuilder {
 	root := newRootNode()
 	return &PathBuilder{root: root, node: root}
 }
 
-// IndexAll add '[*]' to current path
+// IndexAll add '[*]' to current path.
 func (b *PathBuilder) IndexAll() *PathBuilder {
 	b.node = b.node.chain(newIndexAllNode())
 	return b
 }
 
-// Recursive add '..selector' to current path
+// Recursive add '..selector' to current path.
 func (b *PathBuilder) Recursive(selector string) *PathBuilder {
 	b.node = b.node.chain(newRecursiveNode(selector))
 	return b
 }
 
-// Child add '.name' to current path
+// Child add '.name' to current path.
 func (b *PathBuilder) Child(name string) *PathBuilder {
 	b.node = b.node.chain(newSelectorNode(name))
 	return b
 }
 
-// Index add '[idx]' to current path
+// Index add '[idx]' to current path.
 func (b *PathBuilder) Index(idx uint) *PathBuilder {
 	b.node = b.node.chain(newIndexNode(idx))
 	return b
 }
 
-// Build build YAMLPath
+// Build build YAMLPath.
 func (b *PathBuilder) Build() *Path {
 	return &Path{node: b.root}
 }

@@ -114,7 +114,38 @@ store:
 	})
 }
 
-func Example_YAMLPath() {
+func ExamplePath_AddAnnotationToSource() {
+	yml := `
+a: 1
+b: "hello"
+`
+	var v struct {
+		A int
+		B string
+	}
+	if err := yaml.Unmarshal([]byte(yml), &v); err != nil {
+		panic(err)
+	}
+	if v.A != 2 {
+		// output error with YAML source
+		path, err := yaml.PathString("$.a")
+		if err != nil {
+			log.Fatal(err)
+		}
+		source, err := path.AddAnnotationToSource([]byte(yml), false)
+		if err != nil {
+			log.Fatal(err)
+		}
+		fmt.Printf("a value expected 2 but actual %d:\n%s\n", v.A, string(source))
+	}
+	// OUTPUT:
+	// a value expected 2 but actual 1:
+	// >  2 | a: 1
+	//           ^
+	//    3 | b: "hello"
+}
+
+func ExamplePath_PathString() {
 	yml := `
 store:
   book:

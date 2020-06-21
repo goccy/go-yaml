@@ -66,7 +66,7 @@ func (p *parser) parseSequence(ctx *context) (ast.Node, error) {
 
 func (p *parser) parseTag(ctx *context) (ast.Node, error) {
 	tagToken := ctx.currentToken()
-	node := &ast.TagNode{Start: tagToken}
+	node := ast.Tag(tagToken)
 	ctx.progress(1) // skip tag token
 	var (
 		value ast.Node
@@ -213,8 +213,8 @@ func (p *parser) parseMappingValue(ctx *context) (ast.Node, error) {
 		return nil, errors.Wrapf(err, "failed to validate map value")
 	}
 
-	mvnode := &ast.MappingValueNode{Start: tk, Key: key, Value: value}
-	node := &ast.MappingNode{Start: tk, Values: []*ast.MappingValueNode{mvnode}}
+	mvnode := ast.MappingValue(tk, key, value)
+	node := ast.Mapping(tk, false, mvnode)
 
 	ntk := ctx.nextNotCommentToken()
 	antk := ctx.afterNextNotCommentToken()
@@ -253,10 +253,7 @@ func (p *parser) parseMappingValue(ctx *context) (ast.Node, error) {
 
 func (p *parser) parseSequenceEntry(ctx *context) (ast.Node, error) {
 	tk := ctx.currentToken()
-	sequenceNode := &ast.SequenceNode{
-		Start:  tk,
-		Values: []ast.Node{},
-	}
+	sequenceNode := ast.Sequence(tk, false)
 	curColumn := tk.Position.Column
 	for tk.Type == token.SequenceEntryType {
 		ctx.progress(1) // skip sequence token
@@ -282,7 +279,7 @@ func (p *parser) parseSequenceEntry(ctx *context) (ast.Node, error) {
 
 func (p *parser) parseAnchor(ctx *context) (ast.Node, error) {
 	tk := ctx.currentToken()
-	anchor := &ast.AnchorNode{Start: tk}
+	anchor := ast.Anchor(tk)
 	ntk := ctx.nextToken()
 	if ntk == nil {
 		return nil, errors.ErrSyntax("unexpected anchor. anchor name is undefined", tk)
@@ -308,7 +305,7 @@ func (p *parser) parseAnchor(ctx *context) (ast.Node, error) {
 
 func (p *parser) parseAlias(ctx *context) (ast.Node, error) {
 	tk := ctx.currentToken()
-	alias := &ast.AliasNode{Start: tk}
+	alias := ast.Alias(tk)
 	ntk := ctx.nextToken()
 	if ntk == nil {
 		return nil, errors.ErrSyntax("unexpected alias. alias name is undefined", tk)
@@ -385,7 +382,7 @@ func (p *parser) parseScalarValue(tk *token.Token) ast.Node {
 }
 
 func (p *parser) parseDirective(ctx *context) (ast.Node, error) {
-	node := &ast.DirectiveNode{Start: ctx.currentToken()}
+	node := ast.Directive(ctx.currentToken())
 	ctx.progress(1) // skip directive token
 	value, err := p.parseToken(ctx, ctx.currentToken())
 	if err != nil {
@@ -400,7 +397,7 @@ func (p *parser) parseDirective(ctx *context) (ast.Node, error) {
 }
 
 func (p *parser) parseLiteral(ctx *context) (ast.Node, error) {
-	node := &ast.LiteralNode{Start: ctx.currentToken()}
+	node := ast.Literal(ctx.currentToken())
 	ctx.progress(1) // skip literal/folded token
 	value, err := p.parseToken(ctx, ctx.currentToken())
 	if err != nil {
@@ -435,14 +432,14 @@ func (p *parser) setSameLineCommentIfExists(ctx *context, node ast.Node) error {
 	return nil
 }
 
-func (p *parser) parseDocument(ctx *context) (*ast.Document, error) {
-	node := &ast.Document{Start: ctx.currentToken()}
+func (p *parser) parseDocument(ctx *context) (*ast.DocumentNode, error) {
+	startTk := ctx.currentToken()
 	ctx.progress(1) // skip document header token
 	body, err := p.parseToken(ctx, ctx.currentToken())
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to parse document body")
 	}
-	node.Body = body
+	node := ast.Document(startTk, body)
 	if ntk := ctx.nextToken(); ntk != nil && ntk.Type == token.DocumentEndType {
 		node.End = ntk
 		ctx.progress(1)
@@ -541,7 +538,7 @@ func (p *parser) parseToken(ctx *context, tk *token.Token) (ast.Node, error) {
 
 func (p *parser) parse(tokens token.Tokens, mode Mode) (*ast.File, error) {
 	ctx := newContext(tokens, mode)
-	file := &ast.File{Docs: []*ast.Document{}}
+	file := &ast.File{Docs: []*ast.DocumentNode{}}
 	for ctx.next() {
 		node, err := p.parseToken(ctx, ctx.currentToken())
 		if err != nil {
@@ -551,10 +548,10 @@ func (p *parser) parse(tokens token.Tokens, mode Mode) (*ast.File, error) {
 		if node == nil {
 			continue
 		}
-		if doc, ok := node.(*ast.Document); ok {
+		if doc, ok := node.(*ast.DocumentNode); ok {
 			file.Docs = append(file.Docs, doc)
 		} else {
-			file.Docs = append(file.Docs, &ast.Document{Body: node})
+			file.Docs = append(file.Docs, ast.Document(nil, node))
 		}
 	}
 	return file, nil

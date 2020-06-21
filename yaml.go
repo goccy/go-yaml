@@ -43,6 +43,15 @@ type MapItem struct {
 // The order of keys is preserved when encoding and decoding.
 type MapSlice []MapItem
 
+// ToMap convert to map[interface{}]interface{}.
+func (s MapSlice) ToMap() map[interface{}]interface{} {
+	v := map[interface{}]interface{}{}
+	for _, item := range s {
+		v[item.Key] = item.Value
+	}
+	return v
+}
+
 // Marshal serializes the value provided into a YAML document. The structure
 // of the generated document will reflect the structure of the value itself.
 // Maps and pointers (to struct, string, int, etc) are accepted as the in value.

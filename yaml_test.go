@@ -280,3 +280,24 @@ collection:
 		t.Fatalf("failed to marshal: expected:[%s] actual:[%s]", yml, actual)
 	}
 }
+
+func TestMapSlice_Map(t *testing.T) {
+	yml := `
+a: b
+c: d
+`
+	var v yaml.MapSlice
+	if err := yaml.Unmarshal([]byte(yml), &v); err != nil {
+		t.Fatal(err)
+	}
+	m := v.ToMap()
+	if len(m) != 2 {
+		t.Fatal("failed to convert MapSlice to map")
+	}
+	if m["a"] != "b" {
+		t.Fatal("failed to convert MapSlice to map")
+	}
+	if m["c"] != "d" {
+		t.Fatal("failed to convert MapSlice to map")
+	}
+}

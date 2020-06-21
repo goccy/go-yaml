@@ -103,8 +103,13 @@ func (s MapSlice) ToMap() map[interface{}]interface{} {
 //     yaml.Marshal(&T{F: 1}) // Returns "a: 1\nb: 0\n"
 //
 func Marshal(v interface{}) ([]byte, error) {
+	return MarshalWithOptions(v)
+}
+
+// MarshalWithOptions serializes the value provided into a YAML document with EncodeOptions.
+func MarshalWithOptions(v interface{}, opts ...EncodeOption) ([]byte, error) {
 	var buf bytes.Buffer
-	enc := NewEncoder(&buf)
+	enc := NewEncoder(&buf, opts...)
 	if err := enc.Encode(v); err != nil {
 		return nil, errors.Wrapf(err, "failed to marshal")
 	}
@@ -135,7 +140,13 @@ func Marshal(v interface{}) ([]byte, error) {
 // supported tag options.
 //
 func Unmarshal(data []byte, v interface{}) error {
-	dec := NewDecoder(bytes.NewBuffer(data))
+	return UnmarshalWithOptions(data, v)
+}
+
+// UnmarshalWithOptions decodes with DecodeOptions the first document found within the in byte slice
+// and assigns decoded values into the out value.
+func UnmarshalWithOptions(data []byte, v interface{}, opts ...DecodeOption) error {
+	dec := NewDecoder(bytes.NewBuffer(data), opts...)
 	if err := dec.Decode(v); err != nil {
 		if err == io.EOF {
 			return nil
@@ -160,5 +171,4 @@ func FormatError(e error, colored, inclSource bool) string {
 	}
 
 	return e.Error()
-
 }

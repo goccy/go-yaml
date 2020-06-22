@@ -263,11 +263,11 @@ collection:
 `
 	var v rootObject
 	if err := yaml.Unmarshal([]byte(yml), &v); err != nil {
-		panic(err)
+		t.Fatal(err)
 	}
 	opt := yaml.MarshalAnchor(func(anchor *ast.AnchorNode, value interface{}) error {
 		if o, ok := value.(*ObjectDecl); ok {
-			anchor.Name.(*ast.StringNode).Value = o.Name
+			return anchor.SetName(o.Name)
 		}
 		return nil
 	})

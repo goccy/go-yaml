@@ -68,18 +68,27 @@ func (e *Encoder) Close() error {
 //
 // See the documentation for Marshal for details about the conversion of Go values to YAML.
 func (e *Encoder) Encode(v interface{}) error {
-	for _, opt := range e.opts {
-		if err := opt(e); err != nil {
-			return errors.Wrapf(err, "failed to run option for encoder")
-		}
-	}
-	node, err := e.encodeValue(reflect.ValueOf(v), 1)
+	node, err := e.EncodeToNode(v)
 	if err != nil {
-		return errors.Wrapf(err, "failed to encode value")
+		return errors.Wrapf(err, "failed to encode to node")
 	}
 	var p printer.Printer
 	e.writer.Write(p.PrintNode(node))
 	return nil
+}
+
+// EncodeToNode convert v to ast.Node.
+func (e *Encoder) EncodeToNode(v interface{}) (ast.Node, error) {
+	for _, opt := range e.opts {
+		if err := opt(e); err != nil {
+			return nil, errors.Wrapf(err, "failed to run option for encoder")
+		}
+	}
+	node, err := e.encodeValue(reflect.ValueOf(v), 1)
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to encode value")
+	}
+	return node, nil
 }
 
 func (e *Encoder) encodeDocument(doc []byte) (ast.Node, error) {

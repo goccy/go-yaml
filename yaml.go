@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"io"
 
+	"github.com/goccy/go-yaml/ast"
 	"github.com/goccy/go-yaml/internal/errors"
 	"golang.org/x/xerrors"
 )
@@ -114,6 +115,16 @@ func MarshalWithOptions(v interface{}, opts ...EncodeOption) ([]byte, error) {
 		return nil, errors.Wrapf(err, "failed to marshal")
 	}
 	return buf.Bytes(), nil
+}
+
+// ValueToNode convert from value to ast.Node.
+func ValueToNode(v interface{}, opts ...EncodeOption) (ast.Node, error) {
+	var buf bytes.Buffer
+	node, err := NewEncoder(&buf, opts...).EncodeToNode(v)
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to convert value to node")
+	}
+	return node, nil
 }
 
 // Unmarshal decodes the first document found within the in byte slice

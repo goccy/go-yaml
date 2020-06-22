@@ -6,6 +6,7 @@ import (
 	"io"
 	"log"
 	"math"
+	"net"
 	"reflect"
 	"strconv"
 	"strings"
@@ -865,6 +866,18 @@ func TestDecoder(t *testing.T) {
 			}{struct{ C int }{1}, struct{ C int }{1}},
 		},
 		{
+			"a: &x 1\nb: *x\nc: &y hello\nd: *y\n",
+			struct {
+				A, B, C, D unmarshalableStringValueWithUnmarshalText
+			}{"1", "1", "hello", "hello"},
+		},
+		{
+			"a: &a 127.0.0.1\nb: *a\n",
+			struct {
+				A, B net.IP
+			}{net.IPv4(127, 0, 0, 1), net.IPv4(127, 0, 0, 1)},
+		},
+		{
 			"a: &a [1, 2]\nb: *a\n",
 			struct{ B []int }{[]int{1, 2}},
 		},
@@ -996,6 +1009,13 @@ c:
 			t.Fatalf("failed to test [%s], actual=[%s], expect=[%s]", test.source, actual, expect)
 		}
 	}
+}
+
+type unmarshalableStringValueWithUnmarshalText string
+
+func (u *unmarshalableStringValueWithUnmarshalText) UnmarshalText(b []byte) error {
+	*u = unmarshalableStringValueWithUnmarshalText(b)
+	return nil
 }
 
 func TestDecoder_TypeConversionError(t *testing.T) {

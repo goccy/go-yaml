@@ -476,9 +476,12 @@ func (d *Decoder) decodeValue(dst reflect.Value, src ast.Node) error {
 	} else if _, ok := dst.Addr().Interface().(*time.Time); ok {
 		return d.decodeTime(dst, src)
 	} else if unmarshaler, isText := dst.Addr().Interface().(encoding.TextUnmarshaler); isText {
+		if anchor, isAnchor := src.(*ast.AnchorNode); isAnchor {
+			src = anchor.Value
+		}
 		var b string
 		if scalar, isScalar := src.(ast.ScalarNode); isScalar {
-			b = scalar.GetValue().(string)
+			b = fmt.Sprint(scalar.GetValue())
 		} else {
 			b = src.String()
 		}

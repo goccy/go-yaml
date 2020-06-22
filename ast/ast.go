@@ -12,7 +12,9 @@ import (
 )
 
 var (
-	ErrInvalidTokenType = xerrors.New("invalid token type")
+	ErrInvalidTokenType  = xerrors.New("invalid token type")
+	ErrInvalidAnchorName = xerrors.New("invalid anchor name")
+	ErrInvalidAliasName  = xerrors.New("invalid alias name")
 )
 
 // NodeType type identifier of node
@@ -1169,6 +1171,18 @@ type AnchorNode struct {
 	Value Node
 }
 
+func (n *AnchorNode) SetName(name string) error {
+	if n.Name == nil {
+		return ErrInvalidAnchorName
+	}
+	s, ok := n.Name.(*StringNode)
+	if !ok {
+		return ErrInvalidAnchorName
+	}
+	s.Value = name
+	return nil
+}
+
 // Read implements (io.Reader).Read
 func (n *AnchorNode) Read(p []byte) (int, error) {
 	return readNode(p, n)
@@ -1211,6 +1225,18 @@ type AliasNode struct {
 	*BaseNode
 	Start *token.Token
 	Value Node
+}
+
+func (n *AliasNode) SetName(name string) error {
+	if n.Value == nil {
+		return ErrInvalidAliasName
+	}
+	s, ok := n.Value.(*StringNode)
+	if !ok {
+		return ErrInvalidAliasName
+	}
+	s.Value = name
+	return nil
 }
 
 // Read implements (io.Reader).Read

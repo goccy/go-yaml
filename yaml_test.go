@@ -301,3 +301,46 @@ c: d
 		t.Fatal("failed to convert MapSlice to map")
 	}
 }
+
+func TestMarshalWithModifiedAnchorAlias(t *testing.T) {
+	yml := `
+a: &a 1
+b: *a
+`
+	var v struct {
+		A *int `yaml:"a,anchor"`
+		B *int `yaml:"b,alias"`
+	}
+	if err := yaml.Unmarshal([]byte(yml), &v); err != nil {
+		t.Fatal(err)
+	}
+	node, err := yaml.ValueToNode(v)
+	if err != nil {
+		t.Fatal(err)
+	}
+	anchors := ast.Filter(ast.AnchorType, node)
+	if len(anchors) != 1 {
+		t.Fatal("failed to filter node")
+	}
+	anchor := anchors[0].(*ast.AnchorNode)
+	if err := anchor.SetName("b"); err != nil {
+		t.Fatal(err)
+	}
+	aliases := ast.Filter(ast.AliasType, node)
+	if len(anchors) != 1 {
+		t.Fatal("failed to filter node")
+	}
+	alias := aliases[0].(*ast.AliasNode)
+	if err := alias.SetName("b"); err != nil {
+		t.Fatal(err)
+	}
+
+	expected := `
+a: &b 1
+b: *b`
+
+	actual := "\n" + node.String()
+	if expected != actual {
+		t.Fatalf("failed to marshal: expected:[%q] but got [%q]", expected, actual)
+	}
+}

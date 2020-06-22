@@ -328,7 +328,7 @@ b: "hello"
     if err != nil {
       panic(err)
     }
-    source, err := path.AddAnnotationToSource([]byte(yml), true)
+    source, err := path.AnnotateSource([]byte(yml), true)
     if err != nil {
       panic(err)
     }
@@ -337,7 +337,7 @@ b: "hello"
 }
 ```
 
-output result is following 
+output result is the following.
 
 <img src="https://user-images.githubusercontent.com/209884/84148813-7aca8680-aa9a-11ea-8fc9-37dece2ebdac.png"></img>
 

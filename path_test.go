@@ -114,7 +114,7 @@ store:
 	})
 }
 
-func ExamplePath_AddAnnotationToSource() {
+func ExamplePath_AnnotateSource() {
 	yml := `
 a: 1
 b: "hello"
@@ -132,7 +132,7 @@ b: "hello"
 		if err != nil {
 			log.Fatal(err)
 		}
-		source, err := path.AddAnnotationToSource([]byte(yml), false)
+		source, err := path.AnnotateSource([]byte(yml), false)
 		if err != nil {
 			log.Fatal(err)
 		}

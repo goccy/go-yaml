@@ -226,8 +226,8 @@ func (p *Path) FilterNode(node ast.Node) (ast.Node, error) {
 	return n, nil
 }
 
-// AddAnnotationToSource add annotation to passed source ( see section 5.1 in README.md ).
-func (p *Path) AddAnnotationToSource(source []byte, colored bool) ([]byte, error) {
+// AnnotateSource add annotation to passed source ( see section 5.1 in README.md ).
+func (p *Path) AnnotateSource(source []byte, colored bool) ([]byte, error) {
 	file, err := parser.ParseBytes([]byte(source), 0)
 	if err != nil {
 		return nil, err

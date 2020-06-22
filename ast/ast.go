@@ -1383,6 +1383,8 @@ func Walk(v Visitor, node Node) {
 	case *NanNode:
 	case *TagNode:
 		Walk(v, n.Value)
+	case *DocumentNode:
+		Walk(v, n.Body)
 	case *MappingNode:
 		for _, value := range n.Values {
 			Walk(v, value)
@@ -1402,4 +1404,34 @@ func Walk(v Visitor, node Node) {
 	case *AliasNode:
 		Walk(v, n.Value)
 	}
+}
+
+type filterWalker struct {
+	typ     NodeType
+	results []Node
+}
+
+func (v *filterWalker) Visit(n Node) Visitor {
+	if v.typ == n.Type() {
+		v.results = append(v.results, n)
+	}
+	return v
+}
+
+// Filter returns a list of nodes that match the given type.
+func Filter(typ NodeType, node Node) []Node {
+	walker := &filterWalker{typ: typ}
+	Walk(walker, node)
+	return walker.results
+}
+
+// FilterFile returns a list of nodes that match the given type.
+func FilterFile(typ NodeType, file *File) []Node {
+	results := []Node{}
+	for _, doc := range file.Docs {
+		walker := &filterWalker{typ: typ}
+		Walk(walker, doc)
+		results = append(results, walker.results...)
+	}
+	return results
 }

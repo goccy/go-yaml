@@ -435,6 +435,35 @@ func (d *Decoder) lastNode(node ast.Node) ast.Node {
 	return node
 }
 
+func (d *Decoder) unmarshalableDocument(node ast.Node) []byte {
+	node = d.resolveAlias(node)
+	doc := node.String()
+	last := d.lastNode(node)
+	if last != nil && last.Type() == ast.LiteralType {
+		doc += "\n"
+	}
+	return []byte(doc)
+}
+
+func (d *Decoder) unmarshalableText(node ast.Node) ([]byte, bool) {
+	node = d.resolveAlias(node)
+	if node.Type() == ast.AnchorType {
+		node = node.(*ast.AnchorNode).Value
+	}
+	switch n := node.(type) {
+	case *ast.StringNode:
+		return []byte(n.Value), true
+	case *ast.LiteralNode:
+		return []byte(n.Value.GetToken().Value), true
+	default:
+		scalar, ok := n.(ast.ScalarNode)
+		if ok {
+			return []byte(fmt.Sprint(scalar.GetValue())), true
+		}
+	}
+	return nil, false
+}
+
 func (d *Decoder) decodeValue(dst reflect.Value, src ast.Node) error {
 	if src.Type() == ast.AnchorType {
 		anchorName := src.(*ast.AnchorNode).Name.GetToken().Value
@@ -444,18 +473,7 @@ func (d *Decoder) decodeValue(dst reflect.Value, src ast.Node) error {
 	}
 	valueType := dst.Type()
 	if unmarshaler, ok := dst.Addr().Interface().(BytesUnmarshaler); ok {
-		src = d.resolveAlias(src)
-		var b string
-		if scalar, isScalar := src.(ast.ScalarNode); isScalar {
-			b = fmt.Sprint(scalar.GetValue())
-		} else {
-			b = src.String()
-		}
-		last := d.lastNode(src)
-		if last != nil && last.Type() == ast.LiteralType {
-			b += "\n"
-		}
-		if err := unmarshaler.UnmarshalYAML([]byte(b)); err != nil {
+		if err := unmarshaler.UnmarshalYAML(d.unmarshalableDocument(src)); err != nil {
 			return errors.Wrapf(err, "failed to UnmarshalYAML")
 		}
 		return nil
@@ -476,16 +494,13 @@ func (d *Decoder) decodeValue(dst reflect.Value, src ast.Node) error {
 	} else if _, ok := dst.Addr().Interface().(*time.Time); ok {
 		return d.decodeTime(dst, src)
 	} else if unmarshaler, isText := dst.Addr().Interface().(encoding.TextUnmarshaler); isText {
-		var b string
-		if scalar, isScalar := src.(ast.ScalarNode); isScalar {
-			b = scalar.GetValue().(string)
-		} else {
-			b = src.String()
+		b, ok := d.unmarshalableText(src)
+		if ok {
+			if err := unmarshaler.UnmarshalText(b); err != nil {
+				return errors.Wrapf(err, "failed to UnmarshalText")
+			}
+			return nil
 		}
-		if err := unmarshaler.UnmarshalText([]byte(b)); err != nil {
-			return errors.Wrapf(err, "failed to UnmarshalText")
-		}
-		return nil
 	}
 	switch valueType.Kind() {
 	case reflect.Ptr:

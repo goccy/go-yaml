@@ -851,7 +851,10 @@ func (d *Decoder) decodeStruct(dst reflect.Value, src ast.Node) error {
 						continue
 					}
 					fieldName := fieldErr.StructField()
-					structField := structFieldMap[fieldName]
+					structField, ok := structFieldMap[fieldName]
+					if !ok {
+						continue
+					}
 					node, exists := keyToNodeMap[structField.RenderName]
 					if exists {
 						// TODO: to make FieldError message cutomizable

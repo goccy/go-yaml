@@ -667,7 +667,7 @@ func (s *Scanner) scan(ctx *Context) (pos int) {
 		case '?':
 			nc := ctx.nextChar()
 			if !ctx.existsBuffer() && nc == ' ' {
-				ctx.addToken(token.Directive(s.pos()))
+				ctx.addToken(token.MappingKey(s.pos()))
 				s.progressColumn(ctx, 1)
 				return
 			}

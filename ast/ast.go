@@ -42,6 +42,8 @@ const (
 	LiteralType
 	// MappingType type identifier for mapping node
 	MappingType
+	// MappingKeyType type identifier for mapping key node
+	MappingKeyType
 	// MappingValueType type identifier for mapping value node
 	MappingValueType
 	// SequenceType type identifier for sequence node
@@ -85,6 +87,8 @@ func (t NodeType) String() string {
 		return "Literal"
 	case MappingType:
 		return "Mapping"
+	case MappingKeyType:
+		return "MappingKey"
 	case MappingValueType:
 		return "MappingValue"
 	case SequenceType:
@@ -326,6 +330,13 @@ func Mapping(tk *token.Token, isFlowStyle bool) *MappingNode {
 		Start:       tk,
 		IsFlowStyle: isFlowStyle,
 		Values:      []*MappingValueNode{},
+	}
+}
+
+// MappingKey create node for map key ( '?' ).
+func MappingKey(tk *token.Token) *MappingKeyNode {
+	return &MappingKeyNode{
+		Start: tk,
 	}
 }
 
@@ -878,6 +889,48 @@ func (n *MappingNode) MapRange() *MapNodeIter {
 	}
 }
 
+// MappingKeyNode type of tag node
+type MappingKeyNode struct {
+	Comment *token.Token // position of Comment ( `#comment` )
+	Start   *token.Token
+	Value   Node
+}
+
+// Type returns MappingKeyType
+func (n *MappingKeyNode) Type() NodeType { return MappingKeyType }
+
+// GetToken returns token instance
+func (n *MappingKeyNode) GetToken() *token.Token {
+	return n.Start
+}
+
+// GetComment returns comment token instance
+func (n *MappingKeyNode) GetComment() *token.Token {
+	return n.Comment
+}
+
+// AddColumn add column number to child nodes recursively
+func (n *MappingKeyNode) AddColumn(col int) {
+	n.Start.AddColumn(col)
+	if n.Value != nil {
+		n.Value.AddColumn(col)
+	}
+}
+
+// SetComment set comment token
+func (n *MappingKeyNode) SetComment(tk *token.Token) error {
+	if tk.Type != token.CommentType {
+		return ErrInvalidTokenType
+	}
+	n.Comment = tk
+	return nil
+}
+
+// String tag to text
+func (n *MappingKeyNode) String() string {
+	return fmt.Sprintf("%s %s", n.Start.Value, n.Value.String())
+}
+
 // MappingValueNode type of mapping value
 type MappingValueNode struct {
 	Comment *token.Token // position of Comment ( `#comment` )
@@ -1302,10 +1355,14 @@ func Walk(v Visitor, node Node) {
 	case *BoolNode:
 	case *InfinityNode:
 	case *NanNode:
+	case *TagNode:
+		Walk(v, n.Value)
 	case *MappingNode:
 		for _, value := range n.Values {
 			Walk(v, value)
 		}
+	case *MappingKeyNode:
+		Walk(v, n.Value)
 	case *MappingValueNode:
 		Walk(v, n.Key)
 		Walk(v, n.Value)

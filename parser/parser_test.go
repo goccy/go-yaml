@@ -69,6 +69,11 @@ func TestParser(t *testing.T) {
 		"v: |-\n  0\nx: 0",
 		`"a\n1\nb"`,
 		`{"a":"b"}`,
+		`!!map {
+  ? !!str "explicit":!!str "entry",
+  ? !!str "implicit" : !!str "entry",
+  ? !!null "" : !!null "",
+}`,
 	}
 	for _, src := range sources {
 		if _, err := parser.Parse(lexer.Tokenize(src), 0); err != nil {

@@ -68,6 +68,7 @@ func TestParser(t *testing.T) {
 		"v: |-\n  0\n",
 		"v: |-\n  0\nx: 0",
 		`"a\n1\nb"`,
+		`{"a":"b"}`,
 	}
 	for _, src := range sources {
 		if _, err := parser.Parse(lexer.Tokenize(src), 0); err != nil {

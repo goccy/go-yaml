@@ -625,7 +625,7 @@ func (s *Scanner) scan(ctx *Context) (pos int) {
 			}
 		case ':':
 			nc := ctx.nextChar()
-			if nc == ' ' || s.isNewLineChar(nc) || ctx.isNextEOS() {
+			if s.startedFlowMapNum > 0 || nc == ' ' || s.isNewLineChar(nc) || ctx.isNextEOS() {
 				// mapping value
 				tk := s.bufferedToken(ctx)
 				if tk != nil {

@@ -9,7 +9,6 @@ import (
 	"github.com/goccy/go-yaml/ast"
 	"github.com/goccy/go-yaml/lexer"
 	"github.com/goccy/go-yaml/parser"
-	"github.com/goccy/go-yaml/printer"
 )
 
 func TestParser(t *testing.T) {
@@ -69,17 +68,12 @@ func TestParser(t *testing.T) {
 		"v: |-\n  0\n",
 		"v: |-\n  0\nx: 0",
 		`"a\n1\nb"`,
+		`{"a":"b"}`,
 	}
 	for _, src := range sources {
-		fmt.Printf(src)
-		tokens := lexer.Tokenize(src)
-		var printer printer.Printer
-		fmt.Println(printer.PrintTokens(tokens))
-		ast, err := parser.Parse(tokens, 0)
-		if err != nil {
-			t.Fatalf("%+v", err)
+		if _, err := parser.Parse(lexer.Tokenize(src), 0); err != nil {
+			t.Fatalf("parse error: source [%s]: %+v", src, err)
 		}
-		fmt.Printf("%+v\n", ast)
 	}
 }
 
@@ -547,7 +541,6 @@ b: c
 	}
 	for _, test := range tests {
 		tokens := lexer.Tokenize(test.source)
-		tokens.Dump()
 		f, err := parser.Parse(tokens, 0)
 		if err != nil {
 			t.Fatalf("%+v", err)
@@ -558,6 +551,7 @@ b: c
 		}
 		expect := fmt.Sprintf("\n%+v\n", f)
 		if test.expect != expect {
+			tokens.Dump()
 			t.Fatalf("unexpected output: [%s] != [%s]", test.expect, expect)
 		}
 	}
@@ -592,7 +586,18 @@ func TestSyntaxError(t *testing.T) {
 		if err == nil {
 			t.Fatal("cannot catch syntax error")
 		}
-		fmt.Printf("%v\n", err)
+		expected := `
+[2:3] unexpected key name
+   1 | a:
+>  2 | - b
+   3 |   c: d
+         ^
+   4 |   e: f
+   5 |   g: h`
+		actual := "\n" + err.Error()
+		if expected != actual {
+			t.Fatalf("expected: [%s] but got [%s]", expected, actual)
+		}
 	}
 }
 

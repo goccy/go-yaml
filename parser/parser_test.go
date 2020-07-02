@@ -578,26 +578,49 @@ b: 1
 }
 
 func TestSyntaxError(t *testing.T) {
-	sources := []string{
-		"a:\n- b\n  c: d\n  e: f\n  g: h",
-	}
-	for _, source := range sources {
-		_, err := parser.ParseBytes([]byte(source), 0)
-		if err == nil {
-			t.Fatal("cannot catch syntax error")
-		}
-		expected := `
-[2:3] unexpected key name
-   1 | a:
->  2 | - b
-   3 |   c: d
+	tests := []struct {
+		source string
+		expect string
+	}{
+		{
+			`
+a:
+- b
+  c: d
+  e: f
+  g: h`,
+			`
+[3:3] unexpected key name
+   2 | a:
+>  3 | - b
+   4 |   c: d
          ^
-   4 |   e: f
-   5 |   g: h`
-		actual := "\n" + err.Error()
-		if expected != actual {
-			t.Fatalf("expected: [%s] but got [%s]", expected, actual)
-		}
+   5 |   e: f
+   6 |   g: h`,
+		},
+		{
+			`
+a
+- b: c`,
+			`
+[2:1] unexpected key name
+>  2 | a
+   3 | - b: c
+       ^
+`,
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.source, func(t *testing.T) {
+			_, err := parser.ParseBytes([]byte(test.source), 0)
+			if err == nil {
+				t.Fatal("cannot catch syntax error")
+			}
+			actual := "\n" + err.Error()
+			if test.expect != actual {
+				t.Fatalf("expected: [%s] but got [%s]", test.expect, actual)
+			}
+		})
 	}
 }
 

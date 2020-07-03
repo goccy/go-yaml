@@ -376,8 +376,8 @@ func (d *Decoder) deleteStructKeys(structType reflect.Type, unknownFields map[st
 			continue
 		}
 
-		structField, ok := structFieldMap[field.Name]
-		if !ok {
+		structField, exist := structFieldMap[field.Name]
+		if !exist {
 			continue
 		}
 

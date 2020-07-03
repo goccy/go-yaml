@@ -405,8 +405,8 @@ func (d *Decoder) deleteStructKeys(structType reflect.Type, unknownFields map[st
 			continue
 		}
 
-		structField, ok := structFieldMap[field.Name]
-		if !ok {
+		structField, exists := structFieldMap[field.Name]
+		if !exists {
 			continue
 		}
 
@@ -916,7 +916,10 @@ func (d *Decoder) decodeStruct(dst reflect.Value, src ast.Node) error {
 						continue
 					}
 					fieldName := fieldErr.StructField()
-					structField := structFieldMap[fieldName]
+					structField, exists := structFieldMap[fieldName]
+					if !exists {
+						continue
+					}
 					node, exists := keyToNodeMap[structField.RenderName]
 					if exists {
 						// TODO: to make FieldError message cutomizable

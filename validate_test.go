@@ -55,6 +55,32 @@ addr:
 				} `yaml:"addr"`
 			}{},
 		},
+		{
+			TestName: "Test nested Validation with unknown field",
+			YAMLContent: `---
+name: john
+age: 20
+addr:
+  number: seven
+  state: washington
+  error: error
+`,
+			ExpectedErr: `[7:3] unknown field "error"
+   4 | addr:
+   5 |   number: seven
+   6 |   state: washington
+>  7 |   error: error
+         ^
+`,
+			Instance: &struct {
+				Name string `yaml:"name" validate:"required"`
+				Age  int    `yaml:"age" validate:"gte=0,lt=120"`
+				Addr *struct {
+					Number string `yaml:"number" validate:"required"`
+					State  string `yaml:"state" validate:"required"`
+				} `yaml:"addr" validate:"required"`
+			}{},
+		},
 	}
 
 	for _, tc := range cases {
@@ -64,6 +90,7 @@ addr:
 			dec := yaml.NewDecoder(
 				strings.NewReader(tc.YAMLContent),
 				yaml.Validator(validate),
+				yaml.Strict(),
 			)
 			err := dec.Decode(tc.Instance)
 			switch {

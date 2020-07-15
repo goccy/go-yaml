@@ -101,13 +101,24 @@ func (d *Decoder) mergeValueNode(value ast.Node) ast.Node {
 	return value
 }
 
+func (d *Decoder) mapKeyNodeToString(node ast.Node) string {
+	key := d.nodeToValue(node)
+	if key == nil {
+		return "null"
+	}
+	if k, ok := key.(string); ok {
+		return k
+	}
+	return fmt.Sprint(key)
+}
+
 func (d *Decoder) setToMapValue(node ast.Node, m map[string]interface{}) {
 	switch n := node.(type) {
 	case *ast.MappingValueNode:
 		if n.Key.Type() == ast.MergeKeyType {
 			d.setToMapValue(d.mergeValueNode(n.Value), m)
 		} else {
-			key := n.Key.GetToken().Value
+			key := d.mapKeyNodeToString(n.Key)
 			m[key] = d.nodeToValue(n.Value)
 		}
 	case *ast.MappingNode:
@@ -123,7 +134,7 @@ func (d *Decoder) setToOrderedMapValue(node ast.Node, m *MapSlice) {
 		if n.Key.Type() == ast.MergeKeyType {
 			d.setToOrderedMapValue(d.mergeValueNode(n.Value), m)
 		} else {
-			key := n.Key.GetToken().Value
+			key := d.mapKeyNodeToString(n.Key)
 			*m = append(*m, MapItem{Key: key, Value: d.nodeToValue(n.Value)})
 		}
 	case *ast.MappingNode:
@@ -150,10 +161,13 @@ func (d *Decoder) nodeToValue(node ast.Node) interface{} {
 	case *ast.NanNode:
 		return n.GetValue()
 	case *ast.TagNode:
-		switch n.Start.Value {
+		switch token.ReservedTagKeyword(n.Start.Value) {
 		case token.TimestampTag:
 			t, _ := d.castToTime(n.Value)
 			return t
+		case token.IntegerTag:
+			i, _ := strconv.Atoi(fmt.Sprint(d.nodeToValue(n.Value)))
+			return i
 		case token.FloatTag:
 			return d.castToFloat(d.nodeToValue(n.Value))
 		case token.NullTag:
@@ -161,6 +175,10 @@ func (d *Decoder) nodeToValue(node ast.Node) interface{} {
 		case token.BinaryTag:
 			b, _ := base64.StdEncoding.DecodeString(d.nodeToValue(n.Value).(string))
 			return b
+		case token.StringTag:
+			return d.nodeToValue(n.Value)
+		case token.MappingTag:
+			return d.nodeToValue(n.Value)
 		}
 	case *ast.AnchorNode:
 		anchorName := n.Name.GetToken().Value
@@ -173,6 +191,8 @@ func (d *Decoder) nodeToValue(node ast.Node) interface{} {
 		return d.nodeToValue(node)
 	case *ast.LiteralNode:
 		return n.Value.GetValue()
+	case *ast.MappingKeyNode:
+		return d.nodeToValue(n.Value)
 	case *ast.MappingValueNode:
 		if n.Key.Type() == ast.MergeKeyType {
 			value := d.mergeValueNode(n.Value)
@@ -185,7 +205,7 @@ func (d *Decoder) nodeToValue(node ast.Node) interface{} {
 			d.setToMapValue(value, m)
 			return m
 		}
-		key := n.Key.GetToken().Value
+		key := d.mapKeyNodeToString(n.Key)
 		if d.useOrderedMap {
 			return MapSlice{{Key: key, Value: d.nodeToValue(n.Value)}}
 		}
@@ -221,6 +241,10 @@ func (d *Decoder) resolveAlias(node ast.Node) ast.Node {
 		for idx, value := range n.Values {
 			n.Values[idx] = d.resolveAlias(value).(*ast.MappingValueNode)
 		}
+	case *ast.TagNode:
+		n.Value = d.resolveAlias(n.Value)
+	case *ast.MappingKeyNode:
+		n.Value = d.resolveAlias(n.Value)
 	case *ast.MappingValueNode:
 		if n.Key.Type() == ast.MergeKeyType && n.Value.Type() == ast.AliasType {
 			value := d.resolveAlias(n.Value)

@@ -981,21 +981,23 @@ c:
 		},
 	}
 	for _, test := range tests {
-		buf := bytes.NewBufferString(test.source)
-		dec := yaml.NewDecoder(buf)
-		typ := reflect.ValueOf(test.value).Type()
-		value := reflect.New(typ)
-		if err := dec.Decode(value.Interface()); err != nil {
-			if err == io.EOF {
-				continue
+		t.Run(test.source, func(t *testing.T) {
+			buf := bytes.NewBufferString(test.source)
+			dec := yaml.NewDecoder(buf)
+			typ := reflect.ValueOf(test.value).Type()
+			value := reflect.New(typ)
+			if err := dec.Decode(value.Interface()); err != nil {
+				if err == io.EOF {
+					return
+				}
+				t.Fatalf("%s: %+v", test.source, err)
 			}
-			t.Fatalf("%s: %+v", test.source, err)
-		}
-		actual := fmt.Sprintf("%+v", value.Elem().Interface())
-		expect := fmt.Sprintf("%+v", test.value)
-		if actual != expect {
-			t.Fatalf("failed to test [%s], actual=[%s], expect=[%s]", test.source, actual, expect)
-		}
+			actual := fmt.Sprintf("%+v", value.Elem().Interface())
+			expect := fmt.Sprintf("%+v", test.value)
+			if actual != expect {
+				t.Fatalf("failed to test [%s], actual=[%s], expect=[%s]", test.source, actual, expect)
+			}
+		})
 	}
 }
 
@@ -2172,5 +2174,32 @@ func TestDecoder_TabCharacterAtRight(t *testing.T) {
 	}
 	if len(v[0]) != 3 {
 		t.Fatalf("failed to unmarshal %+v", v)
+	}
+}
+
+func TestDecoder_Canonical(t *testing.T) {
+	yml := `
+!!map {
+  ? !!str "explicit":!!str "entry",
+  ? !!str "implicit" : !!str "entry",
+  ? !!null "" : !!null "",
+}
+`
+	var v interface{}
+	if err := yaml.Unmarshal([]byte(yml), &v); err != nil {
+		t.Fatalf("%+v", err)
+	}
+	m, ok := v.(map[string]interface{})
+	if !ok {
+		t.Fatalf("failed to decode canonical yaml: %+v", v)
+	}
+	if m["explicit"] != "entry" {
+		t.Fatalf("failed to decode canonical yaml: %+v", m)
+	}
+	if m["implicit"] != "entry" {
+		t.Fatalf("failed to decode canonical yaml: %+v", m)
+	}
+	if m["null"] != nil {
+		t.Fatalf("failed to decode canonical yaml: %+v", m)
 	}
 }

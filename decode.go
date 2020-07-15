@@ -906,6 +906,16 @@ func (d *Decoder) decodeStruct(dst reflect.Value, src ast.Node) error {
 		}
 		fieldValue.Set(d.castToAssignableValue(newFieldValue, fieldValue.Type()))
 	}
+	if foundErr != nil {
+		return errors.Wrapf(foundErr, "failed to decode value")
+	}
+
+	if len(unknownFields) != 0 && d.disallowUnknownField {
+		for key, node := range unknownFields {
+			return errUnknownField(fmt.Sprintf(`unknown field "%s"`, key), node.GetToken())
+		}
+	}
+
 	if d.validator != nil {
 		if err := d.validator.Struct(dst.Interface()); err != nil {
 			ev := reflect.ValueOf(err)
@@ -928,14 +938,6 @@ func (d *Decoder) decodeStruct(dst reflect.Value, src ast.Node) error {
 				}
 			}
 		}
-	}
-	if len(unknownFields) != 0 && d.disallowUnknownField {
-		for key, node := range unknownFields {
-			return errUnknownField(fmt.Sprintf(`unknown field "%s"`, key), node.GetToken())
-		}
-	}
-	if foundErr != nil {
-		return errors.Wrapf(foundErr, "failed to decode value")
 	}
 	return nil
 }

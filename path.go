@@ -226,6 +226,87 @@ func (p *Path) FilterNode(node ast.Node) (ast.Node, error) {
 	return n, nil
 }
 
+// MergeFromReader merge YAML text into ast.File.
+func (p *Path) MergeFromReader(dst *ast.File, src io.Reader) error {
+	var buf bytes.Buffer
+	if _, err := io.Copy(&buf, src); err != nil {
+		return errors.Wrapf(err, "failed to copy from reader")
+	}
+	file, err := parser.ParseBytes(buf.Bytes(), 0)
+	if err != nil {
+		return errors.Wrapf(err, "failed to parse")
+	}
+	if err := p.MergeFromFile(dst, file); err != nil {
+		return errors.Wrapf(err, "failed to merge file")
+	}
+	return nil
+}
+
+// MergeFromFile merge ast.File into ast.File.
+func (p *Path) MergeFromFile(dst *ast.File, src *ast.File) error {
+	base, err := p.FilterFile(dst)
+	if err != nil {
+		return errors.Wrapf(err, "failed to filter file")
+	}
+	for _, doc := range src.Docs {
+		if err := ast.Merge(base, doc); err != nil {
+			return errors.Wrapf(err, "failed to merge")
+		}
+	}
+	return nil
+}
+
+// MergeFromNode merge ast.Node into ast.File.
+func (p *Path) MergeFromNode(dst *ast.File, src ast.Node) error {
+	base, err := p.FilterFile(dst)
+	if err != nil {
+		return errors.Wrapf(err, "failed to filter file")
+	}
+	if err := ast.Merge(base, src); err != nil {
+		return errors.Wrapf(err, "failed to merge")
+	}
+	return nil
+}
+
+// ReplaceWithReader replace ast.File with io.Reader.
+func (p *Path) ReplaceWithReader(dst *ast.File, src io.Reader) error {
+	var buf bytes.Buffer
+	if _, err := io.Copy(&buf, src); err != nil {
+		return errors.Wrapf(err, "failed to copy from reader")
+	}
+	file, err := parser.ParseBytes(buf.Bytes(), 0)
+	if err != nil {
+		return errors.Wrapf(err, "failed to parse")
+	}
+	if err := p.ReplaceWithFile(dst, file); err != nil {
+		return errors.Wrapf(err, "failed to replace file")
+	}
+	return nil
+}
+
+// ReplaceWithFile replace ast.File with ast.File.
+func (p *Path) ReplaceWithFile(dst *ast.File, src *ast.File) error {
+	for _, doc := range src.Docs {
+		if err := p.ReplaceWithNode(dst, doc); err != nil {
+			return errors.Wrapf(err, "failed to replace file by path ( %s )", p.node)
+		}
+	}
+	return nil
+}
+
+// ReplaceNode replace ast.File with ast.Node.
+func (p *Path) ReplaceWithNode(dst *ast.File, node ast.Node) error {
+	for _, doc := range dst.Docs {
+		if node.Type() == ast.DocumentType {
+			node = node.(*ast.DocumentNode).Body
+		}
+		if err := p.node.replace(doc.Body, node); err != nil {
+			return errors.Wrapf(err, "failed to replace node by path ( %s )", p.node)
+		}
+	}
+	return nil
+}
+
 // AnnotateSource add annotation to passed source ( see section 5.1 in README.md ).
 func (p *Path) AnnotateSource(source []byte, colored bool) ([]byte, error) {
 	file, err := parser.ParseBytes([]byte(source), 0)
@@ -285,6 +366,7 @@ type pathNode interface {
 	fmt.Stringer
 	chain(pathNode) pathNode
 	filter(ast.Node) (ast.Node, error)
+	replace(ast.Node, ast.Node) error
 }
 
 type basePathNode struct {
@@ -321,6 +403,16 @@ func (n *rootNode) filter(node ast.Node) (ast.Node, error) {
 		return nil, errors.Wrapf(err, "failed to filter")
 	}
 	return filtered, nil
+}
+
+func (n *rootNode) replace(node ast.Node, target ast.Node) error {
+	if n.child == nil {
+		return nil
+	}
+	if err := n.child.replace(node, target); err != nil {
+		return errors.Wrapf(err, "failed to replace")
+	}
+	return nil
 }
 
 type selectorNode struct {
@@ -370,6 +462,42 @@ func (n *selectorNode) filter(node ast.Node) (ast.Node, error) {
 	return nil, nil
 }
 
+func (n *selectorNode) replaceMapValue(value *ast.MappingValueNode, target ast.Node) error {
+	key := value.Key.GetToken().Value
+	if key != n.selector {
+		return nil
+	}
+	if n.child == nil {
+		if err := value.Replace(target); err != nil {
+			return errors.Wrapf(err, "failed to replace")
+		}
+	} else {
+		if err := n.child.replace(value.Value, target); err != nil {
+			return errors.Wrapf(err, "failed to replace")
+		}
+	}
+	return nil
+}
+
+func (n *selectorNode) replace(node ast.Node, target ast.Node) error {
+	switch node.Type() {
+	case ast.MappingType:
+		for _, value := range node.(*ast.MappingNode).Values {
+			if err := n.replaceMapValue(value, target); err != nil {
+				return errors.Wrapf(err, "failed to replace map value")
+			}
+		}
+	case ast.MappingValueType:
+		value := node.(*ast.MappingValueNode)
+		if err := n.replaceMapValue(value, target); err != nil {
+			return errors.Wrapf(err, "failed to replace map value")
+		}
+	default:
+		return errors.Wrapf(ErrInvalidQuery, "expected node type is map or map value. but got %s", node.Type())
+	}
+	return nil
+}
+
 func (n *selectorNode) String() string {
 	s := fmt.Sprintf(".%s", n.selector)
 	if n.child != nil {
@@ -407,6 +535,26 @@ func (n *indexNode) filter(node ast.Node) (ast.Node, error) {
 		return nil, errors.Wrapf(err, "failed to filter")
 	}
 	return filtered, nil
+}
+
+func (n *indexNode) replace(node ast.Node, target ast.Node) error {
+	if node.Type() != ast.SequenceType {
+		return errors.Wrapf(ErrInvalidQuery, "expected sequence type node. but got %s", node.Type())
+	}
+	sequence := node.(*ast.SequenceNode)
+	if n.selector >= uint(len(sequence.Values)) {
+		return errors.Wrapf(ErrInvalidQuery, "expected index is %d. but got sequences has %d items", n.selector, sequence.Values)
+	}
+	if n.child == nil {
+		if err := sequence.Replace(int(n.selector), target); err != nil {
+			return errors.Wrapf(err, "failed to replace")
+		}
+		return nil
+	}
+	if err := n.child.replace(sequence.Values[n.selector], target); err != nil {
+		return errors.Wrapf(err, "failed to replace")
+	}
+	return nil
 }
 
 func (n *indexNode) String() string {
@@ -453,6 +601,27 @@ func (n *indexAllNode) filter(node ast.Node) (ast.Node, error) {
 		out.Values = append(out.Values, filtered)
 	}
 	return &out, nil
+}
+
+func (n *indexAllNode) replace(node ast.Node, target ast.Node) error {
+	if node.Type() != ast.SequenceType {
+		return errors.Wrapf(ErrInvalidQuery, "expected sequence type node. but got %s", node.Type())
+	}
+	sequence := node.(*ast.SequenceNode)
+	if n.child == nil {
+		for idx := range sequence.Values {
+			if err := sequence.Replace(idx, target); err != nil {
+				return errors.Wrapf(err, "failed to replace")
+			}
+		}
+		return nil
+	}
+	for _, value := range sequence.Values {
+		if err := n.child.replace(value, target); err != nil {
+			return errors.Wrapf(err, "failed to replace")
+		}
+	}
+	return nil
 }
 
 type recursiveNode struct {
@@ -515,4 +684,39 @@ func (n *recursiveNode) filter(node ast.Node) (ast.Node, error) {
 	}
 	sequence.Start = node.GetToken()
 	return sequence, nil
+}
+
+func (n *recursiveNode) replaceNode(node ast.Node, target ast.Node) error {
+	switch typedNode := node.(type) {
+	case *ast.MappingNode:
+		for _, value := range typedNode.Values {
+			if err := n.replaceNode(value, target); err != nil {
+				return errors.Wrapf(err, "failed to replace")
+			}
+		}
+	case *ast.MappingValueNode:
+		key := typedNode.Key.GetToken().Value
+		if n.selector == key {
+			if err := typedNode.Replace(target); err != nil {
+				return errors.Wrapf(err, "failed to replace")
+			}
+		}
+		if err := n.replaceNode(typedNode.Value, target); err != nil {
+			return errors.Wrapf(err, "failed to replace")
+		}
+	case *ast.SequenceNode:
+		for _, value := range typedNode.Values {
+			if err := n.replaceNode(value, target); err != nil {
+				return errors.Wrapf(err, "failed to replace")
+			}
+		}
+	}
+	return nil
+}
+
+func (n *recursiveNode) replace(node ast.Node, target ast.Node) error {
+	if err := n.replaceNode(node, target); err != nil {
+		return errors.Wrapf(err, "failed to replace")
+	}
+	return nil
 }

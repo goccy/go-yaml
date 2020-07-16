@@ -901,6 +901,25 @@ type MappingNode struct {
 	Values      []*MappingValueNode
 }
 
+// Merge merge key/value of map.
+func (n *MappingNode) Merge(target *MappingNode) {
+	keyToMapValueMap := map[string]*MappingValueNode{}
+	for _, value := range n.Values {
+		key := value.Key.String()
+		keyToMapValueMap[key] = value
+	}
+	column := n.Start.Position.Column - target.Start.Position.Column
+	target.AddColumn(column)
+	for _, value := range target.Values {
+		mapValue, exists := keyToMapValueMap[value.Key.String()]
+		if exists {
+			mapValue.Value = value.Value
+		} else {
+			n.Values = append(n.Values, value)
+		}
+	}
+}
+
 // Read implements (io.Reader).Read
 func (n *MappingNode) Read(p []byte) (int, error) {
 	return readNode(p, n)
@@ -1002,6 +1021,14 @@ type MappingValueNode struct {
 	Value Node
 }
 
+// Replace replace value node.
+func (n *MappingValueNode) Replace(value Node) error {
+	column := n.Value.GetToken().Position.Column - value.GetToken().Position.Column
+	value.AddColumn(column)
+	n.Value = value
+	return nil
+}
+
 // Read implements (io.Reader).Read
 func (n *MappingValueNode) Read(p []byte) (int, error) {
 	return readNode(p, n)
@@ -1091,6 +1118,29 @@ type SequenceNode struct {
 	End         *token.Token
 	IsFlowStyle bool
 	Values      []Node
+}
+
+// Replace replace value node.
+func (n *SequenceNode) Replace(idx int, value Node) error {
+	if len(n.Values) <= idx {
+		return xerrors.Errorf(
+			"invalid index for sequence: sequence length is %d, but specified %d index",
+			len(n.Values), idx,
+		)
+	}
+	column := n.Values[idx].GetToken().Position.Column - value.GetToken().Position.Column
+	value.AddColumn(column)
+	n.Values[idx] = value
+	return nil
+}
+
+// Merge merge sequence value.
+func (n *SequenceNode) Merge(target *SequenceNode) {
+	column := n.Start.Position.Column - target.Start.Position.Column
+	target.AddColumn(column)
+	for _, value := range target.Values {
+		n.Values = append(n.Values, value)
+	}
 }
 
 // Read implements (io.Reader).Read
@@ -1434,4 +1484,43 @@ func FilterFile(typ NodeType, file *File) []Node {
 		results = append(results, walker.results...)
 	}
 	return results
+}
+
+type ErrInvalidMergeType struct {
+	dst Node
+	src Node
+}
+
+func (e *ErrInvalidMergeType) Error() string {
+	return fmt.Sprintf("cannot merge %s into %s", e.src.Type(), e.dst.Type())
+}
+
+// Merge merge document, map, sequence node.
+func Merge(dst Node, src Node) error {
+	if doc, ok := src.(*DocumentNode); ok {
+		src = doc.Body
+	}
+	err := &ErrInvalidMergeType{dst: dst, src: src}
+	switch dst.Type() {
+	case DocumentType:
+		node := dst.(*DocumentNode)
+		return Merge(node.Body, src)
+	case MappingType:
+		node := dst.(*MappingNode)
+		target, ok := src.(*MappingNode)
+		if !ok {
+			return err
+		}
+		node.Merge(target)
+		return nil
+	case SequenceType:
+		node := dst.(*SequenceNode)
+		target, ok := src.(*SequenceNode)
+		if !ok {
+			return err
+		}
+		node.Merge(target)
+		return nil
+	}
+	return err
 }

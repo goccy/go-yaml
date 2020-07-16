@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"io"
 
+	"github.com/goccy/go-yaml/ast"
 	"github.com/goccy/go-yaml/internal/errors"
 	"golang.org/x/xerrors"
 )
@@ -42,6 +43,15 @@ type MapItem struct {
 // MapSlice encodes and decodes as a YAML map.
 // The order of keys is preserved when encoding and decoding.
 type MapSlice []MapItem
+
+// ToMap convert to map[interface{}]interface{}.
+func (s MapSlice) ToMap() map[interface{}]interface{} {
+	v := map[interface{}]interface{}{}
+	for _, item := range s {
+		v[item.Key] = item.Value
+	}
+	return v
+}
 
 // Marshal serializes the value provided into a YAML document. The structure
 // of the generated document will reflect the structure of the value itself.
@@ -94,12 +104,27 @@ type MapSlice []MapItem
 //     yaml.Marshal(&T{F: 1}) // Returns "a: 1\nb: 0\n"
 //
 func Marshal(v interface{}) ([]byte, error) {
+	return MarshalWithOptions(v)
+}
+
+// MarshalWithOptions serializes the value provided into a YAML document with EncodeOptions.
+func MarshalWithOptions(v interface{}, opts ...EncodeOption) ([]byte, error) {
 	var buf bytes.Buffer
-	enc := NewEncoder(&buf)
+	enc := NewEncoder(&buf, opts...)
 	if err := enc.Encode(v); err != nil {
 		return nil, errors.Wrapf(err, "failed to marshal")
 	}
 	return buf.Bytes(), nil
+}
+
+// ValueToNode convert from value to ast.Node.
+func ValueToNode(v interface{}, opts ...EncodeOption) (ast.Node, error) {
+	var buf bytes.Buffer
+	node, err := NewEncoder(&buf, opts...).EncodeToNode(v)
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to convert value to node")
+	}
+	return node, nil
 }
 
 // Unmarshal decodes the first document found within the in byte slice
@@ -126,7 +151,13 @@ func Marshal(v interface{}) ([]byte, error) {
 // supported tag options.
 //
 func Unmarshal(data []byte, v interface{}) error {
-	dec := NewDecoder(bytes.NewBuffer(data))
+	return UnmarshalWithOptions(data, v)
+}
+
+// UnmarshalWithOptions decodes with DecodeOptions the first document found within the in byte slice
+// and assigns decoded values into the out value.
+func UnmarshalWithOptions(data []byte, v interface{}, opts ...DecodeOption) error {
+	dec := NewDecoder(bytes.NewBuffer(data), opts...)
 	if err := dec.Decode(v); err != nil {
 		if err == io.EOF {
 			return nil
@@ -151,5 +182,4 @@ func FormatError(e error, colored, inclSource bool) string {
 	}
 
 	return e.Error()
-
 }

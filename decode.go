@@ -861,10 +861,8 @@ func (d *Decoder) decodeStruct(dst reflect.Value, src ast.Node) error {
 			}
 			mapNode := ast.Mapping(nil, false)
 			for k, v := range keyToNodeMap {
-				mapNode.Values = append(mapNode.Values, &ast.MappingValueNode{
-					Key:   &ast.StringNode{Value: k},
-					Value: v,
-				})
+				key := &ast.StringNode{BaseNode: &ast.BaseNode{}, Value: k}
+				mapNode.Values = append(mapNode.Values, ast.MappingValue(nil, key, v))
 			}
 			newFieldValue, err := d.createDecodedNewValue(fieldValue.Type(), mapNode)
 			if d.disallowUnknownField {

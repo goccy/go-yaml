@@ -68,18 +68,27 @@ func (e *Encoder) Close() error {
 //
 // See the documentation for Marshal for details about the conversion of Go values to YAML.
 func (e *Encoder) Encode(v interface{}) error {
-	for _, opt := range e.opts {
-		if err := opt(e); err != nil {
-			return errors.Wrapf(err, "failed to run option for encoder")
-		}
-	}
-	node, err := e.encodeValue(reflect.ValueOf(v), 1)
+	node, err := e.EncodeToNode(v)
 	if err != nil {
-		return errors.Wrapf(err, "failed to encode value")
+		return errors.Wrapf(err, "failed to encode to node")
 	}
 	var p printer.Printer
 	e.writer.Write(p.PrintNode(node))
 	return nil
+}
+
+// EncodeToNode convert v to ast.Node.
+func (e *Encoder) EncodeToNode(v interface{}) (ast.Node, error) {
+	for _, opt := range e.opts {
+		if err := opt(e); err != nil {
+			return nil, errors.Wrapf(err, "failed to run option for encoder")
+		}
+	}
+	node, err := e.encodeValue(reflect.ValueOf(v), 1)
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to encode value")
+	}
+	return node, nil
 }
 
 func (e *Encoder) encodeDocument(doc []byte) (ast.Node, error) {
@@ -155,10 +164,9 @@ func (e *Encoder) encodeValue(v reflect.Value, column int) (ast.Node, error) {
 		anchorName := e.anchorPtrToNameMap[v.Pointer()]
 		if anchorName != "" {
 			aliasName := anchorName
-			return &ast.AliasNode{
-				Start: token.New("*", "*", e.pos(column)),
-				Value: ast.String(token.New(aliasName, aliasName, e.pos(column))),
-			}, nil
+			alias := ast.Alias(token.New("*", "*", e.pos(column)))
+			alias.Value = ast.String(token.New(aliasName, aliasName, e.pos(column)))
+			return alias, nil
 		}
 		return e.encodeValue(v.Elem(), column)
 	case reflect.Interface:
@@ -276,11 +284,11 @@ func (e *Encoder) encodeMapItem(item MapItem, column int) (*ast.MappingValueNode
 	if m, ok := value.(*ast.MappingNode); ok {
 		m.AddColumn(e.indent)
 	}
-	return &ast.MappingValueNode{
-		Start: token.New("", "", e.pos(column)),
-		Key:   e.encodeString(k.Interface().(string), column),
-		Value: value,
-	}, nil
+	return ast.MappingValue(
+		token.New("", "", e.pos(column)),
+		e.encodeString(k.Interface().(string), column),
+		value,
+	), nil
 }
 
 func (e *Encoder) encodeMapSlice(value MapSlice, column int) (ast.Node, error) {
@@ -312,10 +320,11 @@ func (e *Encoder) encodeMap(value reflect.Value, column int) ast.Node {
 		if m, ok := value.(*ast.MappingNode); ok {
 			m.AddColumn(e.indent)
 		}
-		node.Values = append(node.Values, &ast.MappingValueNode{
-			Key:   e.encodeString(k.Interface().(string), column),
-			Value: value,
-		})
+		node.Values = append(node.Values, ast.MappingValue(
+			nil,
+			e.encodeString(k.Interface().(string), column),
+			value,
+		))
 	}
 	return node
 }
@@ -376,11 +385,9 @@ func (e *Encoder) encodeTime(v time.Time, column int) ast.Node {
 }
 
 func (e *Encoder) encodeAnchor(anchorName string, value ast.Node, fieldValue reflect.Value, column int) (ast.Node, error) {
-	anchorNode := &ast.AnchorNode{
-		Start: token.New("&", "&", e.pos(column)),
-		Name:  ast.String(token.New(anchorName, anchorName, e.pos(column))),
-		Value: value,
-	}
+	anchorNode := ast.Anchor(token.New("&", "&", e.pos(column)))
+	anchorNode.Name = ast.String(token.New(anchorName, anchorName, e.pos(column)))
+	anchorNode.Value = value
 	if e.anchorCallback != nil {
 		if err := e.anchorCallback(anchorNode, fieldValue.Interface()); err != nil {
 			return nil, errors.Wrapf(err, "failed to marshal anchor")
@@ -451,20 +458,18 @@ func (e *Encoder) encodeStruct(value reflect.Value, column int) (ast.Node, error
 				)
 			}
 			aliasName := anchorName
-			value = &ast.AliasNode{
-				Start: token.New("*", "*", e.pos(column)),
-				Value: ast.String(token.New(aliasName, aliasName, e.pos(column))),
-			}
+			alias := ast.Alias(token.New("*", "*", e.pos(column)))
+			alias.Value = ast.String(token.New(aliasName, aliasName, e.pos(column)))
+			value = alias
 			if structField.IsInline {
 				// if both used alias and inline, output `<<: *alias`
 				key = ast.MergeKey(token.New("<<", "<<", e.pos(column)))
 			}
 		case structField.AliasName != "":
 			aliasName := structField.AliasName
-			value = &ast.AliasNode{
-				Start: token.New("*", "*", e.pos(column)),
-				Value: ast.String(token.New(aliasName, aliasName, e.pos(column))),
-			}
+			alias := ast.Alias(token.New("*", "*", e.pos(column)))
+			alias.Value = ast.String(token.New(aliasName, aliasName, e.pos(column)))
+			value = alias
 			if structField.IsInline {
 				// if both used alias and inline, output `<<: *alias`
 				key = ast.MergeKey(token.New("<<", "<<", e.pos(column)))
@@ -492,10 +497,7 @@ func (e *Encoder) encodeStruct(value reflect.Value, column int) (ast.Node, error
 				}
 				key.AddColumn(-e.indent)
 				value.AddColumn(-e.indent)
-				node.Values = append(node.Values, &ast.MappingValueNode{
-					Key:   key,
-					Value: value,
-				})
+				node.Values = append(node.Values, ast.MappingValue(nil, key, value))
 			}
 			continue
 		case structField.IsAutoAnchor:
@@ -505,19 +507,14 @@ func (e *Encoder) encodeStruct(value reflect.Value, column int) (ast.Node, error
 			}
 			value = anchorNode
 		}
-		node.Values = append(node.Values, &ast.MappingValueNode{
-			Key:   key,
-			Value: value,
-		})
+		node.Values = append(node.Values, ast.MappingValue(nil, key, value))
 	}
 	if hasInlineAnchorField {
 		node.AddColumn(e.indent)
 		anchorName := "anchor"
-		anchorNode := &ast.AnchorNode{
-			Start: token.New("&", "&", e.pos(column)),
-			Name:  ast.String(token.New(anchorName, anchorName, e.pos(column))),
-			Value: node,
-		}
+		anchorNode := ast.Anchor(token.New("&", "&", e.pos(column)))
+		anchorNode.Name = ast.String(token.New(anchorName, anchorName, e.pos(column)))
+		anchorNode.Value = node
 		if e.anchorCallback != nil {
 			if err := e.anchorCallback(anchorNode, value.Addr().Interface()); err != nil {
 				return nil, errors.Wrapf(err, "failed to marshal anchor")

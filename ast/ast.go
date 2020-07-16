@@ -901,6 +901,13 @@ type MappingNode struct {
 	Values      []*MappingValueNode
 }
 
+func (n *MappingNode) startPos() *token.Position {
+	if len(n.Values) == 0 {
+		return n.Start.Position
+	}
+	return n.Values[0].Key.GetToken().Position
+}
+
 // Merge merge key/value of map.
 func (n *MappingNode) Merge(target *MappingNode) {
 	keyToMapValueMap := map[string]*MappingValueNode{}
@@ -908,7 +915,7 @@ func (n *MappingNode) Merge(target *MappingNode) {
 		key := value.Key.String()
 		keyToMapValueMap[key] = value
 	}
-	column := n.Start.Position.Column - target.Start.Position.Column
+	column := n.startPos().Column - target.startPos().Column
 	target.AddColumn(column)
 	for _, value := range target.Values {
 		mapValue, exists := keyToMapValueMap[value.Key.String()]

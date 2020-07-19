@@ -2,11 +2,11 @@ package yaml
 
 import (
 	"bytes"
-	"io"
-
+	"context"
 	"github.com/goccy/go-yaml/ast"
 	"github.com/goccy/go-yaml/internal/errors"
 	"golang.org/x/xerrors"
+	"io"
 )
 
 // BytesMarshaler interface may be implemented by types to customize their
@@ -28,6 +28,12 @@ type InterfaceMarshaler interface {
 // behavior when being unmarshaled from a YAML document.
 type BytesUnmarshaler interface {
 	UnmarshalYAML([]byte) error
+}
+
+// ContextBytesUnmarshaler interface may be implemented by types to customize their
+// behavior when being unmarshaled from a YAML document.
+type  interface {
+	UnmarshalYAML(context.Context, []byte) error
 }
 
 // InterfaceUnmarshaler interface has UnmarshalYAML compatible with github.com/go-yaml/yaml package.

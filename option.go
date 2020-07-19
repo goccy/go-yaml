@@ -1,6 +1,7 @@
 package yaml
 
 import (
+	"context"
 	"io"
 
 	"github.com/goccy/go-yaml/ast"
@@ -8,6 +9,14 @@ import (
 
 // DecodeOption functional option type for Decoder
 type DecodeOption func(d *Decoder) error
+
+// WithContext passes a context to Decoder.
+func WithContext(context context.Context) DecodeOption {
+	return func(d *Decoder) error {
+		d.context = context
+		return nil
+	}
+}
 
 // ReferenceReaders pass to Decoder that reference to anchor defined by passed readers
 func ReferenceReaders(readers ...io.Reader) DecodeOption {

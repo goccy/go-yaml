@@ -2,6 +2,7 @@ package yaml_test
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"io"
 	"log"
@@ -17,6 +18,48 @@ import (
 	"github.com/goccy/go-yaml/parser"
 	"golang.org/x/xerrors"
 )
+
+type RawMessage struct {
+	Raw []byte
+	Seq int
+}
+
+func (r *RawMessage) UnmarshalYAML(ctx context.Context, raw []byte) error {
+	if ctx != nil {
+		counter := ctx.Value("counter").(*int)
+		*counter++
+		r.Seq = *counter
+	}
+
+	r.Raw = raw
+	return nil
+}
+
+func TestUserContextUnmarshal(t *testing.T) {
+	yml := `
+%YAML 1.2
+---
+a: 1
+b: c
+`
+	var m map[string]RawMessage
+	seq := 0
+	ctx := yaml.WithContext(context.WithValue(context.Background(), "counter", &seq))
+	if err := yaml.UnmarshalWithOptions([]byte(yml), &m, ctx); err != nil {
+		t.Fatalf("%+v", err)
+	}
+
+	if seq != 2 {
+		t.Fatalf("seq should be 2")
+	}
+
+	if !reflect.DeepEqual(m, map[string]RawMessage{
+		"a": {Raw: []byte("1"), Seq: 1},
+		"b": {Raw: []byte("c"), Seq: 2},
+	}) {
+		t.Fatalf("decode failed")
+	}
+}
 
 type Child struct {
 	B int
@@ -2163,8 +2206,8 @@ func TestDecoder_LiteralWithNewLine(t *testing.T) {
 
 func TestDecoder_TabCharacterAtRight(t *testing.T) {
 	yml := `
-- a: [2 , 2] 			
-  b: [2 , 2] 			
+- a: [2 , 2]
+  b: [2 , 2]
   c: [2 , 2]`
 	var v []map[string][]int
 	if err := yaml.Unmarshal([]byte(yml), &v); err != nil {

@@ -2,6 +2,7 @@ package yaml
 
 import (
 	"bytes"
+	"context"
 	"encoding"
 	"encoding/base64"
 	"fmt"
@@ -38,6 +39,8 @@ type Decoder struct {
 	useOrderedMap        bool
 	parsedFile           *ast.File
 	streamIndex          int
+
+	context context.Context
 }
 
 // NewDecoder returns a new decoder that reads from r.
@@ -496,12 +499,18 @@ func (d *Decoder) decodeValue(dst reflect.Value, src ast.Node) error {
 		}
 	}
 	valueType := dst.Type()
-	if unmarshaler, ok := dst.Addr().Interface().(BytesUnmarshaler); ok {
+	dstUnder := dst.Addr().Interface()
+	if unmarshaler, ok := dstUnder.(ContextBytesUnmarshaler); ok {
+		if err := unmarshaler.UnmarshalYAML(d.context, d.unmarshalableDocument(src)); err != nil {
+			return errors.Wrapf(err, "failed to UnmarshalYAML")
+		}
+		return nil
+	} else if unmarshaler, ok := dstUnder.(BytesUnmarshaler); ok {
 		if err := unmarshaler.UnmarshalYAML(d.unmarshalableDocument(src)); err != nil {
 			return errors.Wrapf(err, "failed to UnmarshalYAML")
 		}
 		return nil
-	} else if unmarshaler, ok := dst.Addr().Interface().(InterfaceUnmarshaler); ok {
+	} else if unmarshaler, ok := dstUnder.(InterfaceUnmarshaler); ok {
 		if err := unmarshaler.UnmarshalYAML(func(v interface{}) error {
 			rv := reflect.ValueOf(v)
 			if rv.Type().Kind() != reflect.Ptr {
@@ -515,9 +524,9 @@ func (d *Decoder) decodeValue(dst reflect.Value, src ast.Node) error {
 			return errors.Wrapf(err, "failed to UnmarshalYAML")
 		}
 		return nil
-	} else if _, ok := dst.Addr().Interface().(*time.Time); ok {
+	} else if _, ok := dstUnder.(*time.Time); ok {
 		return d.decodeTime(dst, src)
-	} else if unmarshaler, isText := dst.Addr().Interface().(encoding.TextUnmarshaler); isText {
+	} else if unmarshaler, isText := dstUnder.(encoding.TextUnmarshaler); isText {
 		b, ok := d.unmarshalableText(src)
 		if ok {
 			if err := unmarshaler.UnmarshalText(b); err != nil {

@@ -98,4 +98,13 @@ func TestIsNeedQuoted(t *testing.T) {
 	if token.IsNeedQuoted("Hello World") {
 		t.Fatal("failed to unquoted judge")
 	}
+	if !token.IsNeedQuoted("#Hello World") {
+		t.Fatal("failed to quoted judge for beginning comment")
+	}
+	if !token.IsNeedQuoted("*Hello World") {
+		t.Fatal("failed to quoted judge for beginning alias")
+	}
+	if !token.IsNeedQuoted("&Hello World") {
+		t.Fatal("failed to quoted judge for beginning anchor")
+	}
 }

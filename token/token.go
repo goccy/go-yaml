@@ -574,7 +574,13 @@ func IsNeedQuoted(value string) bool {
 	if strings.IndexByte(value, ':') == 1 {
 		return true
 	}
-	if strings.IndexByte(value, '#') > 0 {
+	if strings.IndexByte(value, '#') >= 0 {
+		return true
+	}
+	if strings.IndexByte(value, '*') == 0 {
+		return true
+	}
+	if strings.IndexByte(value, '&') == 0 {
 		return true
 	}
 	for _, c := range value {

@@ -7,7 +7,7 @@
 
 <img width="300px" src="https://user-images.githubusercontent.com/209884/67159116-64d94b80-f37b-11e9-9b28-f8379636a43c.png"></img>
 
-## Why a new library?
+# Why a new library?
 
 As of this writing, there already exists a defacto standard library for YAML processing Go: [https://github.com/go-yaml/yaml](https://github.com/go-yaml/yaml). However we feel that some features are lacking, namely:
 
@@ -16,7 +16,7 @@ As of this writing, there already exists a defacto standard library for YAML pro
 - Support `Anchor` and `Alias` when marshaling
 - Allow referencing elements declared in another file via anchors
 
-## Features
+# Features
 
 - Pretty format for error notifications
 - Support `Scanner` or `Lexer` or `Parser` as public API
@@ -24,9 +24,15 @@ As of this writing, there already exists a defacto standard library for YAML pro
 - Allow referencing elements declared in another file via anchors
 - Extract value or AST by YAMLPath ( YAMLPath is like a JSONPath )
 
-## Synopsis
+# Installation
 
-### 1. Simple Encode/Decode
+```sh
+go get -u github.com/goccy/go-yaml
+```
+
+# Synopsis
+
+## 1. Simple Encode/Decode
 
 Support compatible interface to `go-yaml/yaml` by using `reflect`
 
@@ -103,7 +109,7 @@ performance wise. But if you are, for example, just providing a choice between
 a config file format that is read only once, the former is probably easier to
 code.
 
-### 2. Reference elements in declared in another file
+## 2. Reference elements in declared in another file
 
 `testdata` directory includes `anchor.yml` file
 
@@ -138,9 +144,9 @@ if err := dec.Decode(&v); err != nil {
 fmt.Printf("%+v\n", v) // {A:{B:1 C:hello}}
 ```
 
-### 3. Encode with `Anchor` and `Alias`
+## 3. Encode with `Anchor` and `Alias`
 
-#### 3.1. Explicitly declaration `Anchor` name and `Alias` name
+### 3.1. Explicitly declaration `Anchor` name and `Alias` name
 
 If you want to use `anchor` or `alias`, you can define it as a struct tag.
 
@@ -168,7 +174,7 @@ d: *x
 */
 ```
 
-#### 3.2. Implicitly declared `Anchor` and `Alias` names
+### 3.2. Implicitly declared `Anchor` and `Alias` names
 
 If you do not explicitly declare the anchor name, the default behavior is to
 use the equivalent of `strings.ToLower($FieldName)` as the name of the anchor.
@@ -209,7 +215,7 @@ d: *b
 */
 ```
 
-#### 3.3 MergeKey and Alias
+### 3.3 MergeKey and Alias
 
 Merge key and alias ( `<<: *alias` ) can be used by embedding a structure with the `inline,alias` tag .
 
@@ -256,7 +262,7 @@ people:
 */
 ```
 
-### 4. Pretty Formatted Errors
+## 4. Pretty Formatted Errors
 
 Error values produced during parsing has two extra features over regular
 error values.
@@ -272,7 +278,7 @@ control turning on/off these features
 
 <img src="https://user-images.githubusercontent.com/209884/67358124-587f0980-f59a-11e9-96fc-7205aab77695.png"></img>
 
-### 5. Use YAMLPath
+## 5. Use YAMLPath
 
 ```go
 yml := `
@@ -298,7 +304,7 @@ fmt.Println(authors)
 // [john ken]
 ```
 
-#### 5.1 Print customized error with YAML source code
+### 5.1 Print customized error with YAML source code
 
 ```go
 package main
@@ -341,26 +347,20 @@ output result is the following.
 <img src="https://user-images.githubusercontent.com/209884/84148813-7aca8680-aa9a-11ea-8fc9-37dece2ebdac.png"></img>
 
 
-## Installation
+# Tools
 
-```sh
-go get -u github.com/goccy/go-yaml
-```
-
-## Tools
-
-### ycat 
+## ycat 
 
 print yaml file with color
 
 <img width="713" alt="ycat" src="https://user-images.githubusercontent.com/209884/66986084-19b00600-f0f9-11e9-9f0e-1f91eb072fe0.png">
 
-Install ycat tool with:
+### Installation
 
 ```sh
 go get -u github.com/goccy/go-yaml/cmd/ycat
 ```
 
-## License
+# License
 
 MIT

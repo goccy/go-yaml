@@ -16,7 +16,6 @@ As of this writing, there already exists a defacto standard library for YAML pro
 - Support `Anchor` and `Alias` when marshaling
 - Allow referencing elements declared in another file via anchors
 
-
 # Features
 
 - Pretty format for error notifications
@@ -24,6 +23,12 @@ As of this writing, there already exists a defacto standard library for YAML pro
 - Support `Anchor` and `Alias` to Marshaler
 - Allow referencing elements declared in another file via anchors
 - Extract value or AST by YAMLPath ( YAMLPath is like a JSONPath )
+
+# Installation
+
+```sh
+go get -u github.com/goccy/go-yaml
+```
 
 # Synopsis
 
@@ -40,7 +45,7 @@ v.A = 1
 v.B = "hello"
 bytes, err := yaml.Marshal(v)
 if err != nil {
-	...
+	//...
 }
 fmt.Println(string(bytes)) // "a: 1\nb: hello\n"
 ```
@@ -57,7 +62,7 @@ var v struct {
 	B string
 }
 if err := yaml.Unmarshal([]byte(yml), &v); err != nil {
-	...
+	//...
 }
 ```
 
@@ -73,7 +78,7 @@ var v struct {
 	B string `yaml:"bar"`
 }
 if err := yaml.Unmarshal([]byte(yml), &v); err != nil {
-	...
+	//...
 }
 ```
 
@@ -91,13 +96,13 @@ var v struct {
 	B string `json:"bar"`
 }
 if err := yaml.Unmarshal([]byte(yml), &v); err != nil {
-	...
+	//...
 }
 ```
 
-For custom marshal/unmarshaling, implement one of Bytes or Interface Marshaler/Unmarshaler. The difference is that while BytesMarshaler/BytesUnmarshaler behave  like `encoding.json`, InterfaceMarshaler/InterfaceUnmarshaler behave like `gopkg.in/yaml.v2`.
+For custom marshal/unmarshaling, implement either `Bytes` or `Interface` variant of marshaler/unmarshaler. The difference is that while `BytesMarshaler`/`BytesUnmarshaler` behaves like [`encoding/json`](https://pkg.go.dev/encoding/json) and `InterfaceMarshaler`/`InterfaceUnmarshaler` behaves like [`gopkg.in/yaml.v2`](https://pkg.go.dev/gopkg.in/yaml.v2).
 
-Semantically both are the same, but they differ in performance. Because indentation matter in YAML, you cannot simply accept a valid YAML fragment from a Marshaler, and expect it to work when it is attached to the parent container's serialized form. Therefore when we receive use the BytesMarshaler, which returns []byte, we must decode it once to figure out how to make it work in the given context. If you use the InterfaceMarshaler, we can skip the decoding.
+Semantically both are the same, but they differ in performance. Because indentation matter in YAML, you cannot simply accept a valid YAML fragment from a Marshaler, and expect it to work when it is attached to the parent container's serialized form. Therefore when we receive use the `BytesMarshaler`, which returns `[]byte`, we must decode it once to figure out how to make it work in the given context. If you use the `InterfaceMarshaler`, we can skip the decoding.
 
 If you are repeatedly marshaling complex objects, the latter is always better
 performance wise. But if you are, for example, just providing a choice between
@@ -134,7 +139,7 @@ var v struct {
 	}
 }
 if err := dec.Decode(&v); err != nil {
-	...
+	//...
 }
 fmt.Printf("%+v\n", v) // {A:{B:1 C:hello}}
 ```
@@ -195,7 +200,7 @@ v.C = v.A // C has same pointer address to A
 v.D = v.B // D has same pointer address to B
 bytes, err := yaml.Marshal(v)
 if err != nil {
-	...
+	//...
 }
 fmt.Println(string(bytes)) 
 /*
@@ -242,7 +247,7 @@ doc.Default = defaultPerson
 doc.People = people
 bytes, err := yaml.Marshal(doc)
 if err != nil {
-	...
+	//...
 }
 fmt.Println(string(bytes))
 /*
@@ -257,7 +262,7 @@ people:
 */
 ```
 
-# 4. Pretty Formatted Errors
+## 4. Pretty Formatted Errors
 
 Error values produced during parsing has two extra features over regular
 error values.
@@ -273,10 +278,10 @@ control turning on/off these features
 
 <img src="https://user-images.githubusercontent.com/209884/67358124-587f0980-f59a-11e9-96fc-7205aab77695.png"></img>
 
-# 5. Use YAMLPath
+## 5. Use YAMLPath
 
 ```go
-	yml := `
+yml := `
 store:
   book:
     - author: john
@@ -289,17 +294,17 @@ store:
 `
 path, err := yaml.PathString("$.store.book[*].author")
 if err != nil {
- ...
+  //...
 }
 var authors []string
 if err := path.Read(strings.NewReader(yml), &authors); err != nil {
- ...
+  //...
 }
 fmt.Println(authors)
 // [john ken]
 ```
 
-## 5.1 Print customized error with YAML source code
+### 5.1 Print customized error with YAML source code
 
 ```go
 package main
@@ -342,12 +347,6 @@ output result is the following.
 <img src="https://user-images.githubusercontent.com/209884/84148813-7aca8680-aa9a-11ea-8fc9-37dece2ebdac.png"></img>
 
 
-# Installation
-
-```
-$ go get -u github.com/goccy/go-yaml
-```
-
 # Tools
 
 ## ycat 
@@ -356,10 +355,10 @@ print yaml file with color
 
 <img width="713" alt="ycat" src="https://user-images.githubusercontent.com/209884/66986084-19b00600-f0f9-11e9-9f0e-1f91eb072fe0.png">
 
-### Install
+### Installation
 
-```
-$ go get -u github.com/goccy/go-yaml/cmd/ycat
+```sh
+go get -u github.com/goccy/go-yaml/cmd/ycat
 ```
 
 # License

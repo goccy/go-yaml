@@ -560,6 +560,22 @@ func getNumberStat(str string) *numStat {
 	return stat
 }
 
+func looksLikeTimeValue(value string) bool {
+	for i, c := range value {
+		switch c {
+		case ':', '1', '2', '3', '4', '5', '6', '7', '8', '9':
+			continue
+		case '0':
+			if i == 0 {
+				return false
+			}
+			continue
+		}
+		return false
+	}
+	return true
+}
+
 // IsNeedQuoted whether need quote for passed string or not
 func IsNeedQuoted(value string) bool {
 	if value == "" {
@@ -571,15 +587,27 @@ func IsNeedQuoted(value string) bool {
 	if stat := getNumberStat(value); stat.isNum {
 		return true
 	}
-	if strings.IndexByte(value, ':') == 1 {
+	first := value[0]
+	switch first {
+	case '*', '&', '[', '{', '}', ']', ',', '!', '|', '>', '%', '\'', '"':
 		return true
 	}
-	if strings.IndexByte(value, '#') > 0 {
+	last := value[len(value)-1]
+	switch last {
+	case ':':
 		return true
 	}
-	for _, c := range value {
-		if c == '\\' {
+	if looksLikeTimeValue(value) {
+		return true
+	}
+	for i, c := range value {
+		switch c {
+		case '#', '\\':
 			return true
+		case ':':
+			if i+1 < len(value) && value[i+1] == ' ' {
+				return true
+			}
 		}
 	}
 	return false

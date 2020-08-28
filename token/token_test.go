@@ -77,25 +77,42 @@ func TestToken(t *testing.T) {
 }
 
 func TestIsNeedQuoted(t *testing.T) {
-	if !token.IsNeedQuoted("") {
-		t.Fatal("failed to quoted judge for empty string")
+	needQuotedTests := []string{
+		"",
+		"true",
+		"1.234",
+		"1:1",
+		"hoge # comment",
+		"\\0",
+		"#a b",
+		"*a b",
+		"&a b",
+		"{a b",
+		"}a b",
+		"[a b",
+		"]a b",
+		",a b",
+		"!a b",
+		"|a b",
+		">a b",
+		">a b",
+		"%a b",
+		`'a b`,
+		`"a b`,
+		"a:",
+		"a: b",
 	}
-	if !token.IsNeedQuoted("true") {
-		t.Fatal("failed to quoted judge for boolean")
+	for i, test := range needQuotedTests {
+		if !token.IsNeedQuoted(test) {
+			t.Fatalf("%d: failed to quoted judge for %s", i, test)
+		}
 	}
-	if !token.IsNeedQuoted("1.234") {
-		t.Fatal("failed to quoted judge for number")
+	notNeedQuotedTests := []string{
+		"Hello World",
 	}
-	if !token.IsNeedQuoted("1:1") {
-		t.Fatal("failed to quoted judge for time")
-	}
-	if !token.IsNeedQuoted("hoge # comment") {
-		t.Fatal("failed to quoted judge for comment")
-	}
-	if !token.IsNeedQuoted("\\0") {
-		t.Fatal("failed to quoted judge for escaped token")
-	}
-	if token.IsNeedQuoted("Hello World") {
-		t.Fatal("failed to unquoted judge")
+	for i, test := range notNeedQuotedTests {
+		if token.IsNeedQuoted(test) {
+			t.Fatalf("%d: failed to quoted judge for %s", i, test)
+		}
 	}
 }

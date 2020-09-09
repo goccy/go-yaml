@@ -1430,6 +1430,7 @@ func Walk(v Visitor, node Node) {
 	}
 
 	switch n := node.(type) {
+	case *CommentNode:
 	case *NullNode:
 	case *IntegerNode:
 	case *FloatNode:
@@ -1438,6 +1439,10 @@ func Walk(v Visitor, node Node) {
 	case *BoolNode:
 	case *InfinityNode:
 	case *NanNode:
+	case *LiteralNode:
+		Walk(v, n.Value)
+	case *DirectiveNode:
+		Walk(v, n.Value)
 	case *TagNode:
 		Walk(v, n.Value)
 	case *DocumentNode:

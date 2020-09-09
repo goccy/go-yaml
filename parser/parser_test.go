@@ -544,6 +544,7 @@ b: c
 `,
 		},
 	}
+
 	for _, test := range tests {
 		tokens := lexer.Tokenize(test.source)
 		f, err := parser.Parse(tokens, 0)
@@ -612,6 +613,14 @@ a
 >  2 | a
    3 | - b: c
        ^
+`,
+		},
+		{
+			`%YAML 1.1 {}`,
+			`
+[1:2] unexpected directive value. document not started
+>  1 | %YAML 1.1 {}
+        ^
 `,
 		},
 	}

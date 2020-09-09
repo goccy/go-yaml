@@ -390,7 +390,13 @@ func (p *parser) parseDirective(ctx *context) (ast.Node, error) {
 	}
 	node.Value = value
 	ctx.progress(1)
-	if ctx.currentToken().Type != token.DocumentHeaderType {
+	tk := ctx.currentToken()
+	if tk == nil {
+		// Since current token is nil, use the previous token to specify
+		// the syntax error location.
+		return nil, errors.ErrSyntax("unexpected directive value. document not started", ctx.previousToken())
+	}
+	if tk.Type != token.DocumentHeaderType {
 		return nil, errors.ErrSyntax("unexpected directive value. document not started", ctx.currentToken())
 	}
 	return node, nil

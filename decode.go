@@ -276,7 +276,7 @@ func (d *Decoder) getMapNode(node ast.Node) (ast.MapNode, error) {
 		if ok {
 			return mapNode, nil
 		}
-		return nil, xerrors.Errorf("%s node doesn't MapNode", anchor.Value.Type())
+		return nil, xerrors.Errorf("%s node found where MapNode is expected", anchor.Value.Type())
 	}
 	if alias, ok := node.(*ast.AliasNode); ok {
 		aliasName := alias.Value.GetToken().Value
@@ -288,11 +288,11 @@ func (d *Decoder) getMapNode(node ast.Node) (ast.MapNode, error) {
 		if ok {
 			return mapNode, nil
 		}
-		return nil, xerrors.Errorf("%s node doesn't MapNode", node.Type())
+		return nil, xerrors.Errorf("%s node found where MapNode is expected", node.Type())
 	}
 	mapNode, ok := node.(ast.MapNode)
 	if !ok {
-		return nil, xerrors.Errorf("%s node doesn't MapNode", node.Type())
+		return nil, xerrors.Errorf("%s node found where MapNode is expected", node.Type())
 	}
 	return mapNode, nil
 }
@@ -306,7 +306,7 @@ func (d *Decoder) getArrayNode(node ast.Node) (ast.ArrayNode, error) {
 		if ok {
 			return arrayNode, nil
 		}
-		return nil, xerrors.Errorf("%s node doesn't ArrayNode", anchor.Value.Type())
+		return nil, xerrors.Errorf("%s node found where ArrayNode is expected", anchor.Value.Type())
 	}
 	if alias, ok := node.(*ast.AliasNode); ok {
 		aliasName := alias.Value.GetToken().Value
@@ -318,11 +318,11 @@ func (d *Decoder) getArrayNode(node ast.Node) (ast.ArrayNode, error) {
 		if ok {
 			return arrayNode, nil
 		}
-		return nil, xerrors.Errorf("%s node doesn't ArrayNode", node.Type())
+		return nil, xerrors.Errorf("%s node found where ArrayNode is expected", node.Type())
 	}
 	arrayNode, ok := node.(ast.ArrayNode)
 	if !ok {
-		return nil, xerrors.Errorf("%s node doesn't ArrayNode", node.Type())
+		return nil, xerrors.Errorf("%s node found where ArrayNode is expected", node.Type())
 	}
 	return arrayNode, nil
 }

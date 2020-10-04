@@ -980,6 +980,63 @@ c:
 			"v: あいうえお\nv2: かきくけこ",
 			map[string]string{"v": "あいうえお", "v2": "かきくけこ"},
 		},
+
+		// Chomping: literal style
+		{
+			`# Strip
+key: |-
+  value
+`,
+			map[string]string{
+				"key": "value",
+			},
+		},
+		{
+			`# Clip
+key: |
+  value
+`,
+			map[string]string{
+				"key": "value\n",
+			},
+		},
+		{
+			`# Keep
+key: |+
+  value
+`,
+			map[string]string{
+				"key": "value\n",
+			},
+		},
+		// Chomping: folded style
+		{
+			`# Strip
+key: >-
+  value
+`,
+			map[string]string{
+				"key": "value",
+			},
+		},
+		{
+			`# Clip
+key: >
+  value
+`,
+			map[string]string{
+				"key": "value\n",
+			},
+		},
+		{
+			`# Keep
+key: >+
+  value
+`,
+			map[string]string{
+				"key": "value\n",
+			},
+		},
 	}
 	for _, test := range tests {
 		t.Run(test.source, func(t *testing.T) {

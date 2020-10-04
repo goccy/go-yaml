@@ -581,6 +581,11 @@ func IsNeedQuoted(value string) bool {
 	if value == "" {
 		return true
 	}
+	// If the string is a multiline one, it can always be displayed safely
+	// using the block syntax
+	if strings.ContainsAny(value, "\n\r") {
+		return false
+	}
 	if _, exists := reservedKeywordMap[value]; exists {
 		return true
 	}

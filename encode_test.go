@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"math"
+	"reflect"
 	"strconv"
 	"testing"
 	"time"
@@ -131,6 +132,14 @@ func TestEncoder(t *testing.T) {
 		{
 			"hello: |\r\n  hello\r\n  world\n",
 			map[string]string{"hello": "hello\r\nworld\r\n"},
+		},
+		{
+			"v: |-\n  username: hello\n  password: hello123\n",
+			map[string]interface{}{"v": "username: hello\npassword: hello123"},
+		},
+		{
+			"v: |-\n  # comment\n  username: hello\n  password: hello123\n",
+			map[string]interface{}{"v": "# comment\nusername: hello\npassword: hello123"},
 		},
 		{
 			"v:\n- A\n- 1\n- B:\n  - 2\n  - 3\n",
@@ -604,6 +613,35 @@ people:
 	}
 }
 
+func TestEncodeWithNestedYAML(t *testing.T) {
+	// Represents objects containing stringified YAML, and special chars
+	tests := []struct {
+		value interface{}
+	}{
+		{value: map[string]interface{}{"v": "# comment\nusername: hello\npassword: hello123"}},
+		{value: map[string]interface{}{"v": "# comment\n"}},
+		{value: map[string]interface{}{"v": "\n"}},
+	}
+
+	for _, test := range tests {
+		yamlString, err := yaml.Marshal(test.value)
+		if err != nil {
+			t.Fatalf("%+v", err)
+		}
+
+		// Convert it back for proper equality testing
+		var unmarshaled interface{}
+
+		if err := yaml.Unmarshal(yamlString, &unmarshaled); err != nil {
+			t.Fatalf("%+v", err)
+		}
+
+		if !reflect.DeepEqual(test.value, unmarshaled) {
+			t.Fatalf("expected %v(%T). but actual %v(%T)", test.value, test.value, unmarshaled, unmarshaled)
+		}
+	}
+}
+
 func TestEncoder_Inline(t *testing.T) {
 	type base struct {
 		A int
@@ -837,10 +875,10 @@ func Example_Marshal_ExplicitAnchorAlias() {
 	}
 	fmt.Println(string(bytes))
 	// OUTPUT:
-	//c: &x
+	// c: &x
 	//   a: 1
 	//   b: hello
-	//d: *x
+	// d: *x
 }
 
 func Example_Marshal_ImplicitAnchorAlias() {

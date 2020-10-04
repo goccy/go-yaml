@@ -618,6 +618,7 @@ func TestEncodeWithNestedYAML(t *testing.T) {
 	tests := []struct {
 		value interface{}
 	}{
+		{value: map[string]interface{}{"v": `"body": "# comment\nname: hello\npassword: hello123\nspecial: \":ghost:\"\ntext: |-\n  nested multiline!"`}},
 		{value: map[string]interface{}{"v": "# comment\nusername: hello\npassword: hello123"}},
 		{value: map[string]interface{}{"v": "# comment\n"}},
 		{value: map[string]interface{}{"v": "\n"}},

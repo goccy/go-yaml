@@ -617,15 +617,28 @@ func TestEncodeWithNestedYAML(t *testing.T) {
 	// Represents objects containing stringified YAML, and special chars
 	tests := []struct {
 		value interface{}
+		// If true, expects a different result between when using forced block or not
+		expectDifferent bool
 	}{
-		{value: map[string]interface{}{"v": "# comment\nname: hello\npassword: hello123\nspecial: \":ghost:\"\ntext: |\n  nested multiline!"}},
-		{value: map[string]interface{}{"v": "# comment\nusername: hello\npassword: hello123"}},
-		{value: map[string]interface{}{"v": "# comment\n"}},
-		{value: map[string]interface{}{"v": "\n"}},
+		{
+			value:           map[string]interface{}{"v": "# comment\nname: hello\npassword: hello123\nspecial: \":ghost:\"\ntext: |\n  nested multiline!"},
+			expectDifferent: true,
+		},
+		{
+			value:           map[string]interface{}{"v": "# comment\nusername: hello\npassword: hello123"},
+			expectDifferent: true,
+		},
+		{
+			value:           map[string]interface{}{"v": "# comment\n"},
+			expectDifferent: true,
+		},
+		{
+			value: map[string]interface{}{"v": "\n"},
+		},
 	}
 
 	for _, test := range tests {
-		yamlBytes, err := yaml.Marshal(test.value)
+		yamlBytesForced, err := yaml.MarshalWithOptions(test.value, yaml.ForceBlockIfMultiline(true))
 		if err != nil {
 			t.Fatalf("%+v", err)
 		}
@@ -633,12 +646,23 @@ func TestEncodeWithNestedYAML(t *testing.T) {
 		// Convert it back for proper equality testing
 		var unmarshaled interface{}
 
-		if err := yaml.Unmarshal(yamlBytes, &unmarshaled); err != nil {
+		if err := yaml.Unmarshal(yamlBytesForced, &unmarshaled); err != nil {
 			t.Fatalf("%+v", err)
 		}
 
 		if !reflect.DeepEqual(test.value, unmarshaled) {
 			t.Fatalf("expected %v(%T). but actual %v(%T)", test.value, test.value, unmarshaled, unmarshaled)
+		}
+
+		if test.expectDifferent {
+			yamlBytesNotForced, err := yaml.MarshalWithOptions(test.value)
+			if err != nil {
+				t.Fatalf("%+v", err)
+			}
+
+			if string(yamlBytesForced) == string(yamlBytesNotForced) {
+				t.Fatalf("expected different strings when force block is not enabled. forced: %s, not forced: %s", string(yamlBytesForced), string(yamlBytesNotForced))
+			}
 		}
 	}
 }

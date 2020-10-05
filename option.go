@@ -104,6 +104,15 @@ func Flow(isFlowStyle bool) EncodeOption {
 	}
 }
 
+// ForceBlockIfMultiline causes encoding multiline strings with a block syntax,
+// no matter what characters they include
+func ForceBlockIfMultiline(forceBlockIfMultiline bool) EncodeOption {
+	return func(e *Encoder) error {
+		e.forceBlockIfMultiline = forceBlockIfMultiline
+		return nil
+	}
+}
+
 // JSON encode in JSON format
 func JSON() EncodeOption {
 	return func(e *Encoder) error {

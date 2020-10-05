@@ -618,14 +618,14 @@ func TestEncodeWithNestedYAML(t *testing.T) {
 	tests := []struct {
 		value interface{}
 	}{
-		{value: map[string]interface{}{"v": `"body": "# comment\nname: hello\npassword: hello123\nspecial: \":ghost:\"\ntext: |-\n  nested multiline!"`}},
+		{value: map[string]interface{}{"v": "# comment\nname: hello\npassword: hello123\nspecial: \":ghost:\"\ntext: |\n  nested multiline!"}},
 		{value: map[string]interface{}{"v": "# comment\nusername: hello\npassword: hello123"}},
 		{value: map[string]interface{}{"v": "# comment\n"}},
 		{value: map[string]interface{}{"v": "\n"}},
 	}
 
 	for _, test := range tests {
-		yamlString, err := yaml.Marshal(test.value)
+		yamlBytes, err := yaml.Marshal(test.value)
 		if err != nil {
 			t.Fatalf("%+v", err)
 		}
@@ -633,7 +633,7 @@ func TestEncodeWithNestedYAML(t *testing.T) {
 		// Convert it back for proper equality testing
 		var unmarshaled interface{}
 
-		if err := yaml.Unmarshal(yamlString, &unmarshaled); err != nil {
+		if err := yaml.Unmarshal(yamlBytes, &unmarshaled); err != nil {
 			t.Fatalf("%+v", err)
 		}
 

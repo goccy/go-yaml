@@ -820,6 +820,28 @@ queues:
 	}
 }
 
+type useJSONMarshalerTest struct{}
+
+func (t useJSONMarshalerTest) MarshalJSON() ([]byte, error) {
+	return []byte(`{"a":[1, 2, 3]}`), nil
+}
+
+func TestEncoder_UseJSONMarshaler(t *testing.T) {
+	got, err := yaml.MarshalWithOptions(useJSONMarshalerTest{}, yaml.UseJSONMarshaler())
+	if err != nil {
+		t.Fatal(err)
+	}
+	expected := `
+a:
+- 1
+- 2
+- 3
+`
+	if expected != "\n"+string(got) {
+		t.Fatalf("failed to use json marshaler. expected [%q] but got [%q]", expected, string(got))
+	}
+}
+
 func Example_Marshal_ExplicitAnchorAlias() {
 	type T struct {
 		A int

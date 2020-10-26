@@ -36,6 +36,7 @@ type Decoder struct {
 	disallowUnknownField bool
 	disallowDuplicateKey bool
 	useOrderedMap        bool
+	useJSONUnmarshaler   bool
 	parsedFile           *ast.File
 	streamIndex          int
 }
@@ -488,6 +489,10 @@ func (d *Decoder) unmarshalableText(node ast.Node) ([]byte, bool) {
 	return nil, false
 }
 
+type jsonUnmarshaler interface {
+	UnmarshalJSON([]byte) error
+}
+
 func (d *Decoder) decodeValue(dst reflect.Value, src ast.Node) error {
 	if src.Type() == ast.AnchorType {
 		anchorName := src.(*ast.AnchorNode).Name.GetToken().Value
@@ -522,6 +527,18 @@ func (d *Decoder) decodeValue(dst reflect.Value, src ast.Node) error {
 		if ok {
 			if err := unmarshaler.UnmarshalText(b); err != nil {
 				return errors.Wrapf(err, "failed to UnmarshalText")
+			}
+			return nil
+		}
+	} else if d.useJSONUnmarshaler {
+		if unmarshaler, ok := dst.Addr().Interface().(jsonUnmarshaler); ok {
+			jsonBytes, err := YAMLToJSON(d.unmarshalableDocument(src))
+			if err != nil {
+				return errors.Wrapf(err, "failed to convert yaml to json")
+			}
+			jsonBytes = bytes.TrimRight(jsonBytes, "\n")
+			if err := unmarshaler.UnmarshalJSON(jsonBytes); err != nil {
+				return errors.Wrapf(err, "failed to UnmarshalJSON")
 			}
 			return nil
 		}

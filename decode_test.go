@@ -1618,6 +1618,29 @@ B: d
 	// c
 }
 
+type useJSONUnmarshalerTest struct {
+	s string
+}
+
+func (t *useJSONUnmarshalerTest) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	t.s = s
+	return nil
+}
+
+func TestDecoder_UseJSONUnmarshaler(t *testing.T) {
+	var v useJSONUnmarshalerTest
+	if err := yaml.UnmarshalWithOptions([]byte(`"a"`), &v, yaml.UseJSONUnmarshaler()); err != nil {
+		t.Fatal(err)
+	}
+	if v.s != "a" {
+		t.Fatalf("unexpected decoded value: %s", v.s)
+	}
+}
+
 func Example_JSONTags() {
 	yml := `---
 foo: 1

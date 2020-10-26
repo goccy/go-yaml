@@ -183,3 +183,29 @@ func FormatError(e error, colored, inclSource bool) string {
 
 	return e.Error()
 }
+
+// YAMLToJSON convert YAML bytes to JSON.
+func YAMLToJSON(bytes []byte) ([]byte, error) {
+	var v interface{}
+	if err := UnmarshalWithOptions(bytes, &v, UseOrderedMap()); err != nil {
+		return nil, errors.Wrapf(err, "failed to unmarshal")
+	}
+	out, err := MarshalWithOptions(v, JSON())
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to marshal with json option")
+	}
+	return out, nil
+}
+
+// JSONToYAML convert JSON bytes to YAML.
+func JSONToYAML(bytes []byte) ([]byte, error) {
+	var v interface{}
+	if err := UnmarshalWithOptions(bytes, &v, UseOrderedMap()); err != nil {
+		return nil, errors.Wrapf(err, "failed to unmarshal from json bytes")
+	}
+	out, err := Marshal(v)
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to marshal")
+	}
+	return out, nil
+}

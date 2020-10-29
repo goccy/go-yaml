@@ -719,7 +719,7 @@ func (s *Scanner) scan(ctx *Context) (pos int) {
 			s.scanNewLine(ctx, c)
 			continue
 		case ' ':
-			if ctx.isSaveIndentMode() || (!s.isAnchor && !s.isFirstCharAtLine) {
+			if ctx.isSaveIndentMode() || (!s.isFirstCharAtLine) {
 				ctx.addBuf(c)
 				ctx.addOriginBuf(c)
 				s.progressColumn(ctx, 1)

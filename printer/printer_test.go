@@ -25,6 +25,22 @@ number: 10
 anchor: &x 1
 alias: *x
 `
+
+  t.Run("print anchor correctly", func(t *testing.T) {
+    simpleYmlWithAlias := `anchor: &x 1
+alias: *x`
+    
+    tokens := lexer.Tokenize(simpleYmlWithAlias)
+		var p printer.Printer
+		actual := "\n" + p.PrintTokens(tokens)
+		expect := `
+anchor: &x 1
+alias: *x`
+		if actual != expect {
+			t.Fatalf("unexpected output: expect:[%s]\n actual:[%s]", expect, actual)
+		}
+  })
+
 	t.Run("print starting from tokens[3]", func(t *testing.T) {
 		tokens := lexer.Tokenize(yml)
 		var p printer.Printer

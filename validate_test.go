@@ -4,8 +4,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/go-playground/validator/v10"
 	"github.com/goccy/go-yaml"
-	"gopkg.in/go-playground/validator.v9"
 )
 
 func TestStructValidator(t *testing.T) {

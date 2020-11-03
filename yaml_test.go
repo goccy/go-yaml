@@ -344,3 +344,41 @@ b: *b`
 		t.Fatalf("failed to marshal: expected:[%q] but got [%q]", expected, actual)
 	}
 }
+
+func Test_YAMLToJSON(t *testing.T) {
+	yml := `
+foo:
+  bar:
+  - a
+  - b
+  - c
+a: 1
+`
+	actual, err := yaml.YAMLToJSON([]byte(yml))
+	if err != nil {
+		t.Fatal(err)
+	}
+	expected := `{"foo": {"bar": ["a", "b", "c"]}, "a": 1}`
+	if expected+"\n" != string(actual) {
+		t.Fatalf("failed to convert yaml to json: expected [%q] but got [%q]", expected, actual)
+	}
+}
+
+func Test_JSONToYAML(t *testing.T) {
+	json := `{"foo": {"bar": ["a", "b", "c"]}, "a": 1}`
+	expected := `
+foo:
+  bar:
+  - a
+  - b
+  - c
+a: 1
+`
+	actual, err := yaml.JSONToYAML([]byte(json))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if expected != "\n"+string(actual) {
+		t.Fatalf("failed to convert json to yaml: expected [%q] but got [%q]", expected, actual)
+	}
+}

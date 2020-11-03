@@ -31,6 +31,7 @@ type Encoder struct {
 	indent                int
 	isFlowStyle           bool
 	isJSONStyle           bool
+	useJSONMarshaler      bool
 	anchorCallback        func(*ast.AnchorNode, interface{}) error
 	anchorPtrToNameMap    map[uintptr]string
 	forceBlockIfMultiline bool
@@ -119,12 +120,17 @@ func (e *Encoder) isInvalidValue(v reflect.Value) bool {
 	return false
 }
 
+type jsonMarshaler interface {
+	MarshalJSON() ([]byte, error)
+}
+
 func (e *Encoder) encodeValue(v reflect.Value, column int) (ast.Node, error) {
 	if e.isInvalidValue(v) {
 		return e.encodeNil(), nil
 	}
 	if v.CanInterface() {
-		if marshaler, ok := v.Interface().(BytesMarshaler); ok {
+		iface := v.Interface()
+		if marshaler, ok := iface.(BytesMarshaler); ok {
 			doc, err := marshaler.MarshalYAML()
 			if err != nil {
 				return nil, errors.Wrapf(err, "failed to MarshalYAML")
@@ -134,15 +140,15 @@ func (e *Encoder) encodeValue(v reflect.Value, column int) (ast.Node, error) {
 				return nil, errors.Wrapf(err, "failed to encode document")
 			}
 			return node, nil
-		} else if marshaler, ok := v.Interface().(InterfaceMarshaler); ok {
+		} else if marshaler, ok := iface.(InterfaceMarshaler); ok {
 			marshalV, err := marshaler.MarshalYAML()
 			if err != nil {
 				return nil, errors.Wrapf(err, "failed to MarshalYAML")
 			}
 			return e.encodeValue(reflect.ValueOf(marshalV), column)
-		} else if t, ok := v.Interface().(time.Time); ok {
+		} else if t, ok := iface.(time.Time); ok {
 			return e.encodeTime(t, column), nil
-		} else if marshaler, ok := v.Interface().(encoding.TextMarshaler); ok {
+		} else if marshaler, ok := iface.(encoding.TextMarshaler); ok {
 			doc, err := marshaler.MarshalText()
 			if err != nil {
 				return nil, errors.Wrapf(err, "failed to MarshalText")
@@ -152,6 +158,22 @@ func (e *Encoder) encodeValue(v reflect.Value, column int) (ast.Node, error) {
 				return nil, errors.Wrapf(err, "failed to encode document")
 			}
 			return node, nil
+		} else if e.useJSONMarshaler {
+			if marshaler, ok := iface.(jsonMarshaler); ok {
+				jsonBytes, err := marshaler.MarshalJSON()
+				if err != nil {
+					return nil, errors.Wrapf(err, "failed to MarshalJSON")
+				}
+				doc, err := JSONToYAML(jsonBytes)
+				if err != nil {
+					return nil, errors.Wrapf(err, "failed to convert json to yaml")
+				}
+				node, err := e.encodeDocument(doc)
+				if err != nil {
+					return nil, errors.Wrapf(err, "failed to encode document")
+				}
+				return node, nil
+			}
 		}
 	}
 	switch v.Type().Kind() {

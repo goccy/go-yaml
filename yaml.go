@@ -2,6 +2,7 @@ package yaml
 
 import (
 	"bytes"
+	"context"
 	"io"
 
 	"github.com/goccy/go-yaml/ast"
@@ -19,9 +20,19 @@ type BytesMarshaler interface {
 	MarshalYAML() ([]byte, error)
 }
 
+// BytesMarshalerContext interface use BytesMarshaler with context.Context.
+type BytesMarshalerContext interface {
+	MarshalYAML(context.Context) ([]byte, error)
+}
+
 // InterfaceMarshaler interface has MarshalYAML compatible with github.com/go-yaml/yaml package.
 type InterfaceMarshaler interface {
 	MarshalYAML() (interface{}, error)
+}
+
+// InterfaceMarshalerContext interface use InterfaceMarshaler with context.Context.
+type InterfaceMarshalerContext interface {
+	MarshalYAML(context.Context) (interface{}, error)
 }
 
 // BytesUnmarshaler interface may be implemented by types to customize their
@@ -30,9 +41,19 @@ type BytesUnmarshaler interface {
 	UnmarshalYAML([]byte) error
 }
 
+// BytesUnmarshalerContext interface use BytesUnmarshaler with context.Context.
+type BytesUnmarshalerContext interface {
+	UnmarshalYAML(context.Context, []byte) error
+}
+
 // InterfaceUnmarshaler interface has UnmarshalYAML compatible with github.com/go-yaml/yaml package.
 type InterfaceUnmarshaler interface {
 	UnmarshalYAML(func(interface{}) error) error
+}
+
+// InterfaceUnmarshalerContext interface use InterfaceUnmarshaler with context.Context.
+type InterfaceUnmarshalerContext interface {
+	UnmarshalYAML(context.Context, func(interface{}) error) error
 }
 
 // MapItem is an item in a MapSlice.
@@ -109,9 +130,13 @@ func Marshal(v interface{}) ([]byte, error) {
 
 // MarshalWithOptions serializes the value provided into a YAML document with EncodeOptions.
 func MarshalWithOptions(v interface{}, opts ...EncodeOption) ([]byte, error) {
+	return MarshalWithContext(context.Background(), v, opts...)
+}
+
+// MarshalWithContext serializes the value provided into a YAML document with context.Context and EncodeOptions.
+func MarshalWithContext(ctx context.Context, v interface{}, opts ...EncodeOption) ([]byte, error) {
 	var buf bytes.Buffer
-	enc := NewEncoder(&buf, opts...)
-	if err := enc.Encode(v); err != nil {
+	if err := NewEncoder(&buf, opts...).EncodeContext(ctx, v); err != nil {
 		return nil, errors.Wrapf(err, "failed to marshal")
 	}
 	return buf.Bytes(), nil
@@ -157,8 +182,13 @@ func Unmarshal(data []byte, v interface{}) error {
 // UnmarshalWithOptions decodes with DecodeOptions the first document found within the in byte slice
 // and assigns decoded values into the out value.
 func UnmarshalWithOptions(data []byte, v interface{}, opts ...DecodeOption) error {
+	return UnmarshalWithContext(context.Background(), data, v, opts...)
+}
+
+// UnmarshalWithContext decodes with context.Context and DecodeOptions.
+func UnmarshalWithContext(ctx context.Context, data []byte, v interface{}, opts ...DecodeOption) error {
 	dec := NewDecoder(bytes.NewBuffer(data), opts...)
-	if err := dec.Decode(v); err != nil {
+	if err := dec.DecodeContext(ctx, v); err != nil {
 		if err == io.EOF {
 			return nil
 		}

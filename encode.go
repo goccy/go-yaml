@@ -276,6 +276,8 @@ func (e *Encoder) encodeValue(ctx context.Context, v reflect.Value, column int) 
 			return e.encodeMapSlice(ctx, mapSlice, column)
 		}
 		return e.encodeSlice(ctx, v)
+	case reflect.Array:
+		return e.encodeArray(ctx, v)
 	case reflect.Struct:
 		if v.CanInterface() {
 			if mapItem, ok := v.Interface().(MapItem); ok {
@@ -364,6 +366,18 @@ func (e *Encoder) encodeSlice(ctx context.Context, value reflect.Value) (ast.Nod
 		node, err := e.encodeValue(ctx, value.Index(i), e.column)
 		if err != nil {
 			return nil, errors.Wrapf(err, "failed to encode value for slice")
+		}
+		sequence.Values = append(sequence.Values, node)
+	}
+	return sequence, nil
+}
+
+func (e *Encoder) encodeArray(ctx context.Context, value reflect.Value) (ast.Node, error) {
+	sequence := ast.Sequence(token.New("-", "-", e.pos(e.column)), e.isFlowStyle)
+	for i := 0; i < value.Len(); i++ {
+		node, err := e.encodeValue(ctx, value.Index(i), e.column)
+		if err != nil {
+			return nil, errors.Wrapf(err, "failed to encode value for array")
 		}
 		sequence.Values = append(sequence.Values, node)
 	}

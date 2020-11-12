@@ -2,6 +2,7 @@ package yaml_test
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"math"
 	"strconv"
@@ -930,6 +931,30 @@ func Test_Marshaler(t *testing.T) {
 	}
 
 	t.Logf("%s", buf)
+}
+
+type marshalWithContext struct{}
+
+func (c *marshalWithContext) MarshalYAML(ctx context.Context) ([]byte, error) {
+	v, ok := ctx.Value("k").(int)
+	if !ok {
+		return nil, fmt.Errorf("cannot get valid context")
+	}
+	if v != 1 {
+		return nil, fmt.Errorf("cannot get valid context")
+	}
+	return []byte("1"), nil
+}
+
+func Test_MarshalerWithContext(t *testing.T) {
+	ctx := context.WithValue(context.Background(), "k", 1)
+	bytes, err := yaml.MarshalWithContext(ctx, &marshalWithContext{})
+	if err != nil {
+		t.Fatalf("%+v", err)
+	}
+	if string(bytes) != "1\n" {
+		t.Fatalf("failed marshal: %q", string(bytes))
+	}
 }
 
 type SlowMarshaler struct {

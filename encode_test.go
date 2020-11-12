@@ -98,6 +98,10 @@ func TestEncoder(t *testing.T) {
 			map[string][]string{"v": {"A", "B"}},
 		},
 		{
+			"v:\n- A\n- B\n",
+			map[string][2]string{"v": {"A", "B"}},
+		},
+		{
 			"a: -\n",
 			map[string]string{"a": "-"},
 		},

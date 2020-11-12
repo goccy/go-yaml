@@ -2,6 +2,7 @@ package yaml_test
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"io"
 	"log"
@@ -1638,6 +1639,36 @@ func TestDecoder_UseJSONUnmarshaler(t *testing.T) {
 	}
 	if v.s != "a" {
 		t.Fatalf("unexpected decoded value: %s", v.s)
+	}
+}
+
+type unmarshalWithContext struct {
+	v int
+}
+
+func (c *unmarshalWithContext) UnmarshalYAML(ctx context.Context, b []byte) error {
+	v, ok := ctx.Value("k").(int)
+	if !ok {
+		return fmt.Errorf("cannot get valid context")
+	}
+	if v != 1 {
+		return fmt.Errorf("cannot get valid context")
+	}
+	if string(b) != "1" {
+		return fmt.Errorf("cannot get valid bytes")
+	}
+	c.v = v
+	return nil
+}
+
+func Test_UnmarshalerWithContext(t *testing.T) {
+	ctx := context.WithValue(context.Background(), "k", 1)
+	var v unmarshalWithContext
+	if err := yaml.UnmarshalWithContext(ctx, []byte(`1`), &v); err != nil {
+		t.Fatalf("%+v", err)
+	}
+	if v.v != 1 {
+		t.Fatal("cannot call UnmarshalYAML")
 	}
 }
 

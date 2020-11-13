@@ -538,12 +538,12 @@ func (e *Encoder) encodeStruct(ctx context.Context, value reflect.Value, column 
 		}
 		if m, ok := value.(*ast.MappingNode); ok {
 			if !e.isFlowStyle && structField.IsFlow {
-				m.IsFlowStyle = true
+				m.SetIsFlowStyle(true)
 			}
 			value.AddColumn(e.indent)
 		} else if s, ok := value.(*ast.SequenceNode); ok {
 			if !e.isFlowStyle && structField.IsFlow {
-				s.IsFlowStyle = true
+				s.SetIsFlowStyle(true)
 			}
 		}
 		key := e.encodeString(structField.RenderName, column)

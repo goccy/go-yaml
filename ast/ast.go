@@ -927,6 +927,14 @@ func (n *MappingNode) Merge(target *MappingNode) {
 	}
 }
 
+// SetIsFlowStyle set value to IsFlowStyle field recursively.
+func (n *MappingNode) SetIsFlowStyle(isFlow bool) {
+	n.IsFlowStyle = isFlow
+	for _, value := range n.Values {
+		value.SetIsFlowStyle(isFlow)
+	}
+}
+
 // Read implements (io.Reader).Read
 func (n *MappingNode) Read(p []byte) (int, error) {
 	return readNode(p, n)
@@ -1060,6 +1068,18 @@ func (n *MappingValueNode) AddColumn(col int) {
 	}
 }
 
+// SetIsFlowStyle set value to IsFlowStyle field recursively.
+func (n *MappingValueNode) SetIsFlowStyle(isFlow bool) {
+	switch value := n.Value.(type) {
+	case *MappingNode:
+		value.SetIsFlowStyle(isFlow)
+	case *MappingValueNode:
+		value.SetIsFlowStyle(isFlow)
+	case *SequenceNode:
+		value.SetIsFlowStyle(isFlow)
+	}
+}
+
 // String mapping value to text
 func (n *MappingValueNode) String() string {
 	space := strings.Repeat(" ", n.Key.GetToken().Position.Column-1)
@@ -1147,6 +1167,21 @@ func (n *SequenceNode) Merge(target *SequenceNode) {
 	target.AddColumn(column)
 	for _, value := range target.Values {
 		n.Values = append(n.Values, value)
+	}
+}
+
+// SetIsFlowStyle set value to IsFlowStyle field recursively.
+func (n *SequenceNode) SetIsFlowStyle(isFlow bool) {
+	n.IsFlowStyle = isFlow
+	for _, value := range n.Values {
+		switch value := value.(type) {
+		case *MappingNode:
+			value.SetIsFlowStyle(isFlow)
+		case *MappingValueNode:
+			value.SetIsFlowStyle(isFlow)
+		case *SequenceNode:
+			value.SetIsFlowStyle(isFlow)
+		}
 	}
 }
 

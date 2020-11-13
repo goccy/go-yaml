@@ -700,6 +700,26 @@ func TestEncoder_Flow(t *testing.T) {
 	}
 }
 
+func TestEncoder_FlowRecursive(t *testing.T) {
+	var v struct {
+		M map[string][]int `yaml:",flow"`
+	}
+	v.M = map[string][]int{
+		"test": []int{1, 2, 3},
+	}
+	var buf bytes.Buffer
+	if err := yaml.NewEncoder(&buf).Encode(v); err != nil {
+		t.Fatalf("%+v", err)
+	}
+	expect := `
+m: {test: [1, 2, 3]}
+`
+	actual := "\n" + buf.String()
+	if expect != actual {
+		t.Fatalf("flow style marshal error: expect=[%s] actual=[%s]", expect, actual)
+	}
+}
+
 func TestEncoder_JSON(t *testing.T) {
 	var buf bytes.Buffer
 	enc := yaml.NewEncoder(&buf, yaml.JSON())

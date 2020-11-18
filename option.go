@@ -85,6 +85,15 @@ func UseOrderedMap() DecodeOption {
 	}
 }
 
+// UseJSONUnmarshaler if neither `BytesUnmarshaler` nor `InterfaceUnmarshaler` is implemented
+// and `UnmashalJSON([]byte)error` is implemented, convert the argument from `YAML` to `JSON` and then call it.
+func UseJSONUnmarshaler() DecodeOption {
+	return func(d *Decoder) error {
+		d.useJSONUnmarshaler = true
+		return nil
+	}
+}
+
 // EncodeOption functional option type for Encoder
 type EncodeOption func(e *Encoder) error
 
@@ -126,6 +135,16 @@ func JSON() EncodeOption {
 func MarshalAnchor(callback func(*ast.AnchorNode, interface{}) error) EncodeOption {
 	return func(e *Encoder) error {
 		e.anchorCallback = callback
+		return nil
+	}
+}
+
+// UseJSONMarshaler if neither `BytesMarshaler` nor `InterfaceMarshaler`
+// nor `encoding.TextMarshaler` is implemented and `MarshalJSON()([]byte, error)` is implemented,
+// call `MarshalJSON` to convert the returned `JSON` to `YAML` for processing.
+func UseJSONMarshaler() EncodeOption {
+	return func(e *Encoder) error {
+		e.useJSONMarshaler = true
 		return nil
 	}
 }

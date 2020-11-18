@@ -103,7 +103,7 @@ func TestIsNeedQuoted(t *testing.T) {
 		"a: b",
 	}
 	for i, test := range needQuotedTests {
-		if !token.IsNeedQuoted(test, false) {
+		if !token.IsNeedQuoted(test) {
 			t.Fatalf("%d: failed to quoted judge for %s", i, test)
 		}
 	}
@@ -111,48 +111,7 @@ func TestIsNeedQuoted(t *testing.T) {
 		"Hello World",
 	}
 	for i, test := range notNeedQuotedTests {
-		if token.IsNeedQuoted(test, false) {
-			t.Fatalf("%d: failed to quoted judge for %s", i, test)
-		}
-	}
-}
-
-func TestIsNeedQuoted_ForceBlockIfMultiline(t *testing.T) {
-	needQuotedTests := []string{
-		"",
-		"true",
-		"1.234",
-		"1:1",
-		"hoge # comment",
-		"\\0",
-		"#a b",
-		"*a b",
-		"&a b",
-		"{a b",
-		"}a b",
-		"[a b",
-		"]a b",
-		",a b",
-		"!a b",
-		"|a b",
-		">a b",
-		">a b",
-		"%a b",
-		`'a b`,
-		`"a b`,
-		"a:",
-		"a: b",
-	}
-	for i, test := range needQuotedTests {
-		if token.IsNeedQuoted(test+"\n", true) {
-			t.Fatalf("%d: failed to quoted judge for %s", i, test)
-		}
-	}
-	notNeedQuotedTests := []string{
-		"Hello World",
-	}
-	for i, test := range notNeedQuotedTests {
-		if token.IsNeedQuoted(test, true) {
+		if token.IsNeedQuoted(test) {
 			t.Fatalf("%d: failed to quoted judge for %s", i, test)
 		}
 	}

@@ -577,14 +577,9 @@ func looksLikeTimeValue(value string) bool {
 }
 
 // IsNeedQuoted whether need quote for passed string or not
-func IsNeedQuoted(value string, ignoreIfMultiline bool) bool {
+func IsNeedQuoted(value string) bool {
 	if value == "" {
 		return true
-	}
-	// If the string is a multiline one, it can always be displayed safely
-	// using the block syntax
-	if ignoreIfMultiline && strings.ContainsAny(value, "\n\r") {
-		return false
 	}
 	if _, exists := reservedKeywordMap[value]; exists {
 		return true

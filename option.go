@@ -104,11 +104,11 @@ func Flow(isFlowStyle bool) EncodeOption {
 	}
 }
 
-// ForceBlockIfMultiline causes encoding multiline strings with a block syntax,
+// UseLiteralStyleIfMultiline causes encoding multiline strings with a literal syntax,
 // no matter what characters they include
-func ForceBlockIfMultiline(forceBlockIfMultiline bool) EncodeOption {
+func UseLiteralStyleIfMultiline(useLiteralStyleIfMultiline bool) EncodeOption {
 	return func(e *Encoder) error {
-		e.forceBlockIfMultiline = forceBlockIfMultiline
+		e.useLiteralStyleIfMultiline = useLiteralStyleIfMultiline
 		return nil
 	}
 }

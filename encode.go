@@ -27,14 +27,15 @@ const (
 
 // Encoder writes YAML values to an output stream.
 type Encoder struct {
-	writer             io.Writer
-	opts               []EncodeOption
-	indent             int
-	isFlowStyle        bool
-	isJSONStyle        bool
-	useJSONMarshaler   bool
-	anchorCallback     func(*ast.AnchorNode, interface{}) error
-	anchorPtrToNameMap map[uintptr]string
+	writer                     io.Writer
+	opts                       []EncodeOption
+	indent                     int
+	isFlowStyle                bool
+	isJSONStyle                bool
+	useJSONMarshaler           bool
+	anchorCallback             func(*ast.AnchorNode, interface{}) error
+	anchorPtrToNameMap         map[uintptr]string
+	useLiteralStyleIfMultiline bool
 
 	line        int
 	column      int
@@ -348,8 +349,21 @@ func (e *Encoder) encodeFloat(v float64) ast.Node {
 	return ast.Float(token.New(value, value, e.pos(e.column)))
 }
 
+func (e *Encoder) isNeedQuoted(v string) bool {
+	if e.isJSONStyle {
+		return true
+	}
+	if e.useLiteralStyleIfMultiline && strings.ContainsAny(v, "\n\r") {
+		return false
+	}
+	if token.IsNeedQuoted(v) {
+		return true
+	}
+	return false
+}
+
 func (e *Encoder) encodeString(v string, column int) ast.Node {
-	if e.isJSONStyle || token.IsNeedQuoted(v) {
+	if e.isNeedQuoted(v) {
 		v = strconv.Quote(v)
 	}
 	return ast.String(token.New(v, v, e.pos(column)))

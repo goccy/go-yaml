@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"math"
+	"reflect"
 	"strconv"
 	"testing"
 	"time"
@@ -18,84 +19,104 @@ var emptyStr = ""
 
 func TestEncoder(t *testing.T) {
 	tests := []struct {
-		source string
-		value  interface{}
+		source  string
+		value   interface{}
+		options []yaml.EncodeOption
 	}{
 		{
 			"null\n",
 			(*struct{})(nil),
+			nil,
 		},
 		{
 			"v: hi\n",
 			map[string]string{"v": "hi"},
+			nil,
 		},
 		{
 			"v: \"true\"\n",
 			map[string]string{"v": "true"},
+			nil,
 		},
 		{
 			"v: \"false\"\n",
 			map[string]string{"v": "false"},
+			nil,
 		},
 		{
 			"v: true\n",
 			map[string]interface{}{"v": true},
+			nil,
 		},
 		{
 			"v: false\n",
 			map[string]bool{"v": false},
+			nil,
 		},
 		{
 			"v: 10\n",
 			map[string]int{"v": 10},
+			nil,
 		},
 		{
 			"v: -10\n",
 			map[string]int{"v": -10},
+			nil,
 		},
 		{
 			"v: 4294967296\n",
 			map[string]int{"v": 4294967296},
+			nil,
 		},
 		{
 			"v: 0.1\n",
 			map[string]interface{}{"v": 0.1},
+			nil,
 		},
 		{
 			"v: 0.99\n",
 			map[string]float32{"v": 0.99},
+			nil,
 		},
 		{
 			"v: -0.1\n",
 			map[string]float64{"v": -0.1},
+			nil,
 		},
 		{
 			"v: 1.0\n",
 			map[string]float64{"v": 1.0},
+			nil,
 		},
 		{
 			"v: .inf\n",
 			map[string]interface{}{"v": math.Inf(0)},
+			nil,
 		},
 		{
 			"v: -.inf\n",
 			map[string]interface{}{"v": math.Inf(-1)},
+			nil,
 		},
 		{
 			"v: .nan\n",
 			map[string]interface{}{"v": math.NaN()},
+			nil,
 		},
 		{
 			"v: null\n",
 			map[string]interface{}{"v": nil},
+			nil,
 		},
 		{
 			"v: \"\"\n",
 			map[string]string{"v": ""},
+			nil,
 		},
 		{
 			"v:\n- A\n- B\n",
 			map[string][]string{"v": {"A", "B"}},
+			nil,
 		},
 		{
 			"v:\n- A\n- B\n",
@@ -104,38 +125,68 @@ func TestEncoder(t *testing.T) {
 		{
 			"a: -\n",
 			map[string]string{"a": "-"},
+			nil,
 		},
 		{
 			"123\n",
 			123,
+			nil,
 		},
 		{
 			"hello: world\n",
 			map[string]string{"hello": "world"},
+			nil,
 		},
 		{
 			"hello: |\n  hello\n  world\n",
 			map[string]string{"hello": "hello\nworld\n"},
+			nil,
 		},
 		{
 			"hello: |-\n  hello\n  world\n",
 			map[string]string{"hello": "hello\nworld"},
+			nil,
 		},
 		{
 			"hello: |+\n  hello\n  world\n\n",
 			map[string]string{"hello": "hello\nworld\n\n"},
+			nil,
 		},
 		{
 			"hello:\n  hello: |\n    hello\n    world\n",
 			map[string]map[string]string{"hello": {"hello": "hello\nworld\n"}},
+			nil,
 		},
 		{
 			"hello: |\r  hello\r  world\n",
 			map[string]string{"hello": "hello\rworld\r"},
+			nil,
 		},
 		{
 			"hello: |\r\n  hello\r\n  world\n",
 			map[string]string{"hello": "hello\r\nworld\r\n"},
+			nil,
+		},
+		{
+			"v: |-\n  username: hello\n  password: hello123\n",
+			map[string]interface{}{"v": "username: hello\npassword: hello123"},
+			[]yaml.EncodeOption{
+				yaml.UseLiteralStyleIfMultiline(true),
+			},
+		},
+		{
+			"v: |-\n  # comment\n  username: hello\n  password: hello123\n",
+			map[string]interface{}{"v": "# comment\nusername: hello\npassword: hello123"},
+			[]yaml.EncodeOption{
+				yaml.UseLiteralStyleIfMultiline(true),
+			},
+		},
+		{
+			"v: \"# comment\\nusername: hello\\npassword: hello123\"\n",
+			map[string]interface{}{"v": "# comment\nusername: hello\npassword: hello123"},
+			[]yaml.EncodeOption{
+				yaml.UseLiteralStyleIfMultiline(false),
+			},
 		},
 		{
 			"v:\n- A\n- 1\n- B:\n  - 2\n  - 3\n",
@@ -148,6 +199,7 @@ func TestEncoder(t *testing.T) {
 					},
 				},
 			},
+			nil,
 		},
 		{
 			"a:\n  b: c\n",
@@ -156,6 +208,7 @@ func TestEncoder(t *testing.T) {
 					"b": "c",
 				},
 			},
+			nil,
 		},
 		{
 			"t2: 2018-01-09T10:40:47Z\nt4: 2098-01-09T10:40:47Z\n",
@@ -163,6 +216,7 @@ func TestEncoder(t *testing.T) {
 				"t2": "2018-01-09T10:40:47Z",
 				"t4": "2098-01-09T10:40:47Z",
 			},
+			nil,
 		},
 		{
 			"a:\n  b: c\n  d: e\n",
@@ -172,42 +226,51 @@ func TestEncoder(t *testing.T) {
 					"d": "e",
 				},
 			},
+			nil,
 		},
 		{
 			"a: 3s\n",
 			map[string]string{
 				"a": "3s",
 			},
+			nil,
 		},
 		{
 			"a: <foo>\n",
 			map[string]string{"a": "<foo>"},
+			nil,
 		},
 		{
 			"a: \"1:1\"\n",
 			map[string]string{"a": "1:1"},
+			nil,
 		},
 		{
 			"a: 1.2.3.4\n",
 			map[string]string{"a": "1.2.3.4"},
+			nil,
 		},
 		{
 			"a: \"b: c\"\n",
 			map[string]string{"a": "b: c"},
+			nil,
 		},
 		{
 			"a: \"Hello #comment\"\n",
 			map[string]string{"a": "Hello #comment"},
+			nil,
 		},
 		{
 			"a: 100.5\n",
 			map[string]interface{}{
 				"a": 100.5,
 			},
+			nil,
 		},
 		{
 			"a: \"\\\\0\"\n",
 			map[string]string{"a": "\\0"},
+			nil,
 		},
 		{
 			"a: 1\nb: 2\nc: 3\nd: 4\nsub:\n  e: 5\n",
@@ -220,6 +283,7 @@ func TestEncoder(t *testing.T) {
 					"e": 5,
 				},
 			},
+			nil,
 		},
 		{
 			"a: 1\nb: []\n",
@@ -229,6 +293,7 @@ func TestEncoder(t *testing.T) {
 			}{
 				1, ([]string)(nil),
 			},
+			nil,
 		},
 		{
 			"a: 1\nb: []\n",
@@ -238,6 +303,7 @@ func TestEncoder(t *testing.T) {
 			}{
 				1, []string{},
 			},
+			nil,
 		},
 		{
 			"a: {}\n",
@@ -246,6 +312,7 @@ func TestEncoder(t *testing.T) {
 			}{
 				map[string]interface{}{},
 			},
+			nil,
 		},
 		{
 			"a: b\nc: d\n",
@@ -255,6 +322,7 @@ func TestEncoder(t *testing.T) {
 			}{
 				"b", "d",
 			},
+			nil,
 		},
 		{
 			"a: 1\n",
@@ -264,6 +332,7 @@ func TestEncoder(t *testing.T) {
 			}{
 				1, 0,
 			},
+			nil,
 		},
 		{
 			"a: \"\"\n",
@@ -272,6 +341,7 @@ func TestEncoder(t *testing.T) {
 			}{
 				"",
 			},
+			nil,
 		},
 		{
 			"a: null\n",
@@ -280,6 +350,7 @@ func TestEncoder(t *testing.T) {
 			}{
 				nil,
 			},
+			nil,
 		},
 		{
 			"a: \"\"\n",
@@ -288,6 +359,7 @@ func TestEncoder(t *testing.T) {
 			}{
 				&emptyStr,
 			},
+			nil,
 		},
 		{
 			"a: null\n",
@@ -296,6 +368,7 @@ func TestEncoder(t *testing.T) {
 			}{
 				nil,
 			},
+			nil,
 		},
 		{
 			"a: 0\n",
@@ -304,6 +377,7 @@ func TestEncoder(t *testing.T) {
 			}{
 				&zero,
 			},
+			nil,
 		},
 
 		// Conditional flag
@@ -313,6 +387,7 @@ func TestEncoder(t *testing.T) {
 				A int `yaml:"a,omitempty"`
 				B int `yaml:"b,omitempty"`
 			}{1, 0},
+			nil,
 		},
 		{
 			"{}\n",
@@ -320,6 +395,7 @@ func TestEncoder(t *testing.T) {
 				A int `yaml:"a,omitempty"`
 				B int `yaml:"b,omitempty"`
 			}{0, 0},
+			nil,
 		},
 
 		{
@@ -333,6 +409,7 @@ func TestEncoder(t *testing.T) {
 				X string `yaml:"x,omitempty"`
 				Y string
 			}{}},
+			nil,
 		},
 
 		{
@@ -346,6 +423,7 @@ func TestEncoder(t *testing.T) {
 				X string `yaml:"x,omitempty"`
 				Y string `yaml:"y,omitempty"`
 			}{}},
+			nil,
 		},
 
 		{
@@ -353,6 +431,7 @@ func TestEncoder(t *testing.T) {
 			struct {
 				A *struct{ X, y int } `yaml:"a,omitempty,flow"`
 			}{&struct{ X, y int }{1, 2}},
+			nil,
 		},
 
 		{
@@ -360,6 +439,7 @@ func TestEncoder(t *testing.T) {
 			struct {
 				A *struct{ X, y int } `yaml:"a,omitempty,flow"`
 			}{nil},
+			nil,
 		},
 
 		{
@@ -367,6 +447,7 @@ func TestEncoder(t *testing.T) {
 			struct {
 				A *struct{ X, y int } `yaml:"a,omitempty,flow"`
 			}{&struct{ X, y int }{}},
+			nil,
 		},
 
 		{
@@ -374,12 +455,14 @@ func TestEncoder(t *testing.T) {
 			struct {
 				A struct{ X, y int } `yaml:"a,omitempty,flow"`
 			}{struct{ X, y int }{1, 2}},
+			nil,
 		},
 		{
 			"{}\n",
 			struct {
 				A struct{ X, y int } `yaml:"a,omitempty,flow"`
 			}{struct{ X, y int }{0, 1}},
+			nil,
 		},
 		{
 			"a: 1.0\n",
@@ -387,6 +470,7 @@ func TestEncoder(t *testing.T) {
 				A float64 `yaml:"a,omitempty"`
 				B float64 `yaml:"b,omitempty"`
 			}{1, 0},
+			nil,
 		},
 		{
 			"a: 1\n",
@@ -396,6 +480,7 @@ func TestEncoder(t *testing.T) {
 			}{
 				1, []string{},
 			},
+			nil,
 		},
 
 		// Flow flag
@@ -404,12 +489,14 @@ func TestEncoder(t *testing.T) {
 			struct {
 				A []int `yaml:"a,flow"`
 			}{[]int{1, 2}},
+			nil,
 		},
 		{
 			"a: {b: c, d: e}\n",
 			&struct {
 				A map[string]string `yaml:"a,flow"`
 			}{map[string]string{"b": "c", "d": "e"}},
+			nil,
 		},
 		{
 			"a: {b: c, d: e}\n",
@@ -418,31 +505,36 @@ func TestEncoder(t *testing.T) {
 					B, D string
 				} `yaml:"a,flow"`
 			}{struct{ B, D string }{"c", "e"}},
+			nil,
 		},
 
 		// Multi bytes
 		{
 			"v: あいうえお\nv2: かきくけこ\n",
 			map[string]string{"v": "あいうえお", "v2": "かきくけこ"},
+			nil,
 		},
 
 		// time value
 		{
 			"v: 0001-01-01T00:00:00Z\n",
 			map[string]time.Time{"v": time.Time{}},
+			nil,
 		},
 		{
 			"v: 0001-01-01T00:00:00Z\n",
 			map[string]*time.Time{"v": &time.Time{}},
+			nil,
 		},
 		{
 			"v: null\n",
 			map[string]*time.Time{"v": nil},
+			nil,
 		},
 	}
 	for _, test := range tests {
 		var buf bytes.Buffer
-		enc := yaml.NewEncoder(&buf)
+		enc := yaml.NewEncoder(&buf, test.options...)
 		if err := enc.Encode(test.value); err != nil {
 			t.Fatalf("%+v", err)
 		}
@@ -606,6 +698,60 @@ people:
 `
 	if expect != buf.String() {
 		t.Fatalf("expect = [%s], actual = [%s]", expect, buf.String())
+	}
+}
+
+func TestEncodeWithNestedYAML(t *testing.T) {
+	// Represents objects containing stringified YAML, and special chars
+	tests := []struct {
+		value interface{}
+		// If true, expects a different result between when using forced literal style or not
+		expectDifferent bool
+	}{
+		{
+			value:           map[string]interface{}{"v": "# comment\nname: hello\npassword: hello123\nspecial: \":ghost:\"\ntext: |\n  nested multiline!"},
+			expectDifferent: true,
+		},
+		{
+			value:           map[string]interface{}{"v": "# comment\nusername: hello\npassword: hello123"},
+			expectDifferent: true,
+		},
+		{
+			value:           map[string]interface{}{"v": "# comment\n"},
+			expectDifferent: true,
+		},
+		{
+			value: map[string]interface{}{"v": "\n"},
+		},
+	}
+
+	for _, test := range tests {
+		yamlBytesForced, err := yaml.MarshalWithOptions(test.value, yaml.UseLiteralStyleIfMultiline(true))
+		if err != nil {
+			t.Fatalf("%+v", err)
+		}
+
+		// Convert it back for proper equality testing
+		var unmarshaled interface{}
+
+		if err := yaml.Unmarshal(yamlBytesForced, &unmarshaled); err != nil {
+			t.Fatalf("%+v", err)
+		}
+
+		if !reflect.DeepEqual(test.value, unmarshaled) {
+			t.Fatalf("expected %v(%T). but actual %v(%T)", test.value, test.value, unmarshaled, unmarshaled)
+		}
+
+		if test.expectDifferent {
+			yamlBytesNotForced, err := yaml.MarshalWithOptions(test.value)
+			if err != nil {
+				t.Fatalf("%+v", err)
+			}
+
+			if string(yamlBytesForced) == string(yamlBytesNotForced) {
+				t.Fatalf("expected different strings when force literal style is not enabled. forced: %s, not forced: %s", string(yamlBytesForced), string(yamlBytesNotForced))
+			}
+		}
 	}
 }
 
@@ -884,10 +1030,10 @@ func Example_Marshal_ExplicitAnchorAlias() {
 	}
 	fmt.Println(string(bytes))
 	// OUTPUT:
-	//c: &x
+	// c: &x
 	//   a: 1
 	//   b: hello
-	//d: *x
+	// d: *x
 }
 
 func Example_Marshal_ImplicitAnchorAlias() {

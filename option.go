@@ -113,6 +113,15 @@ func Flow(isFlowStyle bool) EncodeOption {
 	}
 }
 
+// UseLiteralStyleIfMultiline causes encoding multiline strings with a literal syntax,
+// no matter what characters they include
+func UseLiteralStyleIfMultiline(useLiteralStyleIfMultiline bool) EncodeOption {
+	return func(e *Encoder) error {
+		e.useLiteralStyleIfMultiline = useLiteralStyleIfMultiline
+		return nil
+	}
+}
+
 // JSON encode in JSON format
 func JSON() EncodeOption {
 	return func(e *Encoder) error {

@@ -11,7 +11,8 @@ jobs:
       - run:
           name: merge base branch
           command: |
-            git pull origin master
+            git remote add goccy https://github.com/goccy/go-yaml.git
+            git pull goccy master
       - run:
           name: Download modules
           command: |

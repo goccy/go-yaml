@@ -9,6 +9,11 @@ jobs:
     steps:
       - checkout
       - run:
+          name: merge base branch
+          command: |
+            git remote add goccy https://github.com/goccy/go-yaml.git
+            git pull goccy master
+      - run:
           name: Download modules
           command: |
             go mod download

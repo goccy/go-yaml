@@ -9,6 +9,10 @@ jobs:
     steps:
       - checkout
       - run:
+          name: merge base branch
+          command: |
+            git pull origin master
+      - run:
           name: Download modules
           command: |
             go mod download

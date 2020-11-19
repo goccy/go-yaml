@@ -121,6 +121,7 @@ func TestEncoder(t *testing.T) {
 		{
 			"v:\n- A\n- B\n",
 			map[string][2]string{"v": {"A", "B"}},
+			nil,
 		},
 		{
 			"a: -\n",

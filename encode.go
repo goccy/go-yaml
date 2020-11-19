@@ -273,20 +273,21 @@ func (e *Encoder) encodeFloat(v float64) ast.Node {
 	return ast.Float(token.New(value, value, e.pos(e.column)))
 }
 
-func (e *Encoder) encodeString(v string, column int) ast.Node {
-	shouldQuote := false
-
+func (e *Encoder) isNeedQuoted(v string) bool {
 	if e.isJSONStyle {
-		shouldQuote = true
-	} else if e.useLiteralStyleIfMultiline && strings.ContainsAny(v, "\n\r") {
-		// If the string is a multiline one, it can always be displayed safely
-		// using the literal syntax
-		shouldQuote = false
-	} else if token.IsNeedQuoted(v) {
-		shouldQuote = true
+		return true
 	}
+	if e.useLiteralStyleIfMultiline && strings.ContainsAny(v, "\n\r") {
+		return false
+	}
+	if token.IsNeedQuoted(v) {
+		return true
+	}
+	return false
+}
 
-	if shouldQuote {
+func (e *Encoder) encodeString(v string, column int) ast.Node {
+	if e.isNeedQuoted(v) {
 		v = strconv.Quote(v)
 	}
 	return ast.String(token.New(v, v, e.pos(column)))

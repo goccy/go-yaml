@@ -700,7 +700,7 @@ func TestEncodeWithNestedYAML(t *testing.T) {
 	// Represents objects containing stringified YAML, and special chars
 	tests := []struct {
 		value interface{}
-		// If true, expects a different result between when using forced block or not
+		// If true, expects a different result between when using forced literal style or not
 		expectDifferent bool
 	}{
 		{
@@ -744,7 +744,7 @@ func TestEncodeWithNestedYAML(t *testing.T) {
 			}
 
 			if string(yamlBytesForced) == string(yamlBytesNotForced) {
-				t.Fatalf("expected different strings when force block is not enabled. forced: %s, not forced: %s", string(yamlBytesForced), string(yamlBytesNotForced))
+				t.Fatalf("expected different strings when force literal style is not enabled. forced: %s, not forced: %s", string(yamlBytesForced), string(yamlBytesNotForced))
 			}
 		}
 	}

@@ -811,6 +811,10 @@ func TestDecoder(t *testing.T) {
 			map[string]string{"v": "echo ---"},
 		},
 		{
+			"v: |\n  hello\n  ...\n  world\n",
+			map[string]string{"v": "hello\n...\nworld\n"},
+		},
+		{
 			"a: !!binary gIGC\n",
 			map[string]string{"a": "\x80\x81\x82"},
 		},
@@ -995,6 +999,21 @@ c:
 `,
 			map[string]interface{}{
 				"a": "go test ./...",
+				"b": nil,
+				"c": nil,
+			},
+		},
+		{
+			`---
+a: |
+  hello
+  ...
+  world
+b:
+c:
+`,
+			map[string]interface{}{
+				"a": "hello\n...\nworld\n",
 				"b": nil,
 				"c": nil,
 			},

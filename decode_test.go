@@ -799,6 +799,22 @@ func TestDecoder(t *testing.T) {
 			(*struct{})(nil),
 		},
 		{
+			"...",
+			(*struct{})(nil),
+		},
+		{
+			"v: go test ./...",
+			map[string]string{"v": "go test ./..."},
+		},
+		{
+			"v: echo ---",
+			map[string]string{"v": "echo ---"},
+		},
+		{
+			"v: |\n  hello\n  ...\n  world\n",
+			map[string]string{"v": "hello\n...\nworld\n"},
+		},
+		{
 			"a: !!binary gIGC\n",
 			map[string]string{"a": "\x80\x81\x82"},
 		},
@@ -971,6 +987,33 @@ c:
 `,
 			map[string]interface{}{
 				"a": nil,
+				"b": nil,
+				"c": nil,
+			},
+		},
+		{
+			`---
+a: go test ./...
+b:
+c:
+`,
+			map[string]interface{}{
+				"a": "go test ./...",
+				"b": nil,
+				"c": nil,
+			},
+		},
+		{
+			`---
+a: |
+  hello
+  ...
+  world
+b:
+c:
+`,
+			map[string]interface{}{
+				"a": "hello\n...\nworld\n",
 				"b": nil,
 				"c": nil,
 			},

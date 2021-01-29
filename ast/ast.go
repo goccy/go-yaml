@@ -129,6 +129,8 @@ type Node interface {
 	readLen() int
 	// append read length
 	addReadLen(int)
+	// clean read length
+	clearLen()
 }
 
 // ScalarNode type for scalar node
@@ -144,6 +146,10 @@ type BaseNode struct {
 
 func (n *BaseNode) readLen() int {
 	return n.read
+}
+
+func (n *BaseNode) clearLen() {
+	n.read = 0
 }
 
 func (n *BaseNode) addReadLen(len int) {
@@ -176,6 +182,7 @@ func readNode(p []byte, node Node) (int, error) {
 	readLen := node.readLen()
 	remain := len(s) - readLen
 	if remain == 0 {
+		node.clearLen()
 		return 0, io.EOF
 	}
 	size := min(remain, len(p))

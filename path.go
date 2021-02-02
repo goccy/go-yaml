@@ -17,6 +17,7 @@ var (
 	ErrInvalidQuery      = xerrors.New("invalid query")
 	ErrInvalidPath       = xerrors.New("invalid path instance")
 	ErrInvalidPathString = xerrors.New("invalid path string")
+	ErrNotFoundNode      = xerrors.New("node not found")
 )
 
 // PathString create Path from string
@@ -214,7 +215,7 @@ func (p *Path) FilterFile(f *ast.File) (ast.Node, error) {
 			return node, nil
 		}
 	}
-	return nil, fmt.Errorf("path ( %s ) not found", p.node)
+	return nil, errors.Wrapf(ErrNotFoundNode, "failed to find path ( %s )", p.node)
 }
 
 // FilterNode filter from node by YAMLPath.

@@ -243,7 +243,7 @@ func Integer(tk *token.Token) Node {
 		negativePrefix := ""
 		if value[0] == '-' {
 			skipCharacterNum++
-			if value[2] == 'o' {
+			if len(value) > 2 && value[2] == 'o' {
 				skipCharacterNum++
 			}
 			negativePrefix = "-"

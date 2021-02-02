@@ -10,14 +10,6 @@ import (
 	"github.com/goccy/go-yaml/internal/errors"
 	"github.com/goccy/go-yaml/parser"
 	"github.com/goccy/go-yaml/printer"
-	"golang.org/x/xerrors"
-)
-
-var (
-	ErrInvalidQuery      = xerrors.New("invalid query")
-	ErrInvalidPath       = xerrors.New("invalid path instance")
-	ErrInvalidPathString = xerrors.New("invalid path string")
-	ErrNotFoundNode      = xerrors.New("node not found")
 )
 
 // PathString create Path from string

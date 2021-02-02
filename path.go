@@ -214,7 +214,7 @@ func (p *Path) FilterFile(f *ast.File) (ast.Node, error) {
 			return node, nil
 		}
 	}
-	return nil, nil
+	return nil, fmt.Errorf("path ( %s ) not found", p.node)
 }
 
 // FilterNode filter from node by YAMLPath.

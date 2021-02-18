@@ -1,10 +1,12 @@
 package lexer_test
 
 import (
+	"sort"
 	"strings"
 	"testing"
 
 	"github.com/goccy/go-yaml/lexer"
+	"github.com/goccy/go-yaml/token"
 )
 
 func TestTokenize(t *testing.T) {
@@ -58,4 +60,212 @@ func TestTokenize(t *testing.T) {
 	for _, src := range sources {
 		lexer.Tokenize(src).Dump()
 	}
+}
+
+type testToken struct {
+	line   int
+	column int
+	value  string
+}
+
+func TestTokenValueAndLineColumnPosition(t *testing.T) {
+	tests := []struct {
+		name   string
+		src    string
+		expect map[int]string // Column -> Value map.
+	}{
+		{
+			name: "single quote, single value array",
+			src:  "test: ['test']",
+			expect: map[int]string{
+				1:  "test",
+				5:  ":",
+				7:  "[",
+				8:  "test",
+				14: "]",
+			},
+		},
+		{
+			name: "double quote, single value array",
+			src:  `test: ["test"]`,
+			expect: map[int]string{
+				1:  "test",
+				5:  ":",
+				7:  "[",
+				8:  "test",
+				14: "]",
+			},
+		},
+		{
+			name: "no quotes, single value array",
+			src:  "test: [somevalue]",
+			expect: map[int]string{
+				1:  "test",
+				5:  ":",
+				7:  "[",
+				8:  "somevalue",
+				17: "]",
+			},
+		},
+		{
+			name: "single quote, multi value array",
+			src:  "myarr: ['1','2','3', '444' , '55','66' ,  '77'  ]",
+			expect: map[int]string{
+				1:  "myarr",
+				6:  ":",
+				8:  "[",
+				9:  "1",
+				12: ",",
+				13: "2",
+				16: ",",
+				17: "3",
+				20: ",",
+				22: "444",
+				28: ",",
+				30: "55",
+				34: ",",
+				35: "66",
+				40: ",",
+				43: "77",
+				49: "]",
+			},
+		},
+		{
+			name: "double quote, multi value array",
+			src:  `myarr: ["1","2","3", "444" , "55","66" ,  "77"  ]`,
+			expect: map[int]string{
+				1:  "myarr",
+				6:  ":",
+				8:  "[",
+				9:  "1",
+				12: ",",
+				13: "2",
+				16: ",",
+				17: "3",
+				20: ",",
+				22: "444",
+				28: ",",
+				30: "55",
+				34: ",",
+				35: "66",
+				40: ",",
+				43: "77",
+				49: "]",
+			},
+		},
+		{
+			name: "no quote, multi value array",
+			src:  "numbers: [1, 5, 99,100, 3, 7 ]",
+			expect: map[int]string{
+				1:  "numbers",
+				8:  ":",
+				10: "[",
+				11: "1",
+				12: ",",
+				14: "5",
+				15: ",",
+				17: "99",
+				19: ",",
+				20: "100",
+				23: ",",
+				25: "3",
+				26: ",",
+				28: "7",
+				30: "]",
+			},
+		},
+		{
+			name: "double quotes, nested arrays",
+			src:  `Strings: ["1",["2",["3"]]]`,
+			expect: map[int]string{
+				1:  "Strings",
+				8:  ":",
+				10: "[",
+				11: "1",
+				14: ",",
+				15: "[",
+				16: "2",
+				19: ",",
+				20: "[",
+				21: "3",
+				24: "]",
+				25: "]",
+				26: "]",
+			},
+		},
+		{
+			name: "mixed quotes, nested arrays",
+			src:  `Values: [1,['2',"3",4,["5",6]]]`,
+			expect: map[int]string{
+				1:  "Values",
+				7:  ":",
+				9:  "[",
+				10: "1",
+				11: ",",
+				12: "[",
+				13: "2",
+				16: ",",
+				17: "3",
+				20: ",",
+				21: "4",
+				22: ",",
+				23: "[",
+				24: "5",
+				27: ",",
+				28: "6",
+				29: "]",
+				30: "]",
+				31: "]",
+			},
+		},
+		{
+			name: "double quote, empty array",
+			src:  `Empty: ["", ""]`,
+			expect: map[int]string{
+				1:  "Empty",
+				6:  ":",
+				8:  "[",
+				9:  "",
+				11: ",",
+				13: "",
+				15: "]",
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			got := lexer.Tokenize(tc.src)
+			sort.Slice(got, func(i, j int) bool {
+				return got[i].Position.Column < got[j].Position.Column
+			})
+			var expected []testToken
+			for k, v := range tc.expect {
+				tt := testToken{
+					line:   1,
+					column: k,
+					value:  v,
+				}
+				expected = append(expected, tt)
+			}
+			sort.Slice(expected, func(i, j int) bool {
+				return expected[i].column < expected[j].column
+			})
+			if len(got) != len(expected) {
+				t.Errorf("Tokenize(%s) token count mismatch, expected:%d got:%d", tc.src, len(expected), len(got))
+			}
+			for i, tok := range got {
+				if !tokenMatches(tok, expected[i]) {
+					t.Errorf("Tokenize(%s) expected line:%d column:%d value:%s , got:%+v", tc.src, tok.Position.Line, tok.Position.Column, tok.Value, expected[i])
+				}
+			}
+		})
+	}
+}
+
+func tokenMatches(t *token.Token, e testToken) bool {
+	return t != nil && t.Position != nil &&
+		t.Value == e.value &&
+		t.Position.Line == e.line &&
+		t.Position.Column == e.column
 }

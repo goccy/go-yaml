@@ -256,7 +256,7 @@ func TestTokenValueAndLineColumnPosition(t *testing.T) {
 			}
 			for i, tok := range got {
 				if !tokenMatches(tok, expected[i]) {
-					t.Errorf("Tokenize(%s) expected line:%d column:%d value:%s , got:%+v", tc.src, tok.Position.Line, tok.Position.Column, tok.Value, expected[i])
+					t.Errorf("Tokenize(%s) expected:%+v got line:%d column:%d value:%s", tc.src, expected[i], tok.Position.Line, tok.Position.Column, tok.Value)
 				}
 			}
 		})

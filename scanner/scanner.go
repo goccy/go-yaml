@@ -195,8 +195,9 @@ func (s *Scanner) breakLiteral(ctx *Context) {
 
 func (s *Scanner) scanSingleQuote(ctx *Context) (tk *token.Token, pos int) {
 	ctx.addOriginBuf('\'')
+	srcpos := s.pos()
 	startIndex := ctx.idx + 1
-	ctx.progress(1)
+	s.progressColumn(ctx, 1)
 	src := ctx.src
 	size := len(src)
 	value := []rune{}
@@ -223,7 +224,7 @@ func (s *Scanner) scanSingleQuote(ctx *Context) (tk *token.Token, pos int) {
 			idx++
 			continue
 		}
-		tk = token.SingleQuote(string(value), string(ctx.obuf), s.pos())
+		tk = token.SingleQuote(string(value), string(ctx.obuf), srcpos)
 		pos = idx - startIndex + 1
 		return
 	}
@@ -250,8 +251,9 @@ func hexRunesToInt(b []rune) int {
 
 func (s *Scanner) scanDoubleQuote(ctx *Context) (tk *token.Token, pos int) {
 	ctx.addOriginBuf('"')
+	srcpos := s.pos()
 	startIndex := ctx.idx + 1
-	ctx.progress(1)
+	s.progressColumn(ctx, 1)
 	src := ctx.src
 	size := len(src)
 	value := []rune{}
@@ -363,7 +365,7 @@ func (s *Scanner) scanDoubleQuote(ctx *Context) (tk *token.Token, pos int) {
 			isFirstLineChar = false
 			continue
 		}
-		tk = token.DoubleQuote(string(value), string(ctx.obuf), s.pos())
+		tk = token.DoubleQuote(string(value), string(ctx.obuf), srcpos)
 		pos = idx - startIndex + 1
 		return
 	}

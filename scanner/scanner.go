@@ -757,7 +757,7 @@ func (s *Scanner) scan(ctx *Context) (pos int) {
 				continue
 			}
 			s.addBufferedTokenIfExists(ctx)
-			s.progressColumn(ctx, 1)
+			pos-- // to rescan white space at next scanning for adding white space to next buffer.
 			s.isAnchor = false
 			return
 		}

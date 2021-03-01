@@ -137,3 +137,15 @@ a:
 		p.PrintErrorMessage(src, true)
 	})
 }
+
+func TestPrinter_Anchor(t *testing.T) {
+	expected := `
+anchor: &x 1
+alias: *x`
+	tokens := lexer.Tokenize(expected)
+	var p printer.Printer
+	got := p.PrintTokens(tokens)
+	if expected != got {
+		t.Fatalf("unexpected output: expect:[%s]\n actual:[%s]", expected, got)
+	}
+}

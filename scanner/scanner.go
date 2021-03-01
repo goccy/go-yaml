@@ -578,7 +578,7 @@ func (s *Scanner) scan(ctx *Context) (pos int) {
 			}
 		case '.':
 			if s.indentNum == 0 && s.column == 1 && ctx.repeatNum('.') == 3 {
-				ctx.addToken(token.DocumentEnd(s.pos()))
+				ctx.addToken(token.DocumentEnd(string(ctx.obuf)+"...", s.pos()))
 				s.progressColumn(ctx, 3)
 				pos += 2
 				return
@@ -594,7 +594,7 @@ func (s *Scanner) scan(ctx *Context) (pos int) {
 		case '-':
 			if s.indentNum == 0 && s.column == 1 && ctx.repeatNum('-') == 3 {
 				s.addBufferedTokenIfExists(ctx)
-				ctx.addToken(token.DocumentHeader(s.pos()))
+				ctx.addToken(token.DocumentHeader(string(ctx.obuf)+"---", s.pos()))
 				s.progressColumn(ctx, 3)
 				pos += 2
 				return
@@ -686,7 +686,7 @@ func (s *Scanner) scan(ctx *Context) (pos int) {
 			}
 		case '%':
 			if !ctx.existsBuffer() && s.indentNum == 0 {
-				ctx.addToken(token.Directive(s.pos()))
+				ctx.addToken(token.Directive(string(ctx.obuf)+"%", s.pos()))
 				s.progressColumn(ctx, 1)
 				return
 			}

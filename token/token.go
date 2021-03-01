@@ -961,13 +961,13 @@ func DoubleQuote(value string, org string, pos *Position) *Token {
 }
 
 // Directive create token for Directive
-func Directive(pos *Position) *Token {
+func Directive(org string, pos *Position) *Token {
 	return &Token{
 		Type:          DirectiveType,
 		CharacterType: CharacterTypeIndicator,
 		Indicator:     DirectiveIndicator,
 		Value:         string(DirectiveCharacter),
-		Origin:        string(DirectiveCharacter),
+		Origin:        org,
 		Position:      pos,
 	}
 }
@@ -997,25 +997,25 @@ func MergeKey(org string, pos *Position) *Token {
 }
 
 // DocumentHeader create token for DocumentHeader
-func DocumentHeader(pos *Position) *Token {
+func DocumentHeader(org string, pos *Position) *Token {
 	return &Token{
 		Type:          DocumentHeaderType,
 		CharacterType: CharacterTypeMiscellaneous,
 		Indicator:     NotIndicator,
 		Value:         "---",
-		Origin:        "---",
+		Origin:        org,
 		Position:      pos,
 	}
 }
 
 // DocumentEnd create token for DocumentEnd
-func DocumentEnd(pos *Position) *Token {
+func DocumentEnd(org string, pos *Position) *Token {
 	return &Token{
 		Type:          DocumentEndType,
 		CharacterType: CharacterTypeMiscellaneous,
 		Indicator:     NotIndicator,
 		Value:         "...",
-		Origin:        "...",
+		Origin:        org,
 		Position:      pos,
 	}
 }

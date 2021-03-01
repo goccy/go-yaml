@@ -125,6 +125,8 @@ type Node interface {
 	SetComment(*token.Token) error
 	// Comment returns comment token instance
 	GetComment() *token.Token
+	// MarshalYAML
+	MarshalYAML() ([]byte, error)
 	// already read length
 	readLen() int
 	// append read length
@@ -513,6 +515,11 @@ func (d *DocumentNode) String() string {
 	return strings.Join(doc, "\n")
 }
 
+// MarshalYAML encodes to a YAML text
+func (d *DocumentNode) MarshalYAML() ([]byte, error) {
+	return []byte(d.String()), nil
+}
+
 func removeUnderScoreFromNumber(num string) string {
 	return strings.ReplaceAll(num, "_", "")
 }
@@ -561,6 +568,11 @@ func (n *NullNode) String() string {
 	return "null"
 }
 
+// MarshalYAML encodes to a YAML text
+func (n *NullNode) MarshalYAML() ([]byte, error) {
+	return []byte(n.String()), nil
+}
+
 // IntegerNode type of integer node
 type IntegerNode struct {
 	*BaseNode
@@ -594,6 +606,11 @@ func (n *IntegerNode) GetValue() interface{} {
 // String int64 to text
 func (n *IntegerNode) String() string {
 	return n.Token.Value
+}
+
+// MarshalYAML encodes to a YAML text
+func (n *IntegerNode) MarshalYAML() ([]byte, error) {
+	return []byte(n.String()), nil
 }
 
 // FloatNode type of float node
@@ -630,6 +647,11 @@ func (n *FloatNode) GetValue() interface{} {
 // String float64 to text
 func (n *FloatNode) String() string {
 	return n.Token.Value
+}
+
+// MarshalYAML encodes to a YAML text
+func (n *FloatNode) MarshalYAML() ([]byte, error) {
+	return []byte(n.String()), nil
 }
 
 // StringNode type of string node
@@ -689,6 +711,11 @@ func (n *StringNode) String() string {
 	return n.Value
 }
 
+// MarshalYAML encodes to a YAML text
+func (n *StringNode) MarshalYAML() ([]byte, error) {
+	return []byte(n.String()), nil
+}
+
 // LiteralNode type of literal node
 type LiteralNode struct {
 	*BaseNode
@@ -728,6 +755,11 @@ func (n *LiteralNode) String() string {
 	return fmt.Sprintf("%s\n%s", n.Start.Value, strings.TrimRight(strings.TrimRight(origin, " "), "\n"))
 }
 
+// MarshalYAML encodes to a YAML text
+func (n *LiteralNode) MarshalYAML() ([]byte, error) {
+	return []byte(n.String()), nil
+}
+
 // MergeKeyNode type of merge key node
 type MergeKeyNode struct {
 	*BaseNode
@@ -760,6 +792,11 @@ func (n *MergeKeyNode) String() string {
 // AddColumn add column number to child nodes recursively
 func (n *MergeKeyNode) AddColumn(col int) {
 	n.Token.AddColumn(col)
+}
+
+// MarshalYAML encodes to a YAML text
+func (n *MergeKeyNode) MarshalYAML() ([]byte, error) {
+	return []byte(n.String()), nil
 }
 
 // BoolNode type of boolean node
@@ -797,6 +834,11 @@ func (n *BoolNode) String() string {
 	return n.Token.Value
 }
 
+// MarshalYAML encodes to a YAML text
+func (n *BoolNode) MarshalYAML() ([]byte, error) {
+	return []byte(n.String()), nil
+}
+
 // InfinityNode type of infinity node
 type InfinityNode struct {
 	*BaseNode
@@ -832,6 +874,11 @@ func (n *InfinityNode) String() string {
 	return n.Token.Value
 }
 
+// MarshalYAML encodes to a YAML text
+func (n *InfinityNode) MarshalYAML() ([]byte, error) {
+	return []byte(n.String()), nil
+}
+
 // NanNode type of nan node
 type NanNode struct {
 	*BaseNode
@@ -864,6 +911,11 @@ func (n *NanNode) GetValue() interface{} {
 // String returns .nan
 func (n *NanNode) String() string {
 	return n.Token.Value
+}
+
+// MarshalYAML encodes to a YAML text
+func (n *NanNode) MarshalYAML() ([]byte, error) {
+	return []byte(n.String()), nil
 }
 
 // MapNode interface of MappingValueNode / MappingNode
@@ -1002,6 +1054,11 @@ func (n *MappingNode) MapRange() *MapNodeIter {
 	}
 }
 
+// MarshalYAML encodes to a YAML text
+func (n *MappingNode) MarshalYAML() ([]byte, error) {
+	return []byte(n.String()), nil
+}
+
 // MappingKeyNode type of tag node
 type MappingKeyNode struct {
 	*BaseNode
@@ -1033,6 +1090,11 @@ func (n *MappingKeyNode) AddColumn(col int) {
 // String tag to text
 func (n *MappingKeyNode) String() string {
 	return fmt.Sprintf("%s %s", n.Start.Value, n.Value.String())
+}
+
+// MarshalYAML encodes to a YAML text
+func (n *MappingKeyNode) MarshalYAML() ([]byte, error) {
+	return []byte(n.String()), nil
 }
 
 // MappingValueNode type of mapping value
@@ -1114,6 +1176,11 @@ func (n *MappingValueNode) MapRange() *MapNodeIter {
 		idx:    startRangeIndex,
 		values: []*MappingValueNode{n},
 	}
+}
+
+// MarshalYAML encodes to a YAML text
+func (n *MappingValueNode) MarshalYAML() ([]byte, error) {
+	return []byte(n.String()), nil
 }
 
 // ArrayNode interface of SequenceNode
@@ -1262,6 +1329,11 @@ func (n *SequenceNode) ArrayRange() *ArrayNodeIter {
 	}
 }
 
+// MarshalYAML encodes to a YAML text
+func (n *SequenceNode) MarshalYAML() ([]byte, error) {
+	return []byte(n.String()), nil
+}
+
 // AnchorNode type of anchor node
 type AnchorNode struct {
 	*BaseNode
@@ -1319,6 +1391,11 @@ func (n *AnchorNode) String() string {
 	return fmt.Sprintf("&%s %s", n.Name.String(), value)
 }
 
+// MarshalYAML encodes to a YAML text
+func (n *AnchorNode) MarshalYAML() ([]byte, error) {
+	return []byte(n.String()), nil
+}
+
 // AliasNode type of alias node
 type AliasNode struct {
 	*BaseNode
@@ -1364,6 +1441,11 @@ func (n *AliasNode) String() string {
 	return fmt.Sprintf("*%s", n.Value.String())
 }
 
+// MarshalYAML encodes to a YAML text
+func (n *AliasNode) MarshalYAML() ([]byte, error) {
+	return []byte(n.String()), nil
+}
+
 // DirectiveNode type of directive node
 type DirectiveNode struct {
 	*BaseNode
@@ -1394,6 +1476,11 @@ func (n *DirectiveNode) AddColumn(col int) {
 // String directive to text
 func (n *DirectiveNode) String() string {
 	return fmt.Sprintf("%s%s", n.Start.Value, n.Value.String())
+}
+
+// MarshalYAML encodes to a YAML text
+func (n *DirectiveNode) MarshalYAML() ([]byte, error) {
+	return []byte(n.String()), nil
 }
 
 // TagNode type of tag node
@@ -1429,6 +1516,11 @@ func (n *TagNode) String() string {
 	return fmt.Sprintf("%s %s", n.Start.Value, n.Value.String())
 }
 
+// MarshalYAML encodes to a YAML text
+func (n *TagNode) MarshalYAML() ([]byte, error) {
+	return []byte(n.String()), nil
+}
+
 // CommentNode type of comment node
 type CommentNode struct {
 	*BaseNode
@@ -1453,6 +1545,11 @@ func (n *CommentNode) AddColumn(col int) {
 // String comment to text
 func (n *CommentNode) String() string {
 	return n.Comment.Value
+}
+
+// MarshalYAML encodes to a YAML text
+func (n *CommentNode) MarshalYAML() ([]byte, error) {
+	return []byte(n.String()), nil
 }
 
 // Visitor has Visit method that is invokded for each node encountered by Walk.

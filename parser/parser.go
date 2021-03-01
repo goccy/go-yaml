@@ -195,7 +195,10 @@ func (p *parser) parseMappingValue(ctx *context) (ast.Node, error) {
 	}
 	ctx.progress(1)          // progress to mapping value token
 	tk := ctx.currentToken() // get mapping value token
-	ctx.progress(1)          // progress to value token
+	if tk == nil {
+		return nil, errors.ErrSyntax("unexpected map", key.GetToken())
+	}
+	ctx.progress(1) // progress to value token
 	if err := p.setSameLineCommentIfExists(ctx, key); err != nil {
 		return nil, errors.Wrapf(err, "failed to set same line comment to node")
 	}

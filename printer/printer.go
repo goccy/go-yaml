@@ -287,21 +287,6 @@ func (p *Printer) printBeforeTokens(tk *token.Token, minLine, extLine int) token
 	return tokens
 }
 
-func (p *Printer) addNewLineCharIfDocumentHeader(tk *token.Token) {
-	if tk.Prev == nil {
-		return
-	}
-	if tk.Type != token.DocumentHeaderType {
-		return
-	}
-	prev := tk.Prev
-	lineDiff := tk.Position.Line - prev.Position.Line
-	if p.isNewLineLastChar(prev.Origin) {
-		lineDiff--
-	}
-	tk.Origin = strings.Repeat("\n", lineDiff) + tk.Origin
-}
-
 func (p *Printer) printAfterTokens(tk *token.Token, maxLine int) token.Tokens {
 	tokens := token.Tokens{}
 	if tk == nil {
@@ -316,7 +301,6 @@ func (p *Printer) printAfterTokens(tk *token.Token, maxLine int) token.Tokens {
 	tk = minTk.Next
 	for tk != nil && tk.Position.Line <= maxLine {
 		clonedTk := tk.Clone()
-		p.addNewLineCharIfDocumentHeader(clonedTk)
 		tokens.Add(clonedTk)
 		tk = clonedTk.Next
 	}

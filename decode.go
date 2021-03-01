@@ -595,6 +595,10 @@ func (d *Decoder) decodeByUnmarshaler(ctx context.Context, dst reflect.Value, sr
 	return xerrors.Errorf("does not implemented Unmarshaler")
 }
 
+var (
+	astNodeType = reflect.TypeOf((*ast.Node)(nil)).Elem()
+)
+
 func (d *Decoder) decodeValue(ctx context.Context, dst reflect.Value, src ast.Node) error {
 	if src.Type() == ast.AnchorType {
 		anchorName := src.(*ast.AnchorNode).Name.GetToken().Value
@@ -625,6 +629,10 @@ func (d *Decoder) decodeValue(ctx context.Context, dst reflect.Value, src ast.No
 		}
 		dst.Set(d.castToAssignableValue(v, dst.Type()))
 	case reflect.Interface:
+		if dst.Type() == astNodeType {
+			dst.Set(reflect.ValueOf(src))
+			return nil
+		}
 		v := reflect.ValueOf(d.nodeToValue(src))
 		if v.IsValid() {
 			dst.Set(v)
@@ -897,6 +905,17 @@ func (d *Decoder) decodeStruct(ctx context.Context, dst reflect.Value, src ast.N
 		return nil
 	}
 	structType := dst.Type()
+	srcValue := reflect.ValueOf(src)
+	srcType := srcValue.Type()
+	if srcType.Kind() == reflect.Ptr {
+		srcType = srcType.Elem()
+		srcValue = srcValue.Elem()
+	}
+	if structType == srcType {
+		// dst value implements ast.Node
+		dst.Set(srcValue)
+		return nil
+	}
 	structFieldMap, err := structFieldMap(structType)
 	if err != nil {
 		return errors.Wrapf(err, "failed to create struct field map")

@@ -1014,6 +1014,23 @@ a:
 	}
 }
 
+func Example_Marshal_Node() {
+	type T struct {
+		Text ast.Node `yaml:"text"`
+	}
+	stringNode, err := yaml.ValueToNode("node example")
+	if err != nil {
+		panic(err)
+	}
+	bytes, err := yaml.Marshal(T{Text: stringNode})
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(string(bytes))
+	// OUTPUT:
+	// text: node example
+}
+
 func Example_Marshal_ExplicitAnchorAlias() {
 	type T struct {
 		A int

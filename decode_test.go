@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/goccy/go-yaml"
+	"github.com/goccy/go-yaml/ast"
 	"github.com/goccy/go-yaml/parser"
 	"golang.org/x/xerrors"
 )
@@ -2324,4 +2325,35 @@ c: d
 	if v["c"] != "d" {
 		t.Fatal("failed to decode from ast.File")
 	}
+}
+
+func TestDecoder_DecodeWithNode(t *testing.T) {
+	t.Run("abstract node", func(t *testing.T) {
+		type T struct {
+			Text ast.Node `yaml:"text"`
+		}
+		var v T
+		if err := yaml.Unmarshal([]byte(`text: hello`), &v); err != nil {
+			t.Fatalf("%+v", err)
+		}
+		expected := "hello"
+		got := v.Text.String()
+		if expected != got {
+			t.Fatalf("failed to decode to ast.Node: expected %s but got %s", expected, got)
+		}
+	})
+	t.Run("concrete node", func(t *testing.T) {
+		type T struct {
+			Text *ast.StringNode `yaml:"text"`
+		}
+		var v T
+		if err := yaml.Unmarshal([]byte(`text: hello`), &v); err != nil {
+			t.Fatalf("%+v", err)
+		}
+		expected := "hello"
+		got := v.Text.String()
+		if expected != got {
+			t.Fatalf("failed to decode to ast.Node: expected %s but got %s", expected, got)
+		}
+	})
 }

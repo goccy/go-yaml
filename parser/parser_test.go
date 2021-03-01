@@ -627,6 +627,14 @@ a
         ^
 `,
 		},
+		{
+			`{invalid`,
+			`
+[1:2] unexpected map
+>  1 | {invalid
+        ^
+`,
+		},
 	}
 	for _, test := range tests {
 		t.Run(test.source, func(t *testing.T) {

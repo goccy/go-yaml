@@ -79,6 +79,11 @@ func TestEncoder(t *testing.T) {
 			nil,
 		},
 		{
+			"v: 0.123456789\n",
+			map[string]float64{"v": 0.123456789},
+			nil,
+		},
+		{
 			"v: -0.1\n",
 			map[string]float64{"v": -0.1},
 			nil,

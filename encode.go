@@ -255,8 +255,10 @@ func (e *Encoder) encodeValue(ctx context.Context, v reflect.Value, column int) 
 		return e.encodeInt(v.Int()), nil
 	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
 		return e.encodeUint(v.Uint()), nil
-	case reflect.Float32, reflect.Float64:
-		return e.encodeFloat(v.Float()), nil
+	case reflect.Float32:
+		return e.encodeFloat(v.Float(), 32), nil
+	case reflect.Float64:
+		return e.encodeFloat(v.Float(), 64), nil
 	case reflect.Ptr:
 		anchorName := e.anchorPtrToNameMap[v.Pointer()]
 		if anchorName != "" {
@@ -322,7 +324,7 @@ func (e *Encoder) encodeUint(v uint64) ast.Node {
 	return ast.Integer(token.New(value, value, e.pos(e.column)))
 }
 
-func (e *Encoder) encodeFloat(v float64) ast.Node {
+func (e *Encoder) encodeFloat(v float64, bitSize int) ast.Node {
 	if v == math.Inf(0) {
 		value := ".inf"
 		return ast.Infinity(token.New(value, value, e.pos(e.column)))
@@ -333,18 +335,10 @@ func (e *Encoder) encodeFloat(v float64) ast.Node {
 		value := ".nan"
 		return ast.Nan(token.New(value, value, e.pos(e.column)))
 	}
-	value := fmt.Sprintf("%f", v)
-	fvalue := strings.Split(value, ".")
-	if len(fvalue) > 1 {
-		precision := fvalue[1]
-		precisionNum := 1
-		for i := len(precision) - 1; i >= 0; i-- {
-			if precision[i] != '0' {
-				precisionNum = i + 1
-				break
-			}
-		}
-		value = strconv.FormatFloat(v, 'f', precisionNum, 64)
+	value := strconv.FormatFloat(v, 'g', -1, bitSize)
+	if !strings.Contains(value, ".") {
+		// append x.0 suffix to keep float value context
+		value = fmt.Sprintf("%s.0", value)
 	}
 	return ast.Float(token.New(value, value, e.pos(e.column)))
 }

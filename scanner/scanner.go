@@ -379,6 +379,30 @@ func (s *Scanner) scanQuote(ctx *Context, ch rune) (tk *token.Token, pos int) {
 	return s.scanDoubleQuote(ctx)
 }
 
+func (s *Scanner) isMergeKey(ctx *Context) bool {
+	if ctx.repeatNum('<') != 2 {
+		return false
+	}
+	src := ctx.src
+	size := len(src)
+	for idx := ctx.idx + 2; idx < size; idx++ {
+		c := src[idx]
+		if c == ' ' {
+			continue
+		}
+		if c != ':' {
+			return false
+		}
+		if idx+1 < size {
+			nc := src[idx+1]
+			if nc == ' ' || s.isNewLineChar(nc) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
 func (s *Scanner) scanTag(ctx *Context) (tk *token.Token, pos int) {
 	ctx.addOriginBuf('!')
 	ctx.progress(1) // skip '!' character
@@ -560,7 +584,7 @@ func (s *Scanner) scan(ctx *Context) (pos int) {
 				return
 			}
 		case '<':
-			if ctx.repeatNum('<') == 2 {
+			if s.isMergeKey(ctx) {
 				s.prevIndentColumn = s.column
 				ctx.addToken(token.MergeKey(string(ctx.obuf)+"<<", s.pos()))
 				s.progressColumn(ctx, 1)

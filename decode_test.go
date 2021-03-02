@@ -2357,3 +2357,92 @@ func TestDecoder_DecodeWithNode(t *testing.T) {
 		}
 	})
 }
+
+func TestRoundtripAnchorAlias(t *testing.T) {
+	t.Run("irreversible", func(t *testing.T) {
+		type foo struct {
+			K1 string
+			K2 string
+		}
+
+		type bar struct {
+			K1 string
+			K3 string
+		}
+
+		type doc struct {
+			Foo foo
+			Bar bar
+		}
+		yml := `
+foo:
+ <<: &test-anchor
+   k1: "One"
+ k2: "Two"
+
+bar:
+ <<: *test-anchor
+ k3: "Three"
+`
+		var v doc
+		if err := yaml.Unmarshal([]byte(yml), &v); err != nil {
+			t.Fatalf("%+v", err)
+		}
+		bytes, err := yaml.Marshal(v)
+		if err != nil {
+			t.Fatalf("%+v", err)
+		}
+		expected := `
+foo:
+  k1: One
+  k2: Two
+bar:
+  k1: One
+  k3: Three
+`
+		got := "\n" + string(bytes)
+		if expected != got {
+			t.Fatalf("expected:[%s] but got [%s]", expected, got)
+		}
+	})
+	t.Run("reversible", func(t *testing.T) {
+		type TestAnchor struct {
+			K1 string
+		}
+		type foo struct {
+			*TestAnchor `yaml:",inline,alias"`
+			K2          string
+		}
+		type bar struct {
+			*TestAnchor `yaml:",inline,alias"`
+			K3          string
+		}
+		type doc struct {
+			TestAnchor *TestAnchor `yaml:"test-anchor,anchor"`
+			Foo        foo
+			Bar        bar
+		}
+		yml := `
+test-anchor: &test-anchor
+  k1: One
+foo:
+  <<: *test-anchor
+  k2: Two
+bar:
+  <<: *test-anchor
+  k3: Three
+`
+		var v doc
+		if err := yaml.Unmarshal([]byte(yml), &v); err != nil {
+			t.Fatalf("%+v", err)
+		}
+		bytes, err := yaml.Marshal(v)
+		if err != nil {
+			t.Fatalf("%+v", err)
+		}
+		got := "\n" + string(bytes)
+		if yml != got {
+			t.Fatalf("expected:[%s] but got [%s]", yml, got)
+		}
+	})
+}

@@ -3,7 +3,7 @@ package benchmarks
 import (
 	"testing"
 
-	"github.com/goccy/go-yaml"
+	"github.com/pulumi/go-yaml"
 	goyaml2 "gopkg.in/yaml.v2"
 	goyaml3 "gopkg.in/yaml.v3"
 )
@@ -41,7 +41,7 @@ elements:
 			}
 		}
 	})
-	b.Run("github.com/goccy/go-yaml", func(b *testing.B) {
+	b.Run("github.com/pulumi/go-yaml", func(b *testing.B) {
 		var t T
 		for i := 0; i < b.N; i++ {
 			if err := yaml.Unmarshal([]byte(src), &t); err != nil {

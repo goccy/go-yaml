@@ -3,7 +3,7 @@ package scanner
 import (
 	"sync"
 
-	"github.com/goccy/go-yaml/token"
+	"github.com/pulumi/go-yaml/token"
 )
 
 // Context context at scanning

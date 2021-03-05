@@ -15,10 +15,10 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/goccy/go-yaml/ast"
-	"github.com/goccy/go-yaml/internal/errors"
-	"github.com/goccy/go-yaml/parser"
-	"github.com/goccy/go-yaml/token"
+	"github.com/pulumi/go-yaml/ast"
+	"github.com/pulumi/go-yaml/internal/errors"
+	"github.com/pulumi/go-yaml/parser"
+	"github.com/pulumi/go-yaml/token"
 	"golang.org/x/xerrors"
 )
 

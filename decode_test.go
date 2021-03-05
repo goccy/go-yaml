@@ -14,9 +14,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/goccy/go-yaml"
-	"github.com/goccy/go-yaml/ast"
-	"github.com/goccy/go-yaml/parser"
+	"github.com/pulumi/go-yaml"
+	"github.com/pulumi/go-yaml/ast"
+	"github.com/pulumi/go-yaml/parser"
 	"golang.org/x/xerrors"
 )
 

@@ -1,6 +1,6 @@
-module github.com/goccy/go-yaml
+module github.com/pulumi/go-yaml
 
-go 1.12
+go 1.16
 
 require (
 	github.com/fatih/color v1.10.0

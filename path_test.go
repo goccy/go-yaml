@@ -7,8 +7,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/goccy/go-yaml"
-	"github.com/goccy/go-yaml/parser"
+	"github.com/pulumi/go-yaml"
+	"github.com/pulumi/go-yaml/parser"
 )
 
 func builder() *yaml.PathBuilder { return &yaml.PathBuilder{} }

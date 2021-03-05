@@ -6,10 +6,10 @@ import (
 	"io"
 	"strconv"
 
-	"github.com/goccy/go-yaml/ast"
-	"github.com/goccy/go-yaml/internal/errors"
-	"github.com/goccy/go-yaml/parser"
-	"github.com/goccy/go-yaml/printer"
+	"github.com/pulumi/go-yaml/ast"
+	"github.com/pulumi/go-yaml/internal/errors"
+	"github.com/pulumi/go-yaml/parser"
+	"github.com/pulumi/go-yaml/printer"
 )
 
 // PathString create Path from string

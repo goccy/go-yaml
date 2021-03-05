@@ -6,9 +6,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/goccy/go-yaml/ast"
-	"github.com/goccy/go-yaml/lexer"
-	"github.com/goccy/go-yaml/parser"
+	"github.com/pulumi/go-yaml/ast"
+	"github.com/pulumi/go-yaml/lexer"
+	"github.com/pulumi/go-yaml/parser"
 )
 
 func TestParser(t *testing.T) {

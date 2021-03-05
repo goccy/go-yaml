@@ -7,6 +7,8 @@
 
 <img width="300px" src="https://user-images.githubusercontent.com/209884/67159116-64d94b80-f37b-11e9-9b28-f8379636a43c.png"></img>
 
+Note: Forked from https://github.com/goccy/go-yaml to add features related to full-fidelity YAML round-tripping.
+
 # Why a new library?
 
 As of this writing, there already exists a defacto standard library for YAML processing Go: [https://github.com/go-yaml/yaml](https://github.com/go-yaml/yaml). However we feel that some features are lacking, namely:

@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"github.com/go-playground/validator/v10"
-	"github.com/goccy/go-yaml"
+	"github.com/pulumi/go-yaml"
 )
 
 func TestStructValidator(t *testing.T) {

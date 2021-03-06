@@ -1,10 +1,12 @@
+THIRD-PARTY SOFTWARE NOTICES AND INFORMATION
+
+1. goccy/go-yaml (https://github.com/goccy/go-yaml)
+
+%% goccy/go-yaml NOTICES AND INFORMATION BEGIN HERE
+=========================================
 MIT License
 
-Copyright (c) 2021 Pulumi
 Copyright (c) 2019 Masaaki Goshima
-
-Copyright for portions of project pulumi/go-yaml are held by [Masaaki Goshima, 2019] as part of project goccy/go-yaml. 
-All other copyright for project pulumi/go-yaml are held by [Pulumi, 2021].
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal

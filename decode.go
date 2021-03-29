@@ -127,6 +127,9 @@ func (d *Decoder) setToMapValue(node ast.Node, m map[string]interface{}) {
 		for _, value := range n.Values {
 			d.setToMapValue(value, m)
 		}
+	case *ast.AnchorNode:
+		anchorName := n.Name.GetToken().Value
+		d.anchorNodeMap[anchorName] = n.Value
 	}
 }
 

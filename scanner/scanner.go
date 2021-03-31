@@ -197,18 +197,25 @@ func (s *Scanner) scanSingleQuote(ctx *Context) (tk *token.Token, pos int) {
 	ctx.addOriginBuf('\'')
 	srcpos := s.pos()
 	startIndex := ctx.idx + 1
-	s.progressColumn(ctx, 1)
 	src := ctx.src
 	size := len(src)
 	value := []rune{}
 	isFirstLineChar := false
+	isNewLine := false
 	for idx := startIndex; idx < size; idx++ {
+		if !isNewLine {
+			s.progressColumn(ctx, 1)
+		} else {
+			isNewLine = false
+		}
 		c := src[idx]
 		pos = idx + 1
 		ctx.addOriginBuf(c)
 		if s.isNewLineChar(c) {
 			value = append(value, ' ')
 			isFirstLineChar = true
+			isNewLine = true
+			s.progressLine(ctx)
 			continue
 		} else if c == ' ' && isFirstLineChar {
 			continue
@@ -224,6 +231,7 @@ func (s *Scanner) scanSingleQuote(ctx *Context) (tk *token.Token, pos int) {
 			idx++
 			continue
 		}
+		s.progressColumn(ctx, 1)
 		tk = token.SingleQuote(string(value), string(ctx.obuf), srcpos)
 		pos = idx - startIndex + 1
 		return
@@ -253,18 +261,25 @@ func (s *Scanner) scanDoubleQuote(ctx *Context) (tk *token.Token, pos int) {
 	ctx.addOriginBuf('"')
 	srcpos := s.pos()
 	startIndex := ctx.idx + 1
-	s.progressColumn(ctx, 1)
 	src := ctx.src
 	size := len(src)
 	value := []rune{}
 	isFirstLineChar := false
+	isNewLine := false
 	for idx := startIndex; idx < size; idx++ {
+		if !isNewLine {
+			s.progressColumn(ctx, 1)
+		} else {
+			isNewLine = false
+		}
 		c := src[idx]
 		pos = idx + 1
 		ctx.addOriginBuf(c)
 		if s.isNewLineChar(c) {
 			value = append(value, ' ')
 			isFirstLineChar = true
+			isNewLine = true
+			s.progressLine(ctx)
 			continue
 		} else if c == ' ' && isFirstLineChar {
 			continue
@@ -365,6 +380,7 @@ func (s *Scanner) scanDoubleQuote(ctx *Context) (tk *token.Token, pos int) {
 			isFirstLineChar = false
 			continue
 		}
+		s.progressColumn(ctx, 1)
 		tk = token.DoubleQuote(string(value), string(ctx.obuf), srcpos)
 		pos = idx - startIndex + 1
 		return
@@ -728,7 +744,6 @@ func (s *Scanner) scan(ctx *Context) (pos int) {
 			if !ctx.existsBuffer() {
 				token, progress := s.scanQuote(ctx, c)
 				ctx.addToken(token)
-				s.progressColumn(ctx, progress)
 				pos += progress
 				return
 			}

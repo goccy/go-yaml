@@ -537,6 +537,16 @@ func TestEncoder(t *testing.T) {
 			map[string]*time.Time{"v": nil},
 			nil,
 		},
+
+		// Remain tag
+		{
+			"a: value\nb: c\nd: 1\ne:\n- v\n",
+			&struct {
+				A string
+				B map[string]interface{} `yaml:"-,remain"`
+			}{A: "value", B: map[string]interface{}{"b": "c", "d": 1, "e": []string{"v"}}},
+			nil,
+		},
 	}
 	for _, test := range tests {
 		var buf bytes.Buffer

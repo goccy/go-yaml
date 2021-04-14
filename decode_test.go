@@ -2261,8 +2261,8 @@ func TestDecoder_LiteralWithNewLine(t *testing.T) {
 
 func TestDecoder_TabCharacterAtRight(t *testing.T) {
 	yml := `
-- a: [2 , 2] 			
-  b: [2 , 2] 			
+- a: [2 , 2]
+  b: [2 , 2]
   c: [2 , 2]`
 	var v []map[string][]int
 	if err := yaml.Unmarshal([]byte(yml), &v); err != nil {
@@ -2445,4 +2445,32 @@ bar:
 			t.Fatalf("expected:[%s] but got [%s]", yml, got)
 		}
 	})
+}
+
+func TestDecoder_Remain(t *testing.T) {
+	var v struct {
+		A string
+		B map[string]interface{} `yaml:"-,remain"`
+	}
+
+	const src = `---
+a: value
+b: value
+c: ["val"]
+d:
+  f: 1
+`
+	if err := yaml.NewDecoder(strings.NewReader(src)).Decode(&v); err != nil {
+		t.Fatalf(`parsing should succeed: %s`, err)
+	}
+
+	if v.A != "value" {
+		t.Fatalf("v.A should be `value`, got `%s`", v.A)
+	}
+
+	actual := fmt.Sprintf("%+v", v.B)
+	expect := fmt.Sprintf("%+v", map[string]interface{}{"b": "value", "c": []string{"val"}, "d": map[string]interface{}{"f": 1}})
+	if actual != expect {
+		t.Fatalf("failed to test actual=[%s], expect=[%s]", actual, expect)
+	}
 }

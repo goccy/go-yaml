@@ -928,16 +928,16 @@ func (d *Decoder) decodeStruct(ctx context.Context, dst reflect.Value, src ast.N
 	if err != nil {
 		return errors.Wrapf(err, "failed to get keyToValueNodeMap")
 	}
-	var unknownFields map[string]ast.Node
-	if d.disallowUnknownField {
-		unknownFields, err = d.keyToKeyNodeMap(src, ignoreMergeKey)
-		if err != nil {
-			return errors.Wrapf(err, "failed to get keyToKeyNodeMap")
-		}
+	unknownFields, err := d.keyToKeyNodeMap(src, ignoreMergeKey)
+	if err != nil {
+		return errors.Wrapf(err, "failed to get keyToKeyNodeMap")
 	}
 
 	aliasName := d.getMergeAliasName(src)
 	var foundErr error
+
+	var remainderField *StructField
+	var remainderMap map[string]interface{}
 
 	for i := 0; i < structType.NumField(); i++ {
 		field := structType.Field(i)
@@ -945,6 +945,22 @@ func (d *Decoder) decodeStruct(ctx context.Context, dst reflect.Value, src ast.N
 			continue
 		}
 		structField := structFieldMap[field.Name]
+		if structField.IsRemain {
+			if remainderField != nil {
+				return errors.Wrapf(err, "more than one remainder field specified")
+			}
+
+			remainderField = structField
+			dstField := dst.FieldByName(field.Name)
+
+			if _, ok := dstField.Interface().(map[string]interface{}); !ok {
+				return errors.Wrapf(err, "remainder field has to be of map[string]interface{} type")
+			}
+
+			dstField.Set(reflect.MakeMapWithSize(dstField.Type(), 0))
+
+			remainderMap = dstField.Interface().(map[string]interface{})
+		}
 		if structField.IsInline {
 			fieldValue := dst.FieldByName(field.Name)
 			if structField.IsAutoAlias {
@@ -1040,6 +1056,13 @@ func (d *Decoder) decodeStruct(ctx context.Context, dst reflect.Value, src ast.N
 	if len(unknownFields) != 0 && d.disallowUnknownField {
 		for key, node := range unknownFields {
 			return errUnknownField(fmt.Sprintf(`unknown field "%s"`, key), node.GetToken())
+		}
+	}
+
+	if remainderField != nil {
+		for key, _ := range unknownFields {
+			src := keyToNodeMap[key]
+			remainderMap[key] = d.nodeToValue(src)
 		}
 	}
 

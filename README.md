@@ -262,6 +262,32 @@ people:
 */
 ```
 
+### 3.4 Remain
+
+If there are any unmapped keys in the source value, they will be by default silently ignored. You can use `-,remain` tag to collect
+all unused values in a map.
+
+```go
+yml := `
+---
+a: value
+b: value
+c: ["val"]
+d:
+  f: 1
+`
+
+type v struct {
+	A      string
+	Other  map[string]interface{} `yaml:"-,remain"`  
+}
+if err := yaml.Unmarshal([]byte(yml), &v); err != nil {
+ //...
+}
+fmt.Printf("%+v\n", v.Other)
+// map[b:value c:[val] d:map[f:1]]
+```
+
 ## 4. Pretty Formatted Errors
 
 Error values produced during parsing have two extra features over regular

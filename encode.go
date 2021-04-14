@@ -548,6 +548,27 @@ func (e *Encoder) encodeStruct(ctx context.Context, value reflect.Value, column 
 			if !e.isFlowStyle && structField.IsFlow {
 				m.SetIsFlowStyle(true)
 			}
+			if structField.IsRemain {
+				mapNode, ok := value.(ast.MapNode)
+				if !ok {
+					return nil, xerrors.Errorf("remain value is must be map type")
+				}
+
+				mapIter := mapNode.MapRange()
+				for mapIter.Next() {
+					key := mapIter.Key()
+					value := mapIter.Value()
+					keyName := key.GetToken().Value
+					if structFieldMap.isIncludedRenderName(keyName) {
+						// if declared same key name, skip encoding this field
+						continue
+					}
+					node.Values = append(node.Values, ast.MappingValue(nil, key, value))
+				}
+
+				continue
+			}
+
 			value.AddColumn(e.indent)
 		} else if s, ok := value.(*ast.SequenceNode); ok {
 			if !e.isFlowStyle && structField.IsFlow {

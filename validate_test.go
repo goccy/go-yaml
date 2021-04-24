@@ -39,6 +39,24 @@ func TestStructValidator(t *testing.T) {
 			}{},
 		},
 		{
+			TestName: "Test Missing Required Field",
+			YAMLContent: `---
+- name: john
+  age: 20
+- age: 10`,
+			ExpectedErr: `[4:1] Key: 'Name' Error:Field validation for 'Name' failed on the 'required' tag
+   1 | ---
+   2 | - name: john
+   3 |   age: 20
+>  4 | - age: 10
+       ^
+`,
+			Instance: &[]struct {
+				Name string `yaml:"name" validate:"required"`
+				Age  int    `yaml:"age" validate:"gte=0,lt=120"`
+			}{},
+		},
+		{
 			TestName: "Test Nested Validation Missing Internal Required",
 			YAMLContent: `---
 name: john

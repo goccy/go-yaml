@@ -1,0 +1,60 @@
+on:
+  repository_dispatch:
+    types: [ run-acceptance-tests-command ]
+  pull_request:
+    paths-ignore:
+      - 'CHANGELOG.md'
+      - 'CHANGELOG_PENDING.md'
+
+env:
+  PULUMI_ACCESS_TOKEN: ${{ secrets.PULUMI_PROD_ACCESS_TOKEN }}
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  PULUMI_TEST_OWNER: "moolumi"
+
+jobs:
+  comment-notification:
+    # We only care about adding the result to the PR if it's a repository_dispatch event
+    if: github.event_name == 'repository_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create URL to the run output
+        id: vars
+        run: echo ::set-output name=run-url::https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID
+      - name: Update with Result
+        uses: peter-evans/create-or-update-comment@v1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          repository: ${{ github.event.client_payload.github.payload.repository.full_name }}
+          issue-number: ${{ github.event.client_payload.github.payload.issue.number }}
+          body: |
+            Please view the results of the PR Build + Acceptance Tests Run [Here][1]
+
+            [1]: ${{ steps.vars.outputs.run-url }}
+  build_and_test:
+    name: Build & Test
+    strategy:
+      matrix:
+        platform: [ ubuntu-latest ]
+        go-version: [1.16.x]
+    if: github.event_name == 'repository_dispatch' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ${{ matrix.platform }}
+    steps:
+      - name: Set up Go ${{ matrix.go-version }}
+        uses: actions/setup-go@v1
+        with:
+          go-version: ${{ matrix.go-version }}
+      - name: Update path
+        run: |
+          echo "${{ runner.temp }}/opt/pulumi/bin" >> $GITHUB_PATH
+      - name: Checkout Repo
+        uses: actions/checkout@v2
+      - name: Fetch Tags
+        run: |
+          git fetch --quiet --prune --unshallow --tags
+      - name: Set Go Dep path
+        run: |
+          echo "PULUMI_GO_DEP_ROOT=$(dirname $(pwd))" >> $GITHUB_ENV
+      - name: Test
+        run: make test
+        env:
+          PULUMI_ROOT: ${{ runner.temp }}/opt/pulumi

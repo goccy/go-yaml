@@ -21,7 +21,7 @@ func (p *parser) parseMapping(ctx *context) (ast.Node, error) {
 		tk := ctx.currentToken()
 		if tk.Type == token.MappingEndType {
 			node.End = tk
-			break
+			return node, nil
 		} else if tk.Type == token.CollectEntryType {
 			ctx.progress(1)
 			continue
@@ -38,7 +38,7 @@ func (p *parser) parseMapping(ctx *context) (ast.Node, error) {
 		node.Values = append(node.Values, mvnode)
 		ctx.progress(1)
 	}
-	return node, nil
+	return nil, errors.ErrSyntax("unterminated flow mapping", node.GetToken())
 }
 
 func (p *parser) parseSequence(ctx *context) (ast.Node, error) {

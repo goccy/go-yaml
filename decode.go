@@ -1061,6 +1061,10 @@ func (d *Decoder) decodeStruct(ctx context.Context, dst reflect.Value, src ast.N
 					if exists {
 						// TODO: to make FieldError message cutomizable
 						return errors.ErrSyntax(fmt.Sprintf("%s", err), node.GetToken())
+					} else if t := src.GetToken(); t != nil && t.Prev != nil && t.Prev.Prev != nil {
+						// A missing required field will not be in the keyToNodeMap
+						// the error needs to be associated with the parent of the source node
+						return errors.ErrSyntax(fmt.Sprintf("%s", err), t.Prev.Prev)
 					}
 				}
 			}

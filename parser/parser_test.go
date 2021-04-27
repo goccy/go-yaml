@@ -635,6 +635,14 @@ a
         ^
 `,
 		},
+		{
+			`{ "key": "value" `,
+			`
+[1:1] unterminated flow mapping
+>  1 | { "key": "value"
+       ^
+`,
+		},
 	}
 	for _, test := range tests {
 		t.Run(test.source, func(t *testing.T) {

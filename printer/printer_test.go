@@ -1,6 +1,7 @@
 package printer_test
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/pulumi/go-yaml/lexer"
@@ -43,7 +44,7 @@ alias: *x
 			t.Fatalf("unexpected output: expect:[%s]\n actual:[%s]", expect, actual)
 		}
 	})
-	t.Run("print stargin from tokens[4]", func(t *testing.T) {
+	t.Run("print starting from tokens[4]", func(t *testing.T) {
 		tokens := lexer.Tokenize(yml)
 		var p printer.Printer
 		actual := "\n" + p.PrintErrorToken(tokens[4], false)
@@ -147,5 +148,76 @@ alias: *x`
 	got := p.PrintTokens(tokens)
 	if expected != got {
 		t.Fatalf("unexpected output: expect:[%s]\n actual:[%s]", expected, got)
+	}
+}
+
+func Test_Printer_Multiline(t *testing.T) {
+	yml := `
+text1: 'aaaa
+ bbbb
+ cccc'
+text2: "ffff
+ gggg
+ hhhh"
+text3: hello
+`
+	tc := []struct {
+		token int
+		want  string
+	}{
+		{
+			token: 2,
+			want: `
+>  2 | text1: 'aaaa
+   3 |  bbbb
+   4 |  cccc'
+              ^
+   5 | text2: "ffff
+   6 |  gggg
+   7 |  hhhh"`,
+		},
+		{token: 3,
+			want: `
+   2 | text1: 'aaaa
+   3 |  bbbb
+   4 |  cccc'
+>  5 | text2: "ffff
+   6 |  gggg
+   7 |  hhhh"
+       ^
+   8 | text3: hello`,
+		},
+		{token: 5,
+			want: `
+   2 | text1: 'aaaa
+   3 |  bbbb
+   4 |  cccc'
+>  5 | text2: "ffff
+   6 |  gggg
+   7 |  hhhh"
+              ^
+   8 | text3: hello`,
+		},
+		{token: 6,
+			want: `
+   5 | text2: "ffff
+   6 |  gggg
+   7 |  hhhh"
+>  8 | text3: hello
+       ^
+`,
+		},
+	}
+	for _, tt := range tc {
+		name := fmt.Sprintf("print starting from tokens[%d]", tt.token)
+		t.Run(name, func(t *testing.T) {
+			tokens := lexer.Tokenize(yml)
+			var p printer.Printer
+			got := "\n" + p.PrintErrorToken(tokens[tt.token], false)
+			want := tt.want
+			if got != want {
+				t.Fatalf("PrintErrorToken() got: %s\n want:%s\n", want, got)
+			}
+		})
 	}
 }

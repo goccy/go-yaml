@@ -105,6 +105,36 @@ addr:
 				} `yaml:"addr" validate:"required"`
 			}{},
 		},
+		{
+			TestName: "Test Validation with wrong field type",
+			YAMLContent: `---
+name: myDocument
+roles:
+  name: myRole
+  permissions:
+	- hello
+	- how
+	- are
+	- you
+	`,
+			ExpectedErr: `[4:7] Mapping node found where Sequence is expected
+   1 | ---
+   2 | name: myDocument
+   3 | roles:
+>  4 |   name: myRole
+             ^
+   5 |   permissions:
+   6 | 	- hello
+   7 | 	- how
+   8 | `,
+			Instance: &struct {
+				Name  string `yaml:"name"`
+				Roles []struct {
+					Name        string   `yaml:"name"`
+					Permissions []string `yaml:"permissions"`
+				} `yaml:"roles"`
+			}{},
+		},
 	}
 
 	for _, tc := range cases {

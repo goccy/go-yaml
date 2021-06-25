@@ -281,7 +281,7 @@ func (d *Decoder) getMapNode(node ast.Node) (ast.MapNode, error) {
 		if ok {
 			return mapNode, nil
 		}
-		return nil, xerrors.Errorf("%s node found where MapNode is expected", anchor.Value.Type())
+		return nil, errUnexpectedNodeType(anchor.Value.Type(), ast.MappingType, node.GetToken())
 	}
 	if alias, ok := node.(*ast.AliasNode); ok {
 		aliasName := alias.Value.GetToken().Value
@@ -293,11 +293,11 @@ func (d *Decoder) getMapNode(node ast.Node) (ast.MapNode, error) {
 		if ok {
 			return mapNode, nil
 		}
-		return nil, xerrors.Errorf("%s node found where MapNode is expected", node.Type())
+		return nil, errUnexpectedNodeType(node.Type(), ast.MappingType, node.GetToken())
 	}
 	mapNode, ok := node.(ast.MapNode)
 	if !ok {
-		return nil, xerrors.Errorf("%s node found where MapNode is expected", node.Type())
+		return nil, errUnexpectedNodeType(node.Type(), ast.MappingType, node.GetToken())
 	}
 	return mapNode, nil
 }
@@ -311,7 +311,8 @@ func (d *Decoder) getArrayNode(node ast.Node) (ast.ArrayNode, error) {
 		if ok {
 			return arrayNode, nil
 		}
-		return nil, xerrors.Errorf("%s node found where ArrayNode is expected", anchor.Value.Type())
+
+		return nil, errUnexpectedNodeType(anchor.Value.Type(), ast.SequenceType, node.GetToken())
 	}
 	if alias, ok := node.(*ast.AliasNode); ok {
 		aliasName := alias.Value.GetToken().Value
@@ -323,11 +324,11 @@ func (d *Decoder) getArrayNode(node ast.Node) (ast.ArrayNode, error) {
 		if ok {
 			return arrayNode, nil
 		}
-		return nil, xerrors.Errorf("%s node found where ArrayNode is expected", node.Type())
+		return nil, errUnexpectedNodeType(node.Type(), ast.SequenceType, node.GetToken())
 	}
 	arrayNode, ok := node.(ast.ArrayNode)
 	if !ok {
-		return nil, xerrors.Errorf("%s node found where ArrayNode is expected", node.Type())
+		return nil, errUnexpectedNodeType(node.Type(), ast.SequenceType, node.GetToken())
 	}
 	return arrayNode, nil
 }
@@ -405,6 +406,10 @@ func (e *unknownFieldError) Error() string {
 
 func errUnknownField(msg string, tk *token.Token) *unknownFieldError {
 	return &unknownFieldError{err: errors.ErrSyntax(msg, tk)}
+}
+
+func errUnexpectedNodeType(actual, expected ast.NodeType, tk *token.Token) error {
+	return errors.ErrSyntax(fmt.Sprintf("%s node found where %s is expected", actual, expected), tk)
 }
 
 type duplicateKeyError struct {

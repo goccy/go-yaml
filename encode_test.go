@@ -572,6 +572,24 @@ func TestEncodeStructIncludeMap(t *testing.T) {
 	}
 }
 
+func TestEncodeDefinedTypeKeyMap(t *testing.T) {
+	type K string
+	type U struct {
+		M map[K]string
+	}
+	bytes, err := yaml.Marshal(U{
+		M: map[K]string{K("x"): "y"},
+	})
+	if err != nil {
+		t.Fatalf("%+v", err)
+	}
+	expect := "m:\n  x: y\n"
+	actual := string(bytes)
+	if actual != expect {
+		t.Fatalf("unexpected output. expect:[%s] actual:[%s]", expect, actual)
+	}
+}
+
 func TestEncodeWithAnchorAndAlias(t *testing.T) {
 	var buf bytes.Buffer
 	enc := yaml.NewEncoder(&buf)

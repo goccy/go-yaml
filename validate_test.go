@@ -117,7 +117,7 @@ roles:
 	- are
 	- you
 	`,
-			ExpectedErr: `[4:7] Mapping node found where Sequence is expected
+			ExpectedErr: `[4:7] mapping was used where sequence is expected
    1 | ---
    2 | name: myDocument
    3 | roles:

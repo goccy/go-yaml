@@ -105,6 +105,14 @@ func Indent(spaces int) EncodeOption {
 	}
 }
 
+// IndentSequence causes sequence values to be indented the same value as Indent
+func IndentSequence(indent bool) EncodeOption {
+	return func(e *Encoder) error {
+		e.indentSequence = indent
+		return nil
+	}
+}
+
 // Flow encoding by flow style
 func Flow(isFlowStyle bool) EncodeOption {
 	return func(e *Encoder) error {

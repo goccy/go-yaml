@@ -428,7 +428,7 @@ func (e *Encoder) encodeMap(ctx context.Context, value reflect.Value, column int
 		keys[i] = k.Interface()
 	}
 	sort.Slice(keys, func(i, j int) bool {
-		return fmt.Sprintf("%s", keys[i]) < fmt.Sprintf("%s", keys[j])
+		return fmt.Sprint(keys[i]) < fmt.Sprint(keys[j])
 	})
 	for _, key := range keys {
 		k := reflect.ValueOf(key)
@@ -442,7 +442,7 @@ func (e *Encoder) encodeMap(ctx context.Context, value reflect.Value, column int
 		}
 		node.Values = append(node.Values, ast.MappingValue(
 			nil,
-			e.encodeString(fmt.Sprintf("%s", key), column),
+			e.encodeString(fmt.Sprint(key), column),
 			value,
 		))
 	}

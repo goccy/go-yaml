@@ -30,6 +30,7 @@ type Encoder struct {
 	writer                     io.Writer
 	opts                       []EncodeOption
 	indent                     int
+	indentSequence             bool
 	isFlowStyle                bool
 	isJSONStyle                bool
 	useJSONMarshaler           bool
@@ -369,9 +370,13 @@ func (e *Encoder) encodeBool(v bool) ast.Node {
 }
 
 func (e *Encoder) encodeSlice(ctx context.Context, value reflect.Value) (ast.Node, error) {
-	sequence := ast.Sequence(token.New("-", "-", e.pos(e.column)), e.isFlowStyle)
+	column := e.column
+	if e.indentSequence {
+		column += e.indent
+	}
+	sequence := ast.Sequence(token.New("-", "-", e.pos(column)), e.isFlowStyle)
 	for i := 0; i < value.Len(); i++ {
-		node, err := e.encodeValue(ctx, value.Index(i), e.column)
+		node, err := e.encodeValue(ctx, value.Index(i), column)
 		if err != nil {
 			return nil, errors.Wrapf(err, "failed to encode value for slice")
 		}
@@ -381,9 +386,13 @@ func (e *Encoder) encodeSlice(ctx context.Context, value reflect.Value) (ast.Nod
 }
 
 func (e *Encoder) encodeArray(ctx context.Context, value reflect.Value) (ast.Node, error) {
-	sequence := ast.Sequence(token.New("-", "-", e.pos(e.column)), e.isFlowStyle)
+	column := e.column
+	if e.indentSequence {
+		column += e.indent
+	}
+	sequence := ast.Sequence(token.New("-", "-", e.pos(column)), e.isFlowStyle)
 	for i := 0; i < value.Len(); i++ {
-		node, err := e.encodeValue(ctx, value.Index(i), e.column)
+		node, err := e.encodeValue(ctx, value.Index(i), column)
 		if err != nil {
 			return nil, errors.Wrapf(err, "failed to encode value for array")
 		}

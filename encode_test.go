@@ -124,9 +124,23 @@ func TestEncoder(t *testing.T) {
 			nil,
 		},
 		{
+			"v:\n  - A\n  - B\n",
+			map[string][]string{"v": {"A", "B"}},
+			[]yaml.EncodeOption{
+				yaml.IndentSequence(true),
+			},
+		},
+		{
 			"v:\n- A\n- B\n",
 			map[string][2]string{"v": {"A", "B"}},
 			nil,
+		},
+		{
+			"v:\n  - A\n  - B\n",
+			map[string][2]string{"v": {"A", "B"}},
+			[]yaml.EncodeOption{
+				yaml.IndentSequence(true),
+			},
 		},
 		{
 			"a: -\n",
@@ -206,6 +220,21 @@ func TestEncoder(t *testing.T) {
 				},
 			},
 			nil,
+		},
+		{
+			"v:\n  - A\n  - 1\n  - B:\n    - 2\n    - 3\n",
+			map[string]interface{}{
+				"v": []interface{}{
+					"A",
+					1,
+					map[string][]int{
+						"B": {2, 3},
+					},
+				},
+			},
+			[]yaml.EncodeOption{
+				yaml.IndentSequence(true),
+			},
 		},
 		{
 			"a:\n  b: c\n",

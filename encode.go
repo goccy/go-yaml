@@ -432,11 +432,13 @@ func (e *Encoder) encodeMapSlice(ctx context.Context, value MapSlice, column int
 
 func (e *Encoder) encodeMap(ctx context.Context, value reflect.Value, column int) ast.Node {
 	node := ast.Mapping(token.New("", "", e.pos(column)), e.isFlowStyle)
-	keys := []string{}
-	for _, k := range value.MapKeys() {
-		keys = append(keys, k.Interface().(string))
+	keys := make([]interface{}, len(value.MapKeys()))
+	for i, k := range value.MapKeys() {
+		keys[i] = k.Interface()
 	}
-	sort.Strings(keys)
+	sort.Slice(keys, func(i, j int) bool {
+		return fmt.Sprint(keys[i]) < fmt.Sprint(keys[j])
+	})
 	for _, key := range keys {
 		k := reflect.ValueOf(key)
 		v := value.MapIndex(k)
@@ -449,7 +451,7 @@ func (e *Encoder) encodeMap(ctx context.Context, value reflect.Value, column int
 		}
 		node.Values = append(node.Values, ast.MappingValue(
 			nil,
-			e.encodeString(k.Interface().(string), column),
+			e.encodeString(fmt.Sprint(key), column),
 			value,
 		))
 	}

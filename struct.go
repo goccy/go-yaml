@@ -23,6 +23,7 @@ type StructField struct {
 	IsOmitEmpty  bool
 	IsFlow       bool
 	IsInline     bool
+	IsRemain     bool
 }
 
 func getTag(field reflect.StructField) string {
@@ -58,6 +59,8 @@ func structField(field reflect.StructField) *StructField {
 				structField.IsFlow = true
 			case opt == "inline":
 				structField.IsInline = true
+			case opt == "remain":
+				structField.IsRemain = true
 			case strings.HasPrefix(opt, "anchor"):
 				anchor := strings.Split(opt, "=")
 				if len(anchor) > 1 {

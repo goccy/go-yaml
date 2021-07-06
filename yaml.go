@@ -113,6 +113,9 @@ func (s MapSlice) ToMap() map[interface{}]interface{} {
 //                  Otherwise, If omitted alias name and the field type is pointer type,
 //                  assigned anchor name automatically from same pointer address.
 //
+//     remain       All unused keys will be put to a map[string]interface{} marked as 'yaml:"-,remain"'.
+//                  Only 1 field marked with 'remain' field is allowed.
+//
 // In addition, if the key is "-", the field is ignored.
 //
 // For example:

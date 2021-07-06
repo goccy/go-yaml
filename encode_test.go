@@ -124,9 +124,23 @@ func TestEncoder(t *testing.T) {
 			nil,
 		},
 		{
+			"v:\n  - A\n  - B\n",
+			map[string][]string{"v": {"A", "B"}},
+			[]yaml.EncodeOption{
+				yaml.IndentSequence(true),
+			},
+		},
+		{
 			"v:\n- A\n- B\n",
 			map[string][2]string{"v": {"A", "B"}},
 			nil,
+		},
+		{
+			"v:\n  - A\n  - B\n",
+			map[string][2]string{"v": {"A", "B"}},
+			[]yaml.EncodeOption{
+				yaml.IndentSequence(true),
+			},
 		},
 		{
 			"a: -\n",
@@ -206,6 +220,21 @@ func TestEncoder(t *testing.T) {
 				},
 			},
 			nil,
+		},
+		{
+			"v:\n  - A\n  - 1\n  - B:\n    - 2\n    - 3\n",
+			map[string]interface{}{
+				"v": []interface{}{
+					"A",
+					1,
+					map[string][]int{
+						"B": {2, 3},
+					},
+				},
+			},
+			[]yaml.EncodeOption{
+				yaml.IndentSequence(true),
+			},
 		},
 		{
 			"a:\n  b: c\n",
@@ -576,6 +605,24 @@ func TestEncodeStructIncludeMap(t *testing.T) {
 		t.Fatalf("%+v", err)
 	}
 	expect := "a:\n  m:\n    x: y\n"
+	actual := string(bytes)
+	if actual != expect {
+		t.Fatalf("unexpected output. expect:[%s] actual:[%s]", expect, actual)
+	}
+}
+
+func TestEncodeDefinedTypeKeyMap(t *testing.T) {
+	type K string
+	type U struct {
+		M map[K]string
+	}
+	bytes, err := yaml.Marshal(U{
+		M: map[K]string{K("x"): "y"},
+	})
+	if err != nil {
+		t.Fatalf("%+v", err)
+	}
+	expect := "m:\n  x: y\n"
 	actual := string(bytes)
 	if actual != expect {
 		t.Fatalf("unexpected output. expect:[%s] actual:[%s]", expect, actual)

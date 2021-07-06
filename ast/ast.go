@@ -110,6 +110,54 @@ func (t NodeType) String() string {
 	return ""
 }
 
+// String node type identifier to YAML Structure name
+// based on https://yaml.org/spec/1.2/spec.html
+func (t NodeType) YAMLName() string {
+	switch t {
+	case UnknownNodeType:
+		return "unknown"
+	case DocumentType:
+		return "document"
+	case NullType:
+		return "null"
+	case BoolType:
+		return "boolean"
+	case IntegerType:
+		return "int"
+	case FloatType:
+		return "float"
+	case InfinityType:
+		return "inf"
+	case NanType:
+		return "nan"
+	case StringType:
+		return "string"
+	case MergeKeyType:
+		return "merge key"
+	case LiteralType:
+		return "scalar"
+	case MappingType:
+		return "mapping"
+	case MappingKeyType:
+		return "key"
+	case MappingValueType:
+		return "value"
+	case SequenceType:
+		return "sequence"
+	case AnchorType:
+		return "anchor"
+	case AliasType:
+		return "alias"
+	case DirectiveType:
+		return "directive"
+	case TagType:
+		return "tag"
+	case CommentType:
+		return "comment"
+	}
+	return ""
+}
+
 // Node type of node
 type Node interface {
 	io.Reader

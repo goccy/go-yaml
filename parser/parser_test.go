@@ -699,6 +699,36 @@ a: &x b # commentA
 c: *x # commentB
 `,
 		},
+		{
+			name: "multiline",
+			yaml: `
+# foo comment
+# foo comment2
+foo: # map key comment
+  # bar above comment
+  # bar above comment2
+  bar: 10 # comment for bar
+  # baz above comment
+  # baz above comment2
+  baz: bbbb # comment for baz
+  piyo: # sequence key comment
+  # sequence1 above comment 1
+  # sequence1 above comment 2
+  - sequence1 # sequence1
+  # sequence2 above comment 1
+  # sequence2 above comment 2
+  - sequence2 # sequence2
+  # sequence3 above comment 1
+  # sequence3 above comment 2
+  - false # sequence3
+# foo2 comment
+# foo2 comment2
+foo2: &anchor text # anchor comment
+# foo3 comment
+# foo3 comment2
+foo3: *anchor # alias comment
+`,
+		},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
@@ -706,9 +736,9 @@ c: *x # commentB
 			if err != nil {
 				t.Fatalf("%+v", err)
 			}
-			var v Visitor
-			for _, doc := range f.Docs {
-				ast.Walk(&v, doc.Body)
+			got := "\n" + f.String() + "\n"
+			if test.yaml != got {
+				t.Fatalf("expected:%s\ngot:%s", test.yaml, got)
 			}
 		})
 	}
@@ -721,9 +751,5 @@ func (v *Visitor) Visit(node ast.Node) ast.Visitor {
 	tk := node.GetToken()
 	tk.Prev = nil
 	tk.Next = nil
-	if comment := node.GetComment(); comment != nil {
-		comment.Prev = nil
-		comment.Next = nil
-	}
 	return v
 }

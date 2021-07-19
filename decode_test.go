@@ -1687,11 +1687,11 @@ func TestDecoder_UseJSONUnmarshaler(t *testing.T) {
 	}
 }
 
-type unmarshalWithContext struct {
+type unmarshalContext struct {
 	v int
 }
 
-func (c *unmarshalWithContext) UnmarshalYAML(ctx context.Context, b []byte) error {
+func (c *unmarshalContext) UnmarshalYAML(ctx context.Context, b []byte) error {
 	v, ok := ctx.Value("k").(int)
 	if !ok {
 		return fmt.Errorf("cannot get valid context")
@@ -1706,10 +1706,10 @@ func (c *unmarshalWithContext) UnmarshalYAML(ctx context.Context, b []byte) erro
 	return nil
 }
 
-func Test_UnmarshalerWithContext(t *testing.T) {
+func Test_UnmarshalerContext(t *testing.T) {
 	ctx := context.WithValue(context.Background(), "k", 1)
-	var v unmarshalWithContext
-	if err := yaml.UnmarshalWithContext(ctx, []byte(`1`), &v); err != nil {
+	var v unmarshalContext
+	if err := yaml.UnmarshalContext(ctx, []byte(`1`), &v); err != nil {
 		t.Fatalf("%+v", err)
 	}
 	if v.v != 1 {

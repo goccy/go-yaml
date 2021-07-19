@@ -879,7 +879,11 @@ func (n *LiteralNode) GetValue() interface{} {
 // String literal to text
 func (n *LiteralNode) String() string {
 	origin := n.Value.GetToken().Origin
-	return fmt.Sprintf("%s\n%s", n.Start.Value, strings.TrimRight(strings.TrimRight(origin, " "), "\n"))
+	lit := strings.TrimRight(strings.TrimRight(origin, " "), "\n")
+	if n.Comment != nil {
+		return fmt.Sprintf("%s %s\n%s", n.Start.Value, n.Comment.String(), lit)
+	}
+	return fmt.Sprintf("%s\n%s", n.Start.Value, lit)
 }
 
 func (n *LiteralNode) stringWithoutComment() string {

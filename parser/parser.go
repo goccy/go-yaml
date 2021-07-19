@@ -423,7 +423,17 @@ func (p *parser) parseDirective(ctx *context) (ast.Node, error) {
 func (p *parser) parseLiteral(ctx *context) (ast.Node, error) {
 	node := ast.Literal(ctx.currentToken())
 	ctx.progress(1) // skip literal/folded token
-	value, err := p.parseToken(ctx, ctx.currentToken())
+
+	tk := ctx.currentToken()
+	var comment *ast.CommentGroupNode
+	if tk.Type == token.CommentType {
+		comment = p.parseCommentOnly(ctx)
+		if err := node.SetComment(comment); err != nil {
+			return nil, errors.Wrapf(err, "failed to set comment to literal")
+		}
+		tk = ctx.currentToken()
+	}
+	value, err := p.parseToken(ctx, tk)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to parse literal/folded value")
 	}

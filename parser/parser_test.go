@@ -729,6 +729,20 @@ foo2: &anchor text # anchor comment
 foo3: *anchor # alias comment
 `,
 		},
+		{
+			name: "literal",
+			yaml: `
+foo: | # comment
+  x: 42
+`,
+		},
+		{
+			name: "folded",
+			yaml: `
+foo: > # comment
+  x: 42
+`,
+		},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {

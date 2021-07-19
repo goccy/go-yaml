@@ -197,6 +197,15 @@ func UnmarshalWithContext(ctx context.Context, data []byte, v interface{}, opts 
 	return nil
 }
 
+// NodeToValue converts node to the value pointed to by v.
+func NodeToValue(node ast.Node, v interface{}, opts ...DecodeOption) error {
+	var buf bytes.Buffer
+	if err := NewDecoder(&buf, opts...).DecodeFromNode(node, v); err != nil {
+		return errors.Wrapf(err, "failed to convert node to value")
+	}
+	return nil
+}
+
 // FormatError is a utility function that takes advantage of the metadata
 // stored in the errors returned by this package's parser.
 //

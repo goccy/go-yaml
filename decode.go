@@ -1489,3 +1489,25 @@ func (d *Decoder) DecodeContext(ctx context.Context, v interface{}) error {
 	}
 	return nil
 }
+
+// DecodeFromNode decodes node into the value pointed to by v.
+func (d *Decoder) DecodeFromNode(node ast.Node, v interface{}) error {
+	return d.DecodeFromNodeContext(context.Background(), node, v)
+}
+
+// DecodeFromNodeContext decodes node into the value pointed to by v with context.Context.
+func (d *Decoder) DecodeFromNodeContext(ctx context.Context, node ast.Node, v interface{}) error {
+	rv := reflect.ValueOf(v)
+	if rv.Type().Kind() != reflect.Ptr {
+		return errors.ErrDecodeRequiredPointerType
+	}
+	if !d.isInitialized() {
+		if err := d.decodeInit(); err != nil {
+			return errors.Wrapf(err, "failed to decodInit")
+		}
+	}
+	if err := d.decodeValue(ctx, rv.Elem(), node); err != nil {
+		return errors.Wrapf(err, "failed to decode value")
+	}
+	return nil
+}

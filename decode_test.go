@@ -16,6 +16,7 @@ import (
 
 	"github.com/goccy/go-yaml"
 	"github.com/goccy/go-yaml/ast"
+	"github.com/goccy/go-yaml/internal/errors"
 	"github.com/goccy/go-yaml/parser"
 	"golang.org/x/xerrors"
 )
@@ -1716,6 +1717,40 @@ func Test_UnmarshalerWithContext(t *testing.T) {
 	}
 }
 
+func TestDecoder_DecodeFromNode(t *testing.T) {
+	t.Run("with reference", func(t *testing.T) {
+		anchor := strings.NewReader(`
+map: &map
+  text: hello`)
+		var buf bytes.Buffer
+		dec := yaml.NewDecoder(&buf, yaml.ReferenceReaders(anchor))
+		f, err := parser.ParseBytes([]byte("map: *map"), 0)
+		if err != nil {
+			t.Fatalf("failed to parse: %s", err)
+		}
+		type T struct {
+			Map map[string]string
+		}
+		var v T
+		if err := dec.DecodeFromNode(f.Docs[0].Body, &v); err != nil {
+			t.Fatalf("failed to decode: %s", err)
+		}
+		actual := fmt.Sprintf("%+v", v)
+		expect := fmt.Sprintf("%+v", T{map[string]string{"text": "hello"}})
+		if actual != expect {
+			t.Fatalf("actual=[%s], expect=[%s]", actual, expect)
+		}
+	})
+	t.Run("value is not pointer", func(t *testing.T) {
+		var buf bytes.Buffer
+		var v bool
+		err := yaml.NewDecoder(&buf).DecodeFromNode(nil, v)
+		if !xerrors.Is(err, errors.ErrDecodeRequiredPointerType) {
+			t.Fatalf("unexpected error: %s", err)
+		}
+	})
+}
+
 func Example_JSONTags() {
 	yml := `---
 foo: 1
@@ -1754,6 +1789,22 @@ complecated: string
 	//        2 | simple: string
 	//     >  3 | complecated: string
 	//            ^
+}
+
+func Example_Unmarshal_Node() {
+	f, err := parser.ParseBytes([]byte("text: node example"), 0)
+	if err != nil {
+		panic(err)
+	}
+	var v struct {
+		Text string `yaml:"text"`
+	}
+	if err := yaml.NodeToValue(f.Docs[0].Body, &v); err != nil {
+		panic(err)
+	}
+	fmt.Println(v.Text)
+	// OUTPUT:
+	// node example
 }
 
 type unmarshalableYAMLStringValue string

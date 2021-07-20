@@ -1718,7 +1718,31 @@ func Test_UnmarshalerContext(t *testing.T) {
 }
 
 func TestDecoder_DecodeFromNode(t *testing.T) {
-	t.Run("with reference", func(t *testing.T) {
+	t.Run("has reference", func(t *testing.T) {
+		str := `
+anchor: &map
+  text: hello
+map: *map`
+		var buf bytes.Buffer
+		dec := yaml.NewDecoder(&buf)
+		f, err := parser.ParseBytes([]byte(str), 0)
+		if err != nil {
+			t.Fatalf("failed to parse: %s", err)
+		}
+		type T struct {
+			Map map[string]string
+		}
+		var v T
+		if err := dec.DecodeFromNode(f.Docs[0].Body, &v); err != nil {
+			t.Fatalf("failed to decode: %s", err)
+		}
+		actual := fmt.Sprintf("%+v", v)
+		expect := fmt.Sprintf("%+v", T{map[string]string{"text": "hello"}})
+		if actual != expect {
+			t.Fatalf("actual=[%s], expect=[%s]", actual, expect)
+		}
+	})
+	t.Run("with reference option", func(t *testing.T) {
 		anchor := strings.NewReader(`
 map: &map
   text: hello`)

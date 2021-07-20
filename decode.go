@@ -1506,6 +1506,8 @@ func (d *Decoder) DecodeFromNodeContext(ctx context.Context, node ast.Node, v in
 			return errors.Wrapf(err, "failed to decodInit")
 		}
 	}
+	// resolve references to the anchor on the same file
+	d.nodeToValue(node)
 	if err := d.decodeValue(ctx, rv.Elem(), node); err != nil {
 		return errors.Wrapf(err, "failed to decode value")
 	}

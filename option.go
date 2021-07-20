@@ -156,3 +156,63 @@ func UseJSONMarshaler() EncodeOption {
 		return nil
 	}
 }
+
+// CommentPosition type of the position for comment.
+type CommentPosition int
+
+const (
+	CommentLinePosition CommentPosition = iota
+	CommentHeadPosition
+)
+
+func (p CommentPosition) String() string {
+	switch p {
+	case CommentLinePosition:
+		return "Line"
+	case CommentHeadPosition:
+		return "Head"
+	default:
+		return ""
+	}
+}
+
+// LineComment create a one-line comment for CommentMap.
+func LineComment(text string) *Comment {
+	return &Comment{
+		Texts:    []string{text},
+		Position: CommentLinePosition,
+	}
+}
+
+// HeadComment create a multiline comment for CommentMap.
+func HeadComment(texts ...string) *Comment {
+	return &Comment{
+		Texts:    texts,
+		Position: CommentHeadPosition,
+	}
+}
+
+// Comment raw data for comment.
+type Comment struct {
+	Texts    []string
+	Position CommentPosition
+}
+
+// CommentMap map of the position of the comment and the comment information.
+type CommentMap map[string]*Comment
+
+// WithComment add a comment using the location and text information given in the CommentMap.
+func WithComment(cm CommentMap) EncodeOption {
+	return func(e *Encoder) error {
+		commentMap := map[*Path]*Comment{}
+		for k, v := range cm {
+			path, err := PathString(k)
+			if err != nil {
+				return err
+			}
+			commentMap[path] = v
+		}
+		e.commentMap = commentMap
+		return nil
+	}
+}

@@ -1203,10 +1203,7 @@ func (n *MappingNode) blockStyleString(commentMode bool) string {
 			}
 			spaceNum++
 		}
-		comment := fmt.Sprintf(
-			"%s",
-			n.Comment.StringWithSpace(spaceNum),
-		)
+		comment := n.Comment.StringWithSpace(spaceNum)
 		return fmt.Sprintf("%s\n%s", comment, mapText)
 	}
 	return mapText
@@ -1389,6 +1386,14 @@ func (n *MappingValueNode) toString() string {
 			n.Key.stringWithoutComment(),
 			keyComment.String(),
 			n.Value.String(),
+		)
+	}
+	if m, ok := n.Value.(*MappingNode); ok && m.Comment != nil {
+		return fmt.Sprintf(
+			"%s%s: %s",
+			space,
+			n.Key.String(),
+			strings.TrimLeft(n.Value.String(), " "),
 		)
 	}
 	return fmt.Sprintf("%s%s:\n%s", space, n.Key.String(), n.Value.String())
@@ -1957,6 +1962,77 @@ func (v *filterWalker) Visit(n Node) Visitor {
 		v.results = append(v.results, n)
 	}
 	return v
+}
+
+type parentFinder struct {
+	target Node
+}
+
+func (f *parentFinder) walk(parent, node Node) Node {
+	if f.target == node {
+		return parent
+	}
+	switch n := node.(type) {
+	case *CommentNode:
+		return nil
+	case *NullNode:
+		return nil
+	case *IntegerNode:
+		return nil
+	case *FloatNode:
+		return nil
+	case *StringNode:
+		return nil
+	case *MergeKeyNode:
+		return nil
+	case *BoolNode:
+		return nil
+	case *InfinityNode:
+		return nil
+	case *NanNode:
+		return nil
+	case *LiteralNode:
+		return f.walk(node, n.Value)
+	case *DirectiveNode:
+		return f.walk(node, n.Value)
+	case *TagNode:
+		return f.walk(node, n.Value)
+	case *DocumentNode:
+		return f.walk(node, n.Body)
+	case *MappingNode:
+		for _, value := range n.Values {
+			if found := f.walk(node, value); found != nil {
+				return found
+			}
+		}
+	case *MappingKeyNode:
+		return f.walk(node, n.Value)
+	case *MappingValueNode:
+		if found := f.walk(node, n.Key); found != nil {
+			return found
+		}
+		return f.walk(node, n.Value)
+	case *SequenceNode:
+		for _, value := range n.Values {
+			if found := f.walk(node, value); found != nil {
+				return found
+			}
+		}
+	case *AnchorNode:
+		if found := f.walk(node, n.Name); found != nil {
+			return found
+		}
+		return f.walk(node, n.Value)
+	case *AliasNode:
+		return f.walk(node, n.Value)
+	}
+	return nil
+}
+
+// Parent get parent node from child node.
+func Parent(root, child Node) Node {
+	finder := &parentFinder{target: child}
+	return finder.walk(root, root)
 }
 
 // Filter returns a list of nodes that match the given type.

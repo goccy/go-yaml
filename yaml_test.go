@@ -382,3 +382,87 @@ a: 1
 		t.Fatalf("failed to convert json to yaml: expected [%q] but got [%q]", expected, actual)
 	}
 }
+
+func Test_WithCommentOption(t *testing.T) {
+	v := struct {
+		Foo string                 `yaml:"foo"`
+		Bar map[string]interface{} `yaml:"bar"`
+		Baz struct {
+			X int `yaml:"x"`
+		} `yaml:"baz"`
+	}{
+		Foo: "aaa",
+		Bar: map[string]interface{}{"bbb": "ccc"},
+		Baz: struct {
+			X int `yaml:"x"`
+		}{X: 10},
+	}
+	t.Run("line comment", func(t *testing.T) {
+		b, err := yaml.MarshalWithOptions(v, yaml.WithComment(
+			yaml.CommentMap{
+				"$.foo":     yaml.LineComment("foo comment"),
+				"$.bar":     yaml.LineComment("bar comment"),
+				"$.bar.bbb": yaml.LineComment("bbb comment"),
+				"$.baz.x":   yaml.LineComment("x comment"),
+			},
+		))
+		if err != nil {
+			t.Fatal(err)
+		}
+		expected := `
+foo: aaa #foo comment
+bar: #bar comment
+  bbb: ccc #bbb comment
+baz:
+  x: 10 #x comment
+`
+		actual := "\n" + string(b)
+		if expected != actual {
+			t.Fatalf("expected:%s but got %s", expected, actual)
+		}
+	})
+	t.Run("head comment", func(t *testing.T) {
+		b, err := yaml.MarshalWithOptions(v, yaml.WithComment(
+			yaml.CommentMap{
+				"$.foo": yaml.HeadComment(
+					"foo comment",
+					"foo comment2",
+				),
+				"$.bar": yaml.HeadComment(
+					"bar comment",
+					"bar comment2",
+				),
+				"$.bar.bbb": yaml.HeadComment(
+					"bbb comment",
+					"bbb comment2",
+				),
+				"$.baz.x": yaml.HeadComment(
+					"x comment",
+					"x comment2",
+				),
+			},
+		))
+		if err != nil {
+			t.Fatal(err)
+		}
+		expected := `
+#foo comment
+#foo comment2
+foo: aaa
+#bar comment
+#bar comment2
+bar:
+  #bbb comment
+  #bbb comment2
+  bbb: ccc
+baz:
+  #x comment
+  #x comment2
+  x: 10
+`
+		actual := "\n" + string(b)
+		if expected != actual {
+			t.Fatalf("expected:%s but got %s", expected, actual)
+		}
+	})
+}

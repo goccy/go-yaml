@@ -6,11 +6,16 @@ import (
 )
 
 var (
-	ErrInvalidQuery      = xerrors.New("invalid query")
-	ErrInvalidPath       = xerrors.New("invalid path instance")
-	ErrInvalidPathString = xerrors.New("invalid path string")
-	ErrNotFoundNode      = xerrors.New("node not found")
+	ErrInvalidQuery               = xerrors.New("invalid query")
+	ErrInvalidPath                = xerrors.New("invalid path instance")
+	ErrInvalidPathString          = xerrors.New("invalid path string")
+	ErrNotFoundNode               = xerrors.New("node not found")
+	ErrUnknownCommentPositionType = xerrors.New("unknown comment position type")
 )
+
+func ErrUnsupportedHeadPositionType(node ast.Node) error {
+	return xerrors.Errorf("unsupported comment head position for %s", node.Type())
+}
 
 // IsInvalidQueryError whether err is ErrInvalidQuery or not.
 func IsInvalidQueryError(err error) bool {

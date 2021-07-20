@@ -383,7 +383,7 @@ a: 1
 	}
 }
 
-func Test_CommentMapOption(t *testing.T) {
+func Test_WithCommentOption(t *testing.T) {
 	v := struct {
 		Foo string                 `yaml:"foo"`
 		Bar map[string]interface{} `yaml:"bar"`

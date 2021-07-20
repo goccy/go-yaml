@@ -37,6 +37,7 @@ type Encoder struct {
 	anchorCallback             func(*ast.AnchorNode, interface{}) error
 	anchorPtrToNameMap         map[uintptr]string
 	useLiteralStyleIfMultiline bool
+	commentMap                 map[*Path]*Comment
 
 	line        int
 	column      int
@@ -81,6 +82,9 @@ func (e *Encoder) EncodeContext(ctx context.Context, v interface{}) error {
 	if err != nil {
 		return errors.Wrapf(err, "failed to encode to node")
 	}
+	if err := e.setCommentByCommentMap(node); err != nil {
+		return errors.Wrapf(err, "failed to set comment by comment map")
+	}
 	var p printer.Printer
 	e.writer.Write(p.PrintNode(node))
 	return nil
@@ -103,6 +107,49 @@ func (e *Encoder) EncodeToNodeContext(ctx context.Context, v interface{}) (ast.N
 		return nil, errors.Wrapf(err, "failed to encode value")
 	}
 	return node, nil
+}
+
+func (e *Encoder) setCommentByCommentMap(node ast.Node) error {
+	if e.commentMap == nil {
+		return nil
+	}
+	for path, comment := range e.commentMap {
+		n, err := path.FilterNode(node)
+		if err != nil {
+			return errors.Wrapf(err, "failed to filter node")
+		}
+		comments := []*token.Token{}
+		for _, text := range comment.Texts {
+			comments = append(comments, token.New(text, text, nil))
+		}
+		commentGroup := ast.CommentGroup(comments)
+		switch comment.Position {
+		case CommentLinePosition:
+			if err := n.SetComment(commentGroup); err != nil {
+				return errors.Wrapf(err, "failed to set comment")
+			}
+		case CommentHeadPosition:
+			parent := ast.Parent(node, n)
+			if parent == nil {
+				return ErrUnsupportedHeadPositionType(node)
+			}
+			switch node := parent.(type) {
+			case *ast.MappingValueNode:
+				if err := node.SetComment(commentGroup); err != nil {
+					return errors.Wrapf(err, "failed to set comment")
+				}
+			case *ast.MappingNode:
+				if err := node.SetComment(commentGroup); err != nil {
+					return errors.Wrapf(err, "failed to set comment")
+				}
+			default:
+				return ErrUnsupportedHeadPositionType(node)
+			}
+		default:
+			return ErrUnknownCommentPositionType
+		}
+	}
+	return nil
 }
 
 func (e *Encoder) encodeDocument(doc []byte) (ast.Node, error) {

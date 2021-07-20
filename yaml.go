@@ -133,11 +133,11 @@ func Marshal(v interface{}) ([]byte, error) {
 
 // MarshalWithOptions serializes the value provided into a YAML document with EncodeOptions.
 func MarshalWithOptions(v interface{}, opts ...EncodeOption) ([]byte, error) {
-	return MarshalWithContext(context.Background(), v, opts...)
+	return MarshalContext(context.Background(), v, opts...)
 }
 
-// MarshalWithContext serializes the value provided into a YAML document with context.Context and EncodeOptions.
-func MarshalWithContext(ctx context.Context, v interface{}, opts ...EncodeOption) ([]byte, error) {
+// MarshalContext serializes the value provided into a YAML document with context.Context and EncodeOptions.
+func MarshalContext(ctx context.Context, v interface{}, opts ...EncodeOption) ([]byte, error) {
 	var buf bytes.Buffer
 	if err := NewEncoder(&buf, opts...).EncodeContext(ctx, v); err != nil {
 		return nil, errors.Wrapf(err, "failed to marshal")
@@ -185,17 +185,26 @@ func Unmarshal(data []byte, v interface{}) error {
 // UnmarshalWithOptions decodes with DecodeOptions the first document found within the in byte slice
 // and assigns decoded values into the out value.
 func UnmarshalWithOptions(data []byte, v interface{}, opts ...DecodeOption) error {
-	return UnmarshalWithContext(context.Background(), data, v, opts...)
+	return UnmarshalContext(context.Background(), data, v, opts...)
 }
 
-// UnmarshalWithContext decodes with context.Context and DecodeOptions.
-func UnmarshalWithContext(ctx context.Context, data []byte, v interface{}, opts ...DecodeOption) error {
+// UnmarshalContext decodes with context.Context and DecodeOptions.
+func UnmarshalContext(ctx context.Context, data []byte, v interface{}, opts ...DecodeOption) error {
 	dec := NewDecoder(bytes.NewBuffer(data), opts...)
 	if err := dec.DecodeContext(ctx, v); err != nil {
 		if err == io.EOF {
 			return nil
 		}
 		return errors.Wrapf(err, "failed to unmarshal")
+	}
+	return nil
+}
+
+// NodeToValue converts node to the value pointed to by v.
+func NodeToValue(node ast.Node, v interface{}, opts ...DecodeOption) error {
+	var buf bytes.Buffer
+	if err := NewDecoder(&buf, opts...).DecodeFromNode(node, v); err != nil {
+		return errors.Wrapf(err, "failed to convert node to value")
 	}
 	return nil
 }

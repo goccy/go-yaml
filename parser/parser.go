@@ -260,9 +260,24 @@ func (p *parser) parseSequenceEntry(ctx *context) (ast.Node, error) {
 	curColumn := tk.Position.Column
 	for tk.Type == token.SequenceEntryType {
 		ctx.progress(1) // skip sequence token
+		tk = ctx.currentToken()
+		var comment *ast.CommentGroupNode
+		if tk.Type == token.CommentType {
+			comment = p.parseCommentOnly(ctx)
+			tk = ctx.currentToken()
+			if tk.Type != token.SequenceEntryType {
+				break
+			}
+			ctx.progress(1) // skip sequence token
+		}
 		value, err := p.parseToken(ctx, ctx.currentToken())
 		if err != nil {
 			return nil, errors.Wrapf(err, "failed to parse sequence")
+		}
+		if comment != nil {
+			sequenceNode.ValueComments = append(sequenceNode.ValueComments, comment)
+		} else {
+			sequenceNode.ValueComments = append(sequenceNode.ValueComments, nil)
 		}
 		sequenceNode.Values = append(sequenceNode.Values, value)
 		tk = ctx.nextNotCommentToken()
@@ -408,7 +423,17 @@ func (p *parser) parseDirective(ctx *context) (ast.Node, error) {
 func (p *parser) parseLiteral(ctx *context) (ast.Node, error) {
 	node := ast.Literal(ctx.currentToken())
 	ctx.progress(1) // skip literal/folded token
-	value, err := p.parseToken(ctx, ctx.currentToken())
+
+	tk := ctx.currentToken()
+	var comment *ast.CommentGroupNode
+	if tk.Type == token.CommentType {
+		comment = p.parseCommentOnly(ctx)
+		if err := node.SetComment(comment); err != nil {
+			return nil, errors.Wrapf(err, "failed to set comment to literal")
+		}
+		tk = ctx.currentToken()
+	}
+	value, err := p.parseToken(ctx, tk)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to parse literal/folded value")
 	}
@@ -435,7 +460,7 @@ func (p *parser) setSameLineCommentIfExists(ctx *context, node ast.Node) error {
 	if !p.isSameLineComment(tk, node) {
 		return nil
 	}
-	if err := node.SetComment(tk); err != nil {
+	if err := node.SetComment(ast.CommentGroup([]*token.Token{tk})); err != nil {
 		return errors.Wrapf(err, "failed to set comment token to ast.Node")
 	}
 	return nil
@@ -456,7 +481,7 @@ func (p *parser) parseDocument(ctx *context) (*ast.DocumentNode, error) {
 	return node, nil
 }
 
-func (p *parser) parseComment(ctx *context) (ast.Node, error) {
+func (p *parser) parseCommentOnly(ctx *context) *ast.CommentGroupNode {
 	commentTokens := []*token.Token{}
 	for {
 		tk := ctx.currentToken()
@@ -469,24 +494,19 @@ func (p *parser) parseComment(ctx *context) (ast.Node, error) {
 		commentTokens = append(commentTokens, tk)
 		ctx.progressIgnoreComment(1) // skip comment token
 	}
-	// TODO: support token group. currently merge tokens to one token
-	firstToken := commentTokens[0]
-	values := []string{}
-	origins := []string{}
-	for _, tk := range commentTokens {
-		values = append(values, tk.Value)
-		origins = append(origins, tk.Origin)
-	}
-	firstToken.Value = strings.Join(values, "")
-	firstToken.Value = strings.Join(origins, "")
+	return ast.CommentGroup(commentTokens)
+}
+
+func (p *parser) parseComment(ctx *context) (ast.Node, error) {
+	group := p.parseCommentOnly(ctx)
 	node, err := p.parseToken(ctx, ctx.currentToken())
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to parse node after comment")
 	}
 	if node == nil {
-		return ast.Comment(firstToken), nil
+		return group, nil
 	}
-	if err := node.SetComment(firstToken); err != nil {
+	if err := node.SetComment(group); err != nil {
 		return nil, errors.Wrapf(err, "failed to set comment token to node")
 	}
 	return node, nil

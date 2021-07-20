@@ -16,6 +16,7 @@ import (
 
 	"github.com/goccy/go-yaml"
 	"github.com/goccy/go-yaml/ast"
+	"github.com/goccy/go-yaml/internal/errors"
 	"github.com/goccy/go-yaml/parser"
 	"golang.org/x/xerrors"
 )
@@ -1686,11 +1687,11 @@ func TestDecoder_UseJSONUnmarshaler(t *testing.T) {
 	}
 }
 
-type unmarshalWithContext struct {
+type unmarshalContext struct {
 	v int
 }
 
-func (c *unmarshalWithContext) UnmarshalYAML(ctx context.Context, b []byte) error {
+func (c *unmarshalContext) UnmarshalYAML(ctx context.Context, b []byte) error {
 	v, ok := ctx.Value("k").(int)
 	if !ok {
 		return fmt.Errorf("cannot get valid context")
@@ -1705,15 +1706,73 @@ func (c *unmarshalWithContext) UnmarshalYAML(ctx context.Context, b []byte) erro
 	return nil
 }
 
-func Test_UnmarshalerWithContext(t *testing.T) {
+func Test_UnmarshalerContext(t *testing.T) {
 	ctx := context.WithValue(context.Background(), "k", 1)
-	var v unmarshalWithContext
-	if err := yaml.UnmarshalWithContext(ctx, []byte(`1`), &v); err != nil {
+	var v unmarshalContext
+	if err := yaml.UnmarshalContext(ctx, []byte(`1`), &v); err != nil {
 		t.Fatalf("%+v", err)
 	}
 	if v.v != 1 {
 		t.Fatal("cannot call UnmarshalYAML")
 	}
+}
+
+func TestDecoder_DecodeFromNode(t *testing.T) {
+	t.Run("has reference", func(t *testing.T) {
+		str := `
+anchor: &map
+  text: hello
+map: *map`
+		var buf bytes.Buffer
+		dec := yaml.NewDecoder(&buf)
+		f, err := parser.ParseBytes([]byte(str), 0)
+		if err != nil {
+			t.Fatalf("failed to parse: %s", err)
+		}
+		type T struct {
+			Map map[string]string
+		}
+		var v T
+		if err := dec.DecodeFromNode(f.Docs[0].Body, &v); err != nil {
+			t.Fatalf("failed to decode: %s", err)
+		}
+		actual := fmt.Sprintf("%+v", v)
+		expect := fmt.Sprintf("%+v", T{map[string]string{"text": "hello"}})
+		if actual != expect {
+			t.Fatalf("actual=[%s], expect=[%s]", actual, expect)
+		}
+	})
+	t.Run("with reference option", func(t *testing.T) {
+		anchor := strings.NewReader(`
+map: &map
+  text: hello`)
+		var buf bytes.Buffer
+		dec := yaml.NewDecoder(&buf, yaml.ReferenceReaders(anchor))
+		f, err := parser.ParseBytes([]byte("map: *map"), 0)
+		if err != nil {
+			t.Fatalf("failed to parse: %s", err)
+		}
+		type T struct {
+			Map map[string]string
+		}
+		var v T
+		if err := dec.DecodeFromNode(f.Docs[0].Body, &v); err != nil {
+			t.Fatalf("failed to decode: %s", err)
+		}
+		actual := fmt.Sprintf("%+v", v)
+		expect := fmt.Sprintf("%+v", T{map[string]string{"text": "hello"}})
+		if actual != expect {
+			t.Fatalf("actual=[%s], expect=[%s]", actual, expect)
+		}
+	})
+	t.Run("value is not pointer", func(t *testing.T) {
+		var buf bytes.Buffer
+		var v bool
+		err := yaml.NewDecoder(&buf).DecodeFromNode(nil, v)
+		if !xerrors.Is(err, errors.ErrDecodeRequiredPointerType) {
+			t.Fatalf("unexpected error: %s", err)
+		}
+	})
 }
 
 func Example_JSONTags() {
@@ -1754,6 +1813,22 @@ complecated: string
 	//        2 | simple: string
 	//     >  3 | complecated: string
 	//            ^
+}
+
+func Example_Unmarshal_Node() {
+	f, err := parser.ParseBytes([]byte("text: node example"), 0)
+	if err != nil {
+		panic(err)
+	}
+	var v struct {
+		Text string `yaml:"text"`
+	}
+	if err := yaml.NodeToValue(f.Docs[0].Body, &v); err != nil {
+		panic(err)
+	}
+	fmt.Println(v.Text)
+	// OUTPUT:
+	// node example
 }
 
 type unmarshalableYAMLStringValue string

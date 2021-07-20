@@ -1183,9 +1183,9 @@ func Test_Marshaler(t *testing.T) {
 	t.Logf("%s", buf)
 }
 
-type marshalWithContext struct{}
+type marshalContext struct{}
 
-func (c *marshalWithContext) MarshalYAML(ctx context.Context) ([]byte, error) {
+func (c *marshalContext) MarshalYAML(ctx context.Context) ([]byte, error) {
 	v, ok := ctx.Value("k").(int)
 	if !ok {
 		return nil, fmt.Errorf("cannot get valid context")
@@ -1196,9 +1196,9 @@ func (c *marshalWithContext) MarshalYAML(ctx context.Context) ([]byte, error) {
 	return []byte("1"), nil
 }
 
-func Test_MarshalerWithContext(t *testing.T) {
+func Test_MarshalerContext(t *testing.T) {
 	ctx := context.WithValue(context.Background(), "k", 1)
-	bytes, err := yaml.MarshalWithContext(ctx, &marshalWithContext{})
+	bytes, err := yaml.MarshalContext(ctx, &marshalContext{})
 	if err != nil {
 		t.Fatalf("%+v", err)
 	}

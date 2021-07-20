@@ -1,3 +1,26 @@
+## v1.9.1 - 2021-07-20
+
+### Fix DecodeFromNode ( #237 )
+
+- Fix YAML handling where anchor exists
+
+## v1.9.0 - 2021-07-19
+
+### New features
+
+- Support encoding of comment node ( #233 )
+- Support `yaml.NodeToValue(ast.Node, interface{}, ...DecodeOption) error` ( #236 )
+  - Can convert a AST node to a value directly
+
+### Fix decoder for comment
+
+- Fix parsing of literal with comment ( #234 )
+
+### Rename API ( #235 )
+
+- Rename `MarshalWithContext` to `MarshalContext`
+- Rename `UnmarshalWithContext` to `UnmarshalContext`
+
 ## v1.8.10 - 2021-07-02
 
 ### Fixed bugs

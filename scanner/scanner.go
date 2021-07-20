@@ -456,6 +456,17 @@ func (s *Scanner) scanComment(ctx *Context) (tk *token.Token, pos int) {
 	return
 }
 
+func trimCommentFromLiteralOpt(text string) (string, error) {
+	idx := strings.Index(text, "#")
+	if idx < 0 {
+		return text, nil
+	}
+	if idx == 0 {
+		return "", xerrors.New("invalid literal header")
+	}
+	return text[:idx-1], nil
+}
+
 func (s *Scanner) scanLiteral(ctx *Context, c rune) {
 	ctx.addOriginBuf(c)
 	if ctx.isEOS() {
@@ -498,14 +509,44 @@ func (s *Scanner) scanLiteralHeader(ctx *Context) (pos int, err error) {
 		case '\n', '\r':
 			value := ctx.source(ctx.idx, ctx.idx+idx)
 			opt := strings.TrimRight(value, " ")
+			orgOptLen := len(opt)
+			opt, err = trimCommentFromLiteralOpt(opt)
+			if err != nil {
+				return
+			}
 			switch opt {
 			case "", "+", "-",
 				"0", "1", "2", "3", "4", "5", "6", "7", "8", "9":
+				hasComment := len(opt) < orgOptLen
 				if header == '|' {
-					ctx.addToken(token.Literal("|"+opt, string(ctx.obuf), s.pos()))
+					if hasComment {
+						commentLen := orgOptLen - len(opt)
+						headerPos := strings.Index(string(ctx.obuf), "|")
+						litBuf := ctx.obuf[:len(ctx.obuf)-commentLen-headerPos]
+						commentBuf := ctx.obuf[len(litBuf):]
+						ctx.addToken(token.Literal("|"+opt, string(litBuf), s.pos()))
+						s.column += len(litBuf)
+						s.offset += len(litBuf)
+						commentHeader := strings.Index(value, "#")
+						ctx.addToken(token.Comment(string(value[commentHeader+1:]), string(commentBuf), s.pos()))
+					} else {
+						ctx.addToken(token.Literal("|"+opt, string(ctx.obuf), s.pos()))
+					}
 					ctx.isLiteral = true
 				} else if header == '>' {
-					ctx.addToken(token.Folded(">"+opt, string(ctx.obuf), s.pos()))
+					if hasComment {
+						commentLen := orgOptLen - len(opt)
+						headerPos := strings.Index(string(ctx.obuf), ">")
+						foldedBuf := ctx.obuf[:len(ctx.obuf)-commentLen-headerPos]
+						commentBuf := ctx.obuf[len(foldedBuf):]
+						ctx.addToken(token.Folded(">"+opt, string(foldedBuf), s.pos()))
+						s.column += len(foldedBuf)
+						s.offset += len(foldedBuf)
+						commentHeader := strings.Index(value, "#")
+						ctx.addToken(token.Comment(string(value[commentHeader+1:]), string(commentBuf), s.pos()))
+					} else {
+						ctx.addToken(token.Folded(">"+opt, string(ctx.obuf), s.pos()))
+					}
 					ctx.isFolded = true
 				}
 				s.indentState = IndentStateKeep

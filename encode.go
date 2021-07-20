@@ -82,10 +82,8 @@ func (e *Encoder) EncodeContext(ctx context.Context, v interface{}) error {
 	if err != nil {
 		return errors.Wrapf(err, "failed to encode to node")
 	}
-	if e.commentMap != nil {
-		if err := e.setCommentByCommentMap(node); err != nil {
-			return errors.Wrapf(err, "failed to set comment by comment map")
-		}
+	if err := e.setCommentByCommentMap(node); err != nil {
+		return errors.Wrapf(err, "failed to set comment by comment map")
 	}
 	var p printer.Printer
 	e.writer.Write(p.PrintNode(node))
@@ -112,6 +110,9 @@ func (e *Encoder) EncodeToNodeContext(ctx context.Context, v interface{}) (ast.N
 }
 
 func (e *Encoder) setCommentByCommentMap(node ast.Node) error {
+	if e.commentMap == nil {
+		return nil
+	}
 	for path, comment := range e.commentMap {
 		n, err := path.FilterNode(node)
 		if err != nil {

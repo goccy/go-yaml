@@ -1,3 +1,9 @@
+## v1.9.1 - 2021-07-20
+
+### Fix DecodeFromNode ( #237 )
+
+- Fix YAML handling where anchor exists
+
 ## v1.9.0 - 2021-07-19
 
 ### New features

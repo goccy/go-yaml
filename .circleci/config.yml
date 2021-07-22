@@ -1,4 +1,8 @@
-version: 2
+version: 2.1
+
+orbs:
+  codecov: codecov/codecov@1.2.5
+
 jobs:
   test:
     working_directory: /go/src/github.com/goccy/go-yaml
@@ -17,11 +21,7 @@ jobs:
           name: Download modules
           command: |
             go mod download
-      - run:
-          name: Run unit tests and measure coverage
-          command: |
-            go test -v -coverprofile=coverage.out ./...
-            bash <(curl -s https://codecov.io/bash) -P ${CIRCLE_PULL_REQUEST##*/}
+      - codecov/upload
 workflows:
   version: 2
   test:

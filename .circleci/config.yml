@@ -21,6 +21,10 @@ jobs:
           name: Download modules
           command: |
             go mod download
+      - run:
+          name: Run unit tests
+          command: |
+            go test -v -coverprofile=coverage.out ./...
       - codecov/upload
 workflows:
   version: 2

@@ -31,6 +31,7 @@ type Encoder struct {
 	opts                       []EncodeOption
 	indent                     int
 	indentSequence             bool
+	quoteStyle                 QuoteStyle
 	isFlowStyle                bool
 	isJSONStyle                bool
 	useJSONMarshaler           bool
@@ -57,6 +58,7 @@ func NewEncoder(w io.Writer, opts ...EncodeOption) *Encoder {
 		line:               1,
 		column:             1,
 		offset:             0,
+		quoteStyle:         QuoteStyleDouble,
 	}
 }
 
@@ -406,7 +408,12 @@ func (e *Encoder) isNeedQuoted(v string) bool {
 
 func (e *Encoder) encodeString(v string, column int) ast.Node {
 	if e.isNeedQuoted(v) {
-		v = strconv.Quote(v)
+		switch e.quoteStyle {
+		case QuoteStyleSingle:
+			v = quoteWith(v, '\'')
+		default:
+			v = strconv.Quote(v)
+		}
 	}
 	return ast.String(token.New(v, v, e.pos(column)))
 }

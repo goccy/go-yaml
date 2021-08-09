@@ -113,6 +113,24 @@ func IndentSequence(indent bool) EncodeOption {
 	}
 }
 
+// QuoteStyle specifies how strings should be quoted
+type QuoteStyle int
+
+const (
+	// QuoteStyleDouble causes strings to be quoted with a double quote, "
+	QuoteStyleDouble QuoteStyle = iota
+	// QuoteStyleSingle causes strings to be quoted with a single quote, '
+	QuoteStyleSingle
+)
+
+// QuoteStyle specifies how strings should be quoted
+func QuoteStyleOpt(qs QuoteStyle) EncodeOption {
+	return func(e *Encoder) error {
+		e.quoteStyle = qs
+		return nil
+	}
+}
+
 // Flow encoding by flow style
 func Flow(isFlowStyle bool) EncodeOption {
 	return func(e *Encoder) error {

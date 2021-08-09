@@ -567,6 +567,22 @@ func TestEncoder(t *testing.T) {
 			map[string]*time.Time{"v": nil},
 			nil,
 		},
+
+		// Quote style
+		{
+			`v: '\'a\'b'` + "\n",
+			map[string]string{"v": `'a'b`},
+			[]yaml.EncodeOption{
+				yaml.QuoteStyleOpt(yaml.QuoteStyleSingle),
+			},
+		},
+		{
+			`v: "'a'b"` + "\n",
+			map[string]string{"v": `'a'b`},
+			[]yaml.EncodeOption{
+				yaml.QuoteStyleOpt(yaml.QuoteStyleDouble),
+			},
+		},
 	}
 	for _, test := range tests {
 		var buf bytes.Buffer

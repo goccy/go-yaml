@@ -981,7 +981,7 @@ func (d *Decoder) decodeStruct(ctx context.Context, dst reflect.Value, src ast.N
 					err = nil
 				}
 
-				if err = d.deleteStructKeys(fieldValue.Type(), unknownFields); err != nil {
+				if err := d.deleteStructKeys(fieldValue.Type(), unknownFields); err != nil {
 					return errors.Wrapf(err, "cannot delete struct keys")
 				}
 			}

@@ -1454,6 +1454,32 @@ c: true
 	}
 }
 
+func TestDecoder_InlineAndWrongTypeStrict(t *testing.T) {
+	type Base struct {
+		A int
+		B string
+	}
+	yml := `---
+a: notanint
+b: hello
+c: true
+`
+	var v struct {
+		*Base `yaml:",inline"`
+		C     bool
+	}
+	err := yaml.NewDecoder(strings.NewReader(yml), yaml.Strict()).Decode(&v)
+	if err == nil {
+		t.Fatalf("expected error")
+	}
+
+	//TODO: properly check if errors are colored/have source
+	t.Logf("%s", err)
+	t.Logf("%s", yaml.FormatError(err, true, false))
+	t.Logf("%s", yaml.FormatError(err, false, true))
+	t.Logf("%s", yaml.FormatError(err, true, true))
+}
+
 func TestDecoder_InvalidCases(t *testing.T) {
 	const src = `---
 a:

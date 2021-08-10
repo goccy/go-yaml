@@ -222,7 +222,7 @@ func TestEncoder(t *testing.T) {
 			nil,
 		},
 		{
-			"v:\n  - A\n  - 1\n  - B:\n    - 2\n    - 3\n",
+			"v:\n  - A\n  - 1\n  - B:\n      - 2\n      - 3\n  - 2\n",
 			map[string]interface{}{
 				"v": []interface{}{
 					"A",
@@ -230,6 +230,7 @@ func TestEncoder(t *testing.T) {
 					map[string][]int{
 						"B": {2, 3},
 					},
+					2,
 				},
 			},
 			[]yaml.EncodeOption{

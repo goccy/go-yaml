@@ -417,10 +417,10 @@ func (e *Encoder) encodeBool(v bool) ast.Node {
 }
 
 func (e *Encoder) encodeSlice(ctx context.Context, value reflect.Value) (ast.Node, error) {
-	column := e.column
 	if e.indentSequence {
-		column += e.indent
+		e.column += e.indent
 	}
+	column := e.column
 	sequence := ast.Sequence(token.New("-", "-", e.pos(column)), e.isFlowStyle)
 	for i := 0; i < value.Len(); i++ {
 		node, err := e.encodeValue(ctx, value.Index(i), column)
@@ -429,14 +429,17 @@ func (e *Encoder) encodeSlice(ctx context.Context, value reflect.Value) (ast.Nod
 		}
 		sequence.Values = append(sequence.Values, node)
 	}
+	if e.indentSequence {
+		e.column -= e.indent
+	}
 	return sequence, nil
 }
 
 func (e *Encoder) encodeArray(ctx context.Context, value reflect.Value) (ast.Node, error) {
-	column := e.column
 	if e.indentSequence {
-		column += e.indent
+		e.column += e.indent
 	}
+	column := e.column
 	sequence := ast.Sequence(token.New("-", "-", e.pos(column)), e.isFlowStyle)
 	for i := 0; i < value.Len(); i++ {
 		node, err := e.encodeValue(ctx, value.Index(i), column)
@@ -444,6 +447,9 @@ func (e *Encoder) encodeArray(ctx context.Context, value reflect.Value) (ast.Nod
 			return nil, errors.Wrapf(err, "failed to encode value for array")
 		}
 		sequence.Values = append(sequence.Values, node)
+	}
+	if e.indentSequence {
+		e.column -= e.indent
 	}
 	return sequence, nil
 }

@@ -9,6 +9,10 @@ import (
 )
 
 func TestStructValidator(t *testing.T) {
+	type Inner struct {
+		Required string `validate:"required"`
+		Lt10     int    `validate:"lt=10"`
+	}
 
 	cases := []struct {
 		TestName    string
@@ -133,6 +137,40 @@ roles:
 					Name        string   `yaml:"name"`
 					Permissions []string `yaml:"permissions"`
 				} `yaml:"roles"`
+			}{},
+		},
+		{
+			TestName: "Test inline validation missing required",
+			YAMLContent: `---
+name: john
+age: 20
+`,
+			ExpectedErr: `Key: 'Inner.Required' Error:Field validation for 'Required' failed on the 'required' tag`,
+			Instance: &struct {
+				Name  string `yaml:"name" validate:"required"`
+				Age   int    `yaml:"age" validate:"gte=0,lt=120"`
+				Inner `yaml:",inline"`
+			}{},
+		},
+		{
+			TestName: "Test inline validation field error",
+			YAMLContent: `---
+name: john
+age: 20
+required: present
+lt10: 20
+`,
+			ExpectedErr: `[5:7] Key: 'Inner.Lt10' Error:Field validation for 'Lt10' failed on the 'lt' tag
+   2 | name: john
+   3 | age: 20
+   4 | required: present
+>  5 | lt10: 20
+             ^
+`,
+			Instance: &struct {
+				Name  string `yaml:"name" validate:"required"`
+				Age   int    `yaml:"age" validate:"gte=0,lt=120"`
+				Inner `yaml:",inline"`
 			}{},
 		},
 	}

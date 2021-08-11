@@ -1037,6 +1037,8 @@ func (d *Decoder) decodeStruct(ctx context.Context, dst reflect.Value, src ast.N
 		return errors.Wrapf(foundErr, "failed to decode value")
 	}
 
+	// Ignore unknown fields when parsing an inline struct (recognized by a nil token).
+	// Unknown fields are expected (they could be fields from the parent struct).
 	if len(unknownFields) != 0 && d.disallowUnknownField && src.GetToken() != nil {
 		for key, node := range unknownFields {
 			return errUnknownField(fmt.Sprintf(`unknown field "%s"`, key), node.GetToken())
@@ -1068,7 +1070,6 @@ func (d *Decoder) decodeStruct(ctx context.Context, dst reflect.Value, src ast.N
 					}
 				}
 			}
-			// Make sure we still report errors even if we can't associate them with tokenss
 			return err
 		}
 	}

@@ -567,6 +567,11 @@ func TestEncoder(t *testing.T) {
 			map[string]*time.Time{"v": nil},
 			nil,
 		},
+		{
+			"v: 30s\n",
+			map[string]time.Duration{"v": 30 * time.Second},
+			nil,
+		},
 	}
 	for _, test := range tests {
 		var buf bytes.Buffer

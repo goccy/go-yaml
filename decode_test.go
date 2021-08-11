@@ -321,6 +321,14 @@ func TestDecoder(t *testing.T) {
 			"v: 2015-02-24 18:19:39\n",
 			map[string]time.Time{"v": time.Date(2015, 2, 24, 18, 19, 39, 0, time.UTC)},
 		},
+		{
+			"v: 60s\n",
+			map[string]time.Duration{"v": time.Minute},
+		},
+		{
+			"v: -0.5h\n",
+			map[string]time.Duration{"v": -30 * time.Minute},
+		},
 
 		// Single Quoted values.
 		{

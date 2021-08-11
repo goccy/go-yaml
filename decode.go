@@ -976,11 +976,6 @@ func (d *Decoder) decodeStruct(ctx context.Context, dst reflect.Value, src ast.N
 			}
 			newFieldValue, err := d.createDecodedNewValue(ctx, fieldValue.Type(), mapNode)
 			if d.disallowUnknownField {
-				var ufe *unknownFieldError
-				if xerrors.As(err, &ufe) {
-					err = nil
-				}
-
 				if err := d.deleteStructKeys(fieldValue.Type(), unknownFields); err != nil {
 					return errors.Wrapf(err, "cannot delete struct keys")
 				}
@@ -1042,7 +1037,9 @@ func (d *Decoder) decodeStruct(ctx context.Context, dst reflect.Value, src ast.N
 		return errors.Wrapf(foundErr, "failed to decode value")
 	}
 
-	if len(unknownFields) != 0 && d.disallowUnknownField {
+	// Ignore unknown fields when parsing an inline struct (recognized by a nil token).
+	// Unknown fields are expected (they could be fields from the parent struct).
+	if len(unknownFields) != 0 && d.disallowUnknownField && src.GetToken() != nil {
 		for key, node := range unknownFields {
 			return errUnknownField(fmt.Sprintf(`unknown field "%s"`, key), node.GetToken())
 		}
@@ -1073,6 +1070,7 @@ func (d *Decoder) decodeStruct(ctx context.Context, dst reflect.Value, src ast.N
 					}
 				}
 			}
+			return err
 		}
 	}
 	return nil

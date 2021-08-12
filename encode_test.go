@@ -934,14 +934,15 @@ func TestEncoder_JSON(t *testing.T) {
 		F float32
 	}
 	if err := enc.Encode(struct {
-		I      int
-		U      uint
-		S      string
-		F      float64
-		Struct *st
-		Slice  []int
-		Map    map[string]interface{}
-		Time   time.Time
+		I        int
+		U        uint
+		S        string
+		F        float64
+		Struct   *st
+		Slice    []int
+		Map      map[string]interface{}
+		Time     time.Time
+		Duration time.Duration
 	}{
 		I: -10,
 		U: 10,
@@ -958,12 +959,13 @@ func TestEncoder_JSON(t *testing.T) {
 			"b": 1.23,
 			"c": "json",
 		},
-		Time: time.Time{},
+		Time:     time.Time{},
+		Duration: 5 * time.Minute,
 	}); err != nil {
 		t.Fatalf("%+v", err)
 	}
 	expect := `
-{"i": -10, "u": 10, "s": "hello", "f": 3.14, "struct": {"i": 2, "s": "world", "f": 1.23}, "slice": [1, 2, 3, 4, 5], "map": {"a": 1, "b": 1.23, "c": "json"}, "time": "0001-01-01T00:00:00Z"}
+{"i": -10, "u": 10, "s": "hello", "f": 3.14, "struct": {"i": 2, "s": "world", "f": 1.23}, "slice": [1, 2, 3, 4, 5], "map": {"a": 1, "b": 1.23, "c": "json"}, "time": "0001-01-01T00:00:00Z", "duration": "5m0s"}
 `
 	actual := "\n" + buf.String()
 	if expect != actual {

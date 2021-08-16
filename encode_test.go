@@ -94,6 +94,11 @@ func TestEncoder(t *testing.T) {
 			nil,
 		},
 		{
+			"v: 1e+06\n",
+			map[string]float64{"v": 1000000},
+			nil,
+		},
+		{
 			"v: .inf\n",
 			map[string]interface{}{"v": math.Inf(0)},
 			nil,

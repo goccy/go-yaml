@@ -888,7 +888,7 @@ func (d *Decoder) castToTime(src ast.Node) (time.Time, error) {
 func (d *Decoder) decodeTime(ctx context.Context, dst reflect.Value, src ast.Node) error {
 	t, err := d.castToTime(src)
 	if err != nil {
-		return err
+		return errors.Wrapf(err, "failed to convert to time")
 	}
 	dst.Set(reflect.ValueOf(t))
 	return nil
@@ -916,7 +916,7 @@ func (d *Decoder) castToDuration(src ast.Node) (time.Duration, error) {
 func (d *Decoder) decodeDuration(ctx context.Context, dst reflect.Value, src ast.Node) error {
 	t, err := d.castToDuration(src)
 	if err != nil {
-		return err
+		return errors.Wrapf(err, "failed to convert to duration")
 	}
 	dst.Set(reflect.ValueOf(t))
 	return nil

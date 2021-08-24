@@ -390,7 +390,7 @@ func (e *Encoder) encodeFloat(v float64, bitSize int) ast.Node {
 		return ast.Nan(token.New(value, value, e.pos(e.column)))
 	}
 	value := strconv.FormatFloat(v, 'g', -1, bitSize)
-	if !strings.Contains(value, ".") {
+	if !strings.Contains(value, ".") && !strings.Contains(value, "e") {
 		// append x.0 suffix to keep float value context
 		value = fmt.Sprintf("%s.0", value)
 	}

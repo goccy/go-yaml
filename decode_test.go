@@ -321,6 +321,14 @@ func TestDecoder(t *testing.T) {
 			"v: 2015-02-24 18:19:39\n",
 			map[string]time.Time{"v": time.Date(2015, 2, 24, 18, 19, 39, 0, time.UTC)},
 		},
+		{
+			"v: 60s\n",
+			map[string]time.Duration{"v": time.Minute},
+		},
+		{
+			"v: -0.5h\n",
+			map[string]time.Duration{"v": -30 * time.Minute},
+		},
 
 		// Single Quoted values.
 		{
@@ -1184,6 +1192,45 @@ func TestDecoder_TypeConversionError(t *testing.T) {
 			}
 			if v["v"] != 0 {
 				t.Fatal("failed to decode value")
+			}
+		})
+	})
+	t.Run("type conversion for time", func(t *testing.T) {
+		type T struct {
+			A time.Time
+			B time.Duration
+		}
+		t.Run("int to time", func(t *testing.T) {
+			var v T
+			err := yaml.Unmarshal([]byte(`a: 123`), &v)
+			if err == nil {
+				t.Fatal("expected to error")
+			}
+			msg := "cannot unmarshal uint64 into Go struct field T.A of type time.Time"
+			if err.Error() != msg {
+				t.Fatalf("unexpected error message: %s. expect: %s", err.Error(), msg)
+			}
+		})
+		t.Run("string to duration", func(t *testing.T) {
+			var v T
+			err := yaml.Unmarshal([]byte(`b: str`), &v)
+			if err == nil {
+				t.Fatal("expected to error")
+			}
+			msg := `time: invalid duration "str"`
+			if err.Error() != msg {
+				t.Fatalf("unexpected error message: %s. expect: %s", err.Error(), msg)
+			}
+		})
+		t.Run("int to duration", func(t *testing.T) {
+			var v T
+			err := yaml.Unmarshal([]byte(`b: 10`), &v)
+			if err == nil {
+				t.Fatal("expected to error")
+			}
+			msg := "cannot unmarshal uint64 into Go struct field T.B of type time.Duration"
+			if err.Error() != msg {
+				t.Fatalf("unexpected error message: %s. expect: %s", err.Error(), msg)
 			}
 		})
 	})

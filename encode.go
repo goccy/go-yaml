@@ -199,6 +199,8 @@ func (e *Encoder) canEncodeByMarshaler(v reflect.Value) bool {
 		return true
 	case time.Time:
 		return true
+	case time.Duration:
+		return true
 	case encoding.TextMarshaler:
 		return true
 	case jsonMarshaler:
@@ -252,6 +254,10 @@ func (e *Encoder) encodeByMarshaler(ctx context.Context, v reflect.Value, column
 
 	if t, ok := iface.(time.Time); ok {
 		return e.encodeTime(t, column), nil
+	}
+
+	if t, ok := iface.(time.Duration); ok {
+		return e.encodeDuration(t, column), nil
 	}
 
 	if marshaler, ok := iface.(encoding.TextMarshaler); ok {
@@ -560,6 +566,14 @@ func (e *Encoder) isZeroValue(v reflect.Value) bool {
 
 func (e *Encoder) encodeTime(v time.Time, column int) ast.Node {
 	value := v.Format(time.RFC3339Nano)
+	if e.isJSONStyle {
+		value = strconv.Quote(value)
+	}
+	return ast.String(token.New(value, value, e.pos(column)))
+}
+
+func (e *Encoder) encodeDuration(v time.Duration, column int) ast.Node {
+	value := v.String()
 	if e.isJSONStyle {
 		value = strconv.Quote(value)
 	}

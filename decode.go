@@ -515,6 +515,8 @@ func (d *Decoder) canDecodeByUnmarshaler(dst reflect.Value) bool {
 		return true
 	case *time.Time:
 		return true
+	case *time.Duration:
+		return true
 	case encoding.TextUnmarshaler:
 		return true
 	case jsonUnmarshaler:
@@ -574,6 +576,10 @@ func (d *Decoder) decodeByUnmarshaler(ctx context.Context, dst reflect.Value, sr
 
 	if _, ok := iface.(*time.Time); ok {
 		return d.decodeTime(ctx, dst, src)
+	}
+
+	if _, ok := iface.(*time.Duration); ok {
+		return d.decodeDuration(ctx, dst, src)
 	}
 
 	if unmarshaler, isText := iface.(encoding.TextUnmarshaler); isText {
@@ -882,7 +888,35 @@ func (d *Decoder) castToTime(src ast.Node) (time.Time, error) {
 func (d *Decoder) decodeTime(ctx context.Context, dst reflect.Value, src ast.Node) error {
 	t, err := d.castToTime(src)
 	if err != nil {
-		return err
+		return errors.Wrapf(err, "failed to convert to time")
+	}
+	dst.Set(reflect.ValueOf(t))
+	return nil
+}
+
+func (d *Decoder) castToDuration(src ast.Node) (time.Duration, error) {
+	if src == nil {
+		return 0, nil
+	}
+	v := d.nodeToValue(src)
+	if t, ok := v.(time.Duration); ok {
+		return t, nil
+	}
+	s, ok := v.(string)
+	if !ok {
+		return 0, errTypeMismatch(reflect.TypeOf(time.Duration(0)), reflect.TypeOf(v))
+	}
+	t, err := time.ParseDuration(s)
+	if err != nil {
+		return 0, errors.Wrapf(err, "failed to parse duration")
+	}
+	return t, nil
+}
+
+func (d *Decoder) decodeDuration(ctx context.Context, dst reflect.Value, src ast.Node) error {
+	t, err := d.castToDuration(src)
+	if err != nil {
+		return errors.Wrapf(err, "failed to convert to duration")
 	}
 	dst.Set(reflect.ValueOf(t))
 	return nil

@@ -115,6 +115,82 @@ store:
 	})
 }
 
+func TestPath_ReservedKeyword(t *testing.T) {
+	tests := []struct {
+		name     string
+		path     string
+		src      string
+		expected interface{}
+		failure  bool
+	}{
+		{
+			name: "quoted path",
+			path: `$.'a.b.c'.foo`,
+			src: `
+a.b.c:
+  foo: bar
+`,
+			expected: "bar",
+		},
+		{
+			name:     "contains quote key",
+			path:     `$.a'b`,
+			src:      `a'b: 10`,
+			expected: uint64(10),
+		},
+		{
+			name:     "escaped quote",
+			path:     `$.'alice\'s age'`,
+			src:      `alice's age: 10`,
+			expected: uint64(10),
+		},
+		{
+			name:     "directly use white space",
+			path:     `$.a  b`,
+			src:      `a  b: 10`,
+			expected: uint64(10),
+		},
+		{
+			name:    "empty quoted key",
+			path:    `$.''`,
+			src:     `a: 10`,
+			failure: true,
+		},
+		{
+			name:    "unterminated quote",
+			path:    `$.'abcd`,
+			src:     `abcd: 10`,
+			failure: true,
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			path, err := yaml.PathString(test.path)
+			if test.failure {
+				if err == nil {
+					t.Fatal("expected error")
+				}
+				return
+			} else {
+				if err != nil {
+					t.Fatalf("%+v", err)
+				}
+			}
+			file, err := parser.ParseBytes([]byte(test.src), 0)
+			if err != nil {
+				t.Fatal(err)
+			}
+			var v interface{}
+			if err := path.Read(file, &v); err != nil {
+				t.Fatalf("%+v", err)
+			}
+			if v != test.expected {
+				t.Fatalf("failed to get value. expected:[%v] but got:[%v]", test.expected, v)
+			}
+		})
+	}
+}
+
 func TestPath_Invalid(t *testing.T) {
 	tests := []struct {
 		path string

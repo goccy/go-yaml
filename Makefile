@@ -9,3 +9,7 @@ cover:
 .PHONY: cover-html
 cover-html: cover
 	go tool cover -html=cover.out
+
+.PHONY: ycat/build
+ycat/build:
+	go build -o ycat ./cmd/ycat

@@ -2,6 +2,7 @@ package yaml_test
 
 import (
 	"bytes"
+	"reflect"
 	"testing"
 
 	"github.com/goccy/go-yaml"
@@ -463,6 +464,121 @@ baz:
 		actual := "\n" + string(b)
 		if expected != actual {
 			t.Fatalf("expected:%s but got %s", expected, actual)
+		}
+	})
+}
+
+func Test_CommentToMapOption(t *testing.T) {
+	t.Run("line comment", func(t *testing.T) {
+		yml := `
+foo: aaa #foo comment
+bar: #bar comment
+  bbb: ccc #bbb comment
+baz:
+  x: 10 #x comment
+`
+		var (
+			v  interface{}
+			cm = yaml.CommentMap{}
+		)
+		if err := yaml.UnmarshalWithOptions([]byte(yml), &v, yaml.CommentToMap(cm)); err != nil {
+			t.Fatal(err)
+		}
+		expected := []struct {
+			path    string
+			comment *yaml.Comment
+		}{
+			{
+				path:    "$.foo",
+				comment: yaml.LineComment("foo comment"),
+			},
+			{
+				path:    "$.bar",
+				comment: yaml.LineComment("bar comment"),
+			},
+			{
+				path:    "$.bar.bbb",
+				comment: yaml.LineComment("bbb comment"),
+			},
+			{
+				path:    "$.baz.x",
+				comment: yaml.LineComment("x comment"),
+			},
+		}
+		for _, exp := range expected {
+			comment := cm[exp.path]
+			if comment == nil {
+				t.Fatalf("failed to get path %s", exp.path)
+			}
+			if !reflect.DeepEqual(exp.comment, comment) {
+				t.Fatalf("failed to get comment. expected:[%+v] but got:[%+v]", exp.comment, comment)
+			}
+		}
+	})
+	t.Run("head comment", func(t *testing.T) {
+		yml := `
+#foo comment
+#foo comment2
+foo: aaa
+#bar comment
+#bar comment2
+bar:
+  #bbb comment
+  #bbb comment2
+  bbb: ccc
+baz:
+  #x comment
+  #x comment2
+  x: 10
+`
+		var (
+			v  interface{}
+			cm = yaml.CommentMap{}
+		)
+		if err := yaml.UnmarshalWithOptions([]byte(yml), &v, yaml.CommentToMap(cm)); err != nil {
+			t.Fatal(err)
+		}
+		expected := []struct {
+			path    string
+			comment *yaml.Comment
+		}{
+			{
+				path: "$.foo",
+				comment: yaml.HeadComment(
+					"foo comment",
+					"foo comment2",
+				),
+			},
+			{
+				path: "$.bar",
+				comment: yaml.HeadComment(
+					"bar comment",
+					"bar comment2",
+				),
+			},
+			{
+				path: "$.bar.bbb",
+				comment: yaml.HeadComment(
+					"bbb comment",
+					"bbb comment2",
+				),
+			},
+			{
+				path: "$.baz.x",
+				comment: yaml.HeadComment(
+					"x comment",
+					"x comment2",
+				),
+			},
+		}
+		for _, exp := range expected {
+			comment := cm[exp.path]
+			if comment == nil {
+				t.Fatalf("failed to get path %s", exp.path)
+			}
+			if !reflect.DeepEqual(exp.comment, comment) {
+				t.Fatalf("failed to get comment. expected:[%+v] but got:[%+v]", exp.comment, comment)
+			}
 		}
 	})
 }

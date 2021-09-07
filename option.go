@@ -216,3 +216,14 @@ func WithComment(cm CommentMap) EncodeOption {
 		return nil
 	}
 }
+
+// CommentToMap apply the position and content of comments in a YAML document to a CommentMap.
+func CommentToMap(cm CommentMap) DecodeOption {
+	return func(d *Decoder) error {
+		if cm == nil {
+			return ErrInvalidCommentMapValue
+		}
+		d.toCommentMap = cm
+		return nil
+	}
+}

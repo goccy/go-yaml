@@ -28,6 +28,7 @@ type Decoder struct {
 	referenceReaders     []io.Reader
 	anchorNodeMap        map[string]ast.Node
 	anchorValueMap       map[string]reflect.Value
+	toCommentMap         CommentMap
 	opts                 []DecodeOption
 	referenceFiles       []string
 	referenceDirs        []string
@@ -115,6 +116,7 @@ func (d *Decoder) mapKeyNodeToString(node ast.Node) string {
 }
 
 func (d *Decoder) setToMapValue(node ast.Node, m map[string]interface{}) {
+	d.setPathToCommentMap(node)
 	switch n := node.(type) {
 	case *ast.MappingValueNode:
 		if n.Key.Type() == ast.MergeKeyType {
@@ -149,7 +151,30 @@ func (d *Decoder) setToOrderedMapValue(node ast.Node, m *MapSlice) {
 	}
 }
 
+func (d *Decoder) setPathToCommentMap(node ast.Node) {
+	if d.toCommentMap == nil {
+		return
+	}
+	commentGroup := node.GetComment()
+	if commentGroup == nil {
+		return
+	}
+	texts := []string{}
+	for _, comment := range commentGroup.Comments {
+		texts = append(texts, comment.Token.Value)
+	}
+	if len(texts) == 0 {
+		return
+	}
+	if len(texts) == 1 {
+		d.toCommentMap[node.GetPath()] = LineComment(texts[0])
+	} else {
+		d.toCommentMap[node.GetPath()] = HeadComment(texts...)
+	}
+}
+
 func (d *Decoder) nodeToValue(node ast.Node) interface{} {
+	d.setPathToCommentMap(node)
 	switch n := node.(type) {
 	case *ast.NullNode:
 		return nil
@@ -1434,7 +1459,11 @@ func (d *Decoder) resolveReference() error {
 }
 
 func (d *Decoder) parse(bytes []byte) (*ast.File, error) {
-	f, err := parser.ParseBytes(bytes, 0)
+	var parseMode parser.Mode
+	if d.toCommentMap != nil {
+		parseMode = parser.ParseComments
+	}
+	f, err := parser.ParseBytes(bytes, parseMode)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to parse yaml")
 	}

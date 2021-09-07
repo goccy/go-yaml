@@ -11,6 +11,7 @@ var (
 	ErrInvalidPathString          = xerrors.New("invalid path string")
 	ErrNotFoundNode               = xerrors.New("node not found")
 	ErrUnknownCommentPositionType = xerrors.New("unknown comment position type")
+	ErrInvalidCommentMapValue     = xerrors.New("invalid comment map value. it must be not nil value")
 )
 
 func ErrUnsupportedHeadPositionType(node ast.Node) error {

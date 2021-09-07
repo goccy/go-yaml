@@ -143,7 +143,7 @@ func (p *parser) parseMapValue(ctx *context, key ast.Node, colonToken *token.Tok
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to create map value node")
 	}
-	if node != nil && node.GetPath() != "" {
+	if node != nil && node.GetPath() == "" {
 		node.SetPath(ctx.path)
 	}
 	return node, nil
@@ -205,9 +205,8 @@ func (p *parser) parseMappingValue(ctx *context) (ast.Node, error) {
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to parse map key")
 	}
-	if key != nil {
-		key.SetPath(ctx.path)
-	}
+	keyText := key.GetToken().Value
+	key.SetPath(ctx.withChild(keyText).path)
 	if err := p.validateMapKey(key.GetToken()); err != nil {
 		return nil, errors.Wrapf(err, "validate mapping key error")
 	}
@@ -217,7 +216,6 @@ func (p *parser) parseMappingValue(ctx *context) (ast.Node, error) {
 		return nil, errors.ErrSyntax("unexpected map", key.GetToken())
 	}
 	ctx.progress(1) // progress to value token
-	keyText := key.GetToken().Value
 	if err := p.setSameLineCommentIfExists(ctx.withChild(keyText), key); err != nil {
 		return nil, errors.Wrapf(err, "failed to set same line comment to node")
 	}
@@ -236,9 +234,9 @@ func (p *parser) parseMappingValue(ctx *context) (ast.Node, error) {
 	}
 
 	mvnode := ast.MappingValue(tk, key, value)
-	mvnode.SetPath(ctx.path)
+	mvnode.SetPath(ctx.withChild(keyText).path)
 	node := ast.Mapping(tk, false, mvnode)
-	node.SetPath(ctx.path)
+	node.SetPath(ctx.withChild(keyText).path)
 
 	ntk := ctx.nextNotCommentToken()
 	antk := ctx.afterNextNotCommentToken()
@@ -297,6 +295,7 @@ func (p *parser) parseSequenceEntry(ctx *context) (ast.Node, error) {
 			return nil, errors.Wrapf(err, "failed to parse sequence")
 		}
 		if comment != nil {
+			comment.SetPath(ctx.withIndex(uint(len(sequenceNode.Values))).path)
 			sequenceNode.ValueComments = append(sequenceNode.ValueComments, comment)
 		} else {
 			sequenceNode.ValueComments = append(sequenceNode.ValueComments, nil)
@@ -453,6 +452,7 @@ func (p *parser) parseLiteral(ctx *context) (ast.Node, error) {
 	var comment *ast.CommentGroupNode
 	if tk.Type == token.CommentType {
 		comment = p.parseCommentOnly(ctx)
+		comment.SetPath(ctx.path)
 		if err := node.SetComment(comment); err != nil {
 			return nil, errors.Wrapf(err, "failed to set comment to literal")
 		}
@@ -521,9 +521,7 @@ func (p *parser) parseCommentOnly(ctx *context) *ast.CommentGroupNode {
 		commentTokens = append(commentTokens, tk)
 		ctx.progressIgnoreComment(1) // skip comment token
 	}
-	group := ast.CommentGroup(commentTokens)
-	group.SetPath(ctx.path)
-	return group
+	return ast.CommentGroup(commentTokens)
 }
 
 func (p *parser) parseComment(ctx *context) (ast.Node, error) {
@@ -535,6 +533,7 @@ func (p *parser) parseComment(ctx *context) (ast.Node, error) {
 	if node == nil {
 		return group, nil
 	}
+	group.SetPath(node.GetPath())
 	if err := node.SetComment(group); err != nil {
 		return nil, errors.Wrapf(err, "failed to set comment token to node")
 	}
@@ -559,7 +558,7 @@ func (p *parser) parseToken(ctx *context, tk *token.Token) (ast.Node, error) {
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to create node from token")
 	}
-	if node != nil {
+	if node != nil && node.GetPath() == "" {
 		node.SetPath(ctx.path)
 	}
 	return node, nil

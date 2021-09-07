@@ -2,6 +2,7 @@ package parser
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/goccy/go-yaml/token"
 )
@@ -16,8 +17,29 @@ type context struct {
 	path   string
 }
 
+var pathSpecialChars = []string{
+	"$", "*", ".", "[", "]",
+}
+
+func containsPathSpecialChar(path string) bool {
+	for _, char := range pathSpecialChars {
+		if strings.Contains(path, char) {
+			return true
+		}
+	}
+	return false
+}
+
+func normalizePath(path string) string {
+	if containsPathSpecialChar(path) {
+		return fmt.Sprintf("'%s'", path)
+	}
+	return path
+}
+
 func (c *context) withChild(path string) *context {
 	ctx := c.copy()
+	path = normalizePath(path)
 	ctx.path += fmt.Sprintf(".%s", path)
 	return ctx
 }

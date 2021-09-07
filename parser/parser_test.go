@@ -775,6 +775,7 @@ a: # commentA
    - list3 # comment list3
   i: fuga # commentI
 j: piyo # commentJ
+k.l.m.n: moge # commentKLMN
 `
 	f, err := parser.ParseBytes([]byte(yml), parser.ParseComments)
 	if err != nil {
@@ -804,6 +805,7 @@ j: piyo # commentJ
 		"$.a.h[2]",
 		"$.a.i",
 		"$.j",
+		"$.'k.l.m.n'",
 	}
 	if !reflect.DeepEqual(expectedPaths, commentPaths) {
 		t.Fatalf("failed to get YAMLPath to the comment node:\nexpected[%s]\ngot     [%s]", expectedPaths, commentPaths)

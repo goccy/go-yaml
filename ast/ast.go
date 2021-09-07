@@ -179,6 +179,10 @@ type Node interface {
 	SetComment(*CommentGroupNode) error
 	// Comment returns comment token instance
 	GetComment() *CommentGroupNode
+	// GetPath returns YAMLPath for the current node
+	GetPath() string
+	// SetPath set YAMLPath for the current node
+	SetPath(string)
 	// MarshalYAML
 	MarshalYAML() ([]byte, error)
 	// already read length
@@ -198,6 +202,7 @@ type ScalarNode interface {
 }
 
 type BaseNode struct {
+	Path    string
 	Comment *CommentGroupNode
 	read    int
 }
@@ -216,6 +221,22 @@ func (n *BaseNode) clearLen() {
 
 func (n *BaseNode) addReadLen(len int) {
 	n.read += len
+}
+
+// GetPath returns YAMLPath for the current node.
+func (n *BaseNode) GetPath() string {
+	if n == nil {
+		return ""
+	}
+	return n.Path
+}
+
+// SetPath set YAMLPath for the current node.
+func (n *BaseNode) SetPath(path string) {
+	if n == nil {
+		return
+	}
+	n.Path = path
 }
 
 // GetComment returns comment token instance
@@ -1916,40 +1937,68 @@ func Walk(v Visitor, node Node) {
 	switch n := node.(type) {
 	case *CommentNode:
 	case *NullNode:
+		walkComment(v, n.BaseNode)
 	case *IntegerNode:
+		walkComment(v, n.BaseNode)
 	case *FloatNode:
+		walkComment(v, n.BaseNode)
 	case *StringNode:
+		walkComment(v, n.BaseNode)
 	case *MergeKeyNode:
+		walkComment(v, n.BaseNode)
 	case *BoolNode:
+		walkComment(v, n.BaseNode)
 	case *InfinityNode:
+		walkComment(v, n.BaseNode)
 	case *NanNode:
+		walkComment(v, n.BaseNode)
 	case *LiteralNode:
+		walkComment(v, n.BaseNode)
 		Walk(v, n.Value)
 	case *DirectiveNode:
+		walkComment(v, n.BaseNode)
 		Walk(v, n.Value)
 	case *TagNode:
+		walkComment(v, n.BaseNode)
 		Walk(v, n.Value)
 	case *DocumentNode:
+		walkComment(v, n.BaseNode)
 		Walk(v, n.Body)
 	case *MappingNode:
+		walkComment(v, n.BaseNode)
 		for _, value := range n.Values {
 			Walk(v, value)
 		}
 	case *MappingKeyNode:
+		walkComment(v, n.BaseNode)
 		Walk(v, n.Value)
 	case *MappingValueNode:
+		walkComment(v, n.BaseNode)
 		Walk(v, n.Key)
 		Walk(v, n.Value)
 	case *SequenceNode:
+		walkComment(v, n.BaseNode)
 		for _, value := range n.Values {
 			Walk(v, value)
 		}
 	case *AnchorNode:
+		walkComment(v, n.BaseNode)
 		Walk(v, n.Name)
 		Walk(v, n.Value)
 	case *AliasNode:
+		walkComment(v, n.BaseNode)
 		Walk(v, n.Value)
 	}
+}
+
+func walkComment(v Visitor, base *BaseNode) {
+	if base == nil {
+		return
+	}
+	if base.Comment == nil {
+		return
+	}
+	Walk(v, base.Comment)
 }
 
 type filterWalker struct {

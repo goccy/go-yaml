@@ -1,13 +1,42 @@
 package parser
 
-import "github.com/goccy/go-yaml/token"
+import (
+	"fmt"
+
+	"github.com/goccy/go-yaml/token"
+)
 
 // context context at parsing
 type context struct {
+	parent *context
 	idx    int
 	size   int
 	tokens token.Tokens
 	mode   Mode
+	path   string
+}
+
+func (c *context) withChild(path string) *context {
+	ctx := c.copy()
+	ctx.path += fmt.Sprintf(".%s", path)
+	return ctx
+}
+
+func (c *context) withIndex(idx uint) *context {
+	ctx := c.copy()
+	ctx.path += fmt.Sprintf("[%d]", idx)
+	return ctx
+}
+
+func (c *context) copy() *context {
+	return &context{
+		parent: c,
+		idx:    c.idx,
+		size:   c.size,
+		tokens: append(token.Tokens{}, c.tokens...),
+		mode:   c.mode,
+		path:   c.path,
+	}
 }
 
 func (c *context) next() bool {
@@ -22,6 +51,9 @@ func (c *context) previousToken() *token.Token {
 }
 
 func (c *context) insertToken(idx int, tk *token.Token) {
+	if c.parent != nil {
+		c.parent.insertToken(idx, tk)
+	}
 	if c.size < idx {
 		return
 	}
@@ -104,6 +136,9 @@ func (c *context) isCurrentCommentToken() bool {
 }
 
 func (c *context) progressIgnoreComment(num int) {
+	if c.parent != nil {
+		c.parent.progressIgnoreComment(num)
+	}
 	if c.size <= c.idx+num {
 		c.idx = c.size
 	} else {
@@ -135,5 +170,6 @@ func newContext(tokens token.Tokens, mode Mode) *context {
 		size:   len(filteredTokens),
 		tokens: filteredTokens,
 		mode:   mode,
+		path:   "$",
 	}
 }

@@ -1,3 +1,23 @@
+## v1.9.3 - 2021-09-07
+
+### New Features
+
+* Support encoding and decoding `time.Duration` fields ( #246 )
+* Allow reserved characters for key name in YAMLPath ( #251 )
+* Support getting YAMLPath from ast.Node ( #252 )
+* Support CommentToMap option ( #253 )
+
+### Fix bugs
+
+* Fix encoding nested sequences with `yaml.IndentSequence` ( #241 )
+* Fix error reporting on inline structs in strict mode ( #244, #245 )
+* Fix encoding of large floats ( #247 )
+
+### Improve workflow
+
+* Migrate CI from CircleCI to GitHub Action ( #249 )
+* Add workflow for ycat ( #250 )
+
 ## v1.9.2 - 2021-07-26
 
 ### Support WithComment option ( #238 )

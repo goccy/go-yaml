@@ -793,11 +793,22 @@ func (n *StringNode) GetValue() interface{} {
 	return n.Value
 }
 
+// escapeSingleQuote escapes s to a single quoted scalar.
+// https://yaml.org/spec/1.2.2/#732-single-quoted-style
+func escapeSingleQuote(s string) string {
+	var sb strings.Builder
+	sb.Grow(2+strings.Count(s, "'")*2)
+	sb.WriteString("'")
+	sb.WriteString(strings.ReplaceAll(s, "'", "''"))
+	sb.WriteString("'")
+	return sb.String()
+}
+
 // String string value to text with quote or literal header if required
 func (n *StringNode) String() string {
 	switch n.Token.Type {
 	case token.SingleQuoteType:
-		quoted := fmt.Sprintf(`'%s'`, n.Value)
+		quoted := escapeSingleQuote(n.Value)
 		if n.Comment != nil {
 			return addCommentString(quoted, n.Comment)
 		}

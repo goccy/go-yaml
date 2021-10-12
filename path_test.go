@@ -13,6 +13,43 @@ import (
 
 func builder() *yaml.PathBuilder { return &yaml.PathBuilder{} }
 
+func TestPathBuilder(t *testing.T) {
+	tests := []struct {
+		expected string
+		path     *yaml.Path
+	}{
+		{
+			expected: `$.a.b[0]`,
+			path:     builder().Root().Child("a").Child("b").Index(0).Build(),
+		},
+		{
+			expected: `$.'a.b'.'c*d'`,
+			path:     builder().Root().Child("a.b").Child("c*d").Build(),
+		},
+		{
+			expected: `$.'a.b-*'.c`,
+			path:     builder().Root().Child("a.b-*").Child("c").Build(),
+		},
+		{
+			expected: `$.'a'.b`,
+			path:     builder().Root().Child("'a'").Child("b").Build(),
+		},
+		{
+			expected: `$.'a.b'.c`,
+			path:     builder().Root().Child("'a.b'").Child("c").Build(),
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.expected, func(t *testing.T) {
+			expected := test.expected
+			got := test.path.String()
+			if expected != got {
+				t.Fatalf("failed to build path. expected:[%q] but got:[%q]", expected, got)
+			}
+		})
+	}
+}
+
 func TestPath(t *testing.T) {
 	yml := `
 store:

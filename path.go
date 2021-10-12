@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"strconv"
+	"strings"
 
 	"github.com/goccy/go-yaml/ast"
 	"github.com/goccy/go-yaml/internal/errors"
@@ -386,9 +387,35 @@ func (b *PathBuilder) Recursive(selector string) *PathBuilder {
 	return b
 }
 
+func (b *PathBuilder) containsReservedPathCharacters(path string) bool {
+	if strings.Contains(path, ".") {
+		return true
+	}
+	if strings.Contains(path, "*") {
+		return true
+	}
+	return false
+}
+
+func (b *PathBuilder) enclosedSingleQuote(name string) bool {
+	return strings.HasPrefix(name, "'") && strings.HasSuffix(name, "'")
+}
+
+func (b *PathBuilder) normalizeSelectorName(name string) string {
+	if b.enclosedSingleQuote(name) {
+		// already escaped name
+		return name
+	}
+	if b.containsReservedPathCharacters(name) {
+		escapedName := strings.ReplaceAll(name, `'`, `\'`)
+		return "'" + escapedName + "'"
+	}
+	return name
+}
+
 // Child add '.name' to current path.
 func (b *PathBuilder) Child(name string) *PathBuilder {
-	b.node = b.node.chain(newSelectorNode(name))
+	b.node = b.node.chain(newSelectorNode(b.normalizeSelectorName(name)))
 	return b
 }
 

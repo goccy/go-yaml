@@ -1,3 +1,10 @@
+## v1.9.4 - 2021-10-12
+
+### Fix bugs
+
+* Keep prev/next reference between tokens containing comments when filtering comment tokens ( #257 )
+* Supports escaping reserved keywords in PathBuilder ( #258 )
+
 ## v1.9.3 - 2021-09-07
 
 ### New Features

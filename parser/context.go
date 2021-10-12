@@ -176,7 +176,7 @@ func (c *context) progress(num int) {
 }
 
 func newContext(tokens token.Tokens, mode Mode) *context {
-	filteredTokens := token.Tokens{}
+	filteredTokens := []*token.Token{}
 	if mode&ParseComments != 0 {
 		filteredTokens = tokens
 	} else {
@@ -184,13 +184,15 @@ func newContext(tokens token.Tokens, mode Mode) *context {
 			if tk.Type == token.CommentType {
 				continue
 			}
-			filteredTokens.Add(tk)
+			// keep prev/next reference between tokens containing comments
+			// https://github.com/goccy/go-yaml/issues/254
+			filteredTokens = append(filteredTokens, tk)
 		}
 	}
 	return &context{
 		idx:    0,
 		size:   len(filteredTokens),
-		tokens: filteredTokens,
+		tokens: token.Tokens(filteredTokens),
 		mode:   mode,
 		path:   "$",
 	}

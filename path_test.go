@@ -565,6 +565,37 @@ b: "hello"
 	//    3 | b: "hello"
 }
 
+func ExamplePath_AnnotateSourceWithComment() {
+	yml := `
+# This is my document
+doc:
+  # This comment should be line 3
+  map:
+    # And below should be line 5
+    - value1
+    - value2
+  other: value3
+	`
+	path, err := yaml.PathString("$.doc.map[0]")
+	if err != nil {
+		log.Fatal(err)
+	}
+	msg, err := path.AnnotateSource([]byte(yml), false)
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Println(string(msg))
+	// OUTPUT:
+	//    4 |   # This comment should be line 3
+	//    5 |   map:
+	//    6 |     # And below should be line 5
+	// >  7 |     - value1
+	//              ^
+	//    8 |     - value2
+	//    9 |   other: value3
+	//   10 |
+}
+
 func ExamplePath_PathString() {
 	yml := `
 store:

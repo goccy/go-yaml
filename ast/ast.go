@@ -797,7 +797,10 @@ func (n *StringNode) GetValue() interface{} {
 // https://yaml.org/spec/1.2.2/#732-single-quoted-style
 func escapeSingleQuote(s string) string {
 	var sb strings.Builder
-	sb.Grow(2+strings.Count(s, "'")*2)
+	growLen := len(s) + // s includes also one ' from the doubled pair
+		2 + // opening and closing '
+		strings.Count(s, "'") // ' added by ReplaceAll
+	sb.Grow(growLen)
 	sb.WriteString("'")
 	sb.WriteString(strings.ReplaceAll(s, "'", "''"))
 	sb.WriteString("'")

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"strconv"
+	"strings"
 
 	"github.com/goccy/go-yaml/ast"
 	"github.com/goccy/go-yaml/internal/errors"
@@ -115,7 +116,7 @@ end:
 	if start == cursor {
 		return nil, nil, 0, errors.Wrapf(ErrInvalidPathString, "cloud not find by empty key")
 	}
-	return b.Child(string(buf[start:cursor])), buf, cursor, nil
+	return b.child(string(buf[start:cursor])), buf, cursor, nil
 }
 
 func parseQuotedKey(b *PathBuilder, buf []rune, cursor int) (*PathBuilder, []rune, int, error) {
@@ -152,7 +153,7 @@ end:
 			return nil, nil, 0, errors.Wrapf(ErrInvalidPathString, "specified ']' after '.' character")
 		}
 	}
-	return b.Child(string(selector)), buf, cursor, nil
+	return b.child(string(selector)), buf, cursor, nil
 }
 
 func parsePathIndex(b *PathBuilder, buf []rune, cursor int) (*PathBuilder, []rune, int, error) {
@@ -386,10 +387,40 @@ func (b *PathBuilder) Recursive(selector string) *PathBuilder {
 	return b
 }
 
-// Child add '.name' to current path.
-func (b *PathBuilder) Child(name string) *PathBuilder {
+func (b *PathBuilder) containsReservedPathCharacters(path string) bool {
+	if strings.Contains(path, ".") {
+		return true
+	}
+	if strings.Contains(path, "*") {
+		return true
+	}
+	return false
+}
+
+func (b *PathBuilder) enclosedSingleQuote(name string) bool {
+	return strings.HasPrefix(name, "'") && strings.HasSuffix(name, "'")
+}
+
+func (b *PathBuilder) normalizeSelectorName(name string) string {
+	if b.enclosedSingleQuote(name) {
+		// already escaped name
+		return name
+	}
+	if b.containsReservedPathCharacters(name) {
+		escapedName := strings.ReplaceAll(name, `'`, `\'`)
+		return "'" + escapedName + "'"
+	}
+	return name
+}
+
+func (b *PathBuilder) child(name string) *PathBuilder {
 	b.node = b.node.chain(newSelectorNode(name))
 	return b
+}
+
+// Child add '.name' to current path.
+func (b *PathBuilder) Child(name string) *PathBuilder {
+	return b.child(b.normalizeSelectorName(name))
 }
 
 // Index add '[idx]' to current path.

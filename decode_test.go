@@ -1692,13 +1692,63 @@ func TestDecoder_DefaultValues(t *testing.T) {
 		A string `yaml:"a"`
 		B string `yaml:"b"`
 		c string // private
+		D struct {
+			E string `yaml:"e"`
+			F struct {
+				G string `yaml:"g"`
+			} `yaml:"f"`
+			H struct {
+				I string `yaml:"i"`
+			} `yaml:",inline"`
+		} `yaml:"d"`
+		J struct {
+			K string `yaml:"k"`
+			L struct {
+				M string `yaml:"m"`
+			} `yaml:"l"`
+			N struct {
+				O string `yaml:"o"`
+			} `yaml:",inline"`
+		} `yaml:",inline"`
+		P struct {
+			Q string `yaml:"q"`
+			R struct {
+				S string `yaml:"s"`
+			} `yaml:"r"`
+			T struct {
+				U string `yaml:"u"`
+			} `yaml:",inline"`
+		} `yaml:"p"`
+		V struct {
+			W string `yaml:"w"`
+			X struct {
+				Y string `yaml:"y"`
+			} `yaml:"x"`
+			Z struct {
+				Ä string `yaml:"ä"`
+			} `yaml:",inline"`
+		} `yaml:",inline"`
 	}{
 		B: "defaultBValue",
 		c: "defaultCValue",
 	}
 
+	v.D.E = "defaultEValue"
+	v.D.F.G = "defaultGValue"
+	v.D.H.I = "defaultIValue"
+	v.J.K = "defaultKValue"
+	v.J.L.M = "defaultMValue"
+	v.J.N.O = "defaultOValue"
+	v.P.R.S = "defaultSValue"
+	v.P.T.U = "defaultUValue"
+	v.V.X.Y = "defaultYValue"
+	v.V.Z.Ä = "defaultÄValue"
+
 	const src = `---
 a: a_value
+p:
+   q: q_value
+w: w_value
 `
 	if err := yaml.NewDecoder(strings.NewReader(src)).Decode(&v); err != nil {
 		t.Fatalf(`parsing should succeed: %s`, err)
@@ -1713,6 +1763,54 @@ a: a_value
 
 	if v.c != "defaultCValue" {
 		t.Fatalf("v.c should be `defaultCValue`, got `%s`", v.c)
+	}
+
+	if v.D.E != "defaultEValue" {
+		t.Fatalf("v.D.E should be `defaultEValue`, got `%s`", v.D.E)
+	}
+
+	if v.D.F.G != "defaultGValue" {
+		t.Fatalf("v.D.F.G should be `defaultGValue`, got `%s`", v.D.F.G)
+	}
+
+	if v.D.H.I != "defaultIValue" {
+		t.Fatalf("v.D.H.I should be `defaultIValue`, got `%s`", v.D.H.I)
+	}
+
+	if v.J.K != "defaultKValue" {
+		t.Fatalf("v.J.K should be `defaultKValue`, got `%s`", v.J.K)
+	}
+
+	if v.J.L.M != "defaultMValue" {
+		t.Fatalf("v.J.L.M should be `defaultMValue`, got `%s`", v.J.L.M)
+	}
+
+	if v.J.N.O != "defaultOValue" {
+		t.Fatalf("v.J.N.O should be `defaultOValue`, got `%s`", v.J.N.O)
+	}
+
+	if v.P.Q != "q_value" {
+		t.Fatalf("v.P.Q should be `q_value`, got `%s`", v.P.Q)
+	}
+
+	if v.P.R.S != "defaultSValue" {
+		t.Fatalf("v.P.R.S should be `defaultSValue`, got `%s`", v.P.R.S)
+	}
+
+	if v.P.T.U != "defaultUValue" {
+		t.Fatalf("v.P.T.U should be `defaultUValue`, got `%s`", v.P.T.U)
+	}
+
+	if v.V.W != "w_value" {
+		t.Fatalf("v.V.W should be `w_value`, got `%s`", v.V.W)
+	}
+
+	if v.V.X.Y != "defaultYValue" {
+		t.Fatalf("v.V.X.Y should be `defaultYValue`, got `%s`", v.V.X.Y)
+	}
+
+	if v.V.Z.Ä != "defaultÄValue" {
+		t.Fatalf("v.V.Z.Ä should be `defaultÄValue`, got `%s`", v.V.Z.Ä)
 	}
 }
 

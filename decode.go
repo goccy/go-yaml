@@ -776,7 +776,9 @@ func (d *Decoder) castToAssignableValue(value reflect.Value, target reflect.Type
 	return value
 }
 
-func (d *Decoder) createDecodedNewValue(ctx context.Context, typ reflect.Type, node ast.Node) (reflect.Value, error) {
+func (d *Decoder) createDecodedNewValue(
+	ctx context.Context, typ reflect.Type, defaultVal reflect.Value, node ast.Node,
+) (reflect.Value, error) {
 	if node.Type() == ast.AliasType {
 		aliasName := node.(*ast.AliasNode).Value.GetToken().Value
 		newValue := d.anchorValueMap[aliasName]
@@ -788,6 +790,12 @@ func (d *Decoder) createDecodedNewValue(ctx context.Context, typ reflect.Type, n
 		return reflect.Zero(typ), nil
 	}
 	newValue := d.createDecodableValue(typ)
+	for defaultVal.Kind() == reflect.Ptr {
+		defaultVal = defaultVal.Elem()
+	}
+	if defaultVal.IsValid() && defaultVal.Type().AssignableTo(newValue.Type()) {
+		newValue.Set(defaultVal)
+	}
 	if err := d.decodeValue(ctx, newValue, node); err != nil {
 		return newValue, errors.Wrapf(err, "failed to decode value")
 	}
@@ -1033,7 +1041,7 @@ func (d *Decoder) decodeStruct(ctx context.Context, dst reflect.Value, src ast.N
 				key := &ast.StringNode{BaseNode: &ast.BaseNode{}, Value: k}
 				mapNode.Values = append(mapNode.Values, ast.MappingValue(nil, key, v))
 			}
-			newFieldValue, err := d.createDecodedNewValue(ctx, fieldValue.Type(), mapNode)
+			newFieldValue, err := d.createDecodedNewValue(ctx, fieldValue.Type(), fieldValue, mapNode)
 			if d.disallowUnknownField {
 				if err := d.deleteStructKeys(fieldValue.Type(), unknownFields); err != nil {
 					return errors.Wrapf(err, "cannot delete struct keys")
@@ -1075,7 +1083,7 @@ func (d *Decoder) decodeStruct(ctx context.Context, dst reflect.Value, src ast.N
 			fieldValue.Set(reflect.Zero(fieldValue.Type()))
 			continue
 		}
-		newFieldValue, err := d.createDecodedNewValue(ctx, fieldValue.Type(), v)
+		newFieldValue, err := d.createDecodedNewValue(ctx, fieldValue.Type(), fieldValue, v)
 		if err != nil {
 			if foundErr != nil {
 				continue
@@ -1156,7 +1164,7 @@ func (d *Decoder) decodeArray(ctx context.Context, dst reflect.Value, src ast.No
 			// set nil value to pointer
 			arrayValue.Index(idx).Set(reflect.Zero(elemType))
 		} else {
-			dstValue, err := d.createDecodedNewValue(ctx, elemType, v)
+			dstValue, err := d.createDecodedNewValue(ctx, elemType, reflect.Value{}, v)
 			if err != nil {
 				if foundErr == nil {
 					foundErr = err
@@ -1196,7 +1204,7 @@ func (d *Decoder) decodeSlice(ctx context.Context, dst reflect.Value, src ast.No
 			sliceValue = reflect.Append(sliceValue, reflect.Zero(elemType))
 			continue
 		}
-		dstValue, err := d.createDecodedNewValue(ctx, elemType, v)
+		dstValue, err := d.createDecodedNewValue(ctx, elemType, reflect.Value{}, v)
 		if err != nil {
 			if foundErr == nil {
 				foundErr = err
@@ -1338,7 +1346,7 @@ func (d *Decoder) decodeMap(ctx context.Context, dst reflect.Value, src ast.Node
 			mapValue.SetMapIndex(k, reflect.Zero(valueType))
 			continue
 		}
-		dstValue, err := d.createDecodedNewValue(ctx, valueType, value)
+		dstValue, err := d.createDecodedNewValue(ctx, valueType, reflect.Value{}, value)
 		if err != nil {
 			if foundErr == nil {
 				foundErr = err

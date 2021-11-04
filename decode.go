@@ -1540,7 +1540,7 @@ func (d *Decoder) DecodeContext(ctx context.Context, v interface{}) error {
 		return nil
 	}
 	if err := d.decodeInit(); err != nil {
-		return errors.Wrapf(err, "failed to decodInit")
+		return errors.Wrapf(err, "failed to decodeInit")
 	}
 	if err := d.decode(ctx, rv); err != nil {
 		if err == io.EOF {

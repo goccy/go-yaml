@@ -113,6 +113,14 @@ func IndentSequence(indent bool) EncodeOption {
 	}
 }
 
+// UseSingleQuote determines if single or double quotes should be preferred for strings.
+func UseSingleQuote(sq bool) EncodeOption {
+	return func(e *Encoder) error {
+		e.singleQuote = sq
+		return nil
+	}
+}
+
 // Flow encoding by flow style
 func Flow(isFlowStyle bool) EncodeOption {
 	return func(e *Encoder) error {

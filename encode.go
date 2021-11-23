@@ -405,6 +405,9 @@ func (e *Encoder) isNeedQuoted(v string) bool {
 	if e.useLiteralStyleIfMultiline && strings.ContainsAny(v, "\n\r") {
 		return false
 	}
+	if e.isFlowStyle && strings.ContainsAny(v, `]},'"`) {
+		return true
+	}
 	if token.IsNeedQuoted(v) {
 		return true
 	}
@@ -623,19 +626,18 @@ func (e *Encoder) encodeStruct(ctx context.Context, value reflect.Value, column 
 			// omit encoding
 			continue
 		}
-		value, err := e.encodeValue(ctx, fieldValue, column)
+		ve := e
+		if !e.isFlowStyle && structField.IsFlow {
+			ve = &Encoder{}
+			*ve = *e
+			ve.isFlowStyle = true
+		}
+		value, err := ve.encodeValue(ctx, fieldValue, column)
 		if err != nil {
 			return nil, errors.Wrapf(err, "failed to encode value")
 		}
-		if m, ok := value.(*ast.MappingNode); ok {
-			if !e.isFlowStyle && structField.IsFlow {
-				m.SetIsFlowStyle(true)
-			}
+		if _, ok := value.(*ast.MappingNode); ok {
 			value.AddColumn(e.indent)
-		} else if s, ok := value.(*ast.SequenceNode); ok {
-			if !e.isFlowStyle && structField.IsFlow {
-				s.SetIsFlowStyle(true)
-			}
 		}
 		key := e.encodeString(structField.RenderName, column)
 		switch {

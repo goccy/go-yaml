@@ -645,6 +645,19 @@ a
        ^
 `,
 		},
+		{
+			`
+a:
+- b: c
+- `,
+			`
+[4:1] empty sequence entry
+   2 | a:
+   3 | - b: c
+>  4 | -
+       ^
+`,
+		},
 	}
 	for _, test := range tests {
 		t.Run(test.source, func(t *testing.T) {

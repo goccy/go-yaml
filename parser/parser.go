@@ -281,6 +281,9 @@ func (p *parser) parseSequenceEntry(ctx *context) (ast.Node, error) {
 	for tk.Type == token.SequenceEntryType {
 		ctx.progress(1) // skip sequence token
 		tk = ctx.currentToken()
+		if tk == nil {
+			return nil, errors.ErrSyntax("empty sequence entry", ctx.previousToken())
+		}
 		var comment *ast.CommentGroupNode
 		if tk.Type == token.CommentType {
 			comment = p.parseCommentOnly(ctx)

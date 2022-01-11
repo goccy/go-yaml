@@ -1586,6 +1586,12 @@ func (n *SequenceNode) blockStyleString() string {
 		splittedValues := strings.Split(valueStr, "\n")
 		trimmedFirstValue := strings.TrimLeft(splittedValues[0], " ")
 		diffLength := len(splittedValues[0]) - len(trimmedFirstValue)
+		if len(splittedValues) > 1 && value.Type() == StringType || value.Type() == LiteralType {
+			// If multi-line string, the space characters for indent have already been added, so delete them.
+			for i := 1; i < len(splittedValues); i++ {
+				splittedValues[i] = strings.TrimLeft(splittedValues[i], " ")
+			}
+		}
 		newValues := []string{trimmedFirstValue}
 		for i := 1; i < len(splittedValues); i++ {
 			if len(splittedValues[i]) <= diffLength {

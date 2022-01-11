@@ -1348,3 +1348,32 @@ line3`},
 		}
 	})
 }
+
+type bytesMarshaler struct{}
+
+func (b *bytesMarshaler) MarshalYAML() ([]byte, error) {
+	return yaml.Marshal(map[string]interface{}{"d": "foo"})
+}
+
+func TestBytesMarshaler(t *testing.T) {
+	b, err := yaml.Marshal(map[string]interface{}{
+		"a": map[string]interface{}{
+			"b": map[string]interface{}{
+				"c": &bytesMarshaler{},
+			},
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	expected := `
+a:
+  b:
+    c:
+      d: foo
+`
+	got := "\n" + string(b)
+	if expected != got {
+		t.Fatalf("failed to encode. expected %s but got %s", expected, got)
+	}
+}

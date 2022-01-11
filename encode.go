@@ -510,8 +510,8 @@ func (e *Encoder) encodeMap(ctx context.Context, value reflect.Value, column int
 		if err != nil {
 			return nil
 		}
-		if m, ok := value.(*ast.MappingNode); ok {
-			m.AddColumn(e.indent)
+		if value.Type() == ast.MappingType || value.Type() == ast.MappingValueType {
+			value.AddColumn(e.indent)
 		}
 		node.Values = append(node.Values, ast.MappingValue(
 			nil,

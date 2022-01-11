@@ -549,23 +549,40 @@ a: |+
 b: c
 `,
 		},
+		{
+			`
+- key1: val
+  key2:
+    (
+      foo
+      +
+      bar
+    )
+`,
+			`
+- key1: val
+  key2: ( foo + bar )
+`,
+		},
 	}
 
 	for _, test := range tests {
-		tokens := lexer.Tokenize(test.source)
-		f, err := parser.Parse(tokens, 0)
-		if err != nil {
-			t.Fatalf("%+v", err)
-		}
-		var v Visitor
-		for _, doc := range f.Docs {
-			ast.Walk(&v, doc.Body)
-		}
-		expect := fmt.Sprintf("\n%+v\n", f)
-		if test.expect != expect {
-			tokens.Dump()
-			t.Fatalf("unexpected output: [%s] != [%s]", test.expect, expect)
-		}
+		t.Run(test.source, func(t *testing.T) {
+			tokens := lexer.Tokenize(test.source)
+			f, err := parser.Parse(tokens, 0)
+			if err != nil {
+				t.Fatalf("%+v", err)
+			}
+			var v Visitor
+			for _, doc := range f.Docs {
+				ast.Walk(&v, doc.Body)
+			}
+			expect := fmt.Sprintf("\n%+v\n", f)
+			if test.expect != expect {
+				tokens.Dump()
+				t.Fatalf("unexpected output: [%s] != [%s]", test.expect, expect)
+			}
+		})
 	}
 }
 

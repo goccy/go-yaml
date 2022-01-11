@@ -1302,3 +1302,49 @@ func Example_MarshalYAML() {
 	//
 	// field: 13
 }
+
+func TestMarshalIndentWithMultipleText(t *testing.T) {
+	t.Run("depth1", func(t *testing.T) {
+		b, err := yaml.MarshalWithOptions(map[string]interface{}{
+			"key": []string{`line1
+line2
+line3`},
+		}, yaml.Indent(2))
+		if err != nil {
+			t.Fatal(err)
+		}
+		got := string(b)
+		expected := `key:
+- |-
+  line1
+  line2
+  line3
+`
+		if expected != got {
+			t.Fatalf("failed to encode.\nexpected:\n%s\nbut got:\n%s\n", expected, got)
+		}
+	})
+	t.Run("depth2", func(t *testing.T) {
+		b, err := yaml.MarshalWithOptions(map[string]interface{}{
+			"key": map[string]interface{}{
+				"key2": []string{`line1
+line2
+line3`},
+			},
+		}, yaml.Indent(2))
+		if err != nil {
+			t.Fatal(err)
+		}
+		got := string(b)
+		expected := `key:
+  key2:
+  - |-
+    line1
+    line2
+    line3
+`
+		if expected != got {
+			t.Fatalf("failed to encode.\nexpected:\n%s\nbut got:\n%s\n", expected, got)
+		}
+	})
+}

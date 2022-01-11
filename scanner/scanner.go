@@ -149,9 +149,9 @@ func (s *Scanner) updateIndentState(ctx *Context) {
 		} else if s.prevIndentColumn != s.column || indentNumBasedIndentState != IndentStateEqual {
 			// The following case ( current position is 'd' ), some variables becomes like here
 			// - prevIndentColumn: 1 of 'a'
-			// - indentState: IndentStateEqual because 'b' and 'c' is same indentNum
+			// - indentNumBasedIndentState: IndentStateDown because d's indentNum(1) is less than c's indentNum(3).
 			// Therefore, s.prevIndentColumn(1) == s.column(1) is true, but we want to treat this as IndentStateDown.
-			// So, we look current IndentState value by the above prevIndentNum based logic, and determins finally indentState.
+			// So, we look also current indentState value by the above prevIndentNum based logic, and determins finally indentState.
 			// ---
 			// a:
 			//   b

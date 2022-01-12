@@ -1,3 +1,18 @@
+## v1.9.5 - 2022-01-12
+
+### New Features
+
+* Add UseSingleQuote option ( #265 )
+
+### Fix bugs
+
+* Preserve defaults while decoding nested structs ( #260 )
+* Fix minor typo in decodeInit error ( #264 )
+* Handle empty sequence entries ( #275 )
+* Fix encoding of sequence with multiline string ( #276 )
+* Fix encoding of BytesMarshaler type ( #277 )
+* Fix indentState logic for multi-line value ( #278 )
+
 ## v1.9.4 - 2021-10-12
 
 ### Fix bugs

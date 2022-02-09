@@ -18,6 +18,7 @@ import (
 	"github.com/goccy/go-yaml/ast"
 	"github.com/goccy/go-yaml/internal/errors"
 	"github.com/goccy/go-yaml/parser"
+	"github.com/goccy/go-yaml/printer"
 	"github.com/goccy/go-yaml/token"
 	"golang.org/x/xerrors"
 )
@@ -367,10 +368,10 @@ func (d *Decoder) fileToNode(f *ast.File) ast.Node {
 	return nil
 }
 
-func (d *Decoder) convertValue(v reflect.Value, typ reflect.Type) (reflect.Value, error) {
+func (d *Decoder) convertValue(v reflect.Value, typ reflect.Type, src ast.Node) (reflect.Value, error) {
 	if typ.Kind() != reflect.String {
 		if !v.Type().ConvertibleTo(typ) {
-			return reflect.Zero(typ), errTypeMismatch(typ, v.Type())
+			return reflect.Zero(typ), errTypeMismatch(typ, v.Type(), src.GetToken())
 		}
 		return v.Convert(typ), nil
 	}
@@ -386,7 +387,7 @@ func (d *Decoder) convertValue(v reflect.Value, typ reflect.Type) (reflect.Value
 		return reflect.ValueOf(fmt.Sprint(v.Bool())), nil
 	}
 	if !v.Type().ConvertibleTo(typ) {
-		return reflect.Zero(typ), errTypeMismatch(typ, v.Type())
+		return reflect.Zero(typ), errTypeMismatch(typ, v.Type(), src.GetToken())
 	}
 	return v.Convert(typ), nil
 }
@@ -408,6 +409,7 @@ type typeError struct {
 	dstType         reflect.Type
 	srcType         reflect.Type
 	structFieldName *string
+	token           *token.Token
 }
 
 func (e *typeError) Error() string {
@@ -417,8 +419,31 @@ func (e *typeError) Error() string {
 	return fmt.Sprintf("cannot unmarshal %s into Go value of type %s", e.srcType, e.dstType)
 }
 
-func errTypeMismatch(dstType, srcType reflect.Type) *typeError {
-	return &typeError{dstType: dstType, srcType: srcType}
+func (e *typeError) PrettyPrint(p xerrors.Printer, colored, inclSource bool) error {
+	return e.FormatError(&errors.FormatErrorPrinter{Printer: p, Colored: colored, InclSource: inclSource})
+}
+
+func (e *typeError) FormatError(p xerrors.Printer) error {
+	var pp printer.Printer
+
+	var colored, inclSource bool
+	if fep, ok := p.(*errors.FormatErrorPrinter); ok {
+		colored = fep.Colored
+		inclSource = fep.InclSource
+	}
+
+	pos := fmt.Sprintf("[%d:%d] ", e.token.Position.Line, e.token.Position.Column)
+	msg := pp.PrintErrorMessage(fmt.Sprintf("%s%s", pos, e.Error()), colored)
+	if inclSource {
+		msg += "\n" + pp.PrintErrorToken(e.token, colored)
+	}
+	p.Print(msg)
+
+	return nil
+}
+
+func errTypeMismatch(dstType, srcType reflect.Type, token *token.Token) *typeError {
+	return &typeError{dstType: dstType, srcType: srcType, token: token}
 }
 
 type unknownFieldError struct {
@@ -709,7 +734,7 @@ func (d *Decoder) decodeValue(ctx context.Context, dst reflect.Value, src ast.No
 				return nil
 			}
 		default:
-			return errTypeMismatch(valueType, reflect.TypeOf(v))
+			return errTypeMismatch(valueType, reflect.TypeOf(v), src.GetToken())
 		}
 		return errOverflow(valueType, fmt.Sprint(v))
 	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
@@ -731,13 +756,13 @@ func (d *Decoder) decodeValue(ctx context.Context, dst reflect.Value, src ast.No
 				return nil
 			}
 		default:
-			return errTypeMismatch(valueType, reflect.TypeOf(v))
+			return errTypeMismatch(valueType, reflect.TypeOf(v), src.GetToken())
 		}
 		return errOverflow(valueType, fmt.Sprint(v))
 	}
 	v := reflect.ValueOf(d.nodeToValue(src))
 	if v.IsValid() {
-		convertedValue, err := d.convertValue(v, dst.Type())
+		convertedValue, err := d.convertValue(v, dst.Type(), src)
 		if err != nil {
 			return errors.Wrapf(err, "failed to convert value")
 		}
@@ -905,7 +930,7 @@ func (d *Decoder) castToTime(src ast.Node) (time.Time, error) {
 	}
 	s, ok := v.(string)
 	if !ok {
-		return time.Time{}, errTypeMismatch(reflect.TypeOf(time.Time{}), reflect.TypeOf(v))
+		return time.Time{}, errTypeMismatch(reflect.TypeOf(time.Time{}), reflect.TypeOf(v), src.GetToken())
 	}
 	for _, format := range allowedTimestampFormats {
 		t, err := time.Parse(format, s)
@@ -937,7 +962,7 @@ func (d *Decoder) castToDuration(src ast.Node) (time.Duration, error) {
 	}
 	s, ok := v.(string)
 	if !ok {
-		return 0, errTypeMismatch(reflect.TypeOf(time.Duration(0)), reflect.TypeOf(v))
+		return 0, errTypeMismatch(reflect.TypeOf(time.Duration(0)), reflect.TypeOf(v), src.GetToken())
 	}
 	t, err := time.ParseDuration(s)
 	if err != nil {

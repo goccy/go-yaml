@@ -67,10 +67,10 @@ type wrapError struct {
 	frame   xerrors.Frame
 }
 
-type myprinter struct {
+type FormatErrorPrinter struct {
 	xerrors.Printer
-	colored    bool
-	inclSource bool
+	Colored    bool
+	InclSource bool
 }
 
 func (e *wrapError) As(target interface{}) bool {
@@ -90,15 +90,15 @@ func (e *wrapError) Unwrap() error {
 }
 
 func (e *wrapError) PrettyPrint(p xerrors.Printer, colored, inclSource bool) error {
-	return e.FormatError(&myprinter{Printer: p, colored: colored, inclSource: inclSource})
+	return e.FormatError(&FormatErrorPrinter{Printer: p, Colored: colored, InclSource: inclSource})
 }
 
 func (e *wrapError) FormatError(p xerrors.Printer) error {
-	if _, ok := p.(*myprinter); !ok {
-		p = &myprinter{
+	if _, ok := p.(*FormatErrorPrinter); !ok {
+		p = &FormatErrorPrinter{
 			Printer:    p,
-			colored:    defaultColorize,
-			inclSource: defaultIncludeSource,
+			Colored:    defaultColorize,
+			InclSource: defaultIncludeSource,
 		}
 	}
 	if e.verb == 'v' && e.state.Flag('+') {
@@ -171,16 +171,16 @@ type syntaxError struct {
 }
 
 func (e *syntaxError) PrettyPrint(p xerrors.Printer, colored, inclSource bool) error {
-	return e.FormatError(&myprinter{Printer: p, colored: colored, inclSource: inclSource})
+	return e.FormatError(&FormatErrorPrinter{Printer: p, Colored: colored, InclSource: inclSource})
 }
 
 func (e *syntaxError) FormatError(p xerrors.Printer) error {
 	var pp printer.Printer
 
 	var colored, inclSource bool
-	if mp, ok := p.(*myprinter); ok {
-		colored = mp.colored
-		inclSource = mp.inclSource
+	if fep, ok := p.(*FormatErrorPrinter); ok {
+		colored = fep.Colored
+		inclSource = fep.InclSource
 	}
 
 	pos := fmt.Sprintf("[%d:%d] ", e.token.Position.Line, e.token.Position.Column)

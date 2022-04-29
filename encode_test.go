@@ -65,7 +65,7 @@ func TestEncoder(t *testing.T) {
 		},
 		{
 			"v: 4294967296\n",
-			map[string]int{"v": 4294967296},
+			map[string]int64{"v": int64(4294967296)},
 			nil,
 		},
 		{

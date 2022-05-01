@@ -12,41 +12,41 @@ const (
 	// SequenceEntryCharacter character for sequence entry
 	SequenceEntryCharacter Character = '-'
 	// MappingKeyCharacter character for mapping key
-	MappingKeyCharacter = '?'
+	MappingKeyCharacter Character = '?'
 	// MappingValueCharacter character for mapping value
-	MappingValueCharacter = ':'
+	MappingValueCharacter Character = ':'
 	// CollectEntryCharacter character for collect entry
-	CollectEntryCharacter = ','
+	CollectEntryCharacter Character = ','
 	// SequenceStartCharacter character for sequence start
-	SequenceStartCharacter = '['
+	SequenceStartCharacter Character = '['
 	// SequenceEndCharacter character for sequence end
-	SequenceEndCharacter = ']'
+	SequenceEndCharacter Character = ']'
 	// MappingStartCharacter character for mapping start
-	MappingStartCharacter = '{'
+	MappingStartCharacter Character = '{'
 	// MappingEndCharacter character for mapping end
-	MappingEndCharacter = '}'
+	MappingEndCharacter Character = '}'
 	// CommentCharacter character for comment
-	CommentCharacter = '#'
+	CommentCharacter Character = '#'
 	// AnchorCharacter character for anchor
-	AnchorCharacter = '&'
+	AnchorCharacter Character = '&'
 	// AliasCharacter character for alias
-	AliasCharacter = '*'
+	AliasCharacter Character = '*'
 	// TagCharacter character for tag
-	TagCharacter = '!'
+	TagCharacter Character = '!'
 	// LiteralCharacter character for literal
-	LiteralCharacter = '|'
+	LiteralCharacter Character = '|'
 	// FoldedCharacter character for folded
-	FoldedCharacter = '>'
+	FoldedCharacter Character = '>'
 	// SingleQuoteCharacter character for single quote
-	SingleQuoteCharacter = '\''
+	SingleQuoteCharacter Character = '\''
 	// DoubleQuoteCharacter character for double quote
-	DoubleQuoteCharacter = '"'
+	DoubleQuoteCharacter Character = '"'
 	// DirectiveCharacter character for directive
-	DirectiveCharacter = '%'
+	DirectiveCharacter Character = '%'
 	// SpaceCharacter character for space
-	SpaceCharacter = ' '
+	SpaceCharacter Character = ' '
 	// LineBreakCharacter character for line break
-	LineBreakCharacter = '\n'
+	LineBreakCharacter Character = '\n'
 )
 
 // Type type identifier for token

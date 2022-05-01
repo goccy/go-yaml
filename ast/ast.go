@@ -266,7 +266,7 @@ func readNode(p []byte, node Node) (int, error) {
 		return 0, io.EOF
 	}
 	size := min(remain, len(p))
-	for idx, b := range s[readLen : readLen+size] {
+	for idx, b := range []byte(s[readLen : readLen+size]) {
 		p[idx] = byte(b)
 	}
 	node.addReadLen(size)

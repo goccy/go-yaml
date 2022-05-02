@@ -3,6 +3,7 @@ package errors
 import (
 	"bytes"
 	"fmt"
+	"reflect"
 
 	"github.com/goccy/go-yaml/printer"
 	"github.com/goccy/go-yaml/token"
@@ -219,4 +220,41 @@ func (e *syntaxError) Error() string {
 	var buf bytes.Buffer
 	e.PrettyPrint(&Sink{&buf}, defaultColorize, defaultIncludeSource)
 	return buf.String()
+}
+
+type TypeError struct {
+	DstType         reflect.Type
+	SrcType         reflect.Type
+	StructFieldName *string
+	Token           *token.Token
+}
+
+func (e *TypeError) Error() string {
+	if e.StructFieldName != nil {
+		return fmt.Sprintf("cannot unmarshal %s into Go struct field %s of type %s", e.SrcType, *e.StructFieldName, e.DstType)
+	}
+	return fmt.Sprintf("cannot unmarshal %s into Go value of type %s", e.SrcType, e.DstType)
+}
+
+func (e *TypeError) PrettyPrint(p xerrors.Printer, colored, inclSource bool) error {
+	return e.FormatError(&FormatErrorPrinter{Printer: p, Colored: colored, InclSource: inclSource})
+}
+
+func (e *TypeError) FormatError(p xerrors.Printer) error {
+	var pp printer.Printer
+
+	var colored, inclSource bool
+	if fep, ok := p.(*FormatErrorPrinter); ok {
+		colored = fep.Colored
+		inclSource = fep.InclSource
+	}
+
+	pos := fmt.Sprintf("[%d:%d] ", e.Token.Position.Line, e.Token.Position.Column)
+	msg := pp.PrintErrorMessage(fmt.Sprintf("%s%s", pos, e.Error()), colored)
+	if inclSource {
+		msg += "\n" + pp.PrintErrorToken(e.Token, colored)
+	}
+	p.Print(msg)
+
+	return nil
 }

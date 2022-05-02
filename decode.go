@@ -18,7 +18,6 @@ import (
 	"github.com/goccy/go-yaml/ast"
 	"github.com/goccy/go-yaml/internal/errors"
 	"github.com/goccy/go-yaml/parser"
-	"github.com/goccy/go-yaml/printer"
 	"github.com/goccy/go-yaml/token"
 	"golang.org/x/xerrors"
 )
@@ -405,45 +404,8 @@ func errOverflow(dstType reflect.Type, num string) *overflowError {
 	return &overflowError{dstType: dstType, srcNum: num}
 }
 
-type typeError struct {
-	dstType         reflect.Type
-	srcType         reflect.Type
-	structFieldName *string
-	token           *token.Token
-}
-
-func (e *typeError) Error() string {
-	if e.structFieldName != nil {
-		return fmt.Sprintf("cannot unmarshal %s into Go struct field %s of type %s", e.srcType, *e.structFieldName, e.dstType)
-	}
-	return fmt.Sprintf("cannot unmarshal %s into Go value of type %s", e.srcType, e.dstType)
-}
-
-func (e *typeError) PrettyPrint(p xerrors.Printer, colored, inclSource bool) error {
-	return e.FormatError(&errors.FormatErrorPrinter{Printer: p, Colored: colored, InclSource: inclSource})
-}
-
-func (e *typeError) FormatError(p xerrors.Printer) error {
-	var pp printer.Printer
-
-	var colored, inclSource bool
-	if fep, ok := p.(*errors.FormatErrorPrinter); ok {
-		colored = fep.Colored
-		inclSource = fep.InclSource
-	}
-
-	pos := fmt.Sprintf("[%d:%d] ", e.token.Position.Line, e.token.Position.Column)
-	msg := pp.PrintErrorMessage(fmt.Sprintf("%s%s", pos, e.Error()), colored)
-	if inclSource {
-		msg += "\n" + pp.PrintErrorToken(e.token, colored)
-	}
-	p.Print(msg)
-
-	return nil
-}
-
-func errTypeMismatch(dstType, srcType reflect.Type, token *token.Token) *typeError {
-	return &typeError{dstType: dstType, srcType: srcType, token: token}
+func errTypeMismatch(dstType, srcType reflect.Type, token *token.Token) *errors.TypeError {
+	return &errors.TypeError{DstType: dstType, SrcType: srcType, Token: token}
 }
 
 type unknownFieldError struct {
@@ -1077,14 +1039,14 @@ func (d *Decoder) decodeStruct(ctx context.Context, dst reflect.Value, src ast.N
 				if foundErr != nil {
 					continue
 				}
-				var te *typeError
+				var te *errors.TypeError
 				if xerrors.As(err, &te) {
-					if te.structFieldName != nil {
-						fieldName := fmt.Sprintf("%s.%s", structType.Name(), *te.structFieldName)
-						te.structFieldName = &fieldName
+					if te.StructFieldName != nil {
+						fieldName := fmt.Sprintf("%s.%s", structType.Name(), *te.StructFieldName)
+						te.StructFieldName = &fieldName
 					} else {
 						fieldName := fmt.Sprintf("%s.%s", structType.Name(), field.Name)
-						te.structFieldName = &fieldName
+						te.StructFieldName = &fieldName
 					}
 					foundErr = te
 					continue
@@ -1113,10 +1075,10 @@ func (d *Decoder) decodeStruct(ctx context.Context, dst reflect.Value, src ast.N
 			if foundErr != nil {
 				continue
 			}
-			var te *typeError
+			var te *errors.TypeError
 			if xerrors.As(err, &te) {
 				fieldName := fmt.Sprintf("%s.%s", structType.Name(), field.Name)
-				te.structFieldName = &fieldName
+				te.StructFieldName = &fieldName
 				foundErr = te
 			} else {
 				foundErr = err

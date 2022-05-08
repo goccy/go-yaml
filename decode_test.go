@@ -1074,8 +1074,8 @@ func TestDecoder_TypeConversionError(t *testing.T) {
 				t.Fatal("expected to error")
 			}
 			msg := "cannot unmarshal string into Go struct field T.A of type int"
-			if err.Error() != msg {
-				t.Fatalf("unexpected error message: %s. expect: %s", err.Error(), msg)
+			if !strings.Contains(err.Error(), msg) {
+				t.Fatalf("expected error message: %s to contain: %s", err.Error(), msg)
 			}
 		})
 		t.Run("string to bool", func(t *testing.T) {
@@ -1085,8 +1085,8 @@ func TestDecoder_TypeConversionError(t *testing.T) {
 				t.Fatal("expected to error")
 			}
 			msg := "cannot unmarshal string into Go struct field T.D of type bool"
-			if err.Error() != msg {
-				t.Fatalf("unexpected error message: %s. expect: %s", err.Error(), msg)
+			if !strings.Contains(err.Error(), msg) {
+				t.Fatalf("expected error message: %s to contain: %s", err.Error(), msg)
 			}
 		})
 		t.Run("string to int at inline", func(t *testing.T) {
@@ -1096,8 +1096,8 @@ func TestDecoder_TypeConversionError(t *testing.T) {
 				t.Fatal("expected to error")
 			}
 			msg := "cannot unmarshal string into Go struct field U.T.A of type int"
-			if err.Error() != msg {
-				t.Fatalf("unexpected error message: %s. expect: %s", err.Error(), msg)
+			if !strings.Contains(err.Error(), msg) {
+				t.Fatalf("expected error message: %s to contain: %s", err.Error(), msg)
 			}
 		})
 	})
@@ -1109,8 +1109,8 @@ func TestDecoder_TypeConversionError(t *testing.T) {
 				t.Fatal("expected to error")
 			}
 			msg := "cannot unmarshal string into Go value of type int"
-			if err.Error() != msg {
-				t.Fatalf("unexpected error message: %s. expect: %s", err.Error(), msg)
+			if !strings.Contains(err.Error(), msg) {
+				t.Fatalf("expected error message: %s to contain: %s", err.Error(), msg)
 			}
 			if len(v) == 0 || len(v["v"]) == 0 {
 				t.Fatal("failed to decode value")
@@ -1126,8 +1126,8 @@ func TestDecoder_TypeConversionError(t *testing.T) {
 				t.Fatal("expected to error")
 			}
 			msg := "cannot unmarshal string into Go value of type int"
-			if err.Error() != msg {
-				t.Fatalf("unexpected error message: %s. expect: %s", err.Error(), msg)
+			if !strings.Contains(err.Error(), msg) {
+				t.Fatalf("expected error message: %s to contain: %s", err.Error(), msg)
 			}
 			if len(v) == 0 || len(v["v"]) == 0 {
 				t.Fatal("failed to decode value")
@@ -1145,8 +1145,8 @@ func TestDecoder_TypeConversionError(t *testing.T) {
 				t.Fatal("expected to error")
 			}
 			msg := "cannot unmarshal -42 into Go value of type uint ( overflow )"
-			if err.Error() != msg {
-				t.Fatalf("unexpected error message: %s. expect: %s", err.Error(), msg)
+			if !strings.Contains(err.Error(), msg) {
+				t.Fatalf("expected error message: %s to contain: %s", err.Error(), msg)
 			}
 			if v["v"] != 0 {
 				t.Fatal("failed to decode value")
@@ -1159,8 +1159,8 @@ func TestDecoder_TypeConversionError(t *testing.T) {
 				t.Fatal("expected to error")
 			}
 			msg := "cannot unmarshal -4294967296 into Go value of type uint64 ( overflow )"
-			if err.Error() != msg {
-				t.Fatalf("unexpected error message: %s. expect: %s", err.Error(), msg)
+			if !strings.Contains(err.Error(), msg) {
+				t.Fatalf("expected error message: %s to contain: %s", err.Error(), msg)
 			}
 			if v["v"] != 0 {
 				t.Fatal("failed to decode value")
@@ -1173,8 +1173,8 @@ func TestDecoder_TypeConversionError(t *testing.T) {
 				t.Fatal("expected to error")
 			}
 			msg := "cannot unmarshal 4294967297 into Go value of type int32 ( overflow )"
-			if err.Error() != msg {
-				t.Fatalf("unexpected error message: %s. expect: %s", err.Error(), msg)
+			if !strings.Contains(err.Error(), msg) {
+				t.Fatalf("expected error message: %s to contain: %s", err.Error(), msg)
 			}
 			if v["v"] != 0 {
 				t.Fatal("failed to decode value")
@@ -1187,8 +1187,8 @@ func TestDecoder_TypeConversionError(t *testing.T) {
 				t.Fatal("expected to error")
 			}
 			msg := "cannot unmarshal 128 into Go value of type int8 ( overflow )"
-			if err.Error() != msg {
-				t.Fatalf("unexpected error message: %s. expect: %s", err.Error(), msg)
+			if !strings.Contains(err.Error(), msg) {
+				t.Fatalf("expected error message: %s to contain: %s", err.Error(), msg)
 			}
 			if v["v"] != 0 {
 				t.Fatal("failed to decode value")
@@ -1207,8 +1207,8 @@ func TestDecoder_TypeConversionError(t *testing.T) {
 				t.Fatal("expected to error")
 			}
 			msg := "cannot unmarshal uint64 into Go struct field T.A of type time.Time"
-			if err.Error() != msg {
-				t.Fatalf("unexpected error message: %s. expect: %s", err.Error(), msg)
+			if !strings.Contains(err.Error(), msg) {
+				t.Fatalf("expected error message: %s to contain: %s", err.Error(), msg)
 			}
 		})
 		t.Run("string to duration", func(t *testing.T) {
@@ -1218,8 +1218,8 @@ func TestDecoder_TypeConversionError(t *testing.T) {
 				t.Fatal("expected to error")
 			}
 			msg := `time: invalid duration "str"`
-			if err.Error() != msg {
-				t.Fatalf("unexpected error message: %s. expect: %s", err.Error(), msg)
+			if !strings.Contains(err.Error(), msg) {
+				t.Fatalf("expected error message: %s to contain: %s", err.Error(), msg)
 			}
 		})
 		t.Run("int to duration", func(t *testing.T) {
@@ -1229,8 +1229,8 @@ func TestDecoder_TypeConversionError(t *testing.T) {
 				t.Fatal("expected to error")
 			}
 			msg := "cannot unmarshal uint64 into Go struct field T.B of type time.Duration"
-			if err.Error() != msg {
-				t.Fatalf("unexpected error message: %s. expect: %s", err.Error(), msg)
+			if !strings.Contains(err.Error(), msg) {
+				t.Fatalf("expected error message: %s to contain: %s", err.Error(), msg)
 			}
 		})
 	})

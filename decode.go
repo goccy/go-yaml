@@ -367,10 +367,10 @@ func (d *Decoder) fileToNode(f *ast.File) ast.Node {
 	return nil
 }
 
-func (d *Decoder) convertValue(v reflect.Value, typ reflect.Type) (reflect.Value, error) {
+func (d *Decoder) convertValue(v reflect.Value, typ reflect.Type, src ast.Node) (reflect.Value, error) {
 	if typ.Kind() != reflect.String {
 		if !v.Type().ConvertibleTo(typ) {
-			return reflect.Zero(typ), errTypeMismatch(typ, v.Type())
+			return reflect.Zero(typ), errTypeMismatch(typ, v.Type(), src.GetToken())
 		}
 		return v.Convert(typ), nil
 	}
@@ -386,7 +386,7 @@ func (d *Decoder) convertValue(v reflect.Value, typ reflect.Type) (reflect.Value
 		return reflect.ValueOf(fmt.Sprint(v.Bool())), nil
 	}
 	if !v.Type().ConvertibleTo(typ) {
-		return reflect.Zero(typ), errTypeMismatch(typ, v.Type())
+		return reflect.Zero(typ), errTypeMismatch(typ, v.Type(), src.GetToken())
 	}
 	return v.Convert(typ), nil
 }
@@ -404,21 +404,8 @@ func errOverflow(dstType reflect.Type, num string) *overflowError {
 	return &overflowError{dstType: dstType, srcNum: num}
 }
 
-type typeError struct {
-	dstType         reflect.Type
-	srcType         reflect.Type
-	structFieldName *string
-}
-
-func (e *typeError) Error() string {
-	if e.structFieldName != nil {
-		return fmt.Sprintf("cannot unmarshal %s into Go struct field %s of type %s", e.srcType, *e.structFieldName, e.dstType)
-	}
-	return fmt.Sprintf("cannot unmarshal %s into Go value of type %s", e.srcType, e.dstType)
-}
-
-func errTypeMismatch(dstType, srcType reflect.Type) *typeError {
-	return &typeError{dstType: dstType, srcType: srcType}
+func errTypeMismatch(dstType, srcType reflect.Type, token *token.Token) *errors.TypeError {
+	return &errors.TypeError{DstType: dstType, SrcType: srcType, Token: token}
 }
 
 type unknownFieldError struct {
@@ -709,7 +696,7 @@ func (d *Decoder) decodeValue(ctx context.Context, dst reflect.Value, src ast.No
 				return nil
 			}
 		default:
-			return errTypeMismatch(valueType, reflect.TypeOf(v))
+			return errTypeMismatch(valueType, reflect.TypeOf(v), src.GetToken())
 		}
 		return errOverflow(valueType, fmt.Sprint(v))
 	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
@@ -731,13 +718,13 @@ func (d *Decoder) decodeValue(ctx context.Context, dst reflect.Value, src ast.No
 				return nil
 			}
 		default:
-			return errTypeMismatch(valueType, reflect.TypeOf(v))
+			return errTypeMismatch(valueType, reflect.TypeOf(v), src.GetToken())
 		}
 		return errOverflow(valueType, fmt.Sprint(v))
 	}
 	v := reflect.ValueOf(d.nodeToValue(src))
 	if v.IsValid() {
-		convertedValue, err := d.convertValue(v, dst.Type())
+		convertedValue, err := d.convertValue(v, dst.Type(), src)
 		if err != nil {
 			return errors.Wrapf(err, "failed to convert value")
 		}
@@ -905,7 +892,7 @@ func (d *Decoder) castToTime(src ast.Node) (time.Time, error) {
 	}
 	s, ok := v.(string)
 	if !ok {
-		return time.Time{}, errTypeMismatch(reflect.TypeOf(time.Time{}), reflect.TypeOf(v))
+		return time.Time{}, errTypeMismatch(reflect.TypeOf(time.Time{}), reflect.TypeOf(v), src.GetToken())
 	}
 	for _, format := range allowedTimestampFormats {
 		t, err := time.Parse(format, s)
@@ -937,7 +924,7 @@ func (d *Decoder) castToDuration(src ast.Node) (time.Duration, error) {
 	}
 	s, ok := v.(string)
 	if !ok {
-		return 0, errTypeMismatch(reflect.TypeOf(time.Duration(0)), reflect.TypeOf(v))
+		return 0, errTypeMismatch(reflect.TypeOf(time.Duration(0)), reflect.TypeOf(v), src.GetToken())
 	}
 	t, err := time.ParseDuration(s)
 	if err != nil {
@@ -1052,14 +1039,14 @@ func (d *Decoder) decodeStruct(ctx context.Context, dst reflect.Value, src ast.N
 				if foundErr != nil {
 					continue
 				}
-				var te *typeError
+				var te *errors.TypeError
 				if xerrors.As(err, &te) {
-					if te.structFieldName != nil {
-						fieldName := fmt.Sprintf("%s.%s", structType.Name(), *te.structFieldName)
-						te.structFieldName = &fieldName
+					if te.StructFieldName != nil {
+						fieldName := fmt.Sprintf("%s.%s", structType.Name(), *te.StructFieldName)
+						te.StructFieldName = &fieldName
 					} else {
 						fieldName := fmt.Sprintf("%s.%s", structType.Name(), field.Name)
-						te.structFieldName = &fieldName
+						te.StructFieldName = &fieldName
 					}
 					foundErr = te
 					continue
@@ -1088,10 +1075,10 @@ func (d *Decoder) decodeStruct(ctx context.Context, dst reflect.Value, src ast.N
 			if foundErr != nil {
 				continue
 			}
-			var te *typeError
+			var te *errors.TypeError
 			if xerrors.As(err, &te) {
 				fieldName := fmt.Sprintf("%s.%s", structType.Name(), field.Name)
-				te.structFieldName = &fieldName
+				te.StructFieldName = &fieldName
 				foundErr = te
 			} else {
 				foundErr = err

@@ -564,6 +564,9 @@ func (n *selectorNode) replace(node ast.Node, target ast.Node) error {
 		if err := n.replaceMapValue(value, target); err != nil {
 			return errors.Wrapf(err, "failed to replace map value")
 		}
+	case ast.AnchorType:
+		return n.replace(node.(*ast.AnchorNode).Value, target)
+
 	default:
 		return errors.Wrapf(ErrInvalidQuery, "expected node type is map or map value. but got %s", node.Type())
 	}

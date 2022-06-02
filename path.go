@@ -336,7 +336,7 @@ func (p *Path) ReplaceWithFile(dst *ast.File, src *ast.File) error {
 	return nil
 }
 
-// ReplaceNode replace ast.File with ast.Node.
+// ReplaceWithNode replace ast.File with ast.Node.
 func (p *Path) ReplaceWithNode(dst *ast.File, node ast.Node) error {
 	for _, doc := range dst.Docs {
 		if node.Type() == ast.DocumentType {

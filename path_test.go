@@ -281,19 +281,19 @@ func TestPath_Merge(t *testing.T) {
 		expected string
 	}{
 		{
-			"$.c",
-			`
+			path: "$.c",
+			dst: `
 a: 1
 b: 2
 c:
   d: 3
   e: 4
 `,
-			`
+			src: `
 f: 5
 g: 6
 `,
-			`
+			expected: `
 a: 1
 b: 2
 c:
@@ -304,20 +304,20 @@ c:
 `,
 		},
 		{
-			"$.a.b",
-			`
+			path: "$.a.b",
+			dst: `
 a:
   b:
    - 1
    - 2
 `,
-			`
+			src: `
 - 3
 - map:
    - 4
    - 5
 `,
-			`
+			expected: `
 a:
   b:
    - 1
@@ -397,30 +397,30 @@ func TestPath_Replace(t *testing.T) {
 		expected string
 	}{
 		{
-			"$.a",
-			`
+			path: "$.a",
+			dst: `
 a: 1
 b: 2
 `,
-			`3`,
-			`
+			src: `3`,
+			expected: `
 a: 3
 b: 2
 `,
 		},
 		{
-			"$.b",
-			`
+			path: "$.b",
+			dst: `
 b: 1
 c: 2
 `,
-			`
+			src: `
 d: e
 f:
   g: h
   i: j
 `,
-			`
+			expected: `
 b:
   d: e
   f:
@@ -430,15 +430,15 @@ c: 2
 `,
 		},
 		{
-			"$.a.b[0]",
-			`
+			path: "$.a.b[0]",
+			dst: `
 a:
   b:
   - hello
 c: 2
 `,
-			`world`,
-			`
+			src: `world`,
+			expected: `
 a:
   b:
   - world
@@ -447,8 +447,8 @@ c: 2
 		},
 
 		{
-			"$.books[*].author",
-			`
+			path: "$.books[*].author",
+			dst: `
 books:
   - name: book_a
     author: none
@@ -462,8 +462,8 @@ pictures:
 building:
   author: none
 `,
-			`ken`,
-			`
+			src: `ken`,
+			expected: `
 books:
   - name: book_a
     author: ken
@@ -479,8 +479,8 @@ building:
 `,
 		},
 		{
-			"$..author",
-			`
+			path: "$..author",
+			dst: `
 books:
   - name: book_a
     author: none
@@ -494,8 +494,8 @@ pictures:
 building:
   author: none
 `,
-			`ken`,
-			`
+			src: `ken`,
+			expected: `
 books:
   - name: book_a
     author: ken

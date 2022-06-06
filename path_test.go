@@ -510,6 +510,20 @@ building:
   author: ken
 `,
 		},
+		{
+			path: "$.a.a1",
+			dst: `
+a: &a-anchor
+  a1: foo
+b: *a-anchor
+`,
+			src: `bar`,
+			expected: `
+a: &a-anchor
+  a1: bar
+b: *a-anchor
+`,
+		},
 	}
 	for _, test := range tests {
 		t.Run(test.path, func(t *testing.T) {

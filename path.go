@@ -114,7 +114,7 @@ func parsePathDot(b *PathBuilder, buf []rune, cursor int) (*PathBuilder, []rune,
 	}
 end:
 	if start == cursor {
-		return nil, nil, 0, errors.Wrapf(ErrInvalidPathString, "cloud not find by empty key")
+		return nil, nil, 0, errors.Wrapf(ErrInvalidPathString, "could not find by empty key")
 	}
 	return b.child(string(buf[start:cursor])), buf, cursor, nil
 }

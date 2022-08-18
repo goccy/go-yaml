@@ -104,7 +104,7 @@ func (d *Decoder) mergeValueNode(value ast.Node) ast.Node {
 	return value
 }
 
-func (d *Decoder) mapKeyNodeToString(node ast.Node) string {
+func (d *Decoder) mapKeyNodeToString(node ast.MapKeyNode) string {
 	key := d.nodeToValue(node)
 	if key == nil {
 		return "null"
@@ -283,7 +283,7 @@ func (d *Decoder) resolveAlias(node ast.Node) ast.Node {
 			value.AddColumn(requiredColumn)
 			n.Value = value
 		} else {
-			n.Key = d.resolveAlias(n.Key)
+			n.Key = d.resolveAlias(n.Key).(ast.MapKeyNode)
 			n.Value = d.resolveAlias(n.Value)
 		}
 	case *ast.SequenceNode:

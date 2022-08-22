@@ -351,7 +351,6 @@ func (e *Encoder) encodeValue(ctx context.Context, v reflect.Value, column int) 
 	default:
 		return nil, xerrors.Errorf("unknown value type %s", v.Type().String())
 	}
-	return nil, nil
 }
 
 func (e *Encoder) pos(column int) *token.Position {
@@ -364,17 +363,17 @@ func (e *Encoder) pos(column int) *token.Position {
 	}
 }
 
-func (e *Encoder) encodeNil() ast.Node {
+func (e *Encoder) encodeNil() *ast.NullNode {
 	value := "null"
 	return ast.Null(token.New(value, value, e.pos(e.column)))
 }
 
-func (e *Encoder) encodeInt(v int64) ast.Node {
+func (e *Encoder) encodeInt(v int64) *ast.IntegerNode {
 	value := fmt.Sprint(v)
 	return ast.Integer(token.New(value, value, e.pos(e.column)))
 }
 
-func (e *Encoder) encodeUint(v uint64) ast.Node {
+func (e *Encoder) encodeUint(v uint64) *ast.IntegerNode {
 	value := fmt.Sprint(v)
 	return ast.Integer(token.New(value, value, e.pos(e.column)))
 }
@@ -411,7 +410,7 @@ func (e *Encoder) isNeedQuoted(v string) bool {
 	return false
 }
 
-func (e *Encoder) encodeString(v string, column int) ast.Node {
+func (e *Encoder) encodeString(v string, column int) *ast.StringNode {
 	if e.isNeedQuoted(v) {
 		if e.singleQuote {
 			v = quoteWith(v, '\'')
@@ -422,12 +421,12 @@ func (e *Encoder) encodeString(v string, column int) ast.Node {
 	return ast.String(token.New(v, v, e.pos(column)))
 }
 
-func (e *Encoder) encodeBool(v bool) ast.Node {
+func (e *Encoder) encodeBool(v bool) *ast.BoolNode {
 	value := fmt.Sprint(v)
 	return ast.Bool(token.New(value, value, e.pos(e.column)))
 }
 
-func (e *Encoder) encodeSlice(ctx context.Context, value reflect.Value) (ast.Node, error) {
+func (e *Encoder) encodeSlice(ctx context.Context, value reflect.Value) (*ast.SequenceNode, error) {
 	if e.indentSequence {
 		e.column += e.indent
 	}
@@ -446,7 +445,7 @@ func (e *Encoder) encodeSlice(ctx context.Context, value reflect.Value) (ast.Nod
 	return sequence, nil
 }
 
-func (e *Encoder) encodeArray(ctx context.Context, value reflect.Value) (ast.Node, error) {
+func (e *Encoder) encodeArray(ctx context.Context, value reflect.Value) (*ast.SequenceNode, error) {
 	if e.indentSequence {
 		e.column += e.indent
 	}
@@ -482,7 +481,7 @@ func (e *Encoder) encodeMapItem(ctx context.Context, item MapItem, column int) (
 	), nil
 }
 
-func (e *Encoder) encodeMapSlice(ctx context.Context, value MapSlice, column int) (ast.Node, error) {
+func (e *Encoder) encodeMapSlice(ctx context.Context, value MapSlice, column int) (*ast.MappingNode, error) {
 	node := ast.Mapping(token.New("", "", e.pos(column)), e.isFlowStyle)
 	for _, item := range value {
 		value, err := e.encodeMapItem(ctx, item, column)
@@ -569,7 +568,7 @@ func (e *Encoder) isZeroValue(v reflect.Value) bool {
 	return false
 }
 
-func (e *Encoder) encodeTime(v time.Time, column int) ast.Node {
+func (e *Encoder) encodeTime(v time.Time, column int) *ast.StringNode {
 	value := v.Format(time.RFC3339Nano)
 	if e.isJSONStyle {
 		value = strconv.Quote(value)
@@ -577,7 +576,7 @@ func (e *Encoder) encodeTime(v time.Time, column int) ast.Node {
 	return ast.String(token.New(value, value, e.pos(column)))
 }
 
-func (e *Encoder) encodeDuration(v time.Duration, column int) ast.Node {
+func (e *Encoder) encodeDuration(v time.Duration, column int) *ast.StringNode {
 	value := v.String()
 	if e.isJSONStyle {
 		value = strconv.Quote(value)
@@ -585,7 +584,7 @@ func (e *Encoder) encodeDuration(v time.Duration, column int) ast.Node {
 	return ast.String(token.New(value, value, e.pos(column)))
 }
 
-func (e *Encoder) encodeAnchor(anchorName string, value ast.Node, fieldValue reflect.Value, column int) (ast.Node, error) {
+func (e *Encoder) encodeAnchor(anchorName string, value ast.Node, fieldValue reflect.Value, column int) (*ast.AnchorNode, error) {
 	anchorNode := ast.Anchor(token.New("&", "&", e.pos(column)))
 	anchorNode.Name = ast.String(token.New(anchorName, anchorName, e.pos(column)))
 	anchorNode.Value = value
@@ -637,7 +636,7 @@ func (e *Encoder) encodeStruct(ctx context.Context, value reflect.Value, column 
 				s.SetIsFlowStyle(true)
 			}
 		}
-		key := e.encodeString(structField.RenderName, column)
+		var key ast.MapKeyNode = e.encodeString(structField.RenderName, column)
 		switch {
 		case structField.AnchorName != "":
 			anchorNode, err := e.encodeAnchor(structField.AnchorName, value, fieldValue, column)

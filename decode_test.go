@@ -89,7 +89,7 @@ func TestDecoder(t *testing.T) {
 		},
 		{
 			"v: -0b1000000000000000000000000000000000000000000000000000000000000000",
-			map[string]interface{}{"v": -9223372036854775808},
+			map[string]interface{}{"v": int64(-9223372036854775808)},
 		},
 		{
 			"v: 0xA",
@@ -109,7 +109,7 @@ func TestDecoder(t *testing.T) {
 		},
 		{
 			"v: 4294967296\n",
-			map[string]int{"v": 4294967296},
+			map[string]int64{"v": int64(4294967296)},
 		},
 		{
 			"v: 0.1\n",
@@ -200,7 +200,7 @@ func TestDecoder(t *testing.T) {
 			map[string]uint{"v": 42},
 		}, {
 			"v: 4294967296",
-			map[string]uint64{"v": 4294967296},
+			map[string]uint64{"v": uint64(4294967296)},
 		},
 
 		// int

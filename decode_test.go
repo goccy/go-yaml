@@ -2368,39 +2368,79 @@ func (v *unmarshalYAMLWithAliasMap) UnmarshalYAML(b []byte) error {
 }
 
 func TestDecoder_UnmarshalYAMLWithAlias(t *testing.T) {
-	yml := `
+	type value struct {
+		String unmarshalYAMLWithAliasString
+		Map    unmarshalYAMLWithAliasMap
+	}
+	tests := []struct {
+		name          string
+		yaml          string
+		expectedValue value
+		err           string
+	}{
+		{
+			name: "ok",
+			yaml: `
 anchors:
- x: &x "\"hello\" \"world\""
- map: &y
+ w: &w "\"hello\" \"world\""
+ map: &x
    a: b
    c: d
-   d: *x
-a: *x
-b:
- <<: *y
+   d: *w
+string: *w
+map:
+ <<: *x
  e: f
-`
-	var v struct {
-		A unmarshalYAMLWithAliasString
-		B unmarshalYAMLWithAliasMap
+`,
+			expectedValue: value{
+				String: unmarshalYAMLWithAliasString(`"hello" "world"`),
+				Map: unmarshalYAMLWithAliasMap(map[string]interface{}{
+					"a": "b",
+					"c": "d",
+					"d": `"hello" "world"`,
+					"e": "f",
+				}),
+			},
+		},
+		{
+			name: "unknown alias",
+			yaml: `
+anchors:
+ w: &w "\"hello\" \"world\""
+ map: &x
+   a: b
+   c: d
+   d: *w
+string: *y
+map:
+ <<: *z
+ e: f
+`,
+			err: "cannot find anchor by alias name y",
+		},
 	}
-	if err := yaml.Unmarshal([]byte(yml), &v); err != nil {
-		t.Fatalf("%+v", err)
-	}
-	if v.A != `"hello" "world"` {
-		t.Fatal("failed to unmarshal with alias")
-	}
-	if len(v.B) != 4 {
-		t.Fatal("failed to unmarshal with alias")
-	}
-	if v.B["a"] != "b" {
-		t.Fatal("failed to unmarshal with alias")
-	}
-	if v.B["c"] != "d" {
-		t.Fatal("failed to unmarshal with alias")
-	}
-	if v.B["d"] != `"hello" "world"` {
-		t.Fatal("failed to unmarshal with alias")
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			var v value
+			err := yaml.Unmarshal([]byte(test.yaml), &v)
+
+			if test.err != "" {
+				if err == nil {
+					t.Fatal("expected to error")
+				}
+				if !strings.Contains(err.Error(), test.err) {
+					t.Fatalf("expected error message: %s to contain: %s", err.Error(), test.err)
+				}
+			} else {
+				if err != nil {
+					t.Fatalf("%+v", err)
+				}
+				if !reflect.DeepEqual(test.expectedValue, v) {
+					t.Fatalf("non matching values:\nexpected[%s]\ngot     [%s]", test.expectedValue, v)
+				}
+			}
+		})
 	}
 }
 

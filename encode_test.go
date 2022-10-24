@@ -1094,6 +1094,20 @@ a:
 	}
 }
 
+func TestEncoder_MultipleDocuments(t *testing.T) {
+	var buf bytes.Buffer
+	enc := yaml.NewEncoder(&buf)
+	if err := enc.Encode(1); err != nil {
+		t.Fatalf("failed to encode: %s", err)
+	}
+	if err := enc.Encode(2); err != nil {
+		t.Fatalf("failed to encode: %s", err)
+	}
+	if actual, expect := buf.String(), "1\n---\n2\n"; actual != expect {
+		t.Errorf("expect:\n%s\nactual\n%s\n", expect, actual)
+	}
+}
+
 func Example_Marshal_Node() {
 	type T struct {
 		Text ast.Node `yaml:"text"`

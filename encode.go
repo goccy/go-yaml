@@ -39,6 +39,7 @@ type Encoder struct {
 	anchorPtrToNameMap         map[uintptr]string
 	useLiteralStyleIfMultiline bool
 	commentMap                 map[*Path]*Comment
+	written                    bool
 
 	line        int
 	column      int
@@ -85,6 +86,12 @@ func (e *Encoder) EncodeContext(ctx context.Context, v interface{}) error {
 	}
 	if err := e.setCommentByCommentMap(node); err != nil {
 		return errors.Wrapf(err, "failed to set comment by comment map")
+	}
+	if !e.written {
+		e.written = true
+	} else {
+		// write document separator
+		e.writer.Write([]byte("---\n"))
 	}
 	var p printer.Printer
 	e.writer.Write(p.PrintNode(node))

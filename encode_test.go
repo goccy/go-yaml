@@ -548,6 +548,88 @@ func TestEncoder(t *testing.T) {
 			}{struct{ B, D string }{"c", "e"}},
 			nil,
 		},
+		// Quoting in flow mode
+		{
+			`a: [b, "c,d", e]` + "\n",
+			struct {
+				A []string `yaml:"a,flow"`
+			}{[]string{"b", "c,d", "e"}},
+			[]yaml.EncodeOption{
+				yaml.UseSingleQuote(false),
+			},
+		},
+		{
+			`a: [b, "c]", d]` + "\n",
+			struct {
+				A []string `yaml:"a,flow"`
+			}{[]string{"b", "c]", "d"}},
+			[]yaml.EncodeOption{
+				yaml.UseSingleQuote(false),
+			},
+		},
+		{
+			`a: [b, "c}", d]` + "\n",
+			struct {
+				A []string `yaml:"a,flow"`
+			}{[]string{"b", "c}", "d"}},
+			[]yaml.EncodeOption{
+				yaml.UseSingleQuote(false),
+			},
+		},
+		{
+			`a: [b, "c\"", d]` + "\n",
+			struct {
+				A []string `yaml:"a,flow"`
+			}{[]string{"b", `c"`, "d"}},
+			[]yaml.EncodeOption{
+				yaml.UseSingleQuote(false),
+			},
+		},
+		{
+			`a: [b, "c'", d]` + "\n",
+			struct {
+				A []string `yaml:"a,flow"`
+			}{[]string{"b", "c'", "d"}},
+			[]yaml.EncodeOption{
+				yaml.UseSingleQuote(false),
+			},
+		},
+		// No quoting in non-flow mode
+		{
+			"a:\n- b\n- c,d\n- e\n",
+			struct {
+				A []string `yaml:"a"`
+			}{[]string{"b", "c,d", "e"}},
+			nil,
+		},
+		{
+			`a: [b, "c]", d]` + "\n",
+			struct {
+				A []string `yaml:"a,flow"`
+			}{[]string{"b", "c]", "d"}},
+			nil,
+		},
+		{
+			`a: [b, "c}", d]` + "\n",
+			struct {
+				A []string `yaml:"a,flow"`
+			}{[]string{"b", "c}", "d"}},
+			nil,
+		},
+		{
+			`a: [b, "c\"", d]` + "\n",
+			struct {
+				A []string `yaml:"a,flow"`
+			}{[]string{"b", `c"`, "d"}},
+			nil,
+		},
+		{
+			`a: [b, "c'", d]` + "\n",
+			struct {
+				A []string `yaml:"a,flow"`
+			}{[]string{"b", "c'", "d"}},
+			nil,
+		},
 
 		// Multi bytes
 		{

@@ -2,6 +2,7 @@ package errors
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"reflect"
 
@@ -83,7 +84,7 @@ func (e *wrapError) As(target interface{}) bool {
 		}
 		break
 	}
-	return xerrors.As(err, target)
+	return errors.As(err, target)
 }
 
 func (e *wrapError) Unwrap() error {

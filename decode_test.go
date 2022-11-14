@@ -2732,3 +2732,52 @@ bar:
 		}
 	})
 }
+
+func TestUnmarshalMapSliceParallel(t *testing.T) {
+	content := `
+steps:
+  req0:
+    desc: Get /users/1
+    req:
+      /users/1:
+        get: nil
+    test: |
+      current.res.status == 200
+  req1:
+    desc: Get /private
+    req:
+      /private:
+        get: nil
+    test: |
+      current.res.status == 403
+  req2:
+    desc: Get /users
+    req:
+      /users:
+        get: nil
+    test: |
+      current.res.status == 200
+`
+	type mappedSteps struct {
+		Steps yaml.MapSlice `yaml:"steps,omitempty"`
+	}
+	for i := 0; i < 100; i++ {
+		t.Run(fmt.Sprintf("i=%d", i), func(t *testing.T) {
+			t.Parallel()
+			for i := 0; i < 10; i++ {
+				m := mappedSteps{
+					Steps: yaml.MapSlice{},
+				}
+				if err := yaml.Unmarshal([]byte(content), &m); err != nil {
+					t.Fatal(err)
+				}
+				for _, s := range m.Steps {
+					_, ok := s.Value.(map[string]interface{})
+					if !ok {
+						t.Fatal("unexpected error")
+					}
+				}
+			}
+		})
+	}
+}

@@ -55,7 +55,11 @@ func (c *Context) reset(src []rune) {
 	c.src = src
 	c.tokens = c.tokens[:0]
 	c.resetBuffer()
+	c.isRawFolded = false
 	c.isSingleLine = true
+	c.isLiteral = false
+	c.isFolded = false
+	c.literalOpt = ""
 }
 
 func (c *Context) resetBuffer() {

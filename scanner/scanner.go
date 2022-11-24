@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/goccy/go-yaml/token"
+
 	"golang.org/x/xerrors"
 )
 
@@ -729,11 +730,36 @@ func (s *Scanner) scan(ctx *Context) (pos int) {
 			nc := ctx.nextChar()
 			if s.startedFlowMapNum > 0 || nc == ' ' || s.isNewLineChar(nc) || ctx.isNextEOS() {
 				// mapping value
-				tk := s.bufferedToken(ctx)
-				if tk != nil {
+
+				// Check for a quote token.
+				if len(ctx.tokens) > 0 {
+					tk := ctx.tokens[len(ctx.tokens)-1]
+					if tk.Type == token.SingleQuoteType || tk.Type == token.DoubleQuoteType {
+						// Spaces after quote map keys are valid, so we still check the buffer and add
+						// the whitespace characters to the token and reset the buffer; we consider them
+						// part of the map key.
+						allWhitespace := true
+						bufContent := ctx.bufferedSrc()
+						for _, r := range bufContent {
+							allWhitespace = allWhitespace && r == ' '
+						}
+						if allWhitespace {
+							tk.Value += string(bufContent)
+							// Reset the buffer so the condition that checks the buffer isn't triggered.
+							ctx.resetBuffer()
+						}
+
+						// Set the previous indent column to the beginning of the quote token.
+						s.prevIndentColumn = tk.Position.Column
+					}
+				}
+
+				// If there's anything in the buffer, add it to the context as the map key.
+				if tk := s.bufferedToken(ctx); tk != nil {
 					s.prevIndentColumn = tk.Position.Column
 					ctx.addToken(tk)
 				}
+
 				ctx.addToken(token.MappingValue(s.pos()))
 				s.progressColumn(ctx, 1)
 				return
@@ -805,7 +831,7 @@ func (s *Scanner) scan(ctx *Context) (pos int) {
 				token, progress := s.scanQuote(ctx, c)
 				ctx.addToken(token)
 				pos += progress
-				return
+				continue
 			}
 		case '\r', '\n':
 			// There is no problem that we ignore CR which followed by LF and normalize it to LF, because of following YAML1.2 spec.

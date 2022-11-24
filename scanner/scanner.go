@@ -222,9 +222,11 @@ func (s *Scanner) scanSingleQuote(ctx *Context) (tk *token.Token, pos int) {
 	value := []rune{}
 	isFirstLineChar := false
 	isNewLine := false
+	columnSkip := 0
 	for idx := startIndex; idx < size; idx++ {
 		if !isNewLine {
-			s.progressColumn(ctx, 1)
+			s.progressColumn(ctx, 1+columnSkip)
+			columnSkip = 0
 		} else {
 			isNewLine = false
 		}
@@ -249,7 +251,7 @@ func (s *Scanner) scanSingleQuote(ctx *Context) (tk *token.Token, pos int) {
 			value = append(value, c)
 			ctx.addOriginBuf(c)
 			idx++
-			s.progressColumn(ctx, 1)
+			columnSkip = 1
 			continue
 		}
 		s.progressColumn(ctx, 1)
@@ -287,9 +289,11 @@ func (s *Scanner) scanDoubleQuote(ctx *Context) (tk *token.Token, pos int) {
 	value := []rune{}
 	isFirstLineChar := false
 	isNewLine := false
+	columnSkip := 0
 	for idx := startIndex; idx < size; idx++ {
 		if !isNewLine {
-			s.progressColumn(ctx, 1)
+			s.progressColumn(ctx, 1+columnSkip)
+			columnSkip = 0
 		} else {
 			isNewLine = false
 		}
@@ -313,51 +317,61 @@ func (s *Scanner) scanDoubleQuote(ctx *Context) (tk *token.Token, pos int) {
 					ctx.addOriginBuf(nextChar)
 					value = append(value, '\b')
 					idx++
+					columnSkip = 1
 					continue
 				case 'e':
 					ctx.addOriginBuf(nextChar)
 					value = append(value, '\x1B')
 					idx++
+					columnSkip = 1
 					continue
 				case 'f':
 					ctx.addOriginBuf(nextChar)
 					value = append(value, '\f')
 					idx++
+					columnSkip = 1
 					continue
 				case 'n':
 					ctx.addOriginBuf(nextChar)
 					value = append(value, '\n')
 					idx++
+					columnSkip = 1
 					continue
 				case 'v':
 					ctx.addOriginBuf(nextChar)
 					value = append(value, '\v')
 					idx++
+					columnSkip = 1
 					continue
 				case 'L': // LS (#x2028)
 					ctx.addOriginBuf(nextChar)
 					value = append(value, []rune{'\xE2', '\x80', '\xA8'}...)
 					idx++
+					columnSkip = 1
 					continue
 				case 'N': // NEL (#x85)
 					ctx.addOriginBuf(nextChar)
 					value = append(value, []rune{'\xC2', '\x85'}...)
 					idx++
+					columnSkip = 1
 					continue
 				case 'P': // PS (#x2029)
 					ctx.addOriginBuf(nextChar)
 					value = append(value, []rune{'\xE2', '\x80', '\xA9'}...)
 					idx++
+					columnSkip = 1
 					continue
 				case '_': // #xA0
 					ctx.addOriginBuf(nextChar)
 					value = append(value, []rune{'\xC2', '\xA0'}...)
 					idx++
+					columnSkip = 1
 					continue
 				case '"':
 					ctx.addOriginBuf(nextChar)
 					value = append(value, nextChar)
 					idx++
+					columnSkip = 1
 					continue
 				case 'x':
 					if idx+3 >= size {
@@ -368,6 +382,7 @@ func (s *Scanner) scanDoubleQuote(ctx *Context) (tk *token.Token, pos int) {
 					codeNum := hexRunesToInt(src[idx+2 : idx+4])
 					value = append(value, rune(codeNum))
 					idx += 3
+					columnSkip = 3
 					continue
 				case 'u':
 					if idx+5 >= size {
@@ -378,6 +393,7 @@ func (s *Scanner) scanDoubleQuote(ctx *Context) (tk *token.Token, pos int) {
 					codeNum := hexRunesToInt(src[idx+2 : idx+6])
 					value = append(value, rune(codeNum))
 					idx += 5
+					columnSkip = 5
 					continue
 				case 'U':
 					if idx+9 >= size {
@@ -388,10 +404,12 @@ func (s *Scanner) scanDoubleQuote(ctx *Context) (tk *token.Token, pos int) {
 					codeNum := hexRunesToInt(src[idx+2 : idx+10])
 					value = append(value, rune(codeNum))
 					idx += 9
+					columnSkip = 9
 					continue
 				case '\\':
 					ctx.addOriginBuf(nextChar)
 					idx++
+					columnSkip = 1
 				}
 			}
 			value = append(value, c)

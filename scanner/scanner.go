@@ -249,6 +249,7 @@ func (s *Scanner) scanSingleQuote(ctx *Context) (tk *token.Token, pos int) {
 			value = append(value, c)
 			ctx.addOriginBuf(c)
 			idx++
+			s.progressColumn(ctx, 1)
 			continue
 		}
 		s.progressColumn(ctx, 1)

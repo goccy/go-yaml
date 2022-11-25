@@ -111,6 +111,15 @@ func (s *Scanner) isNewLineChar(c rune) bool {
 	return false
 }
 
+func (s *Scanner) isWhitespaceBuffer(ctx *Context) bool {
+	allWhitespace := true
+	bufContent := ctx.bufferedSrc()
+	for _, r := range bufContent {
+		allWhitespace = allWhitespace && r == ' '
+	}
+	return allWhitespace && len(bufContent) > 0
+}
+
 func (s *Scanner) newLineCount(src []rune) int {
 	size := len(src)
 	cnt := 0
@@ -429,9 +438,16 @@ func (s *Scanner) scanDoubleQuote(ctx *Context) (tk *token.Token, pos int) {
 
 func (s *Scanner) scanQuote(ctx *Context, ch rune) (tk *token.Token, pos int) {
 	if ch == '\'' {
-		return s.scanSingleQuote(ctx)
+		tk, pos = s.scanSingleQuote(ctx)
+	} else if ch == '"' {
+		tk, pos = s.scanDoubleQuote(ctx)
+	} else {
+		// TODO return an error object here when scan supports returning errors
+		return
 	}
-	return s.scanDoubleQuote(ctx)
+	// The origin buffer needs to be reset so it's back in sync with the main buffer.
+	ctx.resetBuffer()
+	return
 }
 
 func (s *Scanner) isMergeKey(ctx *Context) bool {
@@ -750,31 +766,22 @@ func (s *Scanner) scan(ctx *Context) (pos int) {
 			if s.startedFlowMapNum > 0 || nc == ' ' || s.isNewLineChar(nc) || ctx.isNextEOS() {
 				// mapping value
 
-				// Check for a quote token.
-				if len(ctx.tokens) > 0 {
+				// If there is no buffer or there is whitespace, check if the last token is quoted.
+				if len(ctx.tokens) > 0 && len(ctx.buf) > 0 && s.isWhitespaceBuffer(ctx) {
+					// Check for a quote token.
 					tk := ctx.tokens[len(ctx.tokens)-1]
 					if tk.Type == token.SingleQuoteType || tk.Type == token.DoubleQuoteType {
-						// Spaces after quote map keys are valid, so we still check the buffer and add
-						// the whitespace characters to the token and reset the buffer; we consider them
-						// part of the map key.
-						allWhitespace := true
-						bufContent := ctx.bufferedSrc()
-						for _, r := range bufContent {
-							allWhitespace = allWhitespace && r == ' '
-						}
-						if allWhitespace {
-							tk.Value += string(bufContent)
-							// Reset the buffer so the condition that checks the buffer isn't triggered.
-							ctx.resetBuffer()
-						}
+						// Spaces after quote map keys are valid, add the whitespace characters to the token
+						// and reset the buffer; we consider them part of the map key.
+						tk.Value += string(ctx.bufferedSrc())
+						ctx.resetBuffer()
 
 						// Set the previous indent column to the beginning of the quote token.
 						s.prevIndentColumn = tk.Position.Column
 					}
-				}
-
-				// If there's anything in the buffer, add it to the context as the map key.
-				if tk := s.bufferedToken(ctx); tk != nil {
+				} else if tk := s.bufferedToken(ctx); tk != nil {
+					// If there's anything other than whitespace in the buffer, add it to the
+					// context as the map key.
 					s.prevIndentColumn = tk.Position.Column
 					ctx.addToken(tk)
 				}

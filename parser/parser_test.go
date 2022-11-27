@@ -80,6 +80,8 @@ func TestParser(t *testing.T) {
   ? !!str "implicit" : !!str "entry",
   ? !!null "" : !!null "",
 }`,
+		"\"a\": a\n\"b\": b",
+		"'a': a\n'b': b",
 	}
 	for _, src := range sources {
 		if _, err := parser.Parse(lexer.Tokenize(src), 0); err != nil {
@@ -562,6 +564,22 @@ b: c
 			`
 - key1: val
   key2: ( foo + bar )
+`,
+		},
+		{
+			`
+"a": b
+'c': d
+"e": "f"
+g: "h"
+i: 'j'
+`,
+			`
+"a": b
+'c': d
+"e": "f"
+g: "h"
+i: 'j'
 `,
 		},
 	}

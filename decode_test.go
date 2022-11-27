@@ -2144,6 +2144,29 @@ b: *a
 			t.Fatal("failed to unmarshal")
 		}
 	})
+	t.Run("quoted map keys", func(t *testing.T) {
+		t.Parallel()
+		yml := `
+a:
+  "b": 2
+  'c': true
+`
+		var v struct {
+			A struct {
+				B int
+				C bool
+			}
+		}
+		if err := yaml.Unmarshal([]byte(yml), &v); err != nil {
+			t.Fatalf("failed to unmarshal %v", err)
+		}
+		if v.A.B != 2 {
+			t.Fatalf("expected a.b to equal 2 but was %d", v.A.B)
+		}
+		if !v.A.C {
+			t.Fatal("expected a.c to be true but was false")
+		}
+	})
 }
 
 type unmarshalablePtrStringContainer struct {

@@ -766,22 +766,23 @@ func (s *Scanner) scan(ctx *Context) (pos int) {
 			if s.startedFlowMapNum > 0 || nc == ' ' || s.isNewLineChar(nc) || ctx.isNextEOS() {
 				// mapping value
 
-				// If there is no buffer or there is whitespace, check if the last token is quoted.
-				if len(ctx.tokens) > 0 && len(ctx.buf) > 0 && s.isWhitespaceBuffer(ctx) {
-					// Check for a quote token.
+				// If there's a token in the context, we need to check if it's a quote token.
+				if len(ctx.tokens) > 0 {
 					tk := ctx.tokens[len(ctx.tokens)-1]
 					if tk.Type == token.SingleQuoteType || tk.Type == token.DoubleQuoteType {
-						// Spaces after quote map keys are valid, add the whitespace characters to the token
-						// and reset the buffer; we consider them part of the map key.
-						tk.Value += string(ctx.bufferedSrc())
-						ctx.resetBuffer()
+						if len(ctx.buf) > 0 && s.isWhitespaceBuffer(ctx) {
+							// Spaces after quote map keys are valid, add the whitespace characters
+							// to the token and reset the buffer; we consider them part of the map key.
+							tk.Value += string(ctx.bufferedSrc())
+							ctx.resetBuffer()
+						}
 
 						// Set the previous indent column to the beginning of the quote token.
 						s.prevIndentColumn = tk.Position.Column
 					}
-				} else if tk := s.bufferedToken(ctx); tk != nil {
-					// If there's anything other than whitespace in the buffer, add it to the
-					// context as the map key.
+				}
+				if tk := s.bufferedToken(ctx); tk != nil {
+					// If there's anything in the buffer at this point, we'll treat that as the map key.
 					s.prevIndentColumn = tk.Position.Column
 					ctx.addToken(tk)
 				}

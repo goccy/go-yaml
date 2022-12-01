@@ -143,7 +143,10 @@ func (c *Context) previousChar() rune {
 }
 
 func (c *Context) currentChar() rune {
-	return c.src[c.idx]
+	if c.size > c.idx {
+		return c.src[c.idx]
+	}
+	return rune(0)
 }
 
 func (c *Context) nextChar() rune {
@@ -202,4 +205,11 @@ func (c *Context) bufferedToken(pos *token.Position) *token.Token {
 	}
 	c.resetBuffer()
 	return tk
+}
+
+func (c *Context) lastToken() *token.Token {
+	if len(c.tokens) != 0 {
+		return c.tokens[len(c.tokens)-1]
+	}
+	return nil
 }

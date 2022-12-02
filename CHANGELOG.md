@@ -1,3 +1,10 @@
+# 1.9.7 - 2022-12-03
+
+### Fix bugs
+
+- Fix handling of quoted map key ( #328 )
+- Fix resusing process of scanning context ( #322 )
+
 ## v1.9.6 - 2022-10-26
 
 ### New Features

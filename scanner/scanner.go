@@ -811,9 +811,9 @@ func (s *Scanner) scan(ctx *Context) (pos int) {
 				token, progress := s.scanQuote(ctx, c)
 				ctx.addToken(token)
 				pos += progress
-				// If the quote is immediately followed by ':', the quote should be treated as a map key.
+				// If the non-whitespace character immediately following the quote is ':', the quote should be treated as a map key.
 				// Therefore, do not return and continue processing as a normal map key.
-				if ctx.currentChar() == ':' {
+				if ctx.currentCharWithSkipWhitespace() == ':' {
 					continue
 				}
 				return

@@ -2148,7 +2148,7 @@ b: *a
 		t.Parallel()
 		yml := `
 a:
-  "b": 2
+  "b"  : 2
   'c': true
 `
 		var v struct {

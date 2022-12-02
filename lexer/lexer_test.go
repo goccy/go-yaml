@@ -56,6 +56,10 @@ func TestTokenize(t *testing.T) {
 		"a: 'Hello #comment'\n",
 		"a: 100.5\n",
 		"a: bogus\n",
+		"\"a\": double quoted map key",
+		"'a': single quoted map key",
+		"a: \"double quoted\"\nb: \"value map\"",
+		"a: 'single quoted'\nb: 'value map'",
 	}
 	for _, src := range sources {
 		lexer.Tokenize(src).Dump()
@@ -229,6 +233,60 @@ func TestSingleLineToken_ValueLineColumnPosition(t *testing.T) {
 				11: ",",
 				13: "",
 				15: "]",
+			},
+		},
+		{
+			name: "double quote key",
+			src:  `"a": b`,
+			expect: map[int]string{
+				1: "a",
+				4: ":",
+				6: "b",
+			},
+		},
+		{
+			name: "single quote key",
+			src:  `'a': b`,
+			expect: map[int]string{
+				1: "a",
+				4: ":",
+				6: "b",
+			},
+		},
+		{
+			name: "double quote key and value",
+			src:  `"a": "b"`,
+			expect: map[int]string{
+				1: "a",
+				4: ":",
+				6: "b",
+			},
+		},
+		{
+			name: "single quote key and value",
+			src:  `'a': 'b'`,
+			expect: map[int]string{
+				1: "a",
+				4: ":",
+				6: "b",
+			},
+		},
+		{
+			name: "double quote key, single quote value",
+			src:  `"a": 'b'`,
+			expect: map[int]string{
+				1: "a",
+				4: ":",
+				6: "b",
+			},
+		},
+		{
+			name: "single quote key, double quote value",
+			src:  `'a': "b"`,
+			expect: map[int]string{
+				1: "a",
+				4: ":",
+				6: "b",
 			},
 		},
 	}
@@ -429,6 +487,59 @@ foo2: 'bar2'`,
 					line:   7,
 					column: 7,
 					value:  "bar2",
+				},
+			},
+		},
+		{
+			name: "single and double quote map keys",
+			src: `"a": test
+'b': 1
+c: true`,
+			expect: []testToken{
+				{
+					line:   1,
+					column: 1,
+					value:  "a",
+				},
+				{
+					line:   1,
+					column: 4,
+					value:  ":",
+				},
+				{
+					line:   1,
+					column: 6,
+					value:  "test",
+				},
+				{
+					line:   2,
+					column: 1,
+					value:  "b",
+				},
+				{
+					line:   2,
+					column: 4,
+					value:  ":",
+				},
+				{
+					line:   2,
+					column: 6,
+					value:  "1",
+				},
+				{
+					line:   3,
+					column: 1,
+					value:  "c",
+				},
+				{
+					line:   3,
+					column: 2,
+					value:  ":",
+				},
+				{
+					line:   3,
+					column: 4,
+					value:  "true",
 				},
 			},
 		},

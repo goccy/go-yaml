@@ -733,6 +733,12 @@ func (s *Scanner) scan(ctx *Context) (pos int) {
 				if tk != nil {
 					s.prevIndentColumn = tk.Position.Column
 					ctx.addToken(tk)
+				} else if tk := ctx.lastToken(); tk != nil {
+					// If the map key is quote, the buffer does not exist because it has already been cut into tokens.
+					// Therefore, we need to check the last token.
+					if tk.Indicator == token.QuotedScalarIndicator {
+						s.prevIndentColumn = tk.Position.Column
+					}
 				}
 				ctx.addToken(token.MappingValue(s.pos()))
 				s.progressColumn(ctx, 1)
@@ -805,6 +811,11 @@ func (s *Scanner) scan(ctx *Context) (pos int) {
 				token, progress := s.scanQuote(ctx, c)
 				ctx.addToken(token)
 				pos += progress
+				// If the non-whitespace character immediately following the quote is ':', the quote should be treated as a map key.
+				// Therefore, do not return and continue processing as a normal map key.
+				if ctx.currentCharWithSkipWhitespace() == ':' {
+					continue
+				}
 				return
 			}
 		case '\r', '\n':

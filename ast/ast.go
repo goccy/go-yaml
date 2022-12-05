@@ -567,10 +567,10 @@ func (f *File) String() string {
 		docs = append(docs, doc.String())
 	}
 	if len(docs) > 0 {
-		// append new line at the end of file
-		docs = append(docs, "\n")
+		return strings.Join(docs, "\n") + "\n"
+	} else {
+		return ""
 	}
-	return strings.Join(docs, "\n")
 }
 
 // DocumentNode type of Document

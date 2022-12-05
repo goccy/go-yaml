@@ -343,7 +343,7 @@ a:
 				if err := path.MergeFromReader(file, strings.NewReader(test.src)); err != nil {
 					t.Fatalf("%+v", err)
 				}
-				actual := "\n" + file.String() + "\n"
+				actual := "\n" + file.String()
 				if test.expected != actual {
 					t.Fatalf("expected: %q. but got %q", test.expected, actual)
 				}
@@ -360,7 +360,7 @@ a:
 				if err := path.MergeFromFile(file, src); err != nil {
 					t.Fatalf("%+v", err)
 				}
-				actual := "\n" + file.String() + "\n"
+				actual := "\n" + file.String()
 				if test.expected != actual {
 					t.Fatalf("expected: %q. but got %q", test.expected, actual)
 				}
@@ -380,7 +380,7 @@ a:
 				if err := path.MergeFromNode(file, src.Docs[0]); err != nil {
 					t.Fatalf("%+v", err)
 				}
-				actual := "\n" + file.String() + "\n"
+				actual := "\n" + file.String()
 				if test.expected != actual {
 					t.Fatalf("expected: %q. but got %q", test.expected, actual)
 				}
@@ -525,7 +525,7 @@ building:
 				if err := path.ReplaceWithReader(file, strings.NewReader(test.src)); err != nil {
 					t.Fatalf("%+v", err)
 				}
-				actual := "\n" + file.String() + "\n"
+				actual := "\n" + file.String()
 				if test.expected != actual {
 					t.Fatalf("expected: %q. but got %q", test.expected, actual)
 				}
@@ -542,7 +542,7 @@ building:
 				if err := path.ReplaceWithFile(file, src); err != nil {
 					t.Fatalf("%+v", err)
 				}
-				actual := "\n" + file.String() + "\n"
+				actual := "\n" + file.String()
 				if test.expected != actual {
 					t.Fatalf("expected: %q. but got %q", test.expected, actual)
 				}
@@ -562,7 +562,7 @@ building:
 				if err := path.ReplaceWithNode(file, src.Docs[0]); err != nil {
 					t.Fatalf("%+v", err)
 				}
-				actual := "\n" + file.String() + "\n"
+				actual := "\n" + file.String()
 				if test.expected != actual {
 					t.Fatalf("expected: %q. but got %q", test.expected, actual)
 				}

@@ -566,7 +566,11 @@ func (f *File) String() string {
 	for _, doc := range f.Docs {
 		docs = append(docs, doc.String())
 	}
-	return strings.Join(docs, "\n")
+	if len(docs) > 0 {
+		return strings.Join(docs, "\n") + "\n"
+	} else {
+		return ""
+	}
 }
 
 // DocumentNode type of Document

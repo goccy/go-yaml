@@ -595,7 +595,7 @@ i: 'j'
 			for _, doc := range f.Docs {
 				ast.Walk(&v, doc.Body)
 			}
-			expect := fmt.Sprintf("\n%+v\n", f)
+			expect := fmt.Sprintf("\n%+v", f)
 			if test.expect != expect {
 				tokens.Dump()
 				t.Fatalf("unexpected output: [%s] != [%s]", test.expect, expect)
@@ -614,7 +614,7 @@ func TestNewLineChar(t *testing.T) {
 		if err != nil {
 			t.Fatalf("%+v", err)
 		}
-		actual := fmt.Sprintf("%v\n", ast)
+		actual := fmt.Sprintf("%v", ast)
 		expect := `a: "a"
 b: 1
 `
@@ -800,7 +800,7 @@ foo: > # comment
 			if err != nil {
 				t.Fatalf("%+v", err)
 			}
-			got := "\n" + f.String() + "\n"
+			got := "\n" + f.String()
 			if test.yaml != got {
 				t.Fatalf("expected:%s\ngot:%s", test.yaml, got)
 			}

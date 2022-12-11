@@ -543,6 +543,49 @@ c: true`,
 				},
 			},
 		},
+		{
+			name: "issue326",
+			src: `a: |
+  Text
+b: 1`,
+			expect: []testToken{
+				{
+					line:   1,
+					column: 1,
+					value:  "a",
+				},
+				{
+					line:   1,
+					column: 2,
+					value:  ":",
+				},
+				{
+					line:   1,
+					column: 4,
+					value:  "|",
+				},
+				{
+					line:   2,
+					column: 3,
+					value:  "Text\n",
+				},
+				{
+					line:   3,
+					column: 1,
+					value:  "b",
+				},
+				{
+					line:   3,
+					column: 2,
+					value:  ":",
+				},
+				{
+					line:   3,
+					column: 4,
+					value:  "1",
+				},
+			},
+		},
 	}
 
 	for _, tc := range tests {

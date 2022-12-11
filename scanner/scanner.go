@@ -61,13 +61,25 @@ func (s *Scanner) bufferedToken(ctx *Context) *token.Token {
 		s.savedPos = nil
 		return tk
 	}
-	size := len(ctx.buf)
+	line := s.line
+	column := s.column - len(ctx.buf)
+	level := s.indentLevel
+	if ctx.isSaveIndentMode() {
+		line -= s.newLineCount(ctx.buf)
+		column = strings.Index(string(ctx.obuf), string(ctx.buf)) + 1
+		// Since we are in a literal, folded or raw folded
+		// we can use the indent level from the last token.
+		last := ctx.lastToken()
+		if last != nil { // The last token should never be nil here.
+			level = last.Position.IndentLevel + 1
+		}
+	}
 	return ctx.bufferedToken(&token.Position{
-		Line:        s.line,
-		Column:      s.column - size,
-		Offset:      s.offset - size,
+		Line:        line,
+		Column:      column,
+		Offset:      s.offset - len(ctx.buf),
 		IndentNum:   s.indentNum,
-		IndentLevel: s.indentLevel,
+		IndentLevel: level,
 	})
 }
 

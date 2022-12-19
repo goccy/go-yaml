@@ -1,3 +1,15 @@
+# 1.9.8 - 2022-12-19
+
+### Fix feature
+
+- Append new line at the end of file ( #329 )
+
+### Fix bugs
+
+- Fix custom marshaler ( #333, #334 )
+- Fix behavior when struct fields conflicted( #335 )
+- Fix position calculation for literal, folded and raw folded strings ( #330 )
+
 # 1.9.7 - 2022-12-03
 
 ### Fix bugs

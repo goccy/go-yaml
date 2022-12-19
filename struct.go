@@ -95,7 +95,7 @@ type StructFieldMap map[string]*StructField
 
 func (m StructFieldMap) isIncludedRenderName(name string) bool {
 	for _, v := range m {
-		if v.RenderName == name {
+		if !v.IsInline && v.RenderName == name {
 			return true
 		}
 	}

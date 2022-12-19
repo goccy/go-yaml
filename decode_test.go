@@ -2804,3 +2804,21 @@ steps:
 		})
 	}
 }
+
+func TestSameNameInineStruct(t *testing.T) {
+	type X struct {
+		X float64 `yaml:"x"`
+	}
+
+	type T struct {
+		X `yaml:",inline"`
+	}
+
+	var v T
+	if err := yaml.Unmarshal([]byte(`x: 0.7`), &v); err != nil {
+		t.Fatal(err)
+	}
+	if fmt.Sprint(v.X.X) != "0.7" {
+		t.Fatalf("failed to decode")
+	}
+}

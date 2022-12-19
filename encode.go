@@ -642,7 +642,7 @@ func (e *Encoder) encodeStruct(ctx context.Context, value reflect.Value, column 
 		if err != nil {
 			return nil, errors.Wrapf(err, "failed to encode value")
 		}
-		if _, ok := value.(*ast.MappingNode); ok {
+		if _, ok := value.(ast.MapNode); ok {
 			value.AddColumn(e.indent)
 		}
 		var key ast.MapKeyNode = e.encodeString(structField.RenderName, column)

@@ -1473,3 +1473,45 @@ a:
 		t.Fatalf("failed to encode. expected %s but got %s", expected, got)
 	}
 }
+
+type customMapSliceOneItemMarshaler struct{}
+
+func (m *customMapSliceOneItemMarshaler) MarshalYAML() ([]byte, error) {
+	var v yaml.MapSlice
+	v = append(v, yaml.MapItem{"a", "b"})
+	return yaml.Marshal(v)
+}
+
+type customMapSliceTwoItemMarshaler struct{}
+
+func (m *customMapSliceTwoItemMarshaler) MarshalYAML() ([]byte, error) {
+	var v yaml.MapSlice
+	v = append(v, yaml.MapItem{"a", "b"})
+	v = append(v, yaml.MapItem{"b", "c"})
+	return yaml.Marshal(v)
+}
+
+func TestCustomMapSliceMarshaler(t *testing.T) {
+	type T struct {
+		A *customMapSliceOneItemMarshaler `yaml:"a"`
+		B *customMapSliceTwoItemMarshaler `yaml:"b"`
+	}
+	b, err := yaml.Marshal(&T{
+		A: &customMapSliceOneItemMarshaler{},
+		B: &customMapSliceTwoItemMarshaler{},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	expected := `
+a:
+  a: b
+b:
+  a: b
+  b: c
+`
+	got := "\n" + string(b)
+	if expected != got {
+		t.Fatalf("failed to encode. expected %s but got %s", expected, got)
+	}
+}

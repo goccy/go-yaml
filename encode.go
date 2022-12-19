@@ -481,8 +481,8 @@ func (e *Encoder) encodeMapItem(ctx context.Context, item MapItem, column int) (
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to encode MapItem")
 	}
-	if m, ok := value.(*ast.MappingNode); ok {
-		m.AddColumn(e.indent)
+	if e.isMapNode(value) {
+		value.AddColumn(e.indent)
 	}
 	return ast.MappingValue(
 		token.New("", "", e.pos(column)),
@@ -503,6 +503,11 @@ func (e *Encoder) encodeMapSlice(ctx context.Context, value MapSlice, column int
 	return node, nil
 }
 
+func (e *Encoder) isMapNode(node ast.Node) bool {
+	_, ok := node.(ast.MapNode)
+	return ok
+}
+
 func (e *Encoder) encodeMap(ctx context.Context, value reflect.Value, column int) ast.Node {
 	node := ast.Mapping(token.New("", "", e.pos(column)), e.isFlowStyle)
 	keys := make([]interface{}, len(value.MapKeys()))
@@ -519,7 +524,7 @@ func (e *Encoder) encodeMap(ctx context.Context, value reflect.Value, column int
 		if err != nil {
 			return nil
 		}
-		if value.Type() == ast.MappingType || value.Type() == ast.MappingValueType {
+		if e.isMapNode(value) {
 			value.AddColumn(e.indent)
 		}
 		node.Values = append(node.Values, ast.MappingValue(
@@ -642,7 +647,7 @@ func (e *Encoder) encodeStruct(ctx context.Context, value reflect.Value, column 
 		if err != nil {
 			return nil, errors.Wrapf(err, "failed to encode value")
 		}
-		if _, ok := value.(ast.MapNode); ok {
+		if e.isMapNode(value) {
 			value.AddColumn(e.indent)
 		}
 		var key ast.MapKeyNode = e.encodeString(structField.RenderName, column)

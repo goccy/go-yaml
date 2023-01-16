@@ -117,6 +117,7 @@ func TestIsNeedQuoted(t *testing.T) {
 		"off",
 		"Off",
 		"OFF",
+		"@test",
 	}
 	for i, test := range needQuotedTests {
 		if !token.IsNeedQuoted(test) {

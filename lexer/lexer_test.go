@@ -471,7 +471,7 @@ foo2: 'bar2'`,
 				{
 					line:   1,
 					column: 6,
-					value:  "test     bar",
+					value:  "test\n\n\n\nbar",
 				},
 				{
 					line:   7,
@@ -586,6 +586,152 @@ b: 1`,
 				},
 			},
 		},
+		{
+			name: "issue326 reverse case",
+			src: `b: 1
+a: |
+  Text
+  TextText
+`,
+			expect: []testToken{
+				{
+					line:   1,
+					column: 1,
+					value:  "b",
+				},
+				{
+					line:   1,
+					column: 2,
+					value:  ":",
+				},
+				{
+					line:   1,
+					column: 4,
+					value:  "1",
+				}, {
+					line:   2,
+					column: 1,
+					value:  "a",
+				},
+				{
+					line:   2,
+					column: 2,
+					value:  ":",
+				},
+				{
+					line:   2,
+					column: 4,
+					value:  "|",
+				},
+				{
+					line:   3,
+					column: 3,
+					value:  "Text\nTextText\n",
+				},
+			},
+		},
+		{
+			name: "empty lines",
+			src: strings.Join([]string{
+				"Folding:",
+				"  \"Empty line",
+				"   \t",
+				"  as a line feed\"",
+				"Chomping: |",
+				"  Clipped empty lines",
+				" ",
+			}, "\n"),
+			expect: []testToken{
+				{
+					line:   1,
+					column: 1,
+					value:  "Folding",
+				},
+				{
+					line:   1,
+					column: 8,
+					value:  ":",
+				},
+				{
+					line:   2,
+					column: 3,
+					value:  "Empty line\nas a line feed",
+				},
+				{
+					line:   5,
+					column: 1,
+					value:  "Chomping",
+				},
+				{
+					line:   5,
+					column: 9,
+					value:  ":",
+				},
+				{
+					line:   5,
+					column: 11,
+					value:  "|",
+				},
+				{
+					line:   6,
+					column: 3,
+					value:  "Clipped empty lines\n",
+				},
+			},
+		},
+		{
+			name: "double quote line breaks",
+			src: strings.Join([]string{
+				"a: \"folded ",
+				"to a space,\t",
+				" ",
+				"to a line feed, or \t\\",
+				" \\ \tnon-content\"",
+			}, "\n"),
+			expect: []testToken{
+				{
+					line:   1,
+					column: 1,
+					value:  "a",
+				},
+				{
+					line:   1,
+					column: 2,
+					value:  ":",
+				},
+				{
+					line:   1,
+					column: 4,
+					value:  "folded to a space,\nto a line feed, or \t \tnon-content",
+				},
+			},
+		},
+		{
+			name: "double quoted lines",
+			src: strings.Join([]string{
+				"a: \" 1st non-empty",
+				"",
+				" 2nd non-empty ",
+				"\t3rd non-empty \"",
+			}, "\n"),
+			expect: []testToken{
+				{
+					line:   1,
+					column: 1,
+					value:  "a",
+				},
+				{
+					line:   1,
+					column: 2,
+					value:  ":",
+				},
+				{
+					line:   1,
+					column: 4,
+					value:  " 1st non-empty\n2nd non-empty 3rd non-empty ",
+				},
+			},
+		},
 	}
 
 	for _, tc := range tests {
@@ -613,7 +759,12 @@ b: 1`,
 			}
 			for i, tok := range got {
 				if !tokenMatches(tok, tc.expect[i]) {
-					t.Errorf("Tokenize() expected:%+v got line:%d column:%d value:%s", tc.expect[i], tok.Position.Line, tok.Position.Column, tok.Value)
+					t.Errorf(`
+Tokenize() expected line:%d column:%d
+    value:%#q
+
+got line:%d column:%d
+    value:%#q`, tc.expect[i].line, tc.expect[i].column, tc.expect[i].value, tok.Position.Line, tok.Position.Column, tok.Value)
 				}
 			}
 		})

@@ -34,6 +34,7 @@ type Scanner struct {
 	prevIndentLevel        int
 	prevIndentNum          int
 	prevIndentColumn       int
+	docStartLine           int
 	docStartColumn         int
 	indentLevel            int
 	indentNum              int
@@ -120,6 +121,48 @@ func (s *Scanner) isNewLineChar(c rune) bool {
 		return true
 	}
 	return false
+}
+
+func (s *Scanner) isWhiteChar(c rune) bool {
+	return c == ' ' || c == '\t'
+}
+
+func (s *Scanner) isOnlyWhiteToLineEnds(src []rune, size, idx int) bool {
+	for i := idx + 1; idx < size; idx++ {
+		c := src[i]
+		if s.isWhiteChar(c) {
+			return false
+		}
+		if s.isNewLineChar(c) {
+			return true
+		}
+	}
+
+	return false
+}
+
+func (s *Scanner) scanNextEmptyLines(ctx *Context, src []rune, size, idx int) (bool, []rune, int) {
+	newLines := []rune{}
+	nextIdx := idx
+	buf := []rune{}
+	for idx++; idx < size; idx++ {
+		c := src[idx]
+		buf = append(buf, c)
+		if s.isNewLineChar(c) {
+			newLines = append(newLines, '\n')
+			nextIdx = idx
+			for i, s := 0, len(buf); i < s; i++ {
+				ctx.addOriginBuf(buf[i])
+			}
+			s.progressLine(ctx)
+			continue
+		}
+		if !s.isWhiteChar(c) {
+			return len(newLines) > 0, newLines, nextIdx
+		}
+	}
+
+	return len(newLines) > 0, newLines, nextIdx
 }
 
 func (s *Scanner) newLineCount(src []rune) int {
@@ -220,6 +263,7 @@ func (s *Scanner) addBufferedTokenIfExists(ctx *Context) {
 }
 
 func (s *Scanner) breakLiteral(ctx *Context) {
+	s.docStartLine = 0
 	s.docStartColumn = 0
 	ctx.breakLiteral()
 }
@@ -307,18 +351,31 @@ func (s *Scanner) scanDoubleQuote(ctx *Context) (tk *token.Token, pos int) {
 		pos = idx + 1
 		ctx.addOriginBuf(c)
 		if s.isNewLineChar(c) {
-			value = append(value, ' ')
+			s.progressLine(ctx)
+
+			if ok, newLines, nextIdx := s.scanNextEmptyLines(ctx, src, size, idx); ok {
+				idx = nextIdx
+				value = append(value, newLines...)
+			} else {
+				value = append(value, ' ')
+			}
 			isFirstLineChar = true
 			isNewLine = true
-			s.progressLine(ctx)
 			continue
-		} else if c == ' ' && isFirstLineChar {
+		} else if s.isWhiteChar(c) && isFirstLineChar {
+			continue
+		} else if s.isWhiteChar(c) && s.isOnlyWhiteToLineEnds(src, size, idx) {
 			continue
 		} else if c == '\\' {
 			isFirstLineChar = false
 			if idx+1 < size {
 				nextChar := src[idx+1]
 				switch nextChar {
+				case '0':
+					ctx.addOriginBuf(nextChar)
+					value = append(value, '\x00')
+					idx++
+					continue
 				case 'b':
 					ctx.addOriginBuf(nextChar)
 					value = append(value, '\b')
@@ -372,7 +429,7 @@ func (s *Scanner) scanDoubleQuote(ctx *Context) (tk *token.Token, pos int) {
 				case 'x':
 					if idx+3 >= size {
 						// TODO: need to return error
-						//err = xerrors.New("invalid escape character \\x")
+						// err = xerrors.New("invalid escape character \\x")
 						return
 					}
 					codeNum := hexRunesToInt(src[idx+2 : idx+4])
@@ -382,7 +439,7 @@ func (s *Scanner) scanDoubleQuote(ctx *Context) (tk *token.Token, pos int) {
 				case 'u':
 					if idx+5 >= size {
 						// TODO: need to return error
-						//err = xerrors.New("invalid escape character \\u")
+						// err = xerrors.New("invalid escape character \\u")
 						return
 					}
 					codeNum := hexRunesToInt(src[idx+2 : idx+6])
@@ -392,7 +449,7 @@ func (s *Scanner) scanDoubleQuote(ctx *Context) (tk *token.Token, pos int) {
 				case 'U':
 					if idx+9 >= size {
 						// TODO: need to return error
-						//err = xerrors.New("invalid escape character \\U")
+						// err = xerrors.New("invalid escape character \\U")
 						return
 					}
 					codeNum := hexRunesToInt(src[idx+2 : idx+10])
@@ -402,6 +459,10 @@ func (s *Scanner) scanDoubleQuote(ctx *Context) (tk *token.Token, pos int) {
 				case '\\':
 					ctx.addOriginBuf(nextChar)
 					idx++
+				default:
+					ctx.addOriginBuf(nextChar)
+					idx++
+					continue
 				}
 			}
 			value = append(value, c)
@@ -505,9 +566,15 @@ func (s *Scanner) scanLiteral(ctx *Context, c rune) {
 			ctx.addBuf(c)
 		}
 		value := ctx.bufferedSrc()
-		ctx.addToken(token.String(string(value), string(ctx.obuf), s.pos()))
+		pos := s.pos()
+		if ctx.isDocument() {
+			pos.Line = s.docStartLine
+			pos.Column = s.docStartColumn
+		}
+		ctx.addToken(token.String(string(value), string(ctx.obuf), pos))
 		ctx.resetBuffer()
 		s.progressColumn(ctx, 1)
+
 	} else if s.isNewLineChar(c) {
 		if ctx.isLiteral {
 			ctx.addBuf(c)
@@ -521,6 +588,9 @@ func (s *Scanner) scanLiteral(ctx *Context, c rune) {
 		}
 		s.progressColumn(ctx, 1)
 	} else {
+		if s.docStartLine == 0 {
+			s.docStartLine = s.line
+		}
 		if s.docStartColumn == 0 {
 			s.docStartColumn = s.column
 		}

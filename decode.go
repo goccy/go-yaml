@@ -12,6 +12,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"sort"
 	"strconv"
 	"time"
 
@@ -155,22 +156,106 @@ func (d *Decoder) setPathToCommentMap(node ast.Node) {
 	if d.toCommentMap == nil {
 		return
 	}
+	d.addHeadOrLineCommentToMap(node)
+	d.addFootCommentToMap(node)
+}
+
+func (d *Decoder) addHeadOrLineCommentToMap(node ast.Node) {
+	sequence, ok := node.(*ast.SequenceNode)
+	if ok {
+		d.addSequenceNodeCommentToMap(sequence)
+		return
+	}
 	commentGroup := node.GetComment()
 	if commentGroup == nil {
 		return
 	}
 	texts := []string{}
+	targetLine := node.GetToken().Position.Line
+	minCommentLine := math.MaxInt
 	for _, comment := range commentGroup.Comments {
+		if minCommentLine > comment.Token.Position.Line {
+			minCommentLine = comment.Token.Position.Line
+		}
 		texts = append(texts, comment.Token.Value)
 	}
 	if len(texts) == 0 {
 		return
 	}
-	if len(texts) == 1 {
-		d.toCommentMap[node.GetPath()] = LineComment(texts[0])
+	commentPath := node.GetPath()
+	if minCommentLine < targetLine {
+		d.addCommentToMap(commentPath, HeadComment(texts...))
 	} else {
-		d.toCommentMap[node.GetPath()] = HeadComment(texts...)
+		d.addCommentToMap(commentPath, LineComment(texts[0]))
 	}
+}
+
+func (d *Decoder) addSequenceNodeCommentToMap(node *ast.SequenceNode) {
+	if len(node.ValueHeadComments) != 0 {
+		for idx, headComment := range node.ValueHeadComments {
+			if headComment == nil {
+				continue
+			}
+			texts := make([]string, 0, len(headComment.Comments))
+			for _, comment := range headComment.Comments {
+				texts = append(texts, comment.Token.Value)
+			}
+			if len(texts) != 0 {
+				d.addCommentToMap(node.Values[idx].GetPath(), HeadComment(texts...))
+			}
+		}
+	}
+	firstElemHeadComment := node.GetComment()
+	if firstElemHeadComment != nil {
+		texts := make([]string, 0, len(firstElemHeadComment.Comments))
+		for _, comment := range firstElemHeadComment.Comments {
+			texts = append(texts, comment.Token.Value)
+		}
+		if len(texts) != 0 {
+			d.addCommentToMap(node.Values[0].GetPath(), HeadComment(texts...))
+		}
+	}
+}
+
+func (d *Decoder) addFootCommentToMap(node ast.Node) {
+	var (
+		footComment     *ast.CommentGroupNode
+		footCommentPath string = node.GetPath()
+	)
+	switch n := node.(type) {
+	case *ast.SequenceNode:
+		if len(n.Values) != 0 {
+			footCommentPath = n.Values[len(n.Values)-1].GetPath()
+		}
+		footComment = n.FootComment
+	case *ast.MappingNode:
+		footComment = n.FootComment
+	case *ast.MappingValueNode:
+		footComment = n.FootComment
+	}
+	if footComment == nil {
+		return
+	}
+	var texts []string
+	for _, comment := range footComment.Comments {
+		texts = append(texts, comment.Token.Value)
+	}
+	if len(texts) != 0 {
+		d.addCommentToMap(footCommentPath, FootComment(texts...))
+	}
+}
+
+func (d *Decoder) addCommentToMap(path string, comment *Comment) {
+	for _, c := range d.toCommentMap[path] {
+		if c.Position == comment.Position {
+			// already added same comment
+			return
+		}
+	}
+	d.toCommentMap[path] = append(d.toCommentMap[path], comment)
+	sort.Slice(d.toCommentMap[path], func(i, j int) bool {
+		return d.toCommentMap[path][i].Position < d.toCommentMap[path][j].Position
+	})
 }
 
 func (d *Decoder) nodeToValue(node ast.Node) interface{} {

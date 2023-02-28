@@ -38,7 +38,7 @@ type Encoder struct {
 	anchorCallback             func(*ast.AnchorNode, interface{}) error
 	anchorPtrToNameMap         map[uintptr]string
 	useLiteralStyleIfMultiline bool
-	commentMap                 map[*Path]*Comment
+	commentMap                 map[*Path][]*Comment
 	written                    bool
 
 	line        int
@@ -121,40 +121,90 @@ func (e *Encoder) setCommentByCommentMap(node ast.Node) error {
 	if e.commentMap == nil {
 		return nil
 	}
-	for path, comment := range e.commentMap {
+	for path, comments := range e.commentMap {
 		n, err := path.FilterNode(node)
 		if err != nil {
 			return errors.Wrapf(err, "failed to filter node")
 		}
-		comments := []*token.Token{}
-		for _, text := range comment.Texts {
-			comments = append(comments, token.New(text, text, nil))
-		}
-		commentGroup := ast.CommentGroup(comments)
-		switch comment.Position {
-		case CommentLinePosition:
-			if err := n.SetComment(commentGroup); err != nil {
-				return errors.Wrapf(err, "failed to set comment")
+		for _, comment := range comments {
+			commentTokens := []*token.Token{}
+			for _, text := range comment.Texts {
+				commentTokens = append(commentTokens, token.New(text, text, nil))
 			}
-		case CommentHeadPosition:
-			parent := ast.Parent(node, n)
-			if parent == nil {
-				return ErrUnsupportedHeadPositionType(node)
-			}
-			switch node := parent.(type) {
-			case *ast.MappingValueNode:
-				if err := node.SetComment(commentGroup); err != nil {
-					return errors.Wrapf(err, "failed to set comment")
+			commentGroup := ast.CommentGroup(commentTokens)
+			switch comment.Position {
+			case CommentHeadPosition:
+				parent := ast.Parent(node, n)
+				if parent == nil {
+					return ErrUnsupportedHeadPositionType(node)
 				}
-			case *ast.MappingNode:
-				if err := node.SetComment(commentGroup); err != nil {
-					return errors.Wrapf(err, "failed to set comment")
+				switch p := parent.(type) {
+				case *ast.MappingValueNode:
+					if err := p.SetComment(commentGroup); err != nil {
+						return errors.Wrapf(err, "failed to set comment")
+					}
+				case *ast.MappingNode:
+					if err := p.SetComment(commentGroup); err != nil {
+						return errors.Wrapf(err, "failed to set comment")
+					}
+				case *ast.SequenceNode:
+					if len(p.ValueHeadComments) == 0 {
+						p.ValueHeadComments = make([]*ast.CommentGroupNode, len(p.Values))
+					}
+					var foundIdx int
+					for idx, v := range p.Values {
+						if v == n {
+							foundIdx = idx
+							break
+						}
+					}
+					p.ValueHeadComments[foundIdx] = commentGroup
+				default:
+					return ErrUnsupportedHeadPositionType(node)
+				}
+			case CommentLinePosition:
+				switch nn := n.(type) {
+				case *ast.SequenceNode:
+					// Line comment cannot be set for sequence node. It should probably be set for the parent map node
+					parent := ast.Parent(node, n)
+					if parent == nil {
+						return ErrUnsupportedLinePositionType(nn)
+					}
+					switch p := parent.(type) {
+					case *ast.MappingValueNode:
+						if err := p.Key.SetComment(commentGroup); err != nil {
+							return errors.Wrapf(err, "failed to set comment")
+						}
+					case *ast.MappingNode:
+						if err := p.SetComment(commentGroup); err != nil {
+							return errors.Wrapf(err, "failed to set comment")
+						}
+					default:
+						return ErrUnsupportedLinePositionType(parent)
+					}
+				default:
+					if err := n.SetComment(commentGroup); err != nil {
+						return errors.Wrapf(err, "failed to set comment")
+					}
+				}
+			case CommentFootPosition:
+				parent := ast.Parent(node, n)
+				if parent == nil {
+					return ErrUnsupportedHeadPositionType(node)
+				}
+				switch node := parent.(type) {
+				case *ast.MappingValueNode:
+					node.FootComment = commentGroup
+				case *ast.MappingNode:
+					node.FootComment = commentGroup
+				case *ast.SequenceNode:
+					node.FootComment = commentGroup
+				default:
+					return ErrUnsupportedHeadPositionType(node)
 				}
 			default:
-				return ErrUnsupportedHeadPositionType(node)
+				return ErrUnknownCommentPositionType
 			}
-		default:
-			return ErrUnknownCommentPositionType
 		}
 	}
 	return nil

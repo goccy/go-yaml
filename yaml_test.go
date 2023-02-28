@@ -570,15 +570,71 @@ baz:
 
 	t.Run("combination", func(t *testing.T) {
 		v := struct {
-			Bar map[string]interface{} `yaml:"bar"`
-			Baz []int                  `yaml:"baz"`
+			Foo  map[string]interface{} `yaml:"foo"`
+			O    map[string]interface{} `yaml:"o"`
+			T    map[string]bool        `yaml:"t"`
+			Bar  map[string]interface{} `yaml:"bar"`
+			Baz  []int                  `yaml:"baz"`
+			Hoge map[string]interface{} `yaml:"hoge"`
 		}{
+			Foo: map[string]interface{}{
+				"a": map[string]interface{}{
+					"b": map[string]interface{}{
+						"c": "d",
+					},
+				},
+			},
+			O: map[string]interface{}{
+				"p": map[string]interface{}{
+					"q": map[string]interface{}{
+						"r": "s",
+					},
+				},
+			},
+			T: map[string]bool{
+				"u": true,
+			},
 			Bar: map[string]interface{}{"bbb": "ccc"},
 			Baz: []int{1, 2},
+			Hoge: map[string]interface{}{
+				"moga": true,
+			},
 		}
 
 		b, err := yaml.MarshalWithOptions(v, yaml.IndentSequence(true), yaml.WithComment(
 			yaml.CommentMap{
+				"$.foo": []*yaml.Comment{
+					yaml.HeadComment(" foo head comment", " foo head comment2"),
+					yaml.LineComment(" foo line comment"),
+				},
+				"$.foo.a": []*yaml.Comment{
+					yaml.HeadComment(" a head comment"),
+					yaml.LineComment(" a line comment"),
+				},
+				"$.foo.a.b": []*yaml.Comment{
+					yaml.HeadComment(" b head comment"),
+					yaml.LineComment(" b line comment"),
+				},
+				"$.foo.a.b.c": []*yaml.Comment{
+					yaml.LineComment(" c line comment"),
+				},
+				"$.o": []*yaml.Comment{
+					yaml.LineComment(" o line comment"),
+				},
+				"$.o.p": []*yaml.Comment{
+					yaml.HeadComment(" p head comment", " p head comment2"),
+					yaml.LineComment(" p line comment"),
+				},
+				"$.o.p.q": []*yaml.Comment{
+					yaml.HeadComment(" q head comment", " q head comment2"),
+					yaml.LineComment(" q line comment"),
+				},
+				"$.o.p.q.r": []*yaml.Comment{
+					yaml.LineComment(" r line comment"),
+				},
+				"$.t.u": []*yaml.Comment{
+					yaml.LineComment(" u line comment"),
+				},
 				"$.bar": []*yaml.Comment{
 					yaml.HeadComment(" bar head comment"),
 					yaml.LineComment(" bar line comment"),
@@ -602,12 +658,34 @@ baz:
 					yaml.LineComment(" baz line comment"),
 					yaml.FootComment(" baz foot comment"),
 				},
+				"$.hoge.moga": []*yaml.Comment{
+					yaml.LineComment(" moga line comment"),
+					yaml.FootComment(" moga foot comment"),
+				},
 			},
 		))
 		if err != nil {
 			t.Fatal(err)
 		}
 		expected := `
+# foo head comment
+# foo head comment2
+foo: # foo line comment
+  # a head comment
+  a: # a line comment
+    # b head comment
+    b: # b line comment
+      c: d # c line comment
+o: # o line comment
+  # p head comment
+  # p head comment2
+  p: # p line comment
+    # q head comment
+    # q head comment2
+    q: # q line comment
+      r: s # r line comment
+t:
+  u: true # u line comment
 # bar head comment
 bar: # bar line comment
   # bbb head comment
@@ -622,6 +700,9 @@ baz: # baz line comment
   - 2 # sequence line comment2
   # sequence foot comment
 # baz foot comment
+hoge:
+  moga: true # moga line comment
+  # moga foot comment
 `
 		actual := "\n" + string(b)
 		if expected != actual {
@@ -850,6 +931,24 @@ baz:
 	})
 	t.Run("combination", func(t *testing.T) {
 		yml := `
+# foo head comment
+# foo head comment2
+foo: # foo line comment
+  # a head comment
+  a: # a line comment
+    # b head comment
+    b: # b line comment
+      c: d # c line comment
+o: # o line comment
+  # p head comment
+  # p head comment2
+  p: # p line comment
+    # q head comment
+    # q head comment2
+    q: # q line comment
+      r: s # r line comment
+t:
+  u: true # u line comment
 # bar head comment
 bar: # bar line comment
   # bbb head comment
@@ -863,7 +962,10 @@ baz: # baz line comment
   # sequence head comment2
   - 2 # sequence line comment2
   # sequence foot comment
-# baz foot comment
+hoge:
+  moga: true # moga line comment
+  # moga foot comment
+# hoge foot comment
 `
 		var (
 			v  interface{}
@@ -876,6 +978,65 @@ baz: # baz line comment
 			path     string
 			comments []*yaml.Comment
 		}{
+			{
+				path: "$.foo",
+				comments: []*yaml.Comment{
+					yaml.HeadComment(" foo head comment", " foo head comment2"),
+					yaml.LineComment(" foo line comment"),
+				},
+			},
+			{
+				path: "$.foo.a",
+				comments: []*yaml.Comment{
+					yaml.HeadComment(" a head comment"),
+					yaml.LineComment(" a line comment"),
+				},
+			},
+			{
+				path: "$.foo.a.b",
+				comments: []*yaml.Comment{
+					yaml.HeadComment(" b head comment"),
+					yaml.LineComment(" b line comment"),
+				},
+			},
+			{
+				path: "$.foo.a.b.c",
+				comments: []*yaml.Comment{
+					yaml.LineComment(" c line comment"),
+				},
+			},
+			{
+				path: "$.o",
+				comments: []*yaml.Comment{
+					yaml.LineComment(" o line comment"),
+				},
+			},
+			{
+				path: "$.o.p",
+				comments: []*yaml.Comment{
+					yaml.HeadComment(" p head comment", " p head comment2"),
+					yaml.LineComment(" p line comment"),
+				},
+			},
+			{
+				path: "$.o.p.q",
+				comments: []*yaml.Comment{
+					yaml.HeadComment(" q head comment", " q head comment2"),
+					yaml.LineComment(" q line comment"),
+				},
+			},
+			{
+				path: "$.o.p.q.r",
+				comments: []*yaml.Comment{
+					yaml.LineComment(" r line comment"),
+				},
+			},
+			{
+				path: "$.t.u",
+				comments: []*yaml.Comment{
+					yaml.LineComment(" u line comment"),
+				},
+			},
 			{
 				path: "$.bar",
 				comments: []*yaml.Comment{
@@ -911,7 +1072,19 @@ baz: # baz line comment
 				comments: []*yaml.Comment{
 					yaml.HeadComment(" baz head comment", " baz head comment2"),
 					yaml.LineComment(" baz line comment"),
-					yaml.FootComment(" baz foot comment"),
+				},
+			},
+			{
+				path: "$.hoge",
+				comments: []*yaml.Comment{
+					yaml.FootComment(" hoge foot comment"),
+				},
+			},
+			{
+				path: "$.hoge.moga",
+				comments: []*yaml.Comment{
+					yaml.LineComment(" moga line comment"),
+					yaml.FootComment(" moga foot comment"),
 				},
 			},
 		}

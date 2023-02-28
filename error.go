@@ -22,6 +22,10 @@ func ErrUnsupportedLinePositionType(node ast.Node) error {
 	return xerrors.Errorf("unsupported comment line position for %s", node.Type())
 }
 
+func ErrUnsupportedFootPositionType(node ast.Node) error {
+	return xerrors.Errorf("unsupported comment foot position for %s", node.Type())
+}
+
 // IsInvalidQueryError whether err is ErrInvalidQuery or not.
 func IsInvalidQueryError(err error) bool {
 	return xerrors.Is(err, ErrInvalidQuery)

@@ -484,6 +484,10 @@ func (s *Scanner) scanComment(ctx *Context) (tk *token.Token, pos int) {
 			return
 		}
 	}
+	// document ends with comment.
+	value := string(ctx.src[ctx.idx:])
+	tk = token.Comment(value, string(ctx.obuf), s.pos())
+	pos = len([]rune(value)) + 1
 	return
 }
 

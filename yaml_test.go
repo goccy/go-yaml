@@ -2,12 +2,13 @@ package yaml_test
 
 import (
 	"bytes"
-	"reflect"
 	"testing"
+
+	"github.com/google/go-cmp/cmp"
+	"golang.org/x/xerrors"
 
 	"github.com/goccy/go-yaml"
 	"github.com/goccy/go-yaml/ast"
-	"golang.org/x/xerrors"
 )
 
 func TestMarshal(t *testing.T) {
@@ -385,26 +386,26 @@ a: 1
 }
 
 func Test_WithCommentOption(t *testing.T) {
-	v := struct {
-		Foo string                 `yaml:"foo"`
-		Bar map[string]interface{} `yaml:"bar"`
-		Baz struct {
-			X int `yaml:"x"`
-		} `yaml:"baz"`
-	}{
-		Foo: "aaa",
-		Bar: map[string]interface{}{"bbb": "ccc"},
-		Baz: struct {
-			X int `yaml:"x"`
-		}{X: 10},
-	}
 	t.Run("line comment", func(t *testing.T) {
+		v := struct {
+			Foo string                 `yaml:"foo"`
+			Bar map[string]interface{} `yaml:"bar"`
+			Baz struct {
+				X int `yaml:"x"`
+			} `yaml:"baz"`
+		}{
+			Foo: "aaa",
+			Bar: map[string]interface{}{"bbb": "ccc"},
+			Baz: struct {
+				X int `yaml:"x"`
+			}{X: 10},
+		}
 		b, err := yaml.MarshalWithOptions(v, yaml.WithComment(
 			yaml.CommentMap{
-				"$.foo":     yaml.LineComment("foo comment"),
-				"$.bar":     yaml.LineComment("bar comment"),
-				"$.bar.bbb": yaml.LineComment("bbb comment"),
-				"$.baz.x":   yaml.LineComment("x comment"),
+				"$.foo":     []*yaml.Comment{yaml.LineComment("foo comment")},
+				"$.bar":     []*yaml.Comment{yaml.LineComment("bar comment")},
+				"$.bar.bbb": []*yaml.Comment{yaml.LineComment("bbb comment")},
+				"$.baz.x":   []*yaml.Comment{yaml.LineComment("x comment")},
 			},
 		))
 		if err != nil {
@@ -422,25 +423,120 @@ baz:
 			t.Fatalf("expected:%s but got %s", expected, actual)
 		}
 	})
-	t.Run("head comment", func(t *testing.T) {
+	t.Run("line comment2", func(t *testing.T) {
+		v := struct {
+			Foo map[string]interface{} `yaml:"foo"`
+		}{
+			Foo: map[string]interface{}{
+				"bar": map[string]interface{}{
+					"baz": true,
+				},
+			},
+		}
 		b, err := yaml.MarshalWithOptions(v, yaml.WithComment(
 			yaml.CommentMap{
-				"$.foo": yaml.HeadComment(
-					"foo comment",
-					"foo comment2",
-				),
-				"$.bar": yaml.HeadComment(
-					"bar comment",
-					"bar comment2",
-				),
-				"$.bar.bbb": yaml.HeadComment(
-					"bbb comment",
-					"bbb comment2",
-				),
-				"$.baz.x": yaml.HeadComment(
-					"x comment",
-					"x comment2",
-				),
+				"$.foo.bar":     []*yaml.Comment{yaml.HeadComment(" bar head comment"), yaml.LineComment(" bar line comment")},
+				"$.foo.bar.baz": []*yaml.Comment{yaml.LineComment(" baz line comment")},
+			},
+		))
+		if err != nil {
+			t.Fatal(err)
+		}
+		expected := `
+foo:
+  # bar head comment
+  bar: # bar line comment
+    baz: true # baz line comment
+`
+		actual := "\n" + string(b)
+		if expected != actual {
+			t.Fatalf("expected:%s but got %s", expected, actual)
+		}
+	})
+	t.Run("single head comment", func(t *testing.T) {
+		v := struct {
+			Foo string                 `yaml:"foo"`
+			Bar map[string]interface{} `yaml:"bar"`
+			Baz struct {
+				X int `yaml:"x"`
+			} `yaml:"baz"`
+		}{
+			Foo: "aaa",
+			Bar: map[string]interface{}{"bbb": "ccc"},
+			Baz: struct {
+				X int `yaml:"x"`
+			}{X: 10},
+		}
+
+		b, err := yaml.MarshalWithOptions(v, yaml.WithComment(
+			yaml.CommentMap{
+				"$.foo":     []*yaml.Comment{yaml.HeadComment("foo comment")},
+				"$.bar":     []*yaml.Comment{yaml.HeadComment("bar comment")},
+				"$.bar.bbb": []*yaml.Comment{yaml.HeadComment("bbb comment")},
+				"$.baz.x":   []*yaml.Comment{yaml.HeadComment("x comment")},
+			},
+		))
+		if err != nil {
+			t.Fatal(err)
+		}
+		expected := `
+#foo comment
+foo: aaa
+#bar comment
+bar:
+  #bbb comment
+  bbb: ccc
+baz:
+  #x comment
+  x: 10
+`
+		actual := "\n" + string(b)
+		if expected != actual {
+			t.Fatalf("expected:%s but got %s", expected, actual)
+		}
+	})
+
+	t.Run("multiple head comment", func(t *testing.T) {
+		v := struct {
+			Foo string                 `yaml:"foo"`
+			Bar map[string]interface{} `yaml:"bar"`
+			Baz struct {
+				X int `yaml:"x"`
+			} `yaml:"baz"`
+		}{
+			Foo: "aaa",
+			Bar: map[string]interface{}{"bbb": "ccc"},
+			Baz: struct {
+				X int `yaml:"x"`
+			}{X: 10},
+		}
+
+		b, err := yaml.MarshalWithOptions(v, yaml.WithComment(
+			yaml.CommentMap{
+				"$.foo": []*yaml.Comment{
+					yaml.HeadComment(
+						"foo comment",
+						"foo comment2",
+					),
+				},
+				"$.bar": []*yaml.Comment{
+					yaml.HeadComment(
+						"bar comment",
+						"bar comment2",
+					),
+				},
+				"$.bar.bbb": []*yaml.Comment{
+					yaml.HeadComment(
+						"bbb comment",
+						"bbb comment2",
+					),
+				},
+				"$.baz.x": []*yaml.Comment{
+					yaml.HeadComment(
+						"x comment",
+						"x comment2",
+					),
+				},
 			},
 		))
 		if err != nil {
@@ -466,6 +562,184 @@ baz:
 			t.Fatalf("expected:%s but got %s", expected, actual)
 		}
 	})
+	t.Run("foot comment", func(t *testing.T) {
+		v := struct {
+			Bar map[string]interface{} `yaml:"bar"`
+			Baz []int                  `yaml:"baz"`
+		}{
+			Bar: map[string]interface{}{"bbb": "ccc"},
+			Baz: []int{1, 2},
+		}
+
+		b, err := yaml.MarshalWithOptions(v, yaml.IndentSequence(true), yaml.WithComment(
+			yaml.CommentMap{
+				"$.bar.bbb": []*yaml.Comment{yaml.FootComment("ccc: ddd")},
+				"$.baz[1]":  []*yaml.Comment{yaml.FootComment("- 3")},
+				"$.baz":     []*yaml.Comment{yaml.FootComment(" foot comment", "foot comment2")},
+			},
+		))
+		if err != nil {
+			t.Fatal(err)
+		}
+		expected := `
+bar:
+  bbb: ccc
+  #ccc: ddd
+baz:
+  - 1
+  - 2
+  #- 3
+# foot comment
+#foot comment2
+`
+		actual := "\n" + string(b)
+		if expected != actual {
+			t.Fatalf("expected:%s but got %s", expected, actual)
+		}
+	})
+
+	t.Run("combination", func(t *testing.T) {
+		v := struct {
+			Foo  map[string]interface{} `yaml:"foo"`
+			O    map[string]interface{} `yaml:"o"`
+			T    map[string]bool        `yaml:"t"`
+			Bar  map[string]interface{} `yaml:"bar"`
+			Baz  []int                  `yaml:"baz"`
+			Hoge map[string]interface{} `yaml:"hoge"`
+		}{
+			Foo: map[string]interface{}{
+				"a": map[string]interface{}{
+					"b": map[string]interface{}{
+						"c": "d",
+					},
+				},
+			},
+			O: map[string]interface{}{
+				"p": map[string]interface{}{
+					"q": map[string]interface{}{
+						"r": "s",
+					},
+				},
+			},
+			T: map[string]bool{
+				"u": true,
+			},
+			Bar: map[string]interface{}{"bbb": "ccc"},
+			Baz: []int{1, 2},
+			Hoge: map[string]interface{}{
+				"moga": true,
+			},
+		}
+
+		b, err := yaml.MarshalWithOptions(v, yaml.IndentSequence(true), yaml.WithComment(
+			yaml.CommentMap{
+				"$.foo": []*yaml.Comment{
+					yaml.HeadComment(" foo head comment", " foo head comment2"),
+					yaml.LineComment(" foo line comment"),
+				},
+				"$.foo.a": []*yaml.Comment{
+					yaml.HeadComment(" a head comment"),
+					yaml.LineComment(" a line comment"),
+				},
+				"$.foo.a.b": []*yaml.Comment{
+					yaml.HeadComment(" b head comment"),
+					yaml.LineComment(" b line comment"),
+				},
+				"$.foo.a.b.c": []*yaml.Comment{
+					yaml.LineComment(" c line comment"),
+				},
+				"$.o": []*yaml.Comment{
+					yaml.LineComment(" o line comment"),
+				},
+				"$.o.p": []*yaml.Comment{
+					yaml.HeadComment(" p head comment", " p head comment2"),
+					yaml.LineComment(" p line comment"),
+				},
+				"$.o.p.q": []*yaml.Comment{
+					yaml.HeadComment(" q head comment", " q head comment2"),
+					yaml.LineComment(" q line comment"),
+				},
+				"$.o.p.q.r": []*yaml.Comment{
+					yaml.LineComment(" r line comment"),
+				},
+				"$.t.u": []*yaml.Comment{
+					yaml.LineComment(" u line comment"),
+				},
+				"$.bar": []*yaml.Comment{
+					yaml.HeadComment(" bar head comment"),
+					yaml.LineComment(" bar line comment"),
+				},
+				"$.bar.bbb": []*yaml.Comment{
+					yaml.HeadComment(" bbb head comment"),
+					yaml.LineComment(" bbb line comment"),
+					yaml.FootComment(" bbb foot comment"),
+				},
+				"$.baz[0]": []*yaml.Comment{
+					yaml.HeadComment(" sequence head comment"),
+					yaml.LineComment(" sequence line comment"),
+				},
+				"$.baz[1]": []*yaml.Comment{
+					yaml.HeadComment(" sequence head comment2"),
+					yaml.LineComment(" sequence line comment2"),
+					yaml.FootComment(" sequence foot comment"),
+				},
+				"$.baz": []*yaml.Comment{
+					yaml.HeadComment(" baz head comment", " baz head comment2"),
+					yaml.LineComment(" baz line comment"),
+					yaml.FootComment(" baz foot comment"),
+				},
+				"$.hoge.moga": []*yaml.Comment{
+					yaml.LineComment(" moga line comment"),
+					yaml.FootComment(" moga foot comment"),
+				},
+			},
+		))
+		if err != nil {
+			t.Fatal(err)
+		}
+		expected := `
+# foo head comment
+# foo head comment2
+foo: # foo line comment
+  # a head comment
+  a: # a line comment
+    # b head comment
+    b: # b line comment
+      c: d # c line comment
+o: # o line comment
+  # p head comment
+  # p head comment2
+  p: # p line comment
+    # q head comment
+    # q head comment2
+    q: # q line comment
+      r: s # r line comment
+t:
+  u: true # u line comment
+# bar head comment
+bar: # bar line comment
+  # bbb head comment
+  bbb: ccc # bbb line comment
+  # bbb foot comment
+# baz head comment
+# baz head comment2
+baz: # baz line comment
+  # sequence head comment
+  - 1 # sequence line comment
+  # sequence head comment2
+  - 2 # sequence line comment2
+  # sequence foot comment
+# baz foot comment
+hoge:
+  moga: true # moga line comment
+  # moga foot comment
+`
+		actual := "\n" + string(b)
+		if expected != actual {
+			t.Fatalf("expected:%s but got %s", expected, actual)
+		}
+	})
+
 }
 
 func Test_CommentToMapOption(t *testing.T) {
@@ -485,37 +759,118 @@ baz:
 			t.Fatal(err)
 		}
 		expected := []struct {
-			path    string
-			comment *yaml.Comment
+			path     string
+			comments []*yaml.Comment
 		}{
 			{
-				path:    "$.foo",
-				comment: yaml.LineComment("foo comment"),
+				path:     "$.foo",
+				comments: []*yaml.Comment{yaml.LineComment("foo comment")},
 			},
 			{
-				path:    "$.bar",
-				comment: yaml.LineComment("bar comment"),
+				path:     "$.bar",
+				comments: []*yaml.Comment{yaml.LineComment("bar comment")},
 			},
 			{
-				path:    "$.bar.bbb",
-				comment: yaml.LineComment("bbb comment"),
+				path:     "$.bar.bbb",
+				comments: []*yaml.Comment{yaml.LineComment("bbb comment")},
 			},
 			{
-				path:    "$.baz.x",
-				comment: yaml.LineComment("x comment"),
+				path:     "$.baz.x",
+				comments: []*yaml.Comment{yaml.LineComment("x comment")},
 			},
 		}
 		for _, exp := range expected {
-			comment := cm[exp.path]
-			if comment == nil {
+			comments := cm[exp.path]
+			if comments == nil {
 				t.Fatalf("failed to get path %s", exp.path)
 			}
-			if !reflect.DeepEqual(exp.comment, comment) {
-				t.Fatalf("failed to get comment. expected:[%+v] but got:[%+v]", exp.comment, comment)
+			if diff := cmp.Diff(exp.comments, comments); diff != "" {
+				t.Errorf("(-got, +want)\n%s", diff)
 			}
 		}
 	})
-	t.Run("head comment", func(t *testing.T) {
+	t.Run("line comment2", func(t *testing.T) {
+		yml := `
+foo:
+  bar: baz # comment`
+		var (
+			v  interface{}
+			cm = yaml.CommentMap{}
+		)
+		if err := yaml.UnmarshalWithOptions([]byte(yml), &v, yaml.CommentToMap(cm)); err != nil {
+			t.Fatal(err)
+		}
+		expected := []struct {
+			path     string
+			comments []*yaml.Comment
+		}{
+			{
+				path:     "$.foo.bar",
+				comments: []*yaml.Comment{yaml.LineComment(" comment")},
+			},
+		}
+		for _, exp := range expected {
+			comments := cm[exp.path]
+			if comments == nil {
+				t.Fatalf("failed to get path %s", exp.path)
+			}
+			if diff := cmp.Diff(exp.comments, comments); diff != "" {
+				t.Errorf("(-got, +want)\n%s", diff)
+			}
+		}
+	})
+
+	t.Run("single head comment", func(t *testing.T) {
+		yml := `
+#foo comment
+foo: aaa
+#bar comment
+bar:
+  #bbb comment
+  bbb: ccc
+baz:
+  #x comment
+  x: 10
+`
+		var (
+			v  interface{}
+			cm = yaml.CommentMap{}
+		)
+		if err := yaml.UnmarshalWithOptions([]byte(yml), &v, yaml.CommentToMap(cm)); err != nil {
+			t.Fatal(err)
+		}
+		expected := []struct {
+			path     string
+			comments []*yaml.Comment
+		}{
+			{
+				path:     "$.foo",
+				comments: []*yaml.Comment{yaml.HeadComment("foo comment")},
+			},
+			{
+				path:     "$.bar",
+				comments: []*yaml.Comment{yaml.HeadComment("bar comment")},
+			},
+			{
+				path:     "$.bar.bbb",
+				comments: []*yaml.Comment{yaml.HeadComment("bbb comment")},
+			},
+			{
+				path:     "$.baz.x",
+				comments: []*yaml.Comment{yaml.HeadComment("x comment")},
+			},
+		}
+		for _, exp := range expected {
+			comments := cm[exp.path]
+			if comments == nil {
+				t.Fatalf("failed to get path %s", exp.path)
+			}
+			if diff := cmp.Diff(exp.comments, comments); diff != "" {
+				t.Errorf("(-got, +want)\n%s", diff)
+			}
+		}
+	})
+	t.Run("multiple head comments", func(t *testing.T) {
 		yml := `
 #foo comment
 #foo comment2
@@ -539,45 +894,268 @@ baz:
 			t.Fatal(err)
 		}
 		expected := []struct {
-			path    string
-			comment *yaml.Comment
+			path     string
+			comments []*yaml.Comment
 		}{
 			{
 				path: "$.foo",
-				comment: yaml.HeadComment(
-					"foo comment",
-					"foo comment2",
-				),
+				comments: []*yaml.Comment{
+					yaml.HeadComment(
+						"foo comment",
+						"foo comment2",
+					),
+				},
 			},
 			{
 				path: "$.bar",
-				comment: yaml.HeadComment(
-					"bar comment",
-					"bar comment2",
-				),
+				comments: []*yaml.Comment{
+					yaml.HeadComment(
+						"bar comment",
+						"bar comment2",
+					),
+				},
 			},
 			{
 				path: "$.bar.bbb",
-				comment: yaml.HeadComment(
-					"bbb comment",
-					"bbb comment2",
-				),
+				comments: []*yaml.Comment{
+					yaml.HeadComment(
+						"bbb comment",
+						"bbb comment2",
+					),
+				},
 			},
 			{
 				path: "$.baz.x",
-				comment: yaml.HeadComment(
-					"x comment",
-					"x comment2",
-				),
+				comments: []*yaml.Comment{
+					yaml.HeadComment(
+						"x comment",
+						"x comment2",
+					),
+				},
 			},
 		}
 		for _, exp := range expected {
-			comment := cm[exp.path]
-			if comment == nil {
+			comments := cm[exp.path]
+			if comments == nil {
 				t.Fatalf("failed to get path %s", exp.path)
 			}
-			if !reflect.DeepEqual(exp.comment, comment) {
-				t.Fatalf("failed to get comment. expected:[%+v] but got:[%+v]", exp.comment, comment)
+			if diff := cmp.Diff(exp.comments, comments); diff != "" {
+				t.Errorf("(-got, +want)\n%s", diff)
+			}
+		}
+	})
+	t.Run("foot comment", func(t *testing.T) {
+		yml := `
+bar:
+  bbb: ccc
+  #ccc: ddd
+baz:
+  - 1
+  - 2
+  #- 3
+ # foot comment
+#foot comment2
+`
+		var (
+			v  interface{}
+			cm = yaml.CommentMap{}
+		)
+		if err := yaml.UnmarshalWithOptions([]byte(yml), &v, yaml.CommentToMap(cm)); err != nil {
+			t.Fatal(err)
+		}
+		expected := []struct {
+			path     string
+			comments []*yaml.Comment
+		}{
+			{
+				path:     "$.bar.bbb",
+				comments: []*yaml.Comment{yaml.FootComment("ccc: ddd")},
+			},
+			{
+				path:     "$.baz[1]",
+				comments: []*yaml.Comment{yaml.FootComment("- 3")},
+			},
+			{
+				path:     "$.baz",
+				comments: []*yaml.Comment{yaml.FootComment(" foot comment", "foot comment2")},
+			},
+		}
+		for _, exp := range expected {
+			comments := cm[exp.path]
+			if comments == nil {
+				t.Fatalf("failed to get path %s", exp.path)
+			}
+			if diff := cmp.Diff(exp.comments, comments); diff != "" {
+				t.Errorf("(-got, +want)\n%s", diff)
+			}
+		}
+	})
+	t.Run("combination", func(t *testing.T) {
+		yml := `
+# foo head comment
+# foo head comment2
+foo: # foo line comment
+  # a head comment
+  a: # a line comment
+    # b head comment
+    b: # b line comment
+      c: d # c line comment
+o: # o line comment
+  # p head comment
+  # p head comment2
+  p: # p line comment
+    # q head comment
+    # q head comment2
+    q: # q line comment
+      r: s # r line comment
+t:
+  u: true # u line comment
+# bar head comment
+bar: # bar line comment
+  # bbb head comment
+  bbb: ccc # bbb line comment
+  # bbb foot comment
+# baz head comment
+# baz head comment2
+baz: # baz line comment
+  # sequence head comment
+  - 1 # sequence line comment
+  # sequence head comment2
+  - 2 # sequence line comment2
+  # sequence foot comment
+hoge:
+  moga: true # moga line comment
+  # moga foot comment
+# hoge foot comment
+`
+		var (
+			v  interface{}
+			cm = yaml.CommentMap{}
+		)
+		if err := yaml.UnmarshalWithOptions([]byte(yml), &v, yaml.CommentToMap(cm)); err != nil {
+			t.Fatal(err)
+		}
+		expected := []struct {
+			path     string
+			comments []*yaml.Comment
+		}{
+			{
+				path: "$.foo",
+				comments: []*yaml.Comment{
+					yaml.HeadComment(" foo head comment", " foo head comment2"),
+					yaml.LineComment(" foo line comment"),
+				},
+			},
+			{
+				path: "$.foo.a",
+				comments: []*yaml.Comment{
+					yaml.HeadComment(" a head comment"),
+					yaml.LineComment(" a line comment"),
+				},
+			},
+			{
+				path: "$.foo.a.b",
+				comments: []*yaml.Comment{
+					yaml.HeadComment(" b head comment"),
+					yaml.LineComment(" b line comment"),
+				},
+			},
+			{
+				path: "$.foo.a.b.c",
+				comments: []*yaml.Comment{
+					yaml.LineComment(" c line comment"),
+				},
+			},
+			{
+				path: "$.o",
+				comments: []*yaml.Comment{
+					yaml.LineComment(" o line comment"),
+				},
+			},
+			{
+				path: "$.o.p",
+				comments: []*yaml.Comment{
+					yaml.HeadComment(" p head comment", " p head comment2"),
+					yaml.LineComment(" p line comment"),
+				},
+			},
+			{
+				path: "$.o.p.q",
+				comments: []*yaml.Comment{
+					yaml.HeadComment(" q head comment", " q head comment2"),
+					yaml.LineComment(" q line comment"),
+				},
+			},
+			{
+				path: "$.o.p.q.r",
+				comments: []*yaml.Comment{
+					yaml.LineComment(" r line comment"),
+				},
+			},
+			{
+				path: "$.t.u",
+				comments: []*yaml.Comment{
+					yaml.LineComment(" u line comment"),
+				},
+			},
+			{
+				path: "$.bar",
+				comments: []*yaml.Comment{
+					yaml.HeadComment(" bar head comment"),
+					yaml.LineComment(" bar line comment"),
+				},
+			},
+			{
+				path: "$.bar.bbb",
+				comments: []*yaml.Comment{
+					yaml.HeadComment(" bbb head comment"),
+					yaml.LineComment(" bbb line comment"),
+					yaml.FootComment(" bbb foot comment"),
+				},
+			},
+			{
+				path: "$.baz[0]",
+				comments: []*yaml.Comment{
+					yaml.HeadComment(" sequence head comment"),
+					yaml.LineComment(" sequence line comment"),
+				},
+			},
+			{
+				path: "$.baz[1]",
+				comments: []*yaml.Comment{
+					yaml.HeadComment(" sequence head comment2"),
+					yaml.LineComment(" sequence line comment2"),
+					yaml.FootComment(" sequence foot comment"),
+				},
+			},
+			{
+				path: "$.baz",
+				comments: []*yaml.Comment{
+					yaml.HeadComment(" baz head comment", " baz head comment2"),
+					yaml.LineComment(" baz line comment"),
+				},
+			},
+			{
+				path: "$.hoge",
+				comments: []*yaml.Comment{
+					yaml.FootComment(" hoge foot comment"),
+				},
+			},
+			{
+				path: "$.hoge.moga",
+				comments: []*yaml.Comment{
+					yaml.LineComment(" moga line comment"),
+					yaml.FootComment(" moga foot comment"),
+				},
+			},
+		}
+		for _, exp := range expected {
+			comments := cm[exp.path]
+			if comments == nil {
+				t.Fatalf("failed to get path %s", exp.path)
+			}
+			if diff := cmp.Diff(exp.comments, comments); diff != "" {
+				t.Errorf("%s: (-got, +want)\n%s", exp.path, diff)
 			}
 		}
 	})

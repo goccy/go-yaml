@@ -146,7 +146,7 @@ func (e *Encoder) setCommentByCommentMap(node ast.Node) error {
 				}
 			case CommentFootPosition:
 				if err := e.setFootComment(node, n, commentGroup); err != nil {
-					return errors.Wrapf(err, "failed to set line comment")
+					return errors.Wrapf(err, "failed to set foot comment")
 				}
 			default:
 				return ErrUnknownCommentPositionType

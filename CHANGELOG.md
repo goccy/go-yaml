@@ -1,3 +1,11 @@
+# 1.10.0 - 2023-03-01
+
+### Fix bugs
+
+Reversible conversion of comments was not working in various cases, which has been corrected.
+**Breaking Change** exists in the comment map interface. However, if you are dealing with CommentMap directly, there is no problem.
+
+
 # 1.9.8 - 2022-12-19
 
 ### Fix feature

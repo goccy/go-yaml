@@ -189,29 +189,37 @@ func (e *Encoder) setHeadComment(node ast.Node, filtered ast.Node, comment *ast.
 }
 
 func (e *Encoder) setLineComment(node ast.Node, filtered ast.Node, comment *ast.CommentGroupNode) error {
-	switch n := filtered.(type) {
-	case *ast.SequenceNode:
-		// Line comment cannot be set for sequence node. It should probably be set for the parent map node
-		parent := ast.Parent(node, filtered)
-		if parent == nil {
-			return ErrUnsupportedLinePositionType(n)
-		}
-		switch p := parent.(type) {
-		case *ast.MappingValueNode:
-			if err := p.Key.SetComment(comment); err != nil {
-				return errors.Wrapf(err, "failed to set comment")
-			}
-		case *ast.MappingNode:
-			if err := p.SetComment(comment); err != nil {
-				return errors.Wrapf(err, "failed to set comment")
-			}
-		default:
-			return ErrUnsupportedLinePositionType(parent)
+	switch filtered.(type) {
+	case *ast.MappingValueNode, *ast.SequenceNode:
+		// Line comment cannot be set for mapping value node.
+		// It should probably be set for the parent map node
+		if err := e.setLineCommentToParentMapNode(node, filtered, comment); err != nil {
+			return errors.Wrapf(err, "failed to set line comment to parent node")
 		}
 	default:
 		if err := filtered.SetComment(comment); err != nil {
 			return errors.Wrapf(err, "failed to set comment")
 		}
+	}
+	return nil
+}
+
+func (e *Encoder) setLineCommentToParentMapNode(node ast.Node, filtered ast.Node, comment *ast.CommentGroupNode) error {
+	parent := ast.Parent(node, filtered)
+	if parent == nil {
+		return ErrUnsupportedLinePositionType(node)
+	}
+	switch p := parent.(type) {
+	case *ast.MappingValueNode:
+		if err := p.Key.SetComment(comment); err != nil {
+			return errors.Wrapf(err, "failed to set comment")
+		}
+	case *ast.MappingNode:
+		if err := p.SetComment(comment); err != nil {
+			return errors.Wrapf(err, "failed to set comment")
+		}
+	default:
+		return ErrUnsupportedLinePositionType(parent)
 	}
 	return nil
 }

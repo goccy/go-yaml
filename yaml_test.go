@@ -423,6 +423,36 @@ baz:
 			t.Fatalf("expected:%s but got %s", expected, actual)
 		}
 	})
+	t.Run("line comment2", func(t *testing.T) {
+		v := struct {
+			Foo map[string]interface{} `yaml:"foo"`
+		}{
+			Foo: map[string]interface{}{
+				"bar": map[string]interface{}{
+					"baz": true,
+				},
+			},
+		}
+		b, err := yaml.MarshalWithOptions(v, yaml.WithComment(
+			yaml.CommentMap{
+				"$.foo.bar":     []*yaml.Comment{yaml.HeadComment(" bar head comment"), yaml.LineComment(" bar line comment")},
+				"$.foo.bar.baz": []*yaml.Comment{yaml.LineComment(" baz line comment")},
+			},
+		))
+		if err != nil {
+			t.Fatal(err)
+		}
+		expected := `
+foo:
+  # bar head comment
+  bar: # bar line comment
+    baz: true # baz line comment
+`
+		actual := "\n" + string(b)
+		if expected != actual {
+			t.Fatalf("expected:%s but got %s", expected, actual)
+		}
+	})
 	t.Run("single head comment", func(t *testing.T) {
 		v := struct {
 			Foo string                 `yaml:"foo"`
@@ -759,6 +789,37 @@ baz:
 			}
 		}
 	})
+	t.Run("line comment2", func(t *testing.T) {
+		yml := `
+foo:
+  bar: baz # comment`
+		var (
+			v  interface{}
+			cm = yaml.CommentMap{}
+		)
+		if err := yaml.UnmarshalWithOptions([]byte(yml), &v, yaml.CommentToMap(cm)); err != nil {
+			t.Fatal(err)
+		}
+		expected := []struct {
+			path     string
+			comments []*yaml.Comment
+		}{
+			{
+				path:     "$.foo.bar",
+				comments: []*yaml.Comment{yaml.LineComment(" comment")},
+			},
+		}
+		for _, exp := range expected {
+			comments := cm[exp.path]
+			if comments == nil {
+				t.Fatalf("failed to get path %s", exp.path)
+			}
+			if diff := cmp.Diff(exp.comments, comments); diff != "" {
+				t.Errorf("(-got, +want)\n%s", diff)
+			}
+		}
+	})
+
 	t.Run("single head comment", func(t *testing.T) {
 		yml := `
 #foo comment

@@ -282,6 +282,26 @@ var (
 		"false",
 		"False",
 		"FALSE",
+		// For compatibility with other YAML 1.1 parsers
+		// Note that we use these solely for encoding the bool value with quotes.
+		// go-yaml should not treat these as reserved keywords at parsing time.
+		// as go-yaml is supposed to be compliant only with YAML 1.2.
+		"y",
+		"Y",
+		"yes",
+		"Yes",
+		"YES",
+		"n",
+		"N",
+		"no",
+		"No",
+		"NO",
+		"on",
+		"On",
+		"ON",
+		"off",
+		"Off",
+		"OFF",
 	}
 	reservedInfKeywords = []string{
 		".inf",

@@ -440,7 +440,7 @@ func TestEncoder(t *testing.T) {
 		},
 
 		{
-			"a:\n  y: \"\"\n",
+			"a:\n  \"y\": \"\"\n",
 			struct {
 				A *struct {
 					X string `yaml:"x,omitempty"`
@@ -702,7 +702,7 @@ func TestEncodeStructIncludeMap(t *testing.T) {
 	if err != nil {
 		t.Fatalf("%+v", err)
 	}
-	expect := "a:\n  m:\n    x: y\n"
+	expect := "a:\n  m:\n    x: \"y\"\n"
 	actual := string(bytes)
 	if actual != expect {
 		t.Fatalf("unexpected output. expect:[%s] actual:[%s]", expect, actual)
@@ -720,7 +720,7 @@ func TestEncodeDefinedTypeKeyMap(t *testing.T) {
 	if err != nil {
 		t.Fatalf("%+v", err)
 	}
-	expect := "m:\n  x: y\n"
+	expect := "m:\n  x: \"y\"\n"
 	actual := string(bytes)
 	if actual != expect {
 		t.Fatalf("unexpected output. expect:[%s] actual:[%s]", expect, actual)

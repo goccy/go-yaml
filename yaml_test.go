@@ -95,7 +95,7 @@ a:
   b: hello
   c: true
   d:
-    x: y
+    x: "y"
 b:
   a: 2
   b: world

@@ -29,6 +29,7 @@ type Decoder struct {
 	referenceReaders     []io.Reader
 	anchorNodeMap        map[string]ast.Node
 	anchorValueMap       map[string]reflect.Value
+	aliasSet             map[*ast.AliasNode]struct{}
 	customUnmarshalerMap map[reflect.Type]func(interface{}, []byte) error
 	toCommentMap         CommentMap
 	opts                 []DecodeOption
@@ -51,6 +52,7 @@ func NewDecoder(r io.Reader, opts ...DecodeOption) *Decoder {
 		reader:               r,
 		anchorNodeMap:        map[string]ast.Node{},
 		anchorValueMap:       map[string]reflect.Value{},
+		aliasSet:             map[*ast.AliasNode]struct{}{},
 		customUnmarshalerMap: map[reflect.Type]func(interface{}, []byte) error{},
 		opts:                 opts,
 		referenceReaders:     []io.Reader{},
@@ -303,6 +305,10 @@ func (d *Decoder) nodeToValue(node ast.Node) interface{} {
 		d.anchorNodeMap[anchorName] = n.Value
 		return anchorValue
 	case *ast.AliasNode:
+		if _, ok := d.aliasSet[n]; ok {
+			return nil
+		}
+		d.aliasSet[n] = struct{}{}
 		aliasName := n.Value.GetToken().Value
 		node := d.anchorNodeMap[aliasName]
 		return d.nodeToValue(node)

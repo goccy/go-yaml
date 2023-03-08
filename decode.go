@@ -1007,7 +1007,7 @@ func (d *Decoder) keyToNodeMap(node ast.Node, ignoreMergeKey bool, getKeyOrValue
 		} else {
 			key, ok := d.nodeToValue(keyNode).(string)
 			if !ok {
-				return nil, errors.Wrapf(err, "failed to decode map key")
+				return nil, xerrors.New("failed to decode map key")
 			}
 			if err := d.validateDuplicateKey(keyMap, key, keyNode); err != nil {
 				return nil, errors.Wrapf(err, "invalid struct key")

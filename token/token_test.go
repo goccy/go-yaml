@@ -80,7 +80,10 @@ func TestIsNeedQuoted(t *testing.T) {
 	needQuotedTests := []string{
 		"",
 		"true",
+		"1",
 		"1.234",
+		"44987e08",
+		"-44987e08",
 		"1:1",
 		"hoge # comment",
 		"\\0",
@@ -109,6 +112,11 @@ func TestIsNeedQuoted(t *testing.T) {
 	}
 	notNeedQuotedTests := []string{
 		"Hello World",
+		"e",
+		"ee",
+		"eee",
+		"ae34",
+		"123e4.5",
 	}
 	for i, test := range notNeedQuotedTests {
 		if token.IsNeedQuoted(test) {

@@ -519,14 +519,14 @@ func getNumberStat(str string) *numStat {
 				// binary number
 				continue
 			}
-			if (c == 'e' || c == 'E') && dotFound {
+			if (c == 'e' || c == 'E') && !isExponent && ((isNegative && idx > 2) || (!isNegative && idx > 1)) {
 				// exponent
 				isExponent = true
 				continue
 			}
 		case '.':
-			if dotFound {
-				// multiple dot
+			if dotFound || isExponent {
+				// multiple dots or dot used in exponent
 				return stat
 			}
 			dotFound = true
@@ -546,7 +546,7 @@ func getNumberStat(str string) *numStat {
 	}
 	stat.isNum = true
 	switch {
-	case dotFound:
+	case dotFound || isExponent:
 		stat.typ = numTypeFloat
 	case strings.HasPrefix(str, "0b") || strings.HasPrefix(str, "-0b"):
 		stat.typ = numTypeBinary

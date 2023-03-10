@@ -2715,6 +2715,36 @@ func TestDecoder_DecodeWithNode(t *testing.T) {
 	})
 }
 
+func TestDecoder_RecursiveAlias(t *testing.T) {
+	type Key struct {
+		Key *Key
+	}
+
+	var v struct {
+		A *Key
+		B *Key
+	}
+
+	const src = `
+a: &anchor
+  key: *anchor
+b: *anchor
+`
+
+	if err := yaml.NewDecoder(strings.NewReader(src)).Decode(&v); err != nil {
+		t.Fatalf(`parsing should succeed: %s`, err)
+	}
+
+	if v.A != v.A.Key || v.B != v.A || v.B.Key != v.A {
+		t.Errorf("expected recursive aliases to be the same: A: %p, A.Key: %p, B: %p, B.Key: %p",
+			v.A,
+			v.A.Key,
+			v.B,
+			v.B.Key,
+		)
+	}
+}
+
 func TestRoundtripAnchorAlias(t *testing.T) {
 	t.Run("irreversible", func(t *testing.T) {
 		type foo struct {

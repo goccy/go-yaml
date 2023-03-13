@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"github.com/goccy/go-yaml/parser"
 	"math"
 	"reflect"
 	"strconv"
@@ -1397,6 +1398,24 @@ func Example_MarshalYAML() {
 	// b: 100
 	//
 	// field: 13
+}
+
+func TestIssue356(t *testing.T) {
+	in := `args:
+  - |
+    key:
+      nest1: something
+      nest2:
+        nest2a: b
+`
+	f, err := parser.ParseBytes([]byte(in), 0)
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	got := f.String()
+	if in != got {
+		t.Fatalf("failed to encode.\nexpected:\n%s\nbut got:\n%s\n", in, got)
+	}
 }
 
 func TestMarshalIndentWithMultipleText(t *testing.T) {

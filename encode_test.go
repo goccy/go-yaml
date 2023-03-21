@@ -1401,20 +1401,42 @@ func Example_MarshalYAML() {
 }
 
 func TestIssue356(t *testing.T) {
-	in := `args:
+	tests := map[string]struct {
+		in string
+	}{
+		"content on first line": {
+			in: `args:
   - |
+
     key:
       nest1: something
       nest2:
         nest2a: b
-`
-	f, err := parser.ParseBytes([]byte(in), 0)
-	if err != nil {
-		t.Fatalf("parse: %v", err)
+`,
+		},
+		"empty first line": {
+			in: `args:
+  - |
+
+    key:
+      nest1: something
+      nest2:
+        nest2a: b
+`,
+		},
 	}
-	got := f.String()
-	if in != got {
-		t.Fatalf("failed to encode.\nexpected:\n%s\nbut got:\n%s\n", in, got)
+
+	for name, test := range tests {
+		t.Run(name, func(t *testing.T) {
+			f, err := parser.ParseBytes([]byte(test.in), 0)
+			if err != nil {
+				t.Fatalf("parse: %v", err)
+			}
+			got := f.String()
+			if test.in != got {
+				t.Fatalf("failed to encode.\nexpected:\n%s\nbut got:\n%s\n", test.in, got)
+			}
+		})
 	}
 }
 

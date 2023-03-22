@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"github.com/goccy/go-yaml/parser"
 	"math"
 	"reflect"
 	"strconv"
@@ -440,7 +441,7 @@ func TestEncoder(t *testing.T) {
 		},
 
 		{
-			"a:\n  y: \"\"\n",
+			"a:\n  \"y\": \"\"\n",
 			struct {
 				A *struct {
 					X string `yaml:"x,omitempty"`
@@ -702,7 +703,7 @@ func TestEncodeStructIncludeMap(t *testing.T) {
 	if err != nil {
 		t.Fatalf("%+v", err)
 	}
-	expect := "a:\n  m:\n    x: y\n"
+	expect := "a:\n  m:\n    x: \"y\"\n"
 	actual := string(bytes)
 	if actual != expect {
 		t.Fatalf("unexpected output. expect:[%s] actual:[%s]", expect, actual)
@@ -720,7 +721,7 @@ func TestEncodeDefinedTypeKeyMap(t *testing.T) {
 	if err != nil {
 		t.Fatalf("%+v", err)
 	}
-	expect := "m:\n  x: y\n"
+	expect := "m:\n  x: \"y\"\n"
 	actual := string(bytes)
 	if actual != expect {
 		t.Fatalf("unexpected output. expect:[%s] actual:[%s]", expect, actual)
@@ -1397,6 +1398,46 @@ func Example_MarshalYAML() {
 	// b: 100
 	//
 	// field: 13
+}
+
+func TestIssue356(t *testing.T) {
+	tests := map[string]struct {
+		in string
+	}{
+		"content on first line": {
+			in: `args:
+  - |
+
+    key:
+      nest1: something
+      nest2:
+        nest2a: b
+`,
+		},
+		"empty first line": {
+			in: `args:
+  - |
+
+    key:
+      nest1: something
+      nest2:
+        nest2a: b
+`,
+		},
+	}
+
+	for name, test := range tests {
+		t.Run(name, func(t *testing.T) {
+			f, err := parser.ParseBytes([]byte(test.in), 0)
+			if err != nil {
+				t.Fatalf("parse: %v", err)
+			}
+			got := f.String()
+			if test.in != got {
+				t.Fatalf("failed to encode.\nexpected:\n%s\nbut got:\n%s\n", test.in, got)
+			}
+		})
+	}
 }
 
 func TestMarshalIndentWithMultipleText(t *testing.T) {

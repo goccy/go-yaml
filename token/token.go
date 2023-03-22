@@ -283,6 +283,28 @@ var (
 		"False",
 		"FALSE",
 	}
+	// For compatibility with other YAML 1.1 parsers
+	// Note that we use these solely for encoding the bool value with quotes.
+	// go-yaml should not treat these as reserved keywords at parsing time.
+	// as go-yaml is supposed to be compliant only with YAML 1.2.
+	reservedLegacyBoolKeywords = []string{
+		"y",
+		"Y",
+		"yes",
+		"Yes",
+		"YES",
+		"n",
+		"N",
+		"no",
+		"No",
+		"NO",
+		"on",
+		"On",
+		"ON",
+		"off",
+		"Off",
+		"OFF",
+	}
 	reservedInfKeywords = []string{
 		".inf",
 		".Inf",
@@ -297,6 +319,11 @@ var (
 		".NAN",
 	}
 	reservedKeywordMap = map[string]func(string, string, *Position) *Token{}
+	// reservedEncKeywordMap contains is the keyword map used at encoding time.
+	// This is supposed to be a superset of reservedKeywordMap,
+	// and used to quote legacy keywords present in YAML 1.1 or lesser for compatibility reasons,
+	// even though this library is supposed to be YAML 1.2-compliant.
+	reservedEncKeywordMap = map[string]func(string, string, *Position) *Token{}
 )
 
 func reservedKeywordToken(typ Type, value, org string, pos *Position) *Token {
@@ -317,7 +344,14 @@ func init() {
 		}
 	}
 	for _, keyword := range reservedBoolKeywords {
-		reservedKeywordMap[keyword] = func(value, org string, pos *Position) *Token {
+		f := func(value, org string, pos *Position) *Token {
+			return reservedKeywordToken(BoolType, value, org, pos)
+		}
+		reservedKeywordMap[keyword] = f
+		reservedEncKeywordMap[keyword] = f
+	}
+	for _, keyword := range reservedLegacyBoolKeywords {
+		reservedEncKeywordMap[keyword] = func(value, org string, pos *Position) *Token {
 			return reservedKeywordToken(BoolType, value, org, pos)
 		}
 	}
@@ -581,7 +615,7 @@ func IsNeedQuoted(value string) bool {
 	if value == "" {
 		return true
 	}
-	if _, exists := reservedKeywordMap[value]; exists {
+	if _, exists := reservedEncKeywordMap[value]; exists {
 		return true
 	}
 	if stat := getNumberStat(value); stat.isNum {

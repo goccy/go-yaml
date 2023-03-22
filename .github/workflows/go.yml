@@ -9,7 +9,7 @@ jobs:
     name: Test
     strategy:
       matrix:
-        go-version: [ "1.16", "1.17", "1.18" ]
+        go-version: [ "1.18", "1.19", "1.20" ]
         goos: [ "linux", "darwin", "windows" ]
         goarch: [ "amd64", "386", "arm64", "arm" ]
         include:
@@ -30,11 +30,11 @@ jobs:
       goarch: ${{ matrix.arch }}
     steps:
     - name: setup Go ${{ matrix.go-version }}
-      uses: actions/setup-go@v2
+      uses: actions/setup-go@v3
       with:
         go-version: ${{ matrix.go-version }}
     - name: checkout
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3
     - name: test
       run: |
         make test
@@ -43,11 +43,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: setup Go
-        uses: actions/setup-go@v2
+        uses: actions/setup-go@v3
         with:
-          go-version: 1.18
+          go-version: "1.20"
       - name: checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
       - name: build
         run: |
           make ycat/build
@@ -60,15 +60,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: setup Go
-        uses: actions/setup-go@v2
+        uses: actions/setup-go@v3
         with:
-          go-version: 1.18
+          go-version: "1.20"
       - name: checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
       - name: measure coverage
         run: |
           make cover
-      - uses: codecov/codecov-action@v2
+      - uses: codecov/codecov-action@v3
         with:
           fail_ci_if_error: true
           verbose: true

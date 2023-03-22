@@ -9,9 +9,25 @@ jobs:
     name: Test
     strategy:
       matrix:
-        os: [ "ubuntu-latest", "macos-latest", "windows-latest" ]
         go-version: [ "1.16", "1.17", "1.18" ]
+        goos: [ "linux", "darwin", "windows" ]
+        goarch: [ "amd64", "386", "arm64", "arm" ]
+        include:
+        - goos: "linux"
+          os: "ubuntu-latest"
+        - goos: "darwin"
+          os: "macos-latest"
+        - goos: "windows"
+          os: "windows-latest"
+        exclude:
+        - goos: "darwin"
+          goarch: "386"
+        - goos: "darwin"
+          goarch: "arm"
     runs-on: ${{ matrix.os }}
+    env:
+      goos: ${{ matrix.goos }}
+      goarch: ${{ matrix.arch }}
     steps:
     - name: setup Go ${{ matrix.go-version }}
       uses: actions/setup-go@v2

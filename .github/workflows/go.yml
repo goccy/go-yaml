@@ -26,8 +26,8 @@ jobs:
           goarch: "arm"
     runs-on: ${{ matrix.os }}
     env:
-      goos: ${{ matrix.goos }}
-      goarch: ${{ matrix.arch }}
+      GOOS: ${{ matrix.goos }}
+      GOARCH: ${{ matrix.goarch }}
     steps:
     - name: setup Go ${{ matrix.go-version }}
       uses: actions/setup-go@v3

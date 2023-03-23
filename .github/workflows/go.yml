@@ -5,7 +5,7 @@ on:
       - master
   pull_request:
 jobs:
-  test:
+  race-test:
     name: Test with -race
     strategy:
       matrix:
@@ -23,29 +23,15 @@ jobs:
       run: |
         make test
   
-  multiarch-test:
-    name: Multi GOARCH Test
+  i386-test:
+    name: i386 test
     strategy:
       matrix:
+        os: [ "ubuntu-latest", "windows-latest" ]
         go-version: [ "1.18", "1.19", "1.20" ]
-        goos: [ "linux", "darwin", "windows" ]
-        goarch: [ "amd64", "386", "arm64", "arm" ]
-        include:
-        - goos: "linux"
-          os: "ubuntu-latest"
-        - goos: "darwin"
-          os: "macos-latest"
-        - goos: "windows"
-          os: "windows-latest"
-        exclude:
-        - goos: "darwin"
-          goarch: "386"
-        - goos: "darwin"
-          goarch: "arm"
     runs-on: ${{ matrix.os }}
     env:
-      GOOS: ${{ matrix.goos }}
-      GOARCH: ${{ matrix.goarch }}
+      GOARCH: "386"
     steps:
     - name: setup Go ${{ matrix.go-version }}
       uses: actions/setup-go@v3

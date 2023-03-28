@@ -2,6 +2,10 @@
 test:
 	go test -v -race ./...
 
+.PHONY: simple-test
+simple-test:
+	go test -v ./...
+
 .PHONY: cover
 cover:
 	go test -coverprofile=cover.out ./...

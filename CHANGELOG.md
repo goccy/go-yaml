@@ -1,3 +1,15 @@
+# 1.10.1 - 2023-03-28
+
+### Features
+
+- Quote YAML 1.1 bools at encoding time for compatibility with other legacy parsers
+- Add support of 32-bit architecture
+
+### Fix bugs
+
+- Don't trim all space characters in block style sequence
+- Support strings starting with `@`
+
 # 1.10.0 - 2023-03-01
 
 ### Fix bugs

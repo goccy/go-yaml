@@ -2,6 +2,7 @@ package yaml
 
 import (
 	"io"
+	"reflect"
 
 	"github.com/goccy/go-yaml/ast"
 )
@@ -94,6 +95,20 @@ func UseJSONUnmarshaler() DecodeOption {
 	}
 }
 
+// CustomUnmarshaler overrides any decoding process for the type specified in generics.
+//
+// NOTE: If RegisterCustomUnmarshaler and CustomUnmarshaler of DecodeOption are specified for the same type,
+// the CustomUnmarshaler specified in DecodeOption takes precedence.
+func CustomUnmarshaler[T any](unmarshaler func(*T, []byte) error) DecodeOption {
+	return func(d *Decoder) error {
+		var typ *T
+		d.customUnmarshalerMap[reflect.TypeOf(typ)] = func(v interface{}, b []byte) error {
+			return unmarshaler(v.(*T), b)
+		}
+		return nil
+	}
+}
+
 // EncodeOption functional option type for Encoder
 type EncodeOption func(e *Encoder) error
 
@@ -161,6 +176,21 @@ func MarshalAnchor(callback func(*ast.AnchorNode, interface{}) error) EncodeOpti
 func UseJSONMarshaler() EncodeOption {
 	return func(e *Encoder) error {
 		e.useJSONMarshaler = true
+		return nil
+	}
+}
+
+// CustomMarshaler overrides any encoding process for the type specified in generics.
+//
+// NOTE: If type T implements MarshalYAML for pointer receiver, the type specified in CustomMarshaler must be *T.
+// If RegisterCustomMarshaler and CustomMarshaler of EncodeOption are specified for the same type,
+// the CustomMarshaler specified in EncodeOption takes precedence.
+func CustomMarshaler[T any](marshaler func(T) ([]byte, error)) EncodeOption {
+	return func(e *Encoder) error {
+		var typ T
+		e.customMarshalerMap[reflect.TypeOf(typ)] = func(v interface{}) ([]byte, error) {
+			return marshaler(v.(T))
+		}
 		return nil
 	}
 }

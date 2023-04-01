@@ -1160,3 +1160,36 @@ hoge:
 		}
 	})
 }
+
+func TestRegisterCustomMarshaler(t *testing.T) {
+	type T struct {
+		Foo []byte `yaml:"foo"`
+	}
+	yaml.RegisterCustomMarshaler[T](func(_ T) ([]byte, error) {
+		return []byte(`"override"`), nil
+	})
+	b, err := yaml.Marshal(&T{Foo: []byte("bar")})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(b, []byte("\"override\"\n")) {
+		t.Fatalf("failed to register custom marshaler. got: %q", b)
+	}
+}
+
+func TestRegisterCustomUnmarshaler(t *testing.T) {
+	type T struct {
+		Foo []byte `yaml:"foo"`
+	}
+	yaml.RegisterCustomUnmarshaler[T](func(v *T, _ []byte) error {
+		v.Foo = []byte("override")
+		return nil
+	})
+	var v T
+	if err := yaml.Unmarshal([]byte(`"foo: "bar"`), &v); err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(v.Foo, []byte("override")) {
+		t.Fatalf("failed to decode. got %q", v.Foo)
+	}
+}

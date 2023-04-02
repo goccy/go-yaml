@@ -1858,6 +1858,54 @@ func TestDecoder_UseJSONUnmarshaler(t *testing.T) {
 	}
 }
 
+func TestDecoder_CustomUnmarshaler(t *testing.T) {
+	t.Run("override struct type", func(t *testing.T) {
+		type T struct {
+			Foo string `yaml:"foo"`
+		}
+		src := []byte(`foo: "bar"`)
+		var v T
+		if err := yaml.UnmarshalWithOptions(src, &v, yaml.CustomUnmarshaler[T](func(dst *T, b []byte) error {
+			if !bytes.Equal(src, b) {
+				t.Fatalf("failed to get decode target buffer. expected %q but got %q", src, b)
+			}
+			var v T
+			if err := yaml.Unmarshal(b, &v); err != nil {
+				return err
+			}
+			if v.Foo != "bar" {
+				t.Fatal("failed to decode")
+			}
+			dst.Foo = "bazbaz" // assign another value to target
+			return nil
+		})); err != nil {
+			t.Fatal(err)
+		}
+		if v.Foo != "bazbaz" {
+			t.Fatalf("failed to switch to custom unmarshaler. got: %v", v.Foo)
+		}
+	})
+	t.Run("override bytes type", func(t *testing.T) {
+		type T struct {
+			Foo []byte `yaml:"foo"`
+		}
+		src := []byte(`foo: "bar"`)
+		var v T
+		if err := yaml.UnmarshalWithOptions(src, &v, yaml.CustomUnmarshaler[[]byte](func(dst *[]byte, b []byte) error {
+			if !bytes.Equal(b, []byte(`"bar"`)) {
+				t.Fatalf("failed to get target buffer: %q", b)
+			}
+			*dst = []byte("bazbaz")
+			return nil
+		})); err != nil {
+			t.Fatal(err)
+		}
+		if !bytes.Equal(v.Foo, []byte("bazbaz")) {
+			t.Fatalf("failed to switch to custom unmarshaler. got: %q", v.Foo)
+		}
+	})
+}
+
 type unmarshalContext struct {
 	v int
 }

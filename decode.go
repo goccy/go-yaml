@@ -29,6 +29,7 @@ type Decoder struct {
 	referenceReaders     []io.Reader
 	anchorNodeMap        map[string]ast.Node
 	anchorValueMap       map[string]reflect.Value
+	customUnmarshalerMap map[reflect.Type]func(interface{}, []byte) error
 	toCommentMap         CommentMap
 	opts                 []DecodeOption
 	referenceFiles       []string
@@ -50,6 +51,7 @@ func NewDecoder(r io.Reader, opts ...DecodeOption) *Decoder {
 		reader:               r,
 		anchorNodeMap:        map[string]ast.Node{},
 		anchorValueMap:       map[string]reflect.Value{},
+		customUnmarshalerMap: map[reflect.Type]func(interface{}, []byte) error{},
 		opts:                 opts,
 		referenceReaders:     []io.Reader{},
 		referenceFiles:       []string{},
@@ -638,8 +640,38 @@ type jsonUnmarshaler interface {
 	UnmarshalJSON([]byte) error
 }
 
+func (d *Decoder) existsTypeInCustomUnmarshalerMap(t reflect.Type) bool {
+	if _, exists := d.customUnmarshalerMap[t]; exists {
+		return true
+	}
+
+	globalCustomUnmarshalerMu.Lock()
+	defer globalCustomUnmarshalerMu.Unlock()
+	if _, exists := globalCustomUnmarshalerMap[t]; exists {
+		return true
+	}
+	return false
+}
+
+func (d *Decoder) unmarshalerFromCustomUnmarshalerMap(t reflect.Type) (func(interface{}, []byte) error, bool) {
+	if unmarshaler, exists := d.customUnmarshalerMap[t]; exists {
+		return unmarshaler, exists
+	}
+
+	globalCustomUnmarshalerMu.Lock()
+	defer globalCustomUnmarshalerMu.Unlock()
+	if unmarshaler, exists := globalCustomUnmarshalerMap[t]; exists {
+		return unmarshaler, exists
+	}
+	return nil, false
+}
+
 func (d *Decoder) canDecodeByUnmarshaler(dst reflect.Value) bool {
-	iface := dst.Addr().Interface()
+	ptrValue := dst.Addr()
+	if d.existsTypeInCustomUnmarshalerMap(ptrValue.Type()) {
+		return true
+	}
+	iface := ptrValue.Interface()
 	switch iface.(type) {
 	case BytesUnmarshalerContext:
 		return true
@@ -662,7 +694,18 @@ func (d *Decoder) canDecodeByUnmarshaler(dst reflect.Value) bool {
 }
 
 func (d *Decoder) decodeByUnmarshaler(ctx context.Context, dst reflect.Value, src ast.Node) error {
-	iface := dst.Addr().Interface()
+	ptrValue := dst.Addr()
+	if unmarshaler, exists := d.unmarshalerFromCustomUnmarshalerMap(ptrValue.Type()); exists {
+		b, err := d.unmarshalableDocument(src)
+		if err != nil {
+			return errors.Wrapf(err, "failed to UnmarshalYAML")
+		}
+		if err := unmarshaler(ptrValue.Interface(), b); err != nil {
+			return errors.Wrapf(err, "failed to UnmarshalYAML")
+		}
+		return nil
+	}
+	iface := ptrValue.Interface()
 
 	if unmarshaler, ok := iface.(BytesUnmarshalerContext); ok {
 		b, err := d.unmarshalableDocument(src)

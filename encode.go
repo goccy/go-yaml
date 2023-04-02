@@ -37,6 +37,7 @@ type Encoder struct {
 	useJSONMarshaler           bool
 	anchorCallback             func(*ast.AnchorNode, interface{}) error
 	anchorPtrToNameMap         map[uintptr]string
+	customMarshalerMap         map[reflect.Type]func(interface{}) ([]byte, error)
 	useLiteralStyleIfMultiline bool
 	commentMap                 map[*Path][]*Comment
 	written                    bool
@@ -56,6 +57,7 @@ func NewEncoder(w io.Writer, opts ...EncodeOption) *Encoder {
 		opts:               opts,
 		indent:             DefaultIndentSpaces,
 		anchorPtrToNameMap: map[uintptr]string{},
+		customMarshalerMap: map[reflect.Type]func(interface{}) ([]byte, error){},
 		line:               1,
 		column:             1,
 		offset:             0,
@@ -273,9 +275,38 @@ type jsonMarshaler interface {
 	MarshalJSON() ([]byte, error)
 }
 
+func (e *Encoder) existsTypeInCustomMarshalerMap(t reflect.Type) bool {
+	if _, exists := e.customMarshalerMap[t]; exists {
+		return true
+	}
+
+	globalCustomMarshalerMu.Lock()
+	defer globalCustomMarshalerMu.Unlock()
+	if _, exists := globalCustomMarshalerMap[t]; exists {
+		return true
+	}
+	return false
+}
+
+func (e *Encoder) marshalerFromCustomMarshalerMap(t reflect.Type) (func(interface{}) ([]byte, error), bool) {
+	if marshaler, exists := e.customMarshalerMap[t]; exists {
+		return marshaler, exists
+	}
+
+	globalCustomMarshalerMu.Lock()
+	defer globalCustomMarshalerMu.Unlock()
+	if marshaler, exists := globalCustomMarshalerMap[t]; exists {
+		return marshaler, exists
+	}
+	return nil, false
+}
+
 func (e *Encoder) canEncodeByMarshaler(v reflect.Value) bool {
 	if !v.CanInterface() {
 		return false
+	}
+	if e.existsTypeInCustomMarshalerMap(v.Type()) {
+		return true
 	}
 	iface := v.Interface()
 	switch iface.(type) {
@@ -301,6 +332,18 @@ func (e *Encoder) canEncodeByMarshaler(v reflect.Value) bool {
 
 func (e *Encoder) encodeByMarshaler(ctx context.Context, v reflect.Value, column int) (ast.Node, error) {
 	iface := v.Interface()
+
+	if marshaler, exists := e.marshalerFromCustomMarshalerMap(v.Type()); exists {
+		doc, err := marshaler(iface)
+		if err != nil {
+			return nil, errors.Wrapf(err, "failed to MarshalYAML")
+		}
+		node, err := e.encodeDocument(doc)
+		if err != nil {
+			return nil, errors.Wrapf(err, "failed to encode document")
+		}
+		return node, nil
+	}
 
 	if marshaler, ok := iface.(BytesMarshalerContext); ok {
 		doc, err := marshaler.MarshalYAML(ctx)

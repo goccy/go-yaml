@@ -4,12 +4,13 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"github.com/goccy/go-yaml/parser"
 	"math"
 	"reflect"
 	"strconv"
 	"testing"
 	"time"
+
+	"github.com/goccy/go-yaml/parser"
 
 	"github.com/goccy/go-yaml"
 	"github.com/goccy/go-yaml/ast"
@@ -1175,6 +1176,40 @@ a:
 	if expected != "\n"+string(got) {
 		t.Fatalf("failed to use json marshaler. expected [%q] but got [%q]", expected, string(got))
 	}
+}
+
+func TestEncoder_CustomMarshaler(t *testing.T) {
+	t.Run("override struct type", func(t *testing.T) {
+		type T struct {
+			Foo string `yaml:"foo"`
+		}
+		b, err := yaml.MarshalWithOptions(&T{Foo: "bar"}, yaml.CustomMarshaler[T](func(v T) ([]byte, error) {
+			return []byte(`"override"`), nil
+		}))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !bytes.Equal(b, []byte("\"override\"\n")) {
+			t.Fatalf("failed to switch to custom marshaler. got: %q", b)
+		}
+	})
+	t.Run("override bytes type", func(t *testing.T) {
+		type T struct {
+			Foo []byte `yaml:"foo"`
+		}
+		b, err := yaml.MarshalWithOptions(&T{Foo: []byte("bar")}, yaml.CustomMarshaler[[]byte](func(v []byte) ([]byte, error) {
+			if !bytes.Equal(v, []byte("bar")) {
+				t.Fatalf("failed to get src buffer: %q", v)
+			}
+			return []byte(`override`), nil
+		}))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !bytes.Equal(b, []byte("foo: override\n")) {
+			t.Fatalf("failed to switch to custom marshaler. got: %q", b)
+		}
+	})
 }
 
 func TestEncoder_MultipleDocuments(t *testing.T) {

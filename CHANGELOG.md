@@ -1,3 +1,9 @@
+# 1.11.0 - 2023-04-03
+
+### Features
+
+- Supports dynamically switch encode and decode processing for a given type
+
 # 1.10.1 - 2023-03-28
 
 ### Features

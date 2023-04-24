@@ -387,26 +387,12 @@ func (b *PathBuilder) Recursive(selector string) *PathBuilder {
 	return b
 }
 
-func containsReservedPathCharacters(path string) bool {
-	if strings.Contains(path, ".") {
-		return true
-	}
-	if strings.Contains(path, "*") {
-		return true
-	}
-	return false
-}
-
-func enclosedSingleQuote(name string) bool {
-	return strings.HasPrefix(name, "'") && strings.HasSuffix(name, "'")
-}
-
 func normalizeSelectorName(name string) string {
-	if enclosedSingleQuote(name) {
+	if len(name) > 1 && name[0] == '\'' && name[len(name)-1] == '\'' {
 		// already escaped name
 		return name
 	}
-	if containsReservedPathCharacters(name) {
+	if strings.ContainsAny(name, `.*`) {
 		escapedName := strings.ReplaceAll(name, `'`, `\'`)
 		return "'" + escapedName + "'"
 	}

@@ -99,10 +99,6 @@ func parsePathDot(b *PathBuilder, buf []rune, cursor int) (*PathBuilder, []rune,
 	if cursor < length && buf[cursor] == '\'' {
 		return parseQuotedKey(b, buf, cursor)
 	}
-	// if started with double quote, unquote the key
-	if cursor < length && buf[cursor] == '"' {
-		return parseDoubleQuotedKey(b, buf, cursor)
-	}
 	for ; cursor < length; cursor++ {
 		c := buf[cursor]
 		switch c {
@@ -158,20 +154,6 @@ end:
 		}
 	}
 	return b.child(string(selector)), buf, cursor, nil
-}
-
-func parseDoubleQuotedKey(b *PathBuilder, buf []rune, cursor int) (*PathBuilder, []rune, int, error) {
-	start := cursor
-	key, err := strconv.QuotedPrefix(string(buf[start:]))
-	if err != nil {
-		return nil, nil, 0, errors.Wrapf(ErrInvalidPathString, "failed to parse double quoted key")
-	}
-	cursor += len(key)
-	key, err = strconv.Unquote(key)
-	if err != nil {
-		return nil, nil, 0, errors.Wrapf(ErrInvalidPathString, "failed to parse double quoted key")
-	}
-	return b.child(key), buf, cursor, nil
 }
 
 func parsePathIndex(b *PathBuilder, buf []rune, cursor int) (*PathBuilder, []rune, int, error) {

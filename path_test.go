@@ -112,9 +112,8 @@ store:
 				if err != nil {
 					t.Fatalf("%+v", err)
 				}
-				got := path.String()
-				if test.name != got {
-					t.Fatalf("expected %s but actual %s", test.name, got)
+				if test.name != path.String() {
+					t.Fatalf("expected %s but actual %s", test.name, path.String())
 				}
 			})
 		}

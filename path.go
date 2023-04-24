@@ -99,6 +99,10 @@ func parsePathDot(b *PathBuilder, buf []rune, cursor int) (*PathBuilder, []rune,
 	if cursor < length && buf[cursor] == '\'' {
 		return parseQuotedKey(b, buf, cursor)
 	}
+	//// if started with double quote, unquote the key
+	//if cursor < length && buf[cursor] == '"' {
+	//	return parseDoubleQuotedKey(b, buf, cursor)
+	//}
 	for ; cursor < length; cursor++ {
 		c := buf[cursor]
 		switch c {
@@ -154,6 +158,20 @@ end:
 		}
 	}
 	return b.child(string(selector)), buf, cursor, nil
+}
+
+func parseDoubleQuotedKey(b *PathBuilder, buf []rune, cursor int) (*PathBuilder, []rune, int, error) {
+	start := cursor
+	key, err := strconv.QuotedPrefix(string(buf[start:]))
+	if err != nil {
+		return nil, nil, 0, errors.Wrapf(ErrInvalidPathString, "failed to parse double quoted key")
+	}
+	cursor += len(key)
+	key, err = strconv.Unquote(key)
+	if err != nil {
+		return nil, nil, 0, errors.Wrapf(ErrInvalidPathString, "failed to parse double quoted key")
+	}
+	return b.child(key), buf, cursor, nil
 }
 
 func parsePathIndex(b *PathBuilder, buf []rune, cursor int) (*PathBuilder, []rune, int, error) {
@@ -387,7 +405,7 @@ func (b *PathBuilder) Recursive(selector string) *PathBuilder {
 	return b
 }
 
-func (b *PathBuilder) containsReservedPathCharacters(path string) bool {
+func containsReservedPathCharacters(path string) bool {
 	if strings.Contains(path, ".") {
 		return true
 	}
@@ -397,16 +415,16 @@ func (b *PathBuilder) containsReservedPathCharacters(path string) bool {
 	return false
 }
 
-func (b *PathBuilder) enclosedSingleQuote(name string) bool {
+func enclosedSingleQuote(name string) bool {
 	return strings.HasPrefix(name, "'") && strings.HasSuffix(name, "'")
 }
 
-func (b *PathBuilder) normalizeSelectorName(name string) string {
-	if b.enclosedSingleQuote(name) {
+func normalizeSelectorName(name string) string {
+	if enclosedSingleQuote(name) {
 		// already escaped name
 		return name
 	}
-	if b.containsReservedPathCharacters(name) {
+	if containsReservedPathCharacters(name) {
 		escapedName := strings.ReplaceAll(name, `'`, `\'`)
 		return "'" + escapedName + "'"
 	}
@@ -420,7 +438,7 @@ func (b *PathBuilder) child(name string) *PathBuilder {
 
 // Child add '.name' to current path.
 func (b *PathBuilder) Child(name string) *PathBuilder {
-	return b.child(b.normalizeSelectorName(name))
+	return b.child(normalizeSelectorName(name))
 }
 
 // Index add '[idx]' to current path.
@@ -500,11 +518,27 @@ func newSelectorNode(selector string) *selectorNode {
 }
 
 func (n *selectorNode) filter(node ast.Node) (ast.Node, error) {
+	selector := n.selector
+	if len(selector) > 0 && selector[0] == '\'' {
+		selector = selector[1 : len(selector)-1]
+	}
 	switch node.Type() {
 	case ast.MappingType:
 		for _, value := range node.(*ast.MappingNode).Values {
 			key := value.Key.GetToken().Value
-			if key == n.selector {
+			if len(key) > 0 {
+				switch key[0] {
+				case '"':
+					var err error
+					key, err = strconv.Unquote(key)
+					if err != nil {
+						return nil, errors.Wrapf(err, "failed to unquote")
+					}
+				case '\'':
+					key = key[1 : len(key)-1]
+				}
+			}
+			if key == selector {
 				if n.child == nil {
 					return value.Value, nil
 				}
@@ -518,7 +552,7 @@ func (n *selectorNode) filter(node ast.Node) (ast.Node, error) {
 	case ast.MappingValueType:
 		value := node.(*ast.MappingValueNode)
 		key := value.Key.GetToken().Value
-		if key == n.selector {
+		if key == selector {
 			if n.child == nil {
 				return value.Value, nil
 			}
@@ -571,7 +605,7 @@ func (n *selectorNode) replace(node ast.Node, target ast.Node) error {
 }
 
 func (n *selectorNode) String() string {
-	s := fmt.Sprintf(".%s", n.selector)
+	s := fmt.Sprintf(".%s", normalizeSelectorName(n.selector))
 	if n.child != nil {
 		s += n.child.String()
 	}

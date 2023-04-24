@@ -61,6 +61,8 @@ store:
   bicycle:
     color: red
     price: 19.95
+  bicycle*unicycle:
+    price: 20.25
 `
 	tests := []struct {
 		name     string
@@ -97,6 +99,11 @@ store:
 			path:     builder().Root().Child("store").Child("bicycle").Child("price").Build(),
 			expected: float64(19.95),
 		},
+		{
+			name:     `$.store.'bicycle*unicycle'.price`,
+			path:     builder().Root().Child("store").Child(`bicycle*unicycle`).Child("price").Build(),
+			expected: float64(20.25),
+		},
 	}
 	t.Run("PathString", func(t *testing.T) {
 		for _, test := range tests {
@@ -105,8 +112,9 @@ store:
 				if err != nil {
 					t.Fatalf("%+v", err)
 				}
-				if test.name != path.String() {
-					t.Fatalf("expected %s but actual %s", test.name, path.String())
+				got := path.String()
+				if test.name != got {
+					t.Fatalf("expected %s but actual %s", test.name, got)
 				}
 			})
 		}

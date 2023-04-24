@@ -13,7 +13,6 @@ type context struct {
 	idx    int
 	size   int
 	tokens token.Tokens
-	mode   Mode
 	path   string
 }
 
@@ -56,7 +55,6 @@ func (c *context) copy() *context {
 		idx:    c.idx,
 		size:   c.size,
 		tokens: append(token.Tokens{}, c.tokens...),
-		mode:   c.mode,
 		path:   c.path,
 	}
 }
@@ -145,10 +143,6 @@ func (c *context) afterNextNotCommentToken() *token.Token {
 	return nil
 }
 
-func (c *context) enabledComment() bool {
-	return c.mode&ParseComments != 0
-}
-
 func (c *context) isCurrentCommentToken() bool {
 	tk := c.currentToken()
 	if tk == nil {
@@ -193,7 +187,6 @@ func newContext(tokens token.Tokens, mode Mode) *context {
 		idx:    0,
 		size:   len(filteredTokens),
 		tokens: token.Tokens(filteredTokens),
-		mode:   mode,
 		path:   "$",
 	}
 }

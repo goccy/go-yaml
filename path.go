@@ -99,10 +99,10 @@ func parsePathDot(b *PathBuilder, buf []rune, cursor int) (*PathBuilder, []rune,
 	if cursor < length && buf[cursor] == '\'' {
 		return parseQuotedKey(b, buf, cursor)
 	}
-	//// if started with double quote, unquote the key
-	//if cursor < length && buf[cursor] == '"' {
-	//	return parseDoubleQuotedKey(b, buf, cursor)
-	//}
+	// if started with double quote, unquote the key
+	if cursor < length && buf[cursor] == '"' {
+		return parseDoubleQuotedKey(b, buf, cursor)
+	}
 	for ; cursor < length; cursor++ {
 		c := buf[cursor]
 		switch c {

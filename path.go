@@ -587,7 +587,9 @@ func (n *selectorNode) replace(node ast.Node, target ast.Node) error {
 }
 
 func (n *selectorNode) String() string {
-	s := fmt.Sprintf(".%s", (*PathBuilder).normalizeSelectorName(nil, n.selector))
+	var builder PathBuilder
+	selector := builder.normalizeSelectorName(n.selector)
+	s := fmt.Sprintf(".%s", selector)
 	if n.child != nil {
 		s += n.child.String()
 	}

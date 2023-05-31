@@ -387,12 +387,26 @@ func (b *PathBuilder) Recursive(selector string) *PathBuilder {
 	return b
 }
 
-func normalizeSelectorName(name string) string {
-	if len(name) > 1 && name[0] == '\'' && name[len(name)-1] == '\'' {
+func (b *PathBuilder) containsReservedPathCharacters(path string) bool {
+	if strings.Contains(path, ".") {
+		return true
+	}
+	if strings.Contains(path, "*") {
+		return true
+	}
+	return false
+}
+
+func (b *PathBuilder) enclosedSingleQuote(name string) bool {
+	return strings.HasPrefix(name, "'") && strings.HasSuffix(name, "'")
+}
+
+func (b *PathBuilder) normalizeSelectorName(name string) string {
+	if b.enclosedSingleQuote(name) {
 		// already escaped name
 		return name
 	}
-	if strings.ContainsAny(name, `.*`) {
+	if b.containsReservedPathCharacters(name) {
 		escapedName := strings.ReplaceAll(name, `'`, `\'`)
 		return "'" + escapedName + "'"
 	}
@@ -406,7 +420,7 @@ func (b *PathBuilder) child(name string) *PathBuilder {
 
 // Child add '.name' to current path.
 func (b *PathBuilder) Child(name string) *PathBuilder {
-	return b.child(normalizeSelectorName(name))
+	return b.child(b.normalizeSelectorName(name))
 }
 
 // Index add '[idx]' to current path.
@@ -573,7 +587,7 @@ func (n *selectorNode) replace(node ast.Node, target ast.Node) error {
 }
 
 func (n *selectorNode) String() string {
-	s := fmt.Sprintf(".%s", normalizeSelectorName(n.selector))
+	s := fmt.Sprintf(".%s", (*PathBuilder).normalizeSelectorName(nil, n.selector))
 	if n.child != nil {
 		s += n.child.String()
 	}

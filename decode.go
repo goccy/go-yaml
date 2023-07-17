@@ -677,6 +677,8 @@ func (d *Decoder) canDecodeByUnmarshaler(dst reflect.Value) bool {
 		return true
 	case BytesUnmarshaler:
 		return true
+	case InterfaceUnmarshalerAst:
+		return true
 	case InterfaceUnmarshalerContext:
 		return true
 	case InterfaceUnmarshaler:
@@ -724,6 +726,22 @@ func (d *Decoder) decodeByUnmarshaler(ctx context.Context, dst reflect.Value, sr
 			return errors.Wrapf(err, "failed to UnmarshalYAML")
 		}
 		if err := unmarshaler.UnmarshalYAML(b); err != nil {
+			return errors.Wrapf(err, "failed to UnmarshalYAML")
+		}
+		return nil
+	}
+
+	if unmarshaler, ok := iface.(InterfaceUnmarshalerAst); ok {
+		if err := unmarshaler.UnmarshalYAML(ctx, src, func(v interface{}) error {
+			rv := reflect.ValueOf(v)
+			if rv.Type().Kind() != reflect.Ptr {
+				return errors.ErrDecodeRequiredPointerType
+			}
+			if err := d.decodeValue(ctx, rv.Elem(), src); err != nil {
+				return errors.Wrapf(err, "failed to decode value")
+			}
+			return nil
+		}); err != nil {
 			return errors.Wrapf(err, "failed to UnmarshalYAML")
 		}
 		return nil

@@ -528,8 +528,22 @@ func (n *selectorNode) filter(node ast.Node) (ast.Node, error) {
 			}
 			return filtered, nil
 		}
+	case ast.AnchorType:
+		for _, value := range node.(*ast.AnchorNode).Value.(*ast.MappingNode).Values {
+			key := value.Key.GetToken().Value
+			if key == n.selector {
+				if n.child == nil {
+					return value.Value, nil
+				}
+				filtered, err := n.child.filter(value.Value)
+				if err != nil {
+					return nil, errors.Wrapf(err, "failed to filter")
+				}
+				return filtered, nil
+			}
+		}
 	default:
-		return nil, errors.Wrapf(ErrInvalidQuery, "expected node type is map or map value. but got %s", node.Type())
+		return nil, errors.Wrapf(ErrInvalidQuery, "expected node type is map, anchor or map value. but got %s", node.Type())
 	}
 	return nil, nil
 }

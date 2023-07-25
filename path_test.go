@@ -657,3 +657,27 @@ store:
 	// OUTPUT:
 	// [john ken]
 }
+
+func AnchorPath_PathString() {
+	yml := `
+store:
+  book:
+    - author: &john
+		name: john
+		best_seller: true
+      price: 10
+    - author: *john
+      price: 12
+`
+	path, err := yaml.PathString("$.store.book[*].author.name")
+	if err != nil {
+		log.Fatal(err)
+	}
+	var authors []string
+	if err := path.Read(strings.NewReader(yml), &authors); err != nil {
+		log.Fatal(err)
+	}
+	fmt.Println(authors)
+	// OUTPUT:
+	// [john john]
+}

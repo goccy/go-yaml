@@ -658,7 +658,7 @@ store:
 	// [john ken]
 }
 
-func AnchorPath_PathString() {
+func ExampleAnchorPath_PathString() {
 	yml := `
 store:
   book:

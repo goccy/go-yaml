@@ -663,8 +663,8 @@ func AnchorPath_PathString() {
 store:
   book:
     - author: &john
-		name: john
-		best_seller: true
+        name: john
+        best_seller: true
       price: 10
     - author: *john
       price: 12

@@ -2,12 +2,12 @@ package yaml_test
 
 import (
 	"fmt"
+	"github.com/goccy/go-yaml"
 	"log"
 	"reflect"
 	"strings"
 	"testing"
 
-	"github.com/goccy/go-yaml"
 	"github.com/goccy/go-yaml/parser"
 )
 
@@ -670,6 +670,31 @@ store:
       price: 12
 `
 	path, err := yaml.PathString("$.store.book[*].author.name")
+	if err != nil {
+		log.Fatal(err)
+	}
+	var authors []string
+	if err := path.Read(strings.NewReader(yml), &authors); err != nil {
+		log.Fatal(err)
+	}
+	fmt.Println(authors)
+	// OUTPUT:
+	// [john john]
+}
+
+func ExampleAnchorPath_PathString2() {
+	yml := `
+store:
+  book:
+    - author: &john
+        personal_info:
+          name: john
+        best_seller: true
+      price: 10
+    - author: *john
+      price: 12
+`
+	path, err := yaml.PathString("$.store.book[*].author.personal_info.name")
 	if err != nil {
 		log.Fatal(err)
 	}

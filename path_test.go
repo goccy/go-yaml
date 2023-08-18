@@ -686,12 +686,12 @@ func ExampleAnchorPath_PathString2() {
 	yml := `
 store:
   book:
-    - author: &john
+    - author: &author_john
         personal_info:
           name: john
         best_seller: true
       price: 10
-    - author: *john
+    - author: *author_john
       price: 12
 `
 	path, err := yaml.PathString("$.store.book[*].author.personal_info.name")

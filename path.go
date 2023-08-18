@@ -530,16 +530,21 @@ func (n *selectorNode) filter(node ast.Node) (ast.Node, error) {
 		}
 	case ast.AnchorType:
 		value := node.(*ast.AnchorNode)
-		if n.child == nil {
-			return n.filter(value.Value)
+		filtered, err := n.filter(value.Value)
+		if err != nil {
+			return nil, errors.Wrapf(err, "failed to filter")
 		}
-		return n.child.filter(value.Value)
+		return filtered, nil
 	case ast.AliasType:
 		value := node.(*ast.AliasNode)
 		if n.child == nil {
 			return value.Value, nil
 		}
-		return n.child.filter(value.Value)
+		filtered, err := n.filter(value.Value)
+		if err != nil {
+			return nil, errors.Wrapf(err, "failed to filter")
+		}
+		return filtered, nil
 	default:
 		return nil, errors.Wrapf(ErrInvalidQuery, "expected node type is map, anchor or map value. but got %s", node.Type())
 	}

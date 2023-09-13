@@ -980,6 +980,30 @@ c: true
 	}
 }
 
+func TestEncoder_InlineNil(t *testing.T) {
+	type base struct {
+		A int
+		B string
+	}
+	var buf bytes.Buffer
+	enc := yaml.NewEncoder(&buf)
+	if err := enc.Encode(struct {
+		*base `yaml:",inline"`
+		C     bool
+	}{
+		C: true,
+	}); err != nil {
+		t.Fatalf("%+v", err)
+	}
+	expect := `
+c: true
+`
+	actual := "\n" + buf.String()
+	if expect != actual {
+		t.Fatalf("inline marshal error: expect=[%s] actual=[%s]", expect, actual)
+	}
+}
+
 func TestEncoder_Flow(t *testing.T) {
 	var buf bytes.Buffer
 	enc := yaml.NewEncoder(&buf, yaml.Flow(true))

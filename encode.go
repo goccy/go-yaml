@@ -823,6 +823,10 @@ func (e *Encoder) encodeStruct(ctx context.Context, value reflect.Value, column 
 			}
 			mapNode, ok := value.(ast.MapNode)
 			if !ok {
+				// if an inline field is null, skip encoding it
+				if _, ok := value.(*ast.NullNode); ok {
+					continue
+				}
 				return nil, xerrors.Errorf("inline value is must be map or struct type")
 			}
 			mapIter := mapNode.MapRange()

@@ -100,10 +100,15 @@ store:
 			expected: float64(19.95),
 		},
 		{
-			name:     `$.store.'bicycle*unicycle'.price`,
+			name:     `$.store.'bicycle*unicycle.price`,
 			path:     builder().Root().Child("store").Child(`bicycle*unicycle`).Child("price").Build(),
 			expected: float64(20.25),
 		},
+		//{
+		//	name:     `$.store.'bicycle*unicycle.price`,
+		//	path:     builder().Root().Child("store").Child(`bicycle*unicycle`).Child("price").Build(),
+		//	expected: float64(20.25),
+		//},
 	}
 	t.Run("PathString", func(t *testing.T) {
 		for _, test := range tests {

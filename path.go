@@ -501,7 +501,7 @@ func newSelectorNode(selector string) *selectorNode {
 
 func (n *selectorNode) filter(node ast.Node) (ast.Node, error) {
 	selector := n.selector
-	if len(selector) > 0 && selector[0] == '\'' && selector[len(selector)-1] == '\'' {
+	if len(selector) > 1 && selector[0] == '\'' && selector[len(selector)-1] == '\'' {
 		selector = selector[1 : len(selector)-1]
 	}
 	switch node.Type() {
@@ -517,7 +517,7 @@ func (n *selectorNode) filter(node ast.Node) (ast.Node, error) {
 						return nil, errors.Wrapf(err, "failed to unquote")
 					}
 				case '\'':
-					if key[len(key)-1] == '\'' {
+					if len(key) > 1 && key[len(key)-1] == '\'' {
 						key = key[1 : len(key)-1]
 					}
 				}

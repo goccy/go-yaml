@@ -1,3 +1,12 @@
+# 1.11.1 - 2023-09-14
+
+### Fix bugs
+
+- Handle `\r` in a double-quoted string the same as `\n` ( #372 )
+- Replace loop with n.Values = append(n.Values, target.Values...) ( #380 )
+- Skip encoding an inline field if it is null ( #386 )
+- Fix comment parsing with null value ( #388 )
+
 # 1.11.0 - 2023-04-03
 
 ### Features

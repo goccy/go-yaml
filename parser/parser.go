@@ -156,15 +156,38 @@ func (p *parser) createMapValueNode(ctx *context, key ast.MapKeyNode, colonToken
 		ctx.insertToken(ctx.idx, nullToken)
 		return ast.Null(nullToken), nil
 	}
-
+	var comment *ast.CommentGroupNode
+	if tk.Type == token.CommentType {
+		comment = p.parseCommentOnly(ctx)
+		if comment != nil {
+			comment.SetPath(ctx.withChild(key.GetToken().Value).path)
+		}
+		tk = ctx.currentToken()
+	}
 	if tk.Position.Column == key.GetToken().Position.Column && tk.Type == token.StringType {
 		// in this case,
 		// ----
 		// key: <value does not defined>
 		// next
+
 		nullToken := p.createNullToken(colonToken)
 		ctx.insertToken(ctx.idx, nullToken)
-		return ast.Null(nullToken), nil
+		nullNode := ast.Null(nullToken)
+
+		if comment != nil {
+			nullNode.SetComment(comment)
+		} else {
+			// If there is a comment, it is already bound to the key node,
+			// so remove the comment from the key to bind it to the null value.
+			keyComment := key.GetComment()
+			if keyComment != nil {
+				if err := key.SetComment(nil); err != nil {
+					return nil, err
+				}
+				nullNode.SetComment(keyComment)
+			}
+		}
+		return nullNode, nil
 	}
 
 	if tk.Position.Column < key.GetToken().Position.Column {
@@ -174,12 +197,19 @@ func (p *parser) createMapValueNode(ctx *context, key ast.MapKeyNode, colonToken
 		// next
 		nullToken := p.createNullToken(colonToken)
 		ctx.insertToken(ctx.idx, nullToken)
-		return ast.Null(nullToken), nil
+		nullNode := ast.Null(nullToken)
+		if comment != nil {
+			nullNode.SetComment(comment)
+		}
+		return nullNode, nil
 	}
 
 	value, err := p.parseToken(ctx, ctx.currentToken())
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to parse mapping 'value' node")
+	}
+	if comment != nil {
+		value.SetComment(comment)
 	}
 	return value, nil
 }

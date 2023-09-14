@@ -808,6 +808,74 @@ foo: > # comment
 	}
 }
 
+func TestCommentWithNull(t *testing.T) {
+	t.Run("same line", func(t *testing.T) {
+		content := `
+foo:
+  bar: # comment
+  baz: 1
+`
+		expected := `
+foo:
+  bar: null # comment
+  baz: 1`
+		f, err := parser.ParseBytes([]byte(content), parser.ParseComments)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(f.Docs) != 1 {
+			t.Fatal("failed to parse content with same line comment")
+		}
+		if f.Docs[0].String() != strings.TrimPrefix(expected, "\n") {
+			t.Fatal("failed to parse comment")
+		}
+	})
+	t.Run("next line", func(t *testing.T) {
+		content := `
+foo:
+  bar:
+    # comment
+  baz: 1
+`
+		expected := `
+foo:
+  bar: null # comment
+  baz: 1`
+		f, err := parser.ParseBytes([]byte(content), parser.ParseComments)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(f.Docs) != 1 {
+			t.Fatal("failed to parse content with next line comment")
+		}
+		if f.Docs[0].String() != strings.TrimPrefix(expected, "\n") {
+			t.Fatal("failed to parse comment")
+		}
+	})
+	t.Run("next line and different indent", func(t *testing.T) {
+		content := `
+foo:
+  bar:
+ # comment
+baz: 1`
+		f, err := parser.ParseBytes([]byte(content), parser.ParseComments)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(f.Docs) != 1 {
+			t.Fatal("failed to parse content with next line comment")
+		}
+		expected := `
+foo:
+  bar: null # comment
+baz: 1`
+		if f.Docs[0].String() != strings.TrimPrefix(expected, "\n") {
+			t.Fatal("failed to parse comment")
+		}
+	})
+
+}
+
 func TestNodePath(t *testing.T) {
 	yml := `
 a: # commentA

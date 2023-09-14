@@ -304,6 +304,21 @@ func TestEncoder(t *testing.T) {
 			nil,
 		},
 		{
+			"a: \" b\"\n",
+			map[string]string{"a": " b"},
+			nil,
+		},
+		{
+			"a: \"b \"\n",
+			map[string]string{"a": "b "},
+			nil,
+		},
+		{
+			"a: \" b \"\n",
+			map[string]string{"a": " b "},
+			nil,
+		},
+		{
 			"a: 100.5\n",
 			map[string]interface{}{
 				"a": 100.5,

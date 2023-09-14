@@ -68,6 +68,18 @@ func TestDecoder(t *testing.T) {
 			map[string]string{"v": "1.234"},
 		},
 		{
+			"v: \" foo\"\n",
+			map[string]string{"v": " foo"},
+		},
+		{
+			"v: \"foo \"\n",
+			map[string]string{"v": "foo "},
+		},
+		{
+			"v: \" foo \"\n",
+			map[string]string{"v": " foo "},
+		},
+		{
 			"v: false\n",
 			map[string]bool{"v": false},
 		},

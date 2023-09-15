@@ -1,3 +1,11 @@
+# 1.11.2 - 2023-09-15
+
+### Fix bugs
+
+- Fix quoted comments ( #370 )
+- Fix handle of space at start or last ( #376 )
+- Fix sequence with comment ( #390 )
+
 # 1.11.1 - 2023-09-14
 
 ### Fix bugs

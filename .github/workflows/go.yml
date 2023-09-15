@@ -14,7 +14,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
     - name: checkout
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
     - name: setup Go ${{ matrix.go-version }}
       uses: actions/setup-go@v4
       with:
@@ -34,7 +34,7 @@ jobs:
       GOARCH: "386"
     steps:
     - name: checkout
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
     - name: setup Go ${{ matrix.go-version }}
       uses: actions/setup-go@v4
       with:
@@ -48,7 +48,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: setup Go
         uses: actions/setup-go@v4
         with:
@@ -65,7 +65,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: setup Go
         uses: actions/setup-go@v4
         with:

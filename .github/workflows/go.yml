@@ -18,7 +18,7 @@ jobs:
       with:
         go-version: ${{ matrix.go-version }}
     - name: checkout
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
     - name: test
       run: |
         make test
@@ -38,7 +38,7 @@ jobs:
       with:
         go-version: ${{ matrix.go-version }}
     - name: checkout
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
     - name: test
       run: |
         make simple-test
@@ -52,7 +52,7 @@ jobs:
         with:
           go-version: "1.20"
       - name: checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: build
         run: |
           make ycat/build
@@ -69,7 +69,7 @@ jobs:
         with:
           go-version: "1.20"
       - name: checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: measure coverage
         run: |
           make cover

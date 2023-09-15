@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/goccy/go-yaml"
 	"github.com/goccy/go-yaml/ast"
 	"github.com/goccy/go-yaml/lexer"
 	"github.com/goccy/go-yaml/parser"
@@ -873,7 +874,58 @@ baz: 1`
 			t.Fatal("failed to parse comment")
 		}
 	})
+}
 
+func TestSequenceComment(t *testing.T) {
+	content := `
+foo:
+  - # comment
+    bar: 1
+baz:
+  - xxx
+`
+	f, err := parser.ParseBytes([]byte(content), parser.ParseComments)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(f.Docs) != 1 {
+		t.Fatal("failed to parse content with next line with sequence")
+	}
+	expected := `
+foo:
+  # comment
+  - bar: 1
+baz:
+  - xxx`
+	if f.Docs[0].String() != strings.TrimPrefix(expected, "\n") {
+		t.Fatal("failed to parse comment")
+	}
+	t.Run("foo[0].bar", func(t *testing.T) {
+		path, err := yaml.PathString("$.foo[0].bar")
+		if err != nil {
+			t.Fatal(err)
+		}
+		v, err := path.FilterFile(f)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if v.String() != "1" {
+			t.Fatal("failed to get foo[0].bar value")
+		}
+	})
+	t.Run("baz[0]", func(t *testing.T) {
+		path, err := yaml.PathString("$.baz[0]")
+		if err != nil {
+			t.Fatal(err)
+		}
+		v, err := path.FilterFile(f)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if v.String() != "xxx" {
+			t.Fatal("failed to get baz[0] value")
+		}
+	})
 }
 
 func TestNodePath(t *testing.T) {

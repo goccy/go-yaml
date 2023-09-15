@@ -334,10 +334,9 @@ func (p *parser) parseSequenceEntry(ctx *context) (*ast.SequenceNode, error) {
 		if tk.Type == token.CommentType {
 			comment = p.parseCommentOnly(ctx)
 			tk = ctx.currentToken()
-			if tk.Type != token.SequenceEntryType {
-				break
+			if tk.Type == token.SequenceEntryType {
+				ctx.progress(1) // skip sequence token
 			}
-			ctx.progress(1) // skip sequence token
 		}
 		value, err := p.parseToken(ctx.withIndex(uint(len(sequenceNode.Values))), ctx.currentToken())
 		if err != nil {

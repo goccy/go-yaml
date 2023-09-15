@@ -61,6 +61,8 @@ store:
   bicycle:
     color: red
     price: 19.95
+  bicycle*unicycle:
+    price: 20.25
 `
 	tests := []struct {
 		name     string
@@ -96,6 +98,11 @@ store:
 			name:     "$.store.bicycle.price",
 			path:     builder().Root().Child("store").Child("bicycle").Child("price").Build(),
 			expected: float64(19.95),
+		},
+		{
+			name:     `$.store.'bicycle*unicycle'.price`,
+			path:     builder().Root().Child("store").Child(`bicycle*unicycle`).Child("price").Build(),
+			expected: float64(20.25),
 		},
 	}
 	t.Run("PathString", func(t *testing.T) {

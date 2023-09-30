@@ -14,6 +14,7 @@ import (
 	"reflect"
 	"sort"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/goccy/go-yaml/ast"
@@ -39,6 +40,7 @@ type Decoder struct {
 	validator            StructValidator
 	disallowUnknownField bool
 	disallowDuplicateKey bool
+	disallowMissingField bool
 	useOrderedMap        bool
 	useJSONUnmarshaler   bool
 	parsedFile           *ast.File
@@ -536,6 +538,18 @@ func (e *unknownFieldError) Error() string {
 
 func errUnknownField(msg string, tk *token.Token) *unknownFieldError {
 	return &unknownFieldError{err: errors.ErrSyntax(msg, tk)}
+}
+
+type missingRequiredfieldError struct {
+	err error
+}
+
+func (e *missingRequiredfieldError) Error() string {
+	return e.err.Error()
+}
+
+func errMissingRequiredField(msg string, tk *token.Token) *missingRequiredfieldError {
+	return &missingRequiredfieldError{err: errors.ErrSyntax(msg, tk)}
 }
 
 func errUnexpectedNodeType(actual, expected ast.NodeType, tk *token.Token) error {
@@ -1177,6 +1191,7 @@ func (d *Decoder) decodeStruct(ctx context.Context, dst reflect.Value, src ast.N
 		}
 	}
 
+	var missingFields []string
 	aliasName := d.getMergeAliasName(src)
 	var foundErr error
 
@@ -1243,6 +1258,9 @@ func (d *Decoder) decodeStruct(ctx context.Context, dst reflect.Value, src ast.N
 		}
 		v, exists := keyToNodeMap[structField.RenderName]
 		if !exists {
+			if d.disallowMissingField {
+				missingFields = append(missingFields, structField.RenderName)
+			}
 			continue
 		}
 		delete(unknownFields, structField.RenderName)
@@ -1271,6 +1289,10 @@ func (d *Decoder) decodeStruct(ctx context.Context, dst reflect.Value, src ast.N
 	}
 	if foundErr != nil {
 		return errors.Wrapf(foundErr, "failed to decode value")
+	}
+
+	if len(missingFields) != 0 && d.disallowMissingField && src.GetToken() != nil {
+		return errMissingRequiredField(fmt.Sprintf(`missing required field: "%s" `, strings.Join(missingFields, ",")), src.GetToken())
 	}
 
 	// Ignore unknown fields when parsing an inline struct (recognized by a nil token).

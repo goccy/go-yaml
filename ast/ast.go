@@ -1414,6 +1414,8 @@ func (n *MappingValueNode) toString() string {
 		return fmt.Sprintf("%s%s: %s", space, n.Key.String(), n.Value.String())
 	} else if _, ok := n.Value.(*AliasNode); ok {
 		return fmt.Sprintf("%s%s: %s", space, n.Key.String(), n.Value.String())
+	} else if _, ok := n.Value.(*TagNode); ok {
+		return fmt.Sprintf("%s%s: %s", space, n.Key.String(), n.Value.String())
 	}
 	if keyComment != nil {
 		return fmt.Sprintf(

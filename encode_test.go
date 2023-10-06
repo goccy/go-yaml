@@ -1630,3 +1630,39 @@ b:
 		t.Fatalf("failed to encode. expected %s but got %s", expected, got)
 	}
 }
+
+type tagMarshaler struct{}
+
+func (b *tagMarshaler) MarshalYAML() ([]byte, error) {
+	v, err := yaml.Marshal("test")
+	if err != nil {
+		return nil, err
+	}
+	return []byte(fmt.Sprintf("%s %s", "!!timestamp", string(v))), nil
+}
+
+func TestBytesMarshalerWithTag(t *testing.T) {
+	b, err := yaml.Marshal(map[string]interface{}{
+		"a": map[string]interface{}{
+			"b": map[string]interface{}{
+				"c": &tagMarshaler{},
+				"d": []*tagMarshaler{&tagMarshaler{}, &tagMarshaler{}},
+			},
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	expected := `
+a:
+  b:
+    c: !!timestamp test
+    d:
+    - !!timestamp test
+    - !!timestamp test
+`
+	got := "\n" + string(b)
+	if expected != got {
+		t.Fatalf("failed to encode. expected %s but got %s", expected, got)
+	}
+}

@@ -501,10 +501,10 @@ func trimCommentFromLiteralOpt(text string) (string, error) {
 	if idx < 0 {
 		return text, nil
 	}
-	if idx == 0 {
+	if idx == 0 || text[idx-1] != ' ' {
 		return "", xerrors.New("invalid literal header")
 	}
-	return text[:idx-1], nil
+	return strings.TrimRight(text[:idx], " \t"), nil
 }
 
 func (s *Scanner) scanLiteral(ctx *Context, c rune) {
@@ -554,9 +554,8 @@ func (s *Scanner) scanLiteralHeader(ctx *Context) (pos int, err error) {
 			if err != nil {
 				return
 			}
-			switch opt {
-			case "", "+", "-",
-				"0", "1", "2", "3", "4", "5", "6", "7", "8", "9":
+
+			if isBlockScalarHeader(opt) {
 				hasComment := len(opt) < orgOptLen
 				if header == '|' {
 					if hasComment {
@@ -593,12 +592,46 @@ func (s *Scanner) scanLiteralHeader(ctx *Context) (pos int, err error) {
 				ctx.resetBuffer()
 				ctx.literalOpt = opt
 				return
+			} else {
+				err = xerrors.New("invalid literal header")
+				return
 			}
-			break
 		}
 	}
 	err = xerrors.New("invalid literal header")
 	return
+}
+
+func isBlockScalarHeader(s string) bool {
+	// https://yaml.org/spec/1.2.2/#811-block-scalar-headers
+	switch len(s) {
+	case 0:
+		// no indicator
+		return true
+	case 1:
+		return isIndentationIndicator(s) || isChompingIndicator(s)
+	case 2:
+		return (isIndentationIndicator(s[0:1]) && isChompingIndicator(s[1:2])) ||
+			(isChompingIndicator(s[0:1]) && isIndentationIndicator(s[1:2]))
+	default:
+		return false
+	}
+}
+
+func isIndentationIndicator(s string) bool {
+	switch s {
+	case "0", "1", "2", "3", "4", "5", "6", "7", "8", "9":
+		return true
+	}
+	return false
+}
+
+func isChompingIndicator(s string) bool {
+	switch s {
+	case "+", "-":
+		return true
+	}
+	return false
 }
 
 func (s *Scanner) scanNewLine(ctx *Context, c rune) {

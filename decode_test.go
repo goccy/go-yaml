@@ -2890,3 +2890,56 @@ func TestSameNameInineStruct(t *testing.T) {
 		t.Fatalf("failed to decode")
 	}
 }
+
+func TestIssue399(t *testing.T) {
+	tests := map[string]struct {
+		in  string
+		out string
+	}{
+		"indent indicator": {
+			in: `|2-
+
+                  text
+`,
+			out: `|2-
+
+                  text
+`,
+		},
+		"indent indicator with comment": {
+			in: `|2- # some comment
+
+                  text
+`,
+			out: `|2- # some comment
+
+                  text
+`,
+		},
+		"indent indicator with comment more spaces": {
+			in: `|2-    # some comment
+
+                  text
+`,
+			out: `|2- # some comment
+
+                  text
+`,
+		},
+	}
+
+	for name, test := range tests {
+		t.Run(name, func(t *testing.T) {
+			f, err := parser.ParseBytes([]byte(test.in), parser.ParseComments)
+			if err != nil {
+				t.Fatalf("parse: %v", err)
+			}
+			got := f.String()
+			if test.out != got {
+				t.Logf("%q", test.out)
+				t.Logf("%q", got)
+				t.Fatalf("failed to round-trip.\nexpected:\n%s\nbut got:\n%s\n", test.out, got)
+			}
+		})
+	}
+}

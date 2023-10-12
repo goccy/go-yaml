@@ -845,6 +845,14 @@ func TestDecoder(t *testing.T) {
 			map[string]string{"v": "hello\n...\nworld\n"},
 		},
 		{
+			"v: >\n  hello\n  ...\n  world\n",
+			map[string]string{"v": "hello ... world"},
+		},
+		{
+			"v: \"hello\n  ...\n  world\n\"",
+			map[string]string{"v": "hello ... world "},
+		},
+		{
 			"a: !!binary gIGC\n",
 			map[string]string{"a": "\x80\x81\x82"},
 		},
@@ -2654,8 +2662,8 @@ func TestDecoder_LiteralWithNewLine(t *testing.T) {
 
 func TestDecoder_TabCharacterAtRight(t *testing.T) {
 	yml := `
-- a: [2 , 2] 			
-  b: [2 , 2] 			
+- a: [2 , 2]
+  b: [2 , 2]
   c: [2 , 2]`
 	var v []map[string][]int
 	if err := yaml.Unmarshal([]byte(yml), &v); err != nil {

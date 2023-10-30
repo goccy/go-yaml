@@ -609,6 +609,9 @@ func (e *Encoder) encodeMapItem(ctx context.Context, item MapItem, column int) (
 	if e.isMapNode(value) {
 		value.AddColumn(e.indent)
 	}
+	if e.isTagAndMapNode(value) {
+		value.AddColumn(e.indent)
+	}
 	return ast.MappingValue(
 		token.New("", "", e.pos(column)),
 		e.encodeString(k.Interface().(string), column),
@@ -633,6 +636,14 @@ func (e *Encoder) isMapNode(node ast.Node) bool {
 	return ok
 }
 
+func (e *Encoder) isTagAndMapNode(node ast.Node) bool {
+	tn, ok := node.(*ast.TagNode)
+	if ok {
+		_, ok = tn.Value.(ast.MapNode)
+	}
+	return ok
+}
+
 func (e *Encoder) encodeMap(ctx context.Context, value reflect.Value, column int) ast.Node {
 	node := ast.Mapping(token.New("", "", e.pos(column)), e.isFlowStyle)
 	keys := make([]interface{}, len(value.MapKeys()))
@@ -650,6 +661,9 @@ func (e *Encoder) encodeMap(ctx context.Context, value reflect.Value, column int
 			return nil
 		}
 		if e.isMapNode(value) {
+			value.AddColumn(e.indent)
+		}
+		if e.isTagAndMapNode(value) {
 			value.AddColumn(e.indent)
 		}
 		node.Values = append(node.Values, ast.MappingValue(

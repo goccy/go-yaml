@@ -51,6 +51,7 @@ func TestPathBuilder(t *testing.T) {
 }
 
 func TestPathBuilderNoChain(t *testing.T) {
+	// See PR #420.
 	builder := yaml.PathBuilder{}
 	builder.Root()
 	builder.Child("a")

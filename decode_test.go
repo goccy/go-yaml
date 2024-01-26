@@ -849,7 +849,23 @@ func TestDecoder(t *testing.T) {
 			},
 		},
 		{
+			"v:\n- A\n- |-\n  B\n  C\n\n\n",
+			map[string][]string{
+				"v": {
+					"A", "B\nC",
+				},
+			},
+		},
+		{
 			"v:\n- A\n- >-\n  B\n  C\n",
+			map[string][]string{
+				"v": {
+					"A", "B C",
+				},
+			},
+		},
+		{
+			"v:\n- A\n- >-\n  B\n  C\n\n\n",
 			map[string][]string{
 				"v": {
 					"A", "B C",

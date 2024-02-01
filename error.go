@@ -2,6 +2,8 @@ package yaml
 
 import (
 	"github.com/goccy/go-yaml/ast"
+	"github.com/goccy/go-yaml/internal/errors"
+	"github.com/goccy/go-yaml/token"
 	"golang.org/x/xerrors"
 )
 
@@ -59,4 +61,31 @@ func IsInvalidAnchorNameError(err error) bool {
 // IsInvalidAliasNameError whether err is ast.ErrInvalidAliasName or not.
 func IsInvalidAliasNameError(err error) bool {
 	return xerrors.Is(err, ast.ErrInvalidAliasName)
+}
+
+// SyntaxError represents an syntax error associated with a specific [token.Token].
+type SyntaxError struct {
+	Msg   string
+	Token *token.Token
+
+	err *errors.SyntaxError
+}
+
+// Error implements the error interface.
+func (s SyntaxError) Error() string {
+	return s.err.Error()
+}
+
+// AsSyntaxError checks if error was a syntax error and returns it if so.
+// Otherwise, it returns nil.
+func AsSyntaxError(err error) *SyntaxError {
+	var syntaxError *errors.SyntaxError
+	if xerrors.As(err, &syntaxError) {
+		return &SyntaxError{
+			Msg:   syntaxError.GetMessage(),
+			Token: syntaxError.GetToken(),
+			err:   syntaxError,
+		}
+	}
+	return nil
 }

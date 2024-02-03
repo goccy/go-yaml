@@ -63,28 +63,40 @@ func IsInvalidAliasNameError(err error) bool {
 	return xerrors.Is(err, ast.ErrInvalidAliasName)
 }
 
-// SyntaxError represents an syntax error associated with a specific [token.Token].
-type SyntaxError struct {
-	Msg   string
+// TokenScopedError represents an error associated with a specific [token.Token].
+type TokenScopedError struct {
+	// Msg is the underlying error message.
+	Msg string
+	// Token is the [token.Token] associated with this error.
 	Token *token.Token
-
-	err *errors.SyntaxError
+	// err is the underlying, unwraped error.
+	err error
 }
 
 // Error implements the error interface.
-func (s SyntaxError) Error() string {
+// It returns the unwraped error returned by go-yaml.
+func (s TokenScopedError) Error() string {
 	return s.err.Error()
 }
 
-// AsSyntaxError checks if error was a syntax error and returns it if so.
+// AsTokenScopedError checks if the error is associated with a specific token.
+// If so, it returns
 // Otherwise, it returns nil.
-func AsSyntaxError(err error) *SyntaxError {
+func AsTokenScopedError(err error) *TokenScopedError {
 	var syntaxError *errors.SyntaxError
 	if xerrors.As(err, &syntaxError) {
-		return &SyntaxError{
+		return &TokenScopedError{
 			Msg:   syntaxError.GetMessage(),
 			Token: syntaxError.GetToken(),
-			err:   syntaxError,
+			err:   err,
+		}
+	}
+	var typeError *errors.TypeError
+	if xerrors.As(err, &typeError) {
+		return &TokenScopedError{
+			Msg:   typeError.Error(),
+			Token: typeError.Token,
+			err:   err,
 		}
 	}
 	return nil

@@ -38,6 +38,13 @@ func TestAsSyntaxError(t *testing.T) {
 				Token: &token.Token{Value: "123"},
 			},
 		},
+		{
+			input: errUnknownField("unknown field", &token.Token{Value: "123"}),
+			expected: &SyntaxError{
+				Msg:   "unknown field",
+				Token: &token.Token{Value: "123"},
+			},
+		},
 	}
 	for _, test := range tests {
 		syntaxErr := AsSyntaxError(test.input)

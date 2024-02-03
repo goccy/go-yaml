@@ -534,6 +534,10 @@ func (e *unknownFieldError) Error() string {
 	return e.err.Error()
 }
 
+func (e *unknownFieldError) Unwrap() error {
+	return e.err
+}
+
 func errUnknownField(msg string, tk *token.Token) *unknownFieldError {
 	return &unknownFieldError{err: errors.ErrSyntax(msg, tk)}
 }
@@ -548,6 +552,10 @@ type duplicateKeyError struct {
 
 func (e *duplicateKeyError) Error() string {
 	return e.err.Error()
+}
+
+func (e *duplicateKeyError) Unwrap() error {
+	return e.err
 }
 
 func errDuplicateKey(msg string, tk *token.Token) *duplicateKeyError {

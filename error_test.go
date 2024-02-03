@@ -3,10 +3,9 @@ package yaml
 import (
 	"testing"
 
-	"golang.org/x/xerrors"
-
 	"github.com/goccy/go-yaml/internal/errors"
 	"github.com/goccy/go-yaml/token"
+	"golang.org/x/xerrors"
 )
 
 func TestAsSyntaxError(t *testing.T) {
@@ -52,7 +51,10 @@ func TestAsSyntaxError(t *testing.T) {
 			if syntaxErr != nil {
 				t.Fatalf("wanted nil, but go %v", syntaxErr)
 			}
-			return
+			continue
+		}
+		if syntaxErr == nil {
+			t.Fatalf("must not be nil")
 		}
 		if *test.expected.Token != *syntaxErr.Token && test.expected.Msg != syntaxErr.Msg {
 			t.Fatalf("unexpected output.\nexpect:\n[%v]\nactual:\n[%v]", test.expected, syntaxErr)

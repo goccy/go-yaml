@@ -1414,6 +1414,11 @@ func (n *MappingValueNode) toString() string {
 		return fmt.Sprintf("%s%s: %s", space, n.Key.String(), n.Value.String())
 	} else if _, ok := n.Value.(*AliasNode); ok {
 		return fmt.Sprintf("%s%s: %s", space, n.Key.String(), n.Value.String())
+	} else if tn, ok := n.Value.(*TagNode); ok {
+		if _, xok := tn.Value.(MapNode); xok {
+			return fmt.Sprintf("%s%s:%s", space, n.Key.String(), n.Value.String())
+		}
+		return fmt.Sprintf("%s%s: %s", space, n.Key.String(), n.Value.String())
 	}
 	if keyComment != nil {
 		return fmt.Sprintf(
@@ -1795,6 +1800,16 @@ func (n *TagNode) AddColumn(col int) {
 
 // String tag to text
 func (n *TagNode) String() string {
+	space := strings.Repeat(" ", n.GetToken().Position.Column-1)
+
+	value := n.Value.String()
+	if s, ok := n.Value.(*SequenceNode); ok && !s.IsFlowStyle {
+		return fmt.Sprintf("%s\n%s", n.Start.Value, value)
+	} else if m, ok := n.Value.(*MappingNode); ok && !m.IsFlowStyle {
+		return fmt.Sprintf("\n%s%s\n%s", space, n.Start.Value, value)
+	} else if _, ok := n.Value.(*MappingValueNode); ok {
+		return fmt.Sprintf("\n%s%s\n%s", space, n.Start.Value, value)
+	}
 	return fmt.Sprintf("%s %s", n.Start.Value, n.Value.String())
 }
 

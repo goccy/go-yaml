@@ -77,6 +77,15 @@ func DisallowDuplicateKey() DecodeOption {
 	}
 }
 
+// DisallowMissingField causes an error when mapping keys that are missing if the destination is a struct
+// This does no effect on dynamic types like map.
+func DisallowMissingField() DecodeOption {
+	return func(d *Decoder) error {
+		d.disallowMissingField = true
+		return nil
+	}
+}
+
 // UseOrderedMap can be interpreted as a map,
 // and uses MapSlice ( ordered map ) aggressively if there is no type specification
 func UseOrderedMap() DecodeOption {

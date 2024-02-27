@@ -2906,3 +2906,40 @@ func TestSameNameInineStruct(t *testing.T) {
 		t.Fatalf("failed to decode")
 	}
 }
+
+func Test_DecoderMissingFieldOption(t *testing.T) {
+	yml := `
+b: 2
+`
+	expected := `
+[2:2] missing required field: "a,v" 
+>  2 | b: 2
+        ^
+`
+	t.Run("map", func(t *testing.T) {
+		var v map[string]string
+		err := yaml.NewDecoder(strings.NewReader(yml), yaml.DisallowMissingField()).Decode(&v)
+		if err != nil {
+			t.Fatal("decoding should success")
+		}
+		if len(v) != 1 && v["b"] != "2" {
+			t.Fatal("failed to decode, DisallowMissingField should have no impact on map")
+		}
+	})
+	t.Run("struct", func(t *testing.T) {
+		var v struct {
+			A int
+			B int
+			V string
+		}
+		err := yaml.NewDecoder(strings.NewReader(yml), yaml.DisallowMissingField()).Decode(&v)
+		if err == nil {
+			t.Fatal("decoding should fail")
+		}
+		actual := "\n" + err.Error()
+		if expected != actual {
+			fmt.Println(err)
+			t.Fatalf("expected:[%s] actual:[%s]", expected, actual)
+		}
+	})
+}

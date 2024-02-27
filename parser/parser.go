@@ -327,20 +327,23 @@ func (p *parser) parseSequenceEntry(ctx *context) (*ast.SequenceNode, error) {
 	for tk.Type == token.SequenceEntryType {
 		ctx.progress(1) // skip sequence token
 		tk = ctx.currentToken()
-		if tk == nil {
-			return nil, errors.ErrSyntax("empty sequence entry", ctx.previousToken())
-		}
 		var comment *ast.CommentGroupNode
-		if tk.Type == token.CommentType {
-			comment = p.parseCommentOnly(ctx)
-			tk = ctx.currentToken()
-			if tk.Type == token.SequenceEntryType {
-				ctx.progress(1) // skip sequence token
+		var value ast.Node
+		var err error
+		if tk == nil {
+			value = &ast.NullNode{}
+		} else {
+			if tk.Type == token.CommentType {
+				comment = p.parseCommentOnly(ctx)
+				tk = ctx.currentToken()
+				if tk.Type == token.SequenceEntryType {
+					ctx.progress(1) // skip sequence token
+				}
 			}
-		}
-		value, err := p.parseToken(ctx.withIndex(uint(len(sequenceNode.Values))), ctx.currentToken())
-		if err != nil {
-			return nil, errors.Wrapf(err, "failed to parse sequence")
+			value, err = p.parseToken(ctx.withIndex(uint(len(sequenceNode.Values))), ctx.currentToken())
+			if err != nil {
+				return nil, errors.Wrapf(err, "failed to parse sequence")
+			}
 		}
 		if comment != nil {
 			comment.SetPath(ctx.withIndex(uint(len(sequenceNode.Values))).path)

@@ -1,6 +1,8 @@
 package yaml
 
 import (
+	"errors"
+
 	"github.com/goccy/go-yaml/ast"
 	"golang.org/x/xerrors"
 )
@@ -28,35 +30,35 @@ func ErrUnsupportedFootPositionType(node ast.Node) error {
 
 // IsInvalidQueryError whether err is ErrInvalidQuery or not.
 func IsInvalidQueryError(err error) bool {
-	return xerrors.Is(err, ErrInvalidQuery)
+	return errors.Is(err, ErrInvalidQuery)
 }
 
 // IsInvalidPathError whether err is ErrInvalidPath or not.
 func IsInvalidPathError(err error) bool {
-	return xerrors.Is(err, ErrInvalidPath)
+	return errors.Is(err, ErrInvalidPath)
 }
 
 // IsInvalidPathStringError whether err is ErrInvalidPathString or not.
 func IsInvalidPathStringError(err error) bool {
-	return xerrors.Is(err, ErrInvalidPathString)
+	return errors.Is(err, ErrInvalidPathString)
 }
 
 // IsNotFoundNodeError whether err is ErrNotFoundNode or not.
 func IsNotFoundNodeError(err error) bool {
-	return xerrors.Is(err, ErrNotFoundNode)
+	return errors.Is(err, ErrNotFoundNode)
 }
 
 // IsInvalidTokenTypeError whether err is ast.ErrInvalidTokenType or not.
 func IsInvalidTokenTypeError(err error) bool {
-	return xerrors.Is(err, ast.ErrInvalidTokenType)
+	return errors.Is(err, ast.ErrInvalidTokenType)
 }
 
 // IsInvalidAnchorNameError whether err is ast.ErrInvalidAnchorName or not.
 func IsInvalidAnchorNameError(err error) bool {
-	return xerrors.Is(err, ast.ErrInvalidAnchorName)
+	return errors.Is(err, ast.ErrInvalidAnchorName)
 }
 
 // IsInvalidAliasNameError whether err is ast.ErrInvalidAliasName or not.
 func IsInvalidAliasNameError(err error) bool {
-	return xerrors.Is(err, ast.ErrInvalidAliasName)
+	return errors.Is(err, ast.ErrInvalidAliasName)
 }

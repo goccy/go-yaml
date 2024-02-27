@@ -830,6 +830,9 @@ func (n *StringNode) String() string {
 		// This block assumes that the line breaks in this inside scalar content and the Outside scalar content are the same.
 		// It works mostly, but inconsistencies occur if line break characters are mixed.
 		header := token.LiteralBlockHeader(n.Value)
+		if n.Comment != nil {
+			header = addCommentString(header, n.Comment)
+		}
 		space := strings.Repeat(" ", n.Token.Position.Column-1)
 		values := []string{}
 		for _, v := range strings.Split(n.Value, lbc) {

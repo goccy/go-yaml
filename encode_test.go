@@ -7,6 +7,7 @@ import (
 	"math"
 	"reflect"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 
@@ -1629,4 +1630,36 @@ b:
 	if expected != got {
 		t.Fatalf("failed to encode. expected %s but got %s", expected, got)
 	}
+}
+
+func TestMarshalNewlineInKey(t *testing.T) {
+	spec := map[string]string{
+		"a":    "a",
+		"c\nc": "cc",
+		"d":    "d",
+	}
+	expected := []string{
+		`a: a
+"c\nc": "cc"
+d: d
+`,
+		`---
+a: a
+? |-
+  c
+  c
+: cc
+d: d
+`}
+	y, err := yaml.Marshal(spec)
+	if err != nil {
+		t.Fatalf("Error marshalling YAML: %v", err)
+	}
+	for _, exp := range expected {
+		if string(y) == exp {
+			return
+		}
+	}
+
+	t.Fatalf("testNewlineEncode FAILED\nExpected: '%s'\nGot: '%s'", strings.Join(expected, "\nor\n"), string(y))
 }

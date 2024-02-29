@@ -2906,3 +2906,117 @@ func TestSameNameInineStruct(t *testing.T) {
 		t.Fatalf("failed to decode")
 	}
 }
+
+// Test newline in key as encoded by alternative YAML tools:
+func TestUnmarshalNewlineInKey(t *testing.T) {
+	tests := []struct {
+		name string
+		spec string
+	}{
+		{
+			name: "multiline-key-with-newline-01",
+			/* As rendered by this library from this JSON:
+			{
+				"a": "a",
+				"c\nc": "cc",
+				"d": "d"
+			}
+			*/
+			spec: `a: a
+|-
+  c
+  c: cc
+d: d
+`,
+		},
+		{
+			name: "quoted-key-with-newline",
+			spec: `a: a
+"c\nc": "cc"
+d: d
+`,
+		},
+		{
+			name: "multiline-key-with-newline-02",
+			// As encoded by alternative online YAML tools (e.g. https://www.json2yaml.com/)
+			spec: `a: a
+? |-
+  c
+  c
+: cc
+d: d
+`,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			decoder := yaml.NewDecoder(strings.NewReader(test.spec))
+			var out map[string]interface{}
+			for i := 0; ; i++ {
+				err := decoder.Decode(&out)
+				if err == io.EOF {
+					break
+				}
+				if err != nil {
+					t.Fatalf("Error on iteration %d: %v", i, err)
+				}
+			}
+		})
+	}
+}
+
+func TestUnmarshalBackslashInKey(t *testing.T) {
+	spec := `outer:
+  "b\\b": b
+  d : d
+`
+
+	decoder := yaml.NewDecoder(strings.NewReader(spec))
+	var out map[string]interface{}
+	for i := 0; ; i++ {
+		err := decoder.Decode(&out)
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			t.Fatalf("Error on iteration %d: %v", i, err)
+		}
+	}
+}
+
+func TestUnmarshalQuotesInKey(t *testing.T) {
+	spec := `outer:
+  "a\"b\"c": a
+  "d\"e\"f": d
+`
+	decoder := yaml.NewDecoder(strings.NewReader(spec))
+	var out map[string]interface{}
+	for i := 0; ; i++ {
+		err := decoder.Decode(&out)
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			t.Fatalf("Error on iteration %d: %v", i, err)
+		}
+	}
+}
+
+func TestUnmarshalCollectedEscapesInKey(t *testing.T) {
+	spec := `outer:
+  "a\"b\"c\\d\ne": a
+  "d\"e\"f": d
+	`
+	decoder := yaml.NewDecoder(strings.NewReader(spec))
+	var out map[string]interface{}
+	for i := 0; ; i++ {
+		err := decoder.Decode(&out)
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			t.Fatalf("Error on iteration %d: %v", i, err)
+		}
+	}
+}

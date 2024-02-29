@@ -28,6 +28,7 @@ type Decoder struct {
 	referenceReaders     []io.Reader
 	anchorNodeMap        map[string]ast.Node
 	anchorValueMap       map[string]reflect.Value
+	aliasSet             map[*ast.AliasNode]struct{}
 	customUnmarshalerMap map[reflect.Type]func(interface{}, []byte) error
 	toCommentMap         CommentMap
 	opts                 []DecodeOption
@@ -50,6 +51,7 @@ func NewDecoder(r io.Reader, opts ...DecodeOption) *Decoder {
 		reader:               r,
 		anchorNodeMap:        map[string]ast.Node{},
 		anchorValueMap:       map[string]reflect.Value{},
+		aliasSet:             map[*ast.AliasNode]struct{}{},
 		customUnmarshalerMap: map[reflect.Type]func(interface{}, []byte) error{},
 		opts:                 opts,
 		referenceReaders:     []io.Reader{},
@@ -302,6 +304,10 @@ func (d *Decoder) nodeToValue(node ast.Node) interface{} {
 		d.anchorNodeMap[anchorName] = n.Value
 		return anchorValue
 	case *ast.AliasNode:
+		if _, ok := d.aliasSet[n]; ok {
+			return nil
+		}
+		d.aliasSet[n] = struct{}{}
 		aliasName := n.Value.GetToken().Value
 		node := d.anchorNodeMap[aliasName]
 		return d.nodeToValue(node)
@@ -1000,7 +1006,7 @@ func (d *Decoder) keyToNodeMap(node ast.Node, ignoreMergeKey bool, getKeyOrValue
 		} else {
 			key, ok := d.nodeToValue(keyNode).(string)
 			if !ok {
-				return nil, errors.Wrapf(err, "failed to decode map key")
+				return nil, xerrors.New("failed to decode map key")
 			}
 			if err := d.validateDuplicateKey(keyMap, key, keyNode); err != nil {
 				return nil, errors.Wrapf(err, "invalid struct key")

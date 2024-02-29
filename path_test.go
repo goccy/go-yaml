@@ -664,3 +664,44 @@ store:
 	// OUTPUT:
 	// [john ken]
 }
+
+func TestPathStringCrashes(t *testing.T) {
+	testCases := []string{
+		".0",
+		".AA",
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc, func(t *testing.T) {
+			_, err := yaml.PathString(tc)
+			if err == nil {
+				t.Fatalf("have: no error; want: error")
+			}
+		})
+	}
+}
+
+func FuzzPathString(f *testing.F) {
+	corpus := []string{
+		`$.a.b[0]`,
+		`$.'a.b'.'c*d'`,
+		`$.'a.b-*'.c`,
+		`$.'a'.b`,
+		`$.'a.b'.c`,
+		"$..a",
+		"$.a.b..c",
+		`$.'a.b.c'.foo`,
+		`$.a'b`,
+		`$.''`,
+		"$.a[*].b=x",
+	}
+	for _, tc := range corpus {
+		f.Add(tc)
+	}
+	f.Fuzz(func(t *testing.T, sPath string) {
+		_, err := yaml.PathString(sPath)
+		if err != nil {
+			return
+		}
+	})
+}

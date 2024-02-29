@@ -6,6 +6,7 @@ import (
 	"io"
 	"strconv"
 	"strings"
+	"unicode"
 
 	"github.com/goccy/go-yaml/ast"
 	"github.com/goccy/go-yaml/internal/errors"
@@ -101,6 +102,11 @@ func parsePathDot(b *PathBuilder, buf []rune, cursor int) (*PathBuilder, []rune,
 	}
 	for ; cursor < length; cursor++ {
 		c := buf[cursor]
+		// Not a proper fix; here just to show the problem.
+		// Should be fixed with an explicit allow list instead of an explicit deny list.
+		if unicode.IsDigit(c) {
+			return nil, nil, 0, errors.Wrapf(ErrInvalidPathString, "specified digit after '.' character")
+		}
 		switch c {
 		case '$':
 			return nil, nil, 0, errors.Wrapf(ErrInvalidPathString, "specified '$' after '.' character")
@@ -114,7 +120,7 @@ func parsePathDot(b *PathBuilder, buf []rune, cursor int) (*PathBuilder, []rune,
 	}
 end:
 	if start == cursor {
-		return nil, nil, 0, errors.Wrapf(ErrInvalidPathString, "cloud not find by empty key")
+		return nil, nil, 0, errors.Wrapf(ErrInvalidPathString, "could not find by empty key")
 	}
 	return b.child(string(buf[start:cursor])), buf, cursor, nil
 }

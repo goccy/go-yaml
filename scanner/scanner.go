@@ -141,7 +141,7 @@ func (s *Scanner) newLineCount(src []rune) int {
 }
 
 func (s *Scanner) updateIndentState(ctx *Context) {
-	indentNumBasedIndentState := s.indentState
+	var indentNumBasedIndentState IndentState
 	if s.prevIndentNum < s.indentNum {
 		s.indentLevel = s.prevIndentLevel + 1
 		indentNumBasedIndentState = IndentStateUp

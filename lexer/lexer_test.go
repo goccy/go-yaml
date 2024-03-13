@@ -586,6 +586,60 @@ b: 1`,
 				},
 			},
 		},
+		{
+			name: "literal string without trailing whitespace",
+			src: `a: |
+  Text`,
+			expect: []testToken{
+				{
+					line:   1,
+					column: 1,
+					value:  "a",
+				},
+				{
+					line:   1,
+					column: 2,
+					value:  ":",
+				},
+				{
+					line:   1,
+					column: 4,
+					value:  "|",
+				},
+				{
+					line:   2,
+					column: 3,
+					value:  "Text",
+				},
+			},
+		},
+		{
+			name: "folded string without trailing whitespace",
+			src: `a: >
+  Text`,
+			expect: []testToken{
+				{
+					line:   1,
+					column: 1,
+					value:  "a",
+				},
+				{
+					line:   1,
+					column: 2,
+					value:  ":",
+				},
+				{
+					line:   1,
+					column: 4,
+					value:  ">",
+				},
+				{
+					line:   2,
+					column: 3,
+					value:  "Text",
+				},
+			},
+		},
 	}
 
 	for _, tc := range tests {

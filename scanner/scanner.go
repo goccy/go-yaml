@@ -377,7 +377,7 @@ func (s *Scanner) scanDoubleQuote(ctx *Context) (tk *token.Token, pos int) {
 				case 'x':
 					if idx+3 >= size {
 						// TODO: need to return error
-						//err = xerrors.New("invalid escape character \\x")
+						// err = xerrors.New("invalid escape character \\x")
 						return
 					}
 					codeNum := hexRunesToInt(src[idx+2 : idx+4])
@@ -387,7 +387,7 @@ func (s *Scanner) scanDoubleQuote(ctx *Context) (tk *token.Token, pos int) {
 				case 'u':
 					if idx+5 >= size {
 						// TODO: need to return error
-						//err = xerrors.New("invalid escape character \\u")
+						// err = xerrors.New("invalid escape character \\u")
 						return
 					}
 					codeNum := hexRunesToInt(src[idx+2 : idx+6])
@@ -397,7 +397,7 @@ func (s *Scanner) scanDoubleQuote(ctx *Context) (tk *token.Token, pos int) {
 				case 'U':
 					if idx+9 >= size {
 						// TODO: need to return error
-						//err = xerrors.New("invalid escape character \\U")
+						// err = xerrors.New("invalid escape character \\U")
 						return
 					}
 					codeNum := hexRunesToInt(src[idx+2 : idx+10])
@@ -512,9 +512,13 @@ func (s *Scanner) scanLiteral(ctx *Context, c rune) {
 	if ctx.isEOS() {
 		if ctx.isLiteral {
 			ctx.addBuf(c)
+		} else if ctx.isFolded && !s.isNewLineChar(c) {
+			ctx.addBuf(c)
 		}
 		value := ctx.bufferedSrc()
-		ctx.addToken(token.String(string(value), string(ctx.obuf), s.pos()))
+		pos := s.pos()
+		pos.Column = s.docStartColumn
+		ctx.addToken(token.String(string(value), string(ctx.obuf), pos))
 		ctx.resetBuffer()
 		s.progressColumn(ctx, 1)
 	} else if s.isNewLineChar(c) {

@@ -534,7 +534,7 @@ func getNumberStat(str string) *numStat {
 	for idx, c := range str {
 		switch c {
 		case 'x':
-			if (isNegative && idx == 2) || (!isNegative && idx == 1) {
+			if (isNegative && idx == 2 && str[1] == '0') || (!isNegative && idx == 1 && str[0] == '0') {
 				continue
 			}
 		case 'o':

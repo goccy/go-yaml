@@ -9,11 +9,12 @@ import (
 
 // context context at parsing
 type context struct {
-	parent *context
-	idx    int
-	size   int
-	tokens token.Tokens
-	path   string
+	parent    *context
+	idx       int
+	size      int
+	tokens    token.Tokens
+	path      string
+	pathStack []string
 }
 
 var pathSpecialChars = []string{
@@ -37,26 +38,32 @@ func normalizePath(path string) string {
 }
 
 func (c *context) withChild(path string) *context {
-	ctx := c.copy()
+	// store current path in the stack for later retrieval
+	c.pathStack = append(c.pathStack, c.path)
+	c.path = c.createPathForChild(path)
+	return c
+}
+
+func (c *context) createPathForChild(path string) string {
 	path = normalizePath(path)
-	ctx.path += fmt.Sprintf(".%s", path)
-	return ctx
+	return fmt.Sprintf("%s.%s", c.path, path)
 }
 
 func (c *context) withIndex(idx uint) *context {
-	ctx := c.copy()
-	ctx.path += fmt.Sprintf("[%d]", idx)
-	return ctx
+	// store current path in the stack for later retrieval
+	c.pathStack = append(c.pathStack, c.path)
+	c.path = c.createPathForIndex(idx)
+	return c
 }
 
-func (c *context) copy() *context {
-	return &context{
-		parent: c,
-		idx:    c.idx,
-		size:   c.size,
-		tokens: append(token.Tokens{}, c.tokens...),
-		path:   c.path,
-	}
+func (c *context) createPathForIndex(idx uint) string {
+	return fmt.Sprintf("%s[%d]", c.path, idx)
+}
+
+func (c *context) popPath() {
+	// restore previous path from top element in stack and remove it from stack
+	c.path = c.pathStack[len(c.pathStack)-1]
+	c.pathStack = c.pathStack[:len(c.pathStack)-1]
 }
 
 func (c *context) next() bool {
@@ -184,9 +191,10 @@ func newContext(tokens token.Tokens, mode Mode) *context {
 		}
 	}
 	return &context{
-		idx:    0,
-		size:   len(filteredTokens),
-		tokens: token.Tokens(filteredTokens),
-		path:   "$",
+		idx:       0,
+		size:      len(filteredTokens),
+		tokens:    token.Tokens(filteredTokens),
+		path:      "$",
+		pathStack: []string{},
 	}
 }

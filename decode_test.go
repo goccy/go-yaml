@@ -2906,3 +2906,28 @@ func TestSameNameInineStruct(t *testing.T) {
 		t.Fatalf("failed to decode")
 	}
 }
+
+func TestDecoderPreservesDefaultValues(t *testing.T) {
+	type second struct {
+		Val string `yaml:"val"`
+	}
+
+	type test struct {
+		First    string `yaml:"first"`
+		Defaults second `yaml:"second"`
+	}
+
+	yml := `
+first: "Test"
+second:
+  # Just some comment here
+#  val: "default"
+`
+	v := test{Defaults: second{Val: "default"}}
+	if err := yaml.Unmarshal([]byte(yml), &v); err != nil {
+		t.Fatal(err)
+	}
+	if v.Defaults.Val != "default" {
+		t.Fatal("decoder doesn't preserve struct defaults")
+	}
+}

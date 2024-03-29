@@ -989,18 +989,22 @@ func (d *Decoder) createDecodedNewValue(
 			return newValue, nil
 		}
 	}
+	var newValue reflect.Value
 	if node.Type() == ast.NullType {
-		return reflect.Zero(typ), nil
+		newValue = reflect.New(typ).Elem()
+	} else {
+		newValue = d.createDecodableValue(typ)
 	}
-	newValue := d.createDecodableValue(typ)
 	for defaultVal.Kind() == reflect.Ptr {
 		defaultVal = defaultVal.Elem()
 	}
 	if defaultVal.IsValid() && defaultVal.Type().AssignableTo(newValue.Type()) {
 		newValue.Set(defaultVal)
 	}
-	if err := d.decodeValue(ctx, newValue, node); err != nil {
-		return newValue, errors.Wrapf(err, "failed to decode value")
+	if node.Type() != ast.NullType {
+		if err := d.decodeValue(ctx, newValue, node); err != nil {
+			return newValue, errors.Wrapf(err, "failed to decode value")
+		}
 	}
 	return newValue, nil
 }

@@ -3,7 +3,6 @@ package main
 import (
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"os"
 
 	"github.com/fatih/color"
@@ -24,7 +23,7 @@ func _main(args []string) error {
 		return errors.New("ycat: usage: ycat file.yml")
 	}
 	filename := args[1]
-	bytes, err := ioutil.ReadFile(filename)
+	bytes, err := os.ReadFile(filename)
 	if err != nil {
 		return err
 	}

@@ -7,7 +7,6 @@ import (
 	"encoding/base64"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"math"
 	"os"
 	"path/filepath"
@@ -1629,7 +1628,7 @@ func (d *Decoder) resolveReference() error {
 		}
 	}
 	for _, reader := range d.referenceReaders {
-		bytes, err := ioutil.ReadAll(reader)
+		bytes, err := io.ReadAll(reader)
 		if err != nil {
 			return errors.Wrapf(err, "failed to read buffer")
 		}

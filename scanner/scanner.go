@@ -391,6 +391,34 @@ func (s *Scanner) scanDoubleQuote(ctx *Context) (tk *token.Token, pos int) {
 						return
 					}
 					codeNum := hexRunesToInt(src[idx+2 : idx+6])
+
+					// Handle surrogate pairs
+					if codeNum >= 0xD800 && codeNum <= 0xDBFF {
+						high := codeNum
+
+						if idx+11 >= size {
+							// TODO: need to return error
+							//err = xerrors.New("not enough characters for surrogate pair")
+							return
+						}
+
+						if src[idx+6] != '\\' || src[idx+7] != 'u' {
+							// TODO: need to return error
+							//err = xerrors.New("expected escape code after high surrogate")
+							return
+						}
+
+						low := hexRunesToInt(src[idx+8 : idx+12])
+						if low < 0xDC00 || low > 0xDFFF {
+							// TODO: need to return error
+							//err = xerrors.New("expected low surrogate after high surrogate")
+							return
+						}
+
+						codeNum = ((high - 0xD800) * 0x400) + (low - 0xDC00) + 0x10000
+						idx += 6
+					}
+
 					value = append(value, rune(codeNum))
 					idx += 5
 					continue

@@ -438,6 +438,18 @@ func TestDecoder(t *testing.T) {
 			map[interface{}]interface{}{"1": `a/b/c/d`},
 		},
 		{
+			`"\ud83e\udd23"`,
+			"🤣",
+		},
+		{
+			`"\uD83D\uDE00\uD83D\uDE01"`,
+			"😀😁",
+		},
+		{
+			`"\uD83D\uDE00a\uD83D\uDE01"`,
+			"😀a😁",
+		},
+		{
 			"'1': \"2\\n3\"",
 			map[interface{}]interface{}{"1": "2\n3"},
 		},

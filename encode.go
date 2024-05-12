@@ -27,20 +27,21 @@ const (
 
 // Encoder writes YAML values to an output stream.
 type Encoder struct {
-	writer                     io.Writer
-	opts                       []EncodeOption
-	indent                     int
-	indentSequence             bool
-	singleQuote                bool
-	isFlowStyle                bool
-	isJSONStyle                bool
-	useJSONMarshaler           bool
-	anchorCallback             func(*ast.AnchorNode, interface{}) error
-	anchorPtrToNameMap         map[uintptr]string
-	customMarshalerMap         map[reflect.Type]func(interface{}) ([]byte, error)
-	useLiteralStyleIfMultiline bool
-	commentMap                 map[*Path][]*Comment
-	written                    bool
+	writer                      io.Writer
+	opts                        []EncodeOption
+	indent                      int
+	indentSequence              bool
+	singleQuote                 bool
+	isFlowStyle                 bool
+	isJSONStyle                 bool
+	useJSONMarshaler            bool
+	anchorCallback              func(*ast.AnchorNode, interface{}) error
+	anchorPtrToNameMap          map[uintptr]string
+	customMarshalerMap          map[reflect.Type]func(interface{}) ([]byte, error)
+	customInterfaceMarshalerMap map[reflect.Type]func(interface{}) (interface{}, error)
+	useLiteralStyleIfMultiline  bool
+	commentMap                  map[*Path][]*Comment
+	written                     bool
 
 	line        int
 	column      int
@@ -53,14 +54,15 @@ type Encoder struct {
 // The Encoder should be closed after use to flush all data to w.
 func NewEncoder(w io.Writer, opts ...EncodeOption) *Encoder {
 	return &Encoder{
-		writer:             w,
-		opts:               opts,
-		indent:             DefaultIndentSpaces,
-		anchorPtrToNameMap: map[uintptr]string{},
-		customMarshalerMap: map[reflect.Type]func(interface{}) ([]byte, error){},
-		line:               1,
-		column:             1,
-		offset:             0,
+		writer:                      w,
+		opts:                        opts,
+		indent:                      DefaultIndentSpaces,
+		anchorPtrToNameMap:          map[uintptr]string{},
+		customMarshalerMap:          map[reflect.Type]func(interface{}) ([]byte, error){},
+		customInterfaceMarshalerMap: map[reflect.Type]func(interface{}) (interface{}, error){},
+		line:                        1,
+		column:                      1,
+		offset:                      0,
 	}
 }
 
@@ -301,11 +303,40 @@ func (e *Encoder) marshalerFromCustomMarshalerMap(t reflect.Type) (func(interfac
 	return nil, false
 }
 
+func (e *Encoder) existsTypeInCustomInterfaceMarshalerMap(t reflect.Type) bool {
+	if _, exists := e.customInterfaceMarshalerMap[t]; exists {
+		return true
+	}
+
+	globalCustomInterfaceMarshalerMu.Lock()
+	defer globalCustomInterfaceMarshalerMu.Unlock()
+	if _, exists := globalCustomInterfaceMarshalerMap[t]; exists {
+		return true
+	}
+	return false
+}
+
+func (e *Encoder) marshalerFromCustomInterfaceMarshalerMap(t reflect.Type) (func(interface{}) (interface{}, error), bool) {
+	if marshaler, exists := e.customInterfaceMarshalerMap[t]; exists {
+		return marshaler, exists
+	}
+
+	globalCustomInterfaceMarshalerMu.Lock()
+	defer globalCustomInterfaceMarshalerMu.Unlock()
+	if marshaler, exists := globalCustomInterfaceMarshalerMap[t]; exists {
+		return marshaler, exists
+	}
+	return nil, false
+}
+
 func (e *Encoder) canEncodeByMarshaler(v reflect.Value) bool {
 	if !v.CanInterface() {
 		return false
 	}
 	if e.existsTypeInCustomMarshalerMap(v.Type()) {
+		return true
+	}
+	if e.existsTypeInCustomInterfaceMarshalerMap(v.Type()) {
 		return true
 	}
 	iface := v.Interface()
@@ -343,6 +374,13 @@ func (e *Encoder) encodeByMarshaler(ctx context.Context, v reflect.Value, column
 			return nil, errors.Wrapf(err, "failed to encode document")
 		}
 		return node, nil
+	}
+	if marshaler, exists := e.marshalerFromCustomInterfaceMarshalerMap(v.Type()); exists {
+		marshalV, err := marshaler(iface)
+		if err != nil {
+			return nil, errors.Wrapf(err, "failed to MarshalYAML")
+		}
+		return e.encodeValue(ctx, reflect.ValueOf(marshalV), column)
 	}
 
 	if marshaler, ok := iface.(BytesMarshalerContext); ok {

@@ -1942,6 +1942,55 @@ func TestDecoder_CustomUnmarshaler(t *testing.T) {
 	})
 }
 
+func TestDecoder_CustomInterfaceUnmarshaler(t *testing.T) {
+	t.Run("override struct type", func(t *testing.T) {
+		type T struct {
+			Foo string `yaml:"foo"`
+		}
+		src := []byte(`foo: "bar"`)
+		var v T
+		if err := yaml.UnmarshalWithOptions(src, &v, yaml.CustomInterfaceUnmarshaler[T](func(dst *T, f func(interface{}) error) error {
+			var m map[string]string
+			if err := f(&m); err != nil {
+				t.Fatal(err)
+			}
+			if m["foo"] != "bar" {
+				t.Fatalf("failed to use unmarshal function. got %q", m["foo"])
+			}
+			dst.Foo = "bazbaz" // assign another value to target
+			return nil
+		})); err != nil {
+			t.Fatal(err)
+		}
+		if v.Foo != "bazbaz" {
+			t.Fatalf("failed to switch to custom interface unmarshaler. got: %v", v.Foo)
+		}
+	})
+	t.Run("override bytes type", func(t *testing.T) {
+		type T struct {
+			Foo []byte `yaml:"foo"`
+		}
+		src := []byte(`foo: "bar"`)
+		var v T
+		if err := yaml.UnmarshalWithOptions(src, &v, yaml.CustomInterfaceUnmarshaler[[]byte](func(dst *[]byte, f func(interface{}) error) error {
+			var str string
+			if err := f(&str); err != nil {
+				t.Fatal(err)
+			}
+			if str != "bar" {
+				t.Fatalf("failed to use unmarshal function. got %q", str)
+			}
+			*dst = []byte("bazbaz")
+			return nil
+		})); err != nil {
+			t.Fatal(err)
+		}
+		if !bytes.Equal(v.Foo, []byte("bazbaz")) {
+			t.Fatalf("failed to switch to custom interface unmarshaler. got: %q", v.Foo)
+		}
+	})
+}
+
 type unmarshalContext struct {
 	v int
 }

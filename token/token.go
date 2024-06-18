@@ -612,7 +612,7 @@ func looksLikeTimeValue(value string) bool {
 
 // IsNeedQuoted whether need quote for passed string or not
 func IsNeedQuoted(value string) bool {
-	if value == "" {
+	if value == "" || value == "~" {
 		return true
 	}
 	if _, exists := reservedEncKeywordMap[value]; exists {

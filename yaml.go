@@ -250,10 +250,14 @@ func JSONToYAML(bytes []byte) ([]byte, error) {
 }
 
 var (
-	globalCustomMarshalerMu    sync.Mutex
-	globalCustomUnmarshalerMu  sync.Mutex
-	globalCustomMarshalerMap   = map[reflect.Type]func(interface{}) ([]byte, error){}
-	globalCustomUnmarshalerMap = map[reflect.Type]func(interface{}, []byte) error{}
+	globalCustomMarshalerMu             sync.Mutex
+	globalCustomUnmarshalerMu           sync.Mutex
+	globalCustomInterfaceMarshalerMu    sync.Mutex
+	globalCustomInterfaceUnmarshalerMu  sync.Mutex
+	globalCustomMarshalerMap            = map[reflect.Type]func(interface{}) ([]byte, error){}
+	globalCustomUnmarshalerMap          = map[reflect.Type]func(interface{}, []byte) error{}
+	globalCustomInterfaceMarshalerMap   = map[reflect.Type]func(interface{}) (interface{}, error){}
+	globalCustomInterfaceUnmarshalerMap = map[reflect.Type]func(interface{}, func(interface{}) error) error{}
 )
 
 // RegisterCustomMarshaler overrides any encoding process for the type specified in generics.
@@ -284,5 +288,36 @@ func RegisterCustomUnmarshaler[T any](unmarshaler func(*T, []byte) error) {
 	var typ *T
 	globalCustomUnmarshalerMap[reflect.TypeOf(typ)] = func(v interface{}, b []byte) error {
 		return unmarshaler(v.(*T), b)
+	}
+}
+
+// RegisterCustomInterfaceMarshaler overrides any encoding process for the type specified in generics.
+// If you want to switch the behavior for each encoder, use `CustomMarshaler` defined as EncodeOption.
+//
+// NOTE: If type T implements MarshalYAML for pointer receiver, the type specified in RegisterCustomMarshaler must be *T.
+// If RegisterCustomMarshaler and CustomMarshaler of EncodeOption are specified for the same type,
+// the CustomMarshaler specified in EncodeOption takes precedence.
+func RegisterCustomInterfaceMarshaler[T any](marshaler func(T) (interface{}, error)) {
+	globalCustomInterfaceMarshalerMu.Lock()
+	defer globalCustomInterfaceMarshalerMu.Unlock()
+
+	var typ T
+	globalCustomInterfaceMarshalerMap[reflect.TypeOf(typ)] = func(v interface{}) (interface{}, error) {
+		return marshaler(v.(T))
+	}
+}
+
+// RegisterCustomInterfaceUnmarshaler overrides any decoding process for the type specified in generics.
+// If you want to switch the behavior for each decoder, use `CustomUnmarshaler` defined as DecodeOption.
+//
+// NOTE: If RegisterCustomUnmarshaler and CustomUnmarshaler of DecodeOption are specified for the same type,
+// the CustomUnmarshaler specified in DecodeOption takes precedence.
+func RegisterCustomInterfaceUnmarshaler[T any](unmarshaler func(*T, func(interface{}) error) error) {
+	globalCustomInterfaceUnmarshalerMu.Lock()
+	defer globalCustomInterfaceUnmarshalerMu.Unlock()
+
+	var typ *T
+	globalCustomInterfaceUnmarshalerMap[reflect.TypeOf(typ)] = func(v interface{}, f func(interface{}) error) error {
+		return unmarshaler(v.(*T), f)
 	}
 }

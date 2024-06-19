@@ -15,11 +15,12 @@ import (
 	"strconv"
 	"time"
 
+	"golang.org/x/xerrors"
+
 	"github.com/goccy/go-yaml/ast"
 	"github.com/goccy/go-yaml/internal/errors"
 	"github.com/goccy/go-yaml/parser"
 	"github.com/goccy/go-yaml/token"
-	"golang.org/x/xerrors"
 )
 
 // Decoder reads and decodes YAML values from an input stream.
@@ -1500,10 +1501,19 @@ func (d *Decoder) decodeMap(ctx context.Context, dst reflect.Value, src ast.Node
 			}
 			continue
 		}
-		k := reflect.ValueOf(d.nodeToValue(key))
-		if k.IsValid() && k.Type().ConvertibleTo(keyType) {
-			k = k.Convert(keyType)
+
+		k := d.createDecodableValue(keyType)
+		if d.canDecodeByUnmarshaler(k) {
+			if err := d.decodeByUnmarshaler(ctx, k, key); err != nil {
+				return errors.Wrapf(err, "failed to decode by unmarshaler")
+			}
+		} else {
+			k = reflect.ValueOf(d.nodeToValue(key))
+			if k.IsValid() && k.Type().ConvertibleTo(keyType) {
+				k = k.Convert(keyType)
+			}
 		}
+
 		if k.IsValid() {
 			if err := d.validateDuplicateKey(keyMap, k.Interface(), key); err != nil {
 				return errors.Wrapf(err, "invalid map key")

@@ -25,13 +25,11 @@ type Context struct {
 	literalOpt         string
 }
 
-var (
-	ctxPool = sync.Pool{
-		New: func() interface{} {
-			return createContext()
-		},
-	}
-)
+var ctxPool = sync.Pool{
+	New: func() interface{} {
+		return createContext()
+	},
+}
 
 func createContext() *Context {
 	return &Context{
@@ -101,7 +99,7 @@ func (c *Context) addBuf(r rune) {
 
 func (c *Context) addOriginBuf(r rune) {
 	c.obuf = append(c.obuf, r)
-	if r != ' ' && r != '\t' {
+	if r != ' ' && r != '\t' && r != '\n' {
 		c.notSpaceOrgCharPos = len(c.obuf)
 	}
 }
@@ -110,6 +108,15 @@ func (c *Context) removeRightSpaceFromBuf() int {
 	trimmedBuf := c.obuf[:c.notSpaceOrgCharPos]
 	buflen := len(trimmedBuf)
 	diff := len(c.obuf) - buflen
+
+	// only calculate the space chopped up to the first newline
+	for i := c.notSpaceOrgCharPos; i < len(c.obuf); i++ {
+		if c.obuf[i] == '\n' || c.obuf[i] == '\r' {
+			diff = i - c.notSpaceOrgCharPos
+			break
+		}
+	}
+
 	if diff > 0 {
 		c.obuf = c.obuf[:buflen]
 		c.buf = c.bufferedSrc()

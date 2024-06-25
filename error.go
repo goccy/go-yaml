@@ -2,6 +2,8 @@ package yaml
 
 import (
 	"github.com/goccy/go-yaml/ast"
+	"github.com/goccy/go-yaml/internal/errors"
+	"github.com/goccy/go-yaml/token"
 	"golang.org/x/xerrors"
 )
 
@@ -59,4 +61,43 @@ func IsInvalidAnchorNameError(err error) bool {
 // IsInvalidAliasNameError whether err is ast.ErrInvalidAliasName or not.
 func IsInvalidAliasNameError(err error) bool {
 	return xerrors.Is(err, ast.ErrInvalidAliasName)
+}
+
+// TokenScopedError represents an error associated with a specific [token.Token].
+type TokenScopedError struct {
+	// Msg is the underlying error message.
+	Msg string
+	// Token is the [token.Token] associated with this error.
+	Token *token.Token
+	// err is the underlying, unwraped error.
+	err error
+}
+
+// Error implements the error interface.
+// It returns the unwraped error returned by go-yaml.
+func (s TokenScopedError) Error() string {
+	return s.err.Error()
+}
+
+// AsTokenScopedError checks if the error is associated with a specific token.
+// If so, it returns
+// Otherwise, it returns nil.
+func AsTokenScopedError(err error) *TokenScopedError {
+	var syntaxError *errors.SyntaxError
+	if xerrors.As(err, &syntaxError) {
+		return &TokenScopedError{
+			Msg:   syntaxError.GetMessage(),
+			Token: syntaxError.GetToken(),
+			err:   err,
+		}
+	}
+	var typeError *errors.TypeError
+	if xerrors.As(err, &typeError) {
+		return &TokenScopedError{
+			Msg:   typeError.Error(),
+			Token: typeError.Token,
+			err:   err,
+		}
+	}
+	return nil
 }

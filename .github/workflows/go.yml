@@ -73,7 +73,8 @@ jobs:
       - name: measure coverage
         run: |
           make cover
-      - uses: codecov/codecov-action@v3
+      - uses: codecov/codecov-action@v4
         with:
           fail_ci_if_error: true
           verbose: true
+          token: ${{ secrets.CODECOV_TOKEN }}

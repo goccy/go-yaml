@@ -14,11 +14,12 @@ import (
 	"testing"
 	"time"
 
+	"golang.org/x/xerrors"
+
 	"github.com/goccy/go-yaml"
 	"github.com/goccy/go-yaml/ast"
 	"github.com/goccy/go-yaml/internal/errors"
 	"github.com/goccy/go-yaml/parser"
-	"golang.org/x/xerrors"
 )
 
 type Child struct {
@@ -2904,5 +2905,31 @@ func TestSameNameInineStruct(t *testing.T) {
 	}
 	if fmt.Sprint(v.X.X) != "0.7" {
 		t.Fatalf("failed to decode")
+	}
+}
+
+type unmarshableMapKey struct {
+	Key string
+}
+
+func (mk *unmarshableMapKey) UnmarshalYAML(b []byte) error {
+	mk.Key = string(b)
+	return nil
+}
+
+func TestMapKeyCustomUnmarshaler(t *testing.T) {
+	var m map[unmarshableMapKey]string
+	if err := yaml.Unmarshal([]byte(`key: value`), &m); err != nil {
+		t.Fatalf("failed to unmarshal %v", err)
+	}
+	if len(m) != 1 {
+		t.Fatalf("expected 1 element in map, but got %d", len(m))
+	}
+	val, ok := m[unmarshableMapKey{Key: "key"}]
+	if !ok {
+		t.Fatal("expected to have element 'key' in map")
+	}
+	if val != "value" {
+		t.Fatalf("expected to have value \"value\", but got %q", val)
 	}
 }

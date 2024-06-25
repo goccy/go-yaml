@@ -104,6 +104,31 @@ store:
 			path:     builder().Root().Child("store").Child(`bicycle*unicycle`).Child("price").Build(),
 			expected: float64(20.25),
 		},
+		{
+			name: "$",
+			path: builder().Root().Build(),
+			expected: map[string]interface{}{
+				"store": map[string]interface{}{
+					"book": []interface{}{
+						map[string]interface{}{
+							"author": "john",
+							"price":  uint64(10),
+						},
+						map[string]interface{}{
+							"author": "ken",
+							"price":  uint64(12),
+						},
+					},
+					"bicycle": map[string]interface{}{
+						"color": "red",
+						"price": 19.95,
+					},
+					"bicycle*unicycle": map[string]interface{}{
+						"price": 20.25,
+					},
+				},
+			},
+		},
 	}
 	t.Run("PathString", func(t *testing.T) {
 		for _, test := range tests {

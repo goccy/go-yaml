@@ -289,6 +289,10 @@ func TestDecoder(t *testing.T) {
 			"v: 18446744073709551616",
 			map[string]float32{"v": float32(math.MaxUint64 + 1)},
 		},
+		{
+			"v: 1e-06",
+			map[string]float32{"v": 1e-6},
+		},
 
 		// float64
 		{
@@ -306,6 +310,10 @@ func TestDecoder(t *testing.T) {
 		{
 			"v: 18446744073709551616",
 			map[string]float64{"v": float64(math.MaxUint64 + 1)},
+		},
+		{
+			"v: 1e-06",
+			map[string]float64{"v": 1e-06},
 		},
 
 		// Timestamps

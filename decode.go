@@ -488,6 +488,21 @@ func (d *Decoder) fileToNode(f *ast.File) ast.Node {
 func (d *Decoder) convertValue(v reflect.Value, typ reflect.Type, src ast.Node) (reflect.Value, error) {
 	if typ.Kind() != reflect.String {
 		if !v.Type().ConvertibleTo(typ) {
+
+			// Special case for "strings -> floats" aka scientific notation
+			// If the destination type is a float and the source type is a string, check if we can 
+			// use strconv.ParseFloat to convert the string to a float.
+			if (typ.Kind() == reflect.Float32 || typ.Kind() == reflect.Float64) &&
+				v.Type().Kind() == reflect.String {
+				if f, err := strconv.ParseFloat(v.String(), 64); err == nil {
+					if typ.Kind() == reflect.Float32 {
+						return reflect.ValueOf(float32(f)), nil
+					} else if typ.Kind() == reflect.Float64 {
+						return reflect.ValueOf(f), nil
+					}
+					// else, fall through to the error below
+				}
+			}
 			return reflect.Zero(typ), errTypeMismatch(typ, v.Type(), src.GetToken())
 		}
 		return v.Convert(typ), nil

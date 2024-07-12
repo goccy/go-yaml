@@ -1198,6 +1198,17 @@ func TestDecoder_TypeConversionError(t *testing.T) {
 				t.Fatalf("expected error message: %s to contain: %s", err.Error(), msg)
 			}
 		})
+		t.Run("string to uint", func(t *testing.T) {
+			var v T
+			err := yaml.Unmarshal([]byte(`b: str`), &v)
+			if err == nil {
+				t.Fatal("expected to error")
+			}
+			msg := "cannot unmarshal string into Go struct field T.B of type uint"
+			if !strings.Contains(err.Error(), msg) {
+				t.Fatalf("expected error message: %s to contain: %s", err.Error(), msg)
+			}
+		})
 		t.Run("string to bool", func(t *testing.T) {
 			var v T
 			err := yaml.Unmarshal([]byte(`d: str`), &v)

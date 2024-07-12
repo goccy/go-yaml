@@ -928,10 +928,11 @@ func (d *Decoder) decodeValue(ctx context.Context, dst reflect.Value, src ast.No
 				if 0 <= i && i <= math.MaxUint64 && !dst.OverflowUint(uint64(i)) {
 					dst.SetUint(uint64(i))
 					return nil
-				} else { // couldn't be parsed as float
-					return errTypeMismatch(valueType, reflect.TypeOf(v), src.GetToken())
 				}
+			} else { // couldn't be parsed as float
+				return errTypeMismatch(valueType, reflect.TypeOf(v), src.GetToken())
 			}
+
 		default:
 			return errTypeMismatch(valueType, reflect.TypeOf(v), src.GetToken())
 		}

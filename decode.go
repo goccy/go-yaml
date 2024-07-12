@@ -490,7 +490,7 @@ func (d *Decoder) convertValue(v reflect.Value, typ reflect.Type, src ast.Node) 
 		if !v.Type().ConvertibleTo(typ) {
 
 			// Special case for "strings -> floats" aka scientific notation
-			// If the destination type is a float and the source type is a string, check if we can 
+			// If the destination type is a float and the source type is a string, check if we can
 			// use strconv.ParseFloat to convert the string to a float.
 			if (typ.Kind() == reflect.Float32 || typ.Kind() == reflect.Float64) &&
 				v.Type().Kind() == reflect.String {
@@ -892,6 +892,15 @@ func (d *Decoder) decodeValue(ctx context.Context, dst reflect.Value, src ast.No
 				dst.SetInt(int64(vv))
 				return nil
 			}
+		case string: // handle scientific notation
+			if i, err := strconv.ParseFloat(vv, 64); err == nil {
+				if 0 <= i && i <= math.MaxUint64 && !dst.OverflowInt(int64(i)) {
+					dst.SetInt(int64(i))
+					return nil
+				}
+			} else { // couldn't be parsed as float
+				return errTypeMismatch(valueType, reflect.TypeOf(v), src.GetToken())
+			}
 		default:
 			return errTypeMismatch(valueType, reflect.TypeOf(v), src.GetToken())
 		}
@@ -913,6 +922,15 @@ func (d *Decoder) decodeValue(ctx context.Context, dst reflect.Value, src ast.No
 			if 0 <= vv && vv <= math.MaxUint64 && !dst.OverflowUint(uint64(vv)) {
 				dst.SetUint(uint64(vv))
 				return nil
+			}
+		case string: // handle scientific notation
+			if i, err := strconv.ParseFloat(vv, 64); err == nil {
+				if 0 <= i && i <= math.MaxUint64 && !dst.OverflowUint(uint64(i)) {
+					dst.SetUint(uint64(i))
+					return nil
+				} else { // couldn't be parsed as float
+					return errTypeMismatch(valueType, reflect.TypeOf(v), src.GetToken())
+				}
 			}
 		default:
 			return errTypeMismatch(valueType, reflect.TypeOf(v), src.GetToken())

@@ -1276,6 +1276,40 @@ func TestEncoder_CustomMarshaler(t *testing.T) {
 	})
 }
 
+func TestEncoder_CustomInterfaceMarshaler(t *testing.T) {
+	t.Run("override struct type", func(t *testing.T) {
+		type T struct {
+			Foo string `yaml:"foo"`
+		}
+		b, err := yaml.MarshalWithOptions(&T{Foo: "bar"}, yaml.CustomInterfaceMarshaler[T](func(v T) (interface{}, error) {
+			return "override", nil
+		}))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !bytes.Equal(b, []byte("override\n")) {
+			t.Fatalf("failed to switch to custom marshaler. got: %q", b)
+		}
+	})
+	t.Run("override bytes type", func(t *testing.T) {
+		type T struct {
+			Foo []byte `yaml:"foo"`
+		}
+		b, err := yaml.MarshalWithOptions(&T{Foo: []byte("bar")}, yaml.CustomInterfaceMarshaler[[]byte](func(v []byte) (interface{}, error) {
+			if !bytes.Equal(v, []byte("bar")) {
+				t.Fatalf("failed to get src buffer: %q", v)
+			}
+			return "override", nil
+		}))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !bytes.Equal(b, []byte("foo: override\n")) {
+			t.Fatalf("failed to switch to custom marshaler. got: %q", b)
+		}
+	})
+}
+
 func TestEncoder_MultipleDocuments(t *testing.T) {
 	var buf bytes.Buffer
 	enc := yaml.NewEncoder(&buf)

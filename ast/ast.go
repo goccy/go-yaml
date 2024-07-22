@@ -333,7 +333,7 @@ func Integer(tk *token.Token) *IntegerNode {
 			}
 			negativePrefix = "-"
 		} else {
-			if value[1] == 'o' {
+			if len(value) >= 2 && value[1] == 'o' {
 				skipCharacterNum++
 			}
 		}

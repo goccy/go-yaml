@@ -609,6 +609,10 @@ func TestDecoder(t *testing.T) {
 			map[string]interface{}{"v": []interface{}{"A", "B"}},
 		},
 		{
+			"v:\n-",
+			map[string][]string{"v": []string{""}},
+		},
+		{
 			"v:\n - A\n - B\n - C",
 			map[string][]string{"v": []string{"A", "B", "C"}},
 		},

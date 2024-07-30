@@ -3027,3 +3027,28 @@ func TestMapKeyCustomUnmarshaler(t *testing.T) {
 		t.Fatalf("expected to have value \"value\", but got %q", val)
 	}
 }
+
+func TestDecoderPreservesDefaultValues(t *testing.T) {
+	type nested struct {
+		Val string `yaml:"val"`
+	}
+
+	type test struct {
+		First   string `yaml:"first"`
+		Default nested `yaml:"nested"`
+	}
+
+	yml := `
+first: "Test"
+nested:
+  # Just some comment here
+#  val: "default"
+`
+	v := test{Default: nested{Val: "default"}}
+	if err := yaml.Unmarshal([]byte(yml), &v); err != nil {
+		t.Fatal(err)
+	}
+	if v.Default.Val != "default" {
+		t.Fatal("decoder doesn't preserve struct defaults")
+	}
+}

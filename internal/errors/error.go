@@ -39,6 +39,11 @@ func ErrSyntax(msg string, tk *token.Token) *syntaxError {
 	}
 }
 
+// ErrOverflow creates an overflow error instance with message and a token.
+func ErrOverflow(dstType reflect.Type, num string, tk *token.Token) *overflowError {
+	return &overflowError{dstType: dstType, srcNum: num, token: tk}
+}
+
 type baseError struct {
 	state fmt.State
 	verb  rune
@@ -162,6 +167,39 @@ func (e *wrapError) Error() string {
 	var buf bytes.Buffer
 	e.PrettyPrint(&Sink{&buf}, defaultColorize, defaultIncludeSource)
 	return buf.String()
+}
+
+type overflowError struct {
+	dstType reflect.Type
+	srcNum  string
+	token   *token.Token
+}
+
+func (e *overflowError) Error() string {
+	return fmt.Sprintf("cannot unmarshal %s into Go value of type %s ( overflow )", e.srcNum, e.dstType)
+}
+
+func (e *overflowError) PrettyPrint(p xerrors.Printer, colored, inclSource bool) error {
+	return e.FormatError(&FormatErrorPrinter{Printer: p, Colored: colored, InclSource: inclSource})
+}
+
+func (e *overflowError) FormatError(p xerrors.Printer) error {
+	var pp printer.Printer
+
+	var colored, inclSource bool
+	if fep, ok := p.(*FormatErrorPrinter); ok {
+		colored = fep.Colored
+		inclSource = fep.InclSource
+	}
+
+	pos := fmt.Sprintf("[%d:%d] ", e.token.Position.Line, e.token.Position.Column)
+	msg := pp.PrintErrorMessage(fmt.Sprintf("%s%s", pos, e.Error()), colored)
+	if inclSource {
+		msg += "\n" + pp.PrintErrorToken(e.token, colored)
+	}
+	p.Print(msg)
+
+	return nil
 }
 
 type syntaxError struct {

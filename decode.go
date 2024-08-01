@@ -524,19 +524,6 @@ func (d *Decoder) convertValue(v reflect.Value, typ reflect.Type, src ast.Node) 
 	return v.Convert(typ), nil
 }
 
-type overflowError struct {
-	dstType reflect.Type
-	srcNum  string
-}
-
-func (e *overflowError) Error() string {
-	return fmt.Sprintf("cannot unmarshal %s into Go value of type %s ( overflow )", e.srcNum, e.dstType)
-}
-
-func errOverflow(dstType reflect.Type, num string) *overflowError {
-	return &overflowError{dstType: dstType, srcNum: num}
-}
-
 func errTypeMismatch(dstType, srcType reflect.Type, token *token.Token) *errors.TypeError {
 	return &errors.TypeError{DstType: dstType, SrcType: srcType, Token: token}
 }
@@ -904,7 +891,7 @@ func (d *Decoder) decodeValue(ctx context.Context, dst reflect.Value, src ast.No
 		default:
 			return errTypeMismatch(valueType, reflect.TypeOf(v), src.GetToken())
 		}
-		return errOverflow(valueType, fmt.Sprint(v))
+		return errors.ErrOverflow(valueType, fmt.Sprint(v), src.GetToken())
 	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
 		v := d.nodeToValue(src)
 		switch vv := v.(type) {
@@ -936,7 +923,7 @@ func (d *Decoder) decodeValue(ctx context.Context, dst reflect.Value, src ast.No
 		default:
 			return errTypeMismatch(valueType, reflect.TypeOf(v), src.GetToken())
 		}
-		return errOverflow(valueType, fmt.Sprint(v))
+		return errors.ErrOverflow(valueType, fmt.Sprint(v), src.GetToken())
 	}
 	v := reflect.ValueOf(d.nodeToValue(src))
 	if v.IsValid() {

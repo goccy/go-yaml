@@ -339,9 +339,12 @@ func reservedKeywordToken(typ Type, value, org string, pos *Position) *Token {
 
 func init() {
 	for _, keyword := range reservedNullKeywords {
-		reservedKeywordMap[keyword] = func(value, org string, pos *Position) *Token {
+		f := func(value, org string, pos *Position) *Token {
 			return reservedKeywordToken(NullType, value, org, pos)
 		}
+
+		reservedKeywordMap[keyword] = f
+		reservedEncKeywordMap[keyword] = f
 	}
 	for _, keyword := range reservedBoolKeywords {
 		f := func(value, org string, pos *Position) *Token {

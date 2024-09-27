@@ -372,7 +372,9 @@ type PathBuilder struct {
 // Root add '$' to current path.
 func (b *PathBuilder) Root() *PathBuilder {
 	root := newRootNode()
-	return &PathBuilder{root: root, node: root}
+	b.root = root
+	b.node = root
+	return b
 }
 
 // IndexAll add '[*]' to current path.

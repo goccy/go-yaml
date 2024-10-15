@@ -12,12 +12,13 @@ import (
 	"strings"
 	"time"
 
+	"golang.org/x/xerrors"
+
 	"github.com/goccy/go-yaml/ast"
 	"github.com/goccy/go-yaml/internal/errors"
 	"github.com/goccy/go-yaml/parser"
 	"github.com/goccy/go-yaml/printer"
 	"github.com/goccy/go-yaml/token"
-	"golang.org/x/xerrors"
 )
 
 const (
@@ -93,10 +94,10 @@ func (e *Encoder) EncodeContext(ctx context.Context, v interface{}) error {
 		e.written = true
 	} else {
 		// write document separator
-		e.writer.Write([]byte("---\n"))
+		_, _ = e.writer.Write([]byte("---\n"))
 	}
 	var p printer.Printer
-	e.writer.Write(p.PrintNode(node))
+	_, _ = e.writer.Write(p.PrintNode(node))
 	return nil
 }
 

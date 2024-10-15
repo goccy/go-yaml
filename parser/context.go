@@ -110,13 +110,6 @@ func (c *context) nextToken() *token.Token {
 	return c.tokens[c.idx+1]
 }
 
-func (c *context) afterNextToken() *token.Token {
-	if c.idx+2 >= c.size {
-		return nil
-	}
-	return c.tokens[c.idx+2]
-}
-
 func (c *context) nextNotCommentToken() *token.Token {
 	for i := c.idx + 1; i < c.size; i++ {
 		tk := c.tokens[i]

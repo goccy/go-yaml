@@ -42,7 +42,7 @@ func createContext() *Context {
 }
 
 func newContext(src []rune) *Context {
-	ctx := ctxPool.Get().(*Context)
+	ctx, _ := ctxPool.Get().(*Context)
 	ctx.reset(src)
 	return ctx
 }

@@ -5,9 +5,10 @@ import (
 	"fmt"
 	"reflect"
 
+	"golang.org/x/xerrors"
+
 	"github.com/goccy/go-yaml/printer"
 	"github.com/goccy/go-yaml/token"
-	"golang.org/x/xerrors"
 )
 
 const (
@@ -119,7 +120,7 @@ func (e *wrapError) FormatError(p xerrors.Printer) error {
 	}
 	e.chainStateAndVerb(err)
 	if fmtErr, ok := err.(xerrors.Formatter); ok {
-		fmtErr.FormatError(p)
+		_ = fmtErr.FormatError(p)
 	} else {
 		p.Print(err)
 	}
@@ -143,6 +144,7 @@ func (s *wrapState) Precision() (prec int, ok bool) {
 }
 
 func (s *wrapState) Flag(c int) bool {
+	//nolint:gosimple
 	// set true to 'printDetail' forced because when p.Detail() is false, xerrors.Printer no output any text
 	if c == '#' {
 		// ignore '#' keyword because xerrors.FormatError doesn't set true to printDetail.

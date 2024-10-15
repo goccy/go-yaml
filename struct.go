@@ -84,11 +84,7 @@ func isIgnoredStructField(field reflect.StructField) bool {
 		// private field
 		return true
 	}
-	tag := getTag(field)
-	if tag == "-" {
-		return true
-	}
-	return false
+	return getTag(field) == "-"
 }
 
 type StructFieldMap map[string]*StructField

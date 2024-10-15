@@ -325,7 +325,7 @@ b: *a
 	if len(anchors) != 1 {
 		t.Fatal("failed to filter node")
 	}
-	anchor := anchors[0].(*ast.AnchorNode)
+	anchor, _ := anchors[0].(*ast.AnchorNode)
 	if err := anchor.SetName("b"); err != nil {
 		t.Fatal(err)
 	}
@@ -333,7 +333,7 @@ b: *a
 	if len(anchors) != 1 {
 		t.Fatal("failed to filter node")
 	}
-	alias := aliases[0].(*ast.AliasNode)
+	alias, _ := aliases[0].(*ast.AliasNode)
 	if err := alias.SetName("b"); err != nil {
 		t.Fatal(err)
 	}

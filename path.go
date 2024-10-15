@@ -534,7 +534,7 @@ func (n *selectorNode) filter(node ast.Node) (ast.Node, error) {
 			}
 		}
 	case ast.MappingValueType:
-		value := node.(*ast.MappingValueNode)
+		value, _ := node.(*ast.MappingValueNode)
 		key := value.Key.GetToken().Value
 		if key == selector {
 			if n.child == nil {
@@ -578,7 +578,7 @@ func (n *selectorNode) replace(node ast.Node, target ast.Node) error {
 			}
 		}
 	case ast.MappingValueType:
-		value := node.(*ast.MappingValueNode)
+		value, _ := node.(*ast.MappingValueNode)
 		if err := n.replaceMapValue(value, target); err != nil {
 			return errors.Wrapf(err, "failed to replace map value")
 		}
@@ -614,7 +614,7 @@ func (n *indexNode) filter(node ast.Node) (ast.Node, error) {
 	if node.Type() != ast.SequenceType {
 		return nil, errors.Wrapf(ErrInvalidQuery, "expected sequence type node. but got %s", node.Type())
 	}
-	sequence := node.(*ast.SequenceNode)
+	sequence, _ := node.(*ast.SequenceNode)
 	if n.selector >= uint(len(sequence.Values)) {
 		return nil, errors.Wrapf(ErrInvalidQuery, "expected index is %d. but got sequences has %d items", n.selector, sequence.Values)
 	}
@@ -633,7 +633,7 @@ func (n *indexNode) replace(node ast.Node, target ast.Node) error {
 	if node.Type() != ast.SequenceType {
 		return errors.Wrapf(ErrInvalidQuery, "expected sequence type node. but got %s", node.Type())
 	}
-	sequence := node.(*ast.SequenceNode)
+	sequence, _ := node.(*ast.SequenceNode)
 	if n.selector >= uint(len(sequence.Values)) {
 		return errors.Wrapf(ErrInvalidQuery, "expected index is %d. but got sequences has %d items", n.selector, sequence.Values)
 	}
@@ -679,7 +679,7 @@ func (n *indexAllNode) filter(node ast.Node) (ast.Node, error) {
 	if node.Type() != ast.SequenceType {
 		return nil, errors.Wrapf(ErrInvalidQuery, "expected sequence type node. but got %s", node.Type())
 	}
-	sequence := node.(*ast.SequenceNode)
+	sequence, _ := node.(*ast.SequenceNode)
 	if n.child == nil {
 		return sequence, nil
 	}
@@ -699,7 +699,7 @@ func (n *indexAllNode) replace(node ast.Node, target ast.Node) error {
 	if node.Type() != ast.SequenceType {
 		return errors.Wrapf(ErrInvalidQuery, "expected sequence type node. but got %s", node.Type())
 	}
-	sequence := node.(*ast.SequenceNode)
+	sequence, _ := node.(*ast.SequenceNode)
 	if n.child == nil {
 		for idx := range sequence.Values {
 			if err := sequence.Replace(idx, target); err != nil {

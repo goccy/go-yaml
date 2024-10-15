@@ -5,11 +5,12 @@ import (
 	"os"
 	"strings"
 
+	"golang.org/x/xerrors"
+
 	"github.com/goccy/go-yaml/ast"
 	"github.com/goccy/go-yaml/internal/errors"
 	"github.com/goccy/go-yaml/lexer"
 	"github.com/goccy/go-yaml/token"
-	"golang.org/x/xerrors"
 )
 
 type parser struct{}
@@ -175,7 +176,7 @@ func (p *parser) createMapValueNode(ctx *context, key ast.MapKeyNode, colonToken
 		nullNode := ast.Null(nullToken)
 
 		if comment != nil {
-			nullNode.SetComment(comment)
+			_ = nullNode.SetComment(comment)
 		} else {
 			// If there is a comment, it is already bound to the key node,
 			// so remove the comment from the key to bind it to the null value.
@@ -184,7 +185,7 @@ func (p *parser) createMapValueNode(ctx *context, key ast.MapKeyNode, colonToken
 				if err := key.SetComment(nil); err != nil {
 					return nil, err
 				}
-				nullNode.SetComment(keyComment)
+				_ = nullNode.SetComment(keyComment)
 			}
 		}
 		return nullNode, nil
@@ -199,7 +200,7 @@ func (p *parser) createMapValueNode(ctx *context, key ast.MapKeyNode, colonToken
 		ctx.insertToken(ctx.idx, nullToken)
 		nullNode := ast.Null(nullToken)
 		if comment != nil {
-			nullNode.SetComment(comment)
+			_ = nullNode.SetComment(comment)
 		}
 		return nullNode, nil
 	}
@@ -209,7 +210,7 @@ func (p *parser) createMapValueNode(ctx *context, key ast.MapKeyNode, colonToken
 		return nil, errors.Wrapf(err, "failed to parse mapping 'value' node")
 	}
 	if comment != nil {
-		value.SetComment(comment)
+		_ = value.SetComment(comment)
 	}
 	return value, nil
 }
@@ -279,7 +280,7 @@ func (p *parser) parseMappingValue(ctx *context) (ast.Node, error) {
 		}
 		switch value.Type() {
 		case ast.MappingType:
-			c := value.(*ast.MappingNode)
+			c, _ := value.(*ast.MappingNode)
 			comment := c.GetComment()
 			for idx, v := range c.Values {
 				if idx == 0 && comment != nil {

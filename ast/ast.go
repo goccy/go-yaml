@@ -7,8 +7,9 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/goccy/go-yaml/token"
 	"golang.org/x/xerrors"
+
+	"github.com/goccy/go-yaml/token"
 )
 
 var (
@@ -2092,10 +2093,10 @@ func Merge(dst Node, src Node) error {
 	err := &ErrInvalidMergeType{dst: dst, src: src}
 	switch dst.Type() {
 	case DocumentType:
-		node := dst.(*DocumentNode)
+		node, _ := dst.(*DocumentNode)
 		return Merge(node.Body, src)
 	case MappingType:
-		node := dst.(*MappingNode)
+		node, _ := dst.(*MappingNode)
 		target, ok := src.(*MappingNode)
 		if !ok {
 			return err
@@ -2103,7 +2104,7 @@ func Merge(dst Node, src Node) error {
 		node.Merge(target)
 		return nil
 	case SequenceType:
-		node := dst.(*SequenceNode)
+		node, _ := dst.(*SequenceNode)
 		target, ok := src.(*SequenceNode)
 		if !ok {
 			return err

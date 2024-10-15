@@ -6,10 +6,11 @@ import (
 	"os"
 
 	"github.com/fatih/color"
+	"github.com/mattn/go-colorable"
+
 	"github.com/goccy/go-yaml"
 	"github.com/goccy/go-yaml/lexer"
 	"github.com/goccy/go-yaml/printer"
-	"github.com/mattn/go-colorable"
 )
 
 const escape = "\x1b"
@@ -71,7 +72,7 @@ func _main(args []string) error {
 		}
 	}
 	writer := colorable.NewColorableStdout()
-	writer.Write([]byte(p.PrintTokens(tokens) + "\n"))
+	_, _ = writer.Write([]byte(p.PrintTokens(tokens) + "\n"))
 	return nil
 }
 

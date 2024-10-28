@@ -145,20 +145,7 @@ func (s *Scanner) updateIndentLevel() {
 	}
 }
 
-func (s *Scanner) indentStateFromIndentNumDifference() IndentState {
-	switch {
-	case s.prevLineIndentNum < s.indentNum:
-		return IndentStateUp
-	case s.prevLineIndentNum == s.indentNum:
-		return IndentStateEqual
-	default:
-		return IndentStateDown
-	}
-}
-
 func (s *Scanner) updateIndentState(ctx *Context) {
-	s.updateIndentLevel()
-
 	if s.lastDelimColumn > 0 {
 		if s.lastDelimColumn < s.column {
 			s.indentState = IndentStateUp
@@ -169,6 +156,17 @@ func (s *Scanner) updateIndentState(ctx *Context) {
 		}
 	} else {
 		s.indentState = s.indentStateFromIndentNumDifference()
+	}
+}
+
+func (s *Scanner) indentStateFromIndentNumDifference() IndentState {
+	switch {
+	case s.prevLineIndentNum < s.indentNum:
+		return IndentStateUp
+	case s.prevLineIndentNum == s.indentNum:
+		return IndentStateEqual
+	default:
+		return IndentStateDown
 	}
 }
 
@@ -184,6 +182,7 @@ func (s *Scanner) updateIndent(ctx *Context, c rune) {
 		s.indentState = IndentStateKeep
 		return
 	}
+	s.updateIndentLevel()
 	s.updateIndentState(ctx)
 	s.isFirstCharAtLine = false
 }
@@ -623,16 +622,16 @@ func (s *Scanner) scan(ctx *Context) (pos int) {
 		pos = ctx.nextPos()
 		c := ctx.currentChar()
 		s.updateIndent(ctx, c)
+		if s.isChangedToIndentStateDown() {
+			s.addBufferedTokenIfExists(ctx)
+		}
 		if ctx.isDocument() {
 			if s.isChangedToIndentStateDown() {
-				s.addBufferedTokenIfExists(ctx)
 				s.breakLiteral(ctx)
 			} else {
 				s.scanLiteral(ctx, c)
 				continue
 			}
-		} else if s.isChangedToIndentStateDown() {
-			s.addBufferedTokenIfExists(ctx)
 		}
 		switch c {
 		case '{':

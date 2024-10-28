@@ -182,9 +182,6 @@ func (s *Scanner) updateIndent(ctx *Context, c rune) {
 	}
 	s.updateIndentState(ctx)
 	s.isFirstCharAtLine = false
-	if s.indentState != IndentStateUp {
-		s.prevIndentColumn = 0
-	}
 	s.prevIndentLevel = s.indentLevel
 }
 

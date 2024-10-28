@@ -162,21 +162,10 @@ func (s *Scanner) updateIndentState(ctx *Context) {
 	if s.lastDelimColumn > 0 {
 		if s.lastDelimColumn < s.column {
 			s.indentState = IndentStateUp
-		} else if s.lastDelimColumn != s.column || s.prevLineIndentNum != s.indentNum {
-			// The following case ( current position is 'd' ), some variables becomes like here
-			// - lastDelimColumn: 1 of 'a'
-			// - indentNumBasedIndentState: IndentStateDown because d's indentNum(1) is less than c's indentNum(3).
-			// Therefore, s.lastDelimColumn(1) == s.column(1) is true, but we want to treat this as IndentStateDown.
-			// So, we look also current indentState value by the above prevLineIndentNum based logic, and determines finally indentState.
-			// ---
-			// a:
-			//   b
-			//   c
-			// d: e
-			// ^
-			s.indentState = IndentStateDown
 		} else {
-			s.indentState = IndentStateEqual
+			// If lastDelimColumn and s.column are the same,
+			// treat as Down state since it is the same column as delimiter.
+			s.indentState = IndentStateDown
 		}
 	} else {
 		s.indentState = s.indentStateFromIndentNumDifference()
@@ -635,8 +624,7 @@ func (s *Scanner) scan(ctx *Context) (pos int) {
 		c := ctx.currentChar()
 		s.updateIndent(ctx, c)
 		if ctx.isDocument() {
-			if (s.indentNum == 0 && s.isChangedToIndentStateEqual()) ||
-				s.isChangedToIndentStateDown() {
+			if s.isChangedToIndentStateDown() {
 				s.addBufferedTokenIfExists(ctx)
 				s.breakLiteral(ctx)
 			} else {
@@ -645,12 +633,6 @@ func (s *Scanner) scan(ctx *Context) (pos int) {
 			}
 		} else if s.isChangedToIndentStateDown() {
 			s.addBufferedTokenIfExists(ctx)
-		} else if s.isChangedToIndentStateEqual() {
-			// if first character is new line character, buffer expect to raw folded literal
-			if len(ctx.obuf) > 0 && s.newLineCount(ctx.obuf) <= 1 {
-				// doesn't raw folded literal
-				s.addBufferedTokenIfExists(ctx)
-			}
 		}
 		switch c {
 		case '{':

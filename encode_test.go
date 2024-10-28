@@ -10,10 +10,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/goccy/go-yaml/parser"
-
 	"github.com/goccy/go-yaml"
 	"github.com/goccy/go-yaml/ast"
+	"github.com/goccy/go-yaml/parser"
 )
 
 var zero = 0
@@ -683,12 +682,12 @@ func TestEncoder(t *testing.T) {
 		// time value
 		{
 			"v: 0001-01-01T00:00:00Z\n",
-			map[string]time.Time{"v": time.Time{}},
+			map[string]time.Time{"v": {}},
 			nil,
 		},
 		{
 			"v: 0001-01-01T00:00:00Z\n",
-			map[string]*time.Time{"v": &time.Time{}},
+			map[string]*time.Time{"v": {}},
 			nil,
 		},
 		{
@@ -1078,7 +1077,7 @@ func TestEncoder_FlowRecursive(t *testing.T) {
 		M map[string][]int `yaml:",flow"`
 	}
 	v.M = map[string][]int{
-		"test": []int{1, 2, 3},
+		"test": {1, 2, 3},
 	}
 	var buf bytes.Buffer
 	if err := yaml.NewEncoder(&buf).Encode(v); err != nil {
@@ -1188,7 +1187,7 @@ func TestEncoder_MarshalAnchor(t *testing.T) {
 	hostIdx := 1
 	opt := yaml.MarshalAnchor(func(anchor *ast.AnchorNode, value interface{}) error {
 		if _, ok := value.(*Host); ok {
-			nameNode := anchor.Name.(*ast.StringNode)
+			nameNode, _ := anchor.Name.(*ast.StringNode)
 			nameNode.Value = fmt.Sprintf("host%d", hostIdx)
 			hostIdx++
 		}

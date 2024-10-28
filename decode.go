@@ -100,7 +100,7 @@ func (d *Decoder) castToFloat(v interface{}) interface{} {
 
 func (d *Decoder) mergeValueNode(value ast.Node) ast.Node {
 	if value.Type() == ast.AliasType {
-		aliasNode := value.(*ast.AliasNode)
+		aliasNode, _ := value.(*ast.AliasNode)
 		aliasName := aliasNode.Value.GetToken().Value
 		return d.anchorNodeMap[aliasName]
 	}
@@ -360,7 +360,7 @@ func (d *Decoder) resolveAlias(node ast.Node) (ast.Node, error) {
 			if err != nil {
 				return nil, err
 			}
-			n.Values[idx] = value.(*ast.MappingValueNode)
+			n.Values[idx], _ = value.(*ast.MappingValueNode)
 		}
 	case *ast.TagNode:
 		value, err := d.resolveAlias(n.Value)
@@ -389,7 +389,7 @@ func (d *Decoder) resolveAlias(node ast.Node) (ast.Node, error) {
 			if err != nil {
 				return nil, err
 			}
-			n.Key = key.(ast.MapKeyNode)
+			n.Key, _ = key.(ast.MapKeyNode)
 			value, err := d.resolveAlias(n.Value)
 			if err != nil {
 				return nil, err
@@ -474,15 +474,6 @@ func (d *Decoder) getArrayNode(node ast.Node) (ast.ArrayNode, error) {
 		return nil, errUnexpectedNodeType(node.Type(), ast.SequenceType, node.GetToken())
 	}
 	return arrayNode, nil
-}
-
-func (d *Decoder) fileToNode(f *ast.File) ast.Node {
-	for _, doc := range f.Docs {
-		if v := d.nodeToValue(doc.Body); v != nil {
-			return doc.Body
-		}
-	}
-	return nil
 }
 
 func (d *Decoder) convertValue(v reflect.Value, typ reflect.Type, src ast.Node) (reflect.Value, error) {
@@ -590,7 +581,7 @@ func (d *Decoder) deleteStructKeys(structType reflect.Type, unknownFields map[st
 		}
 
 		if structField.IsInline {
-			d.deleteStructKeys(field.Type, unknownFields)
+			_ = d.deleteStructKeys(field.Type, unknownFields)
 		} else {
 			delete(unknownFields, structField.RenderName)
 		}
@@ -1275,7 +1266,7 @@ func (d *Decoder) decodeStruct(ctx context.Context, dst reflect.Value, src ast.N
 				}
 				continue
 			}
-			d.setDefaultValueIfConflicted(newFieldValue, structFieldMap)
+			_ = d.setDefaultValueIfConflicted(newFieldValue, structFieldMap)
 			fieldValue.Set(d.castToAssignableValue(newFieldValue, fieldValue.Type()))
 			continue
 		}
@@ -1623,13 +1614,13 @@ func (d *Decoder) readersUnderDir(dir string) ([]io.Reader, error) {
 
 func (d *Decoder) readersUnderDirRecursive(dir string) ([]io.Reader, error) {
 	readers := []io.Reader{}
-	if err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
+	if err := filepath.Walk(dir, func(path string, info os.FileInfo, _ error) error {
 		if !d.isYAMLFile(path) {
 			return nil
 		}
-		reader, err := d.fileToReader(path)
-		if err != nil {
-			return errors.Wrapf(err, "failed to get reader")
+		reader, readerErr := d.fileToReader(path)
+		if readerErr != nil {
+			return errors.Wrapf(readerErr, "failed to get reader")
 		}
 		readers = append(readers, reader)
 		return nil

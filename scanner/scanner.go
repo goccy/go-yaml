@@ -142,7 +142,7 @@ func (s *Scanner) newLineCount(src []rune) int {
 }
 
 func (s *Scanner) updateIndentState(ctx *Context) {
-	indentNumBasedIndentState := s.indentState
+	var indentNumBasedIndentState IndentState
 	if s.prevIndentNum < s.indentNum {
 		s.indentLevel = s.prevIndentLevel + 1
 		indentNumBasedIndentState = IndentStateUp
@@ -164,7 +164,7 @@ func (s *Scanner) updateIndentState(ctx *Context) {
 			// - prevIndentColumn: 1 of 'a'
 			// - indentNumBasedIndentState: IndentStateDown because d's indentNum(1) is less than c's indentNum(3).
 			// Therefore, s.prevIndentColumn(1) == s.column(1) is true, but we want to treat this as IndentStateDown.
-			// So, we look also current indentState value by the above prevIndentNum based logic, and determins finally indentState.
+			// So, we look also current indentState value by the above prevIndentNum based logic, and determines finally indentState.
 			// ---
 			// a:
 			//   b
@@ -470,7 +470,6 @@ func (s *Scanner) scanComment(ctx *Context) (tk *token.Token, pos int) {
 	ctx.addOriginBuf('#')
 	ctx.progress(1) // skip '#' character
 	for idx, c := range ctx.src[ctx.idx:] {
-		pos = idx + 1
 		ctx.addOriginBuf(c)
 		switch c {
 		case '\n', '\r':
@@ -588,7 +587,6 @@ func (s *Scanner) scanLiteralHeader(ctx *Context) (pos int, err error) {
 				ctx.literalOpt = opt
 				return
 			}
-			break
 		}
 	}
 	err = xerrors.New("invalid literal header")

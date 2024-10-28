@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/fatih/color"
+
 	"github.com/goccy/go-yaml/ast"
 	"github.com/goccy/go-yaml/token"
 )

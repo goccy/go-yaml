@@ -592,11 +592,11 @@ func TestDecoder(t *testing.T) {
 		},
 		{
 			"v: [A,B,C,]",
-			map[string][]string{"v": []string{"A", "B", "C"}},
+			map[string][]string{"v": {"A", "B", "C"}},
 		},
 		{
 			"v: [A,1,C]",
-			map[string][]string{"v": []string{"A", "1", "C"}},
+			map[string][]string{"v": {"A", "1", "C"}},
 		},
 		{
 			"v: [A,1,C]",
@@ -610,11 +610,11 @@ func TestDecoder(t *testing.T) {
 		},
 		{
 			"v:\n - A\n - B\n - C",
-			map[string][]string{"v": []string{"A", "B", "C"}},
+			map[string][]string{"v": {"A", "B", "C"}},
 		},
 		{
 			"v:\n - A\n - 1\n - C",
-			map[string][]string{"v": []string{"A", "1", "C"}},
+			map[string][]string{"v": {"A", "1", "C"}},
 		},
 		{
 			"v:\n - A\n - 1\n - C",
@@ -1470,7 +1470,7 @@ items:
 		if err := dec.Decode(&v); err != nil {
 			t.Fatalf("%+v", err)
 		}
-		items := v.(map[string]interface{})["items"].([]interface{})
+		items, _ := v.(map[string]interface{})["items"].([]interface{})
 		if len(items) != 2 {
 			t.Fatal("failed to decode with merge key")
 		}
@@ -2152,16 +2152,16 @@ func Example_DisallowUnknownField() {
 
 	const src = `---
 simple: string
-complecated: string
+unknown: string
 `
 	err := yaml.NewDecoder(strings.NewReader(src), yaml.DisallowUnknownField()).Decode(&v)
 	fmt.Printf("%v\n", err)
 
 	// OUTPUT:
-	// [3:1] unknown field "complecated"
+	// [3:1] unknown field "unknown"
 	//        1 | ---
 	//        2 | simple: string
-	//     >  3 | complecated: string
+	//     >  3 | unknown: string
 	//            ^
 }
 
@@ -2712,22 +2712,22 @@ func TestDecoder_LiteralWithNewLine(t *testing.T) {
 		LastNode string `yaml:"last"`
 	}
 	tests := []A{
-		A{
+		{
 			Node: "hello\nworld",
 		},
-		A{
+		{
 			Node: "hello\nworld\n",
 		},
-		A{
+		{
 			Node: "hello\nworld\n\n",
 		},
-		A{
+		{
 			LastNode: "hello\nworld",
 		},
-		A{
+		{
 			LastNode: "hello\nworld\n",
 		},
-		A{
+		{
 			LastNode: "hello\nworld\n\n",
 		},
 	}

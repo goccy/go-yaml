@@ -26,18 +26,24 @@ const (
 // Scanner holds the scanner's internal state while processing a given text.
 // It can be allocated as part of another data structure but must be initialized via Init before use.
 type Scanner struct {
-	source                 []rune
-	sourcePos              int
-	sourceSize             int
-	line                   int
-	column                 int
-	offset                 int
-	prevIndentLevel        int
-	prevIndentNum          int
-	prevIndentColumn       int
-	docStartColumn         int
+	source     []rune
+	sourcePos  int
+	sourceSize int
+	// line number. This number starts from 1.
+	line int
+	// column number. This number starts from 1.
+	column int
+	// offset represents the offset from the beginning of the source.
+	offset int
+	// lastDelimColumn is the last column needed to compare indent is retained.
+	lastDelimColumn int
+	// indentNum indicates the number of spaces used for indentation.
+	indentNum int
+	// prevLineIndentNum indicates the number of spaces used for indentation at previous line.
+	prevLineIndentNum int
+	// indentLevel indicates the level of indent depth. This value does not match the column value.
 	indentLevel            int
-	indentNum              int
+	docStartColumn         int
 	isFirstCharAtLine      bool
 	isAnchor               bool
 	startedFlowSequenceNum int
@@ -91,6 +97,7 @@ func (s *Scanner) progressColumn(ctx *Context, num int) {
 }
 
 func (s *Scanner) progressLine(ctx *Context) {
+	s.prevLineIndentNum = s.indentNum
 	s.column = 1
 	s.line++
 	s.offset++
@@ -98,19 +105,6 @@ func (s *Scanner) progressLine(ctx *Context) {
 	s.isFirstCharAtLine = true
 	s.isAnchor = false
 	ctx.progress(1)
-}
-
-func (s *Scanner) isNeededKeepPreviousIndentNum(ctx *Context, c rune) bool {
-	if !s.isChangedToIndentStateUp() {
-		return false
-	}
-	if ctx.isDocument() {
-		return true
-	}
-	if c == '-' && ctx.existsBuffer() {
-		return true
-	}
-	return false
 }
 
 func (s *Scanner) isNewLineChar(c rune) bool {
@@ -141,30 +135,39 @@ func (s *Scanner) newLineCount(src []rune) int {
 	return cnt
 }
 
-func (s *Scanner) updateIndentState(ctx *Context) {
-	var indentNumBasedIndentState IndentState
-	if s.prevIndentNum < s.indentNum {
-		s.indentLevel = s.prevIndentLevel + 1
-		indentNumBasedIndentState = IndentStateUp
-	} else if s.prevIndentNum == s.indentNum {
-		s.indentLevel = s.prevIndentLevel
-		indentNumBasedIndentState = IndentStateEqual
-	} else {
-		indentNumBasedIndentState = IndentStateDown
-		if s.prevIndentLevel > 0 {
-			s.indentLevel = s.prevIndentLevel - 1
+func (s *Scanner) updateIndentLevel() {
+	if s.prevLineIndentNum < s.indentNum {
+		s.indentLevel++
+	} else if s.prevLineIndentNum > s.indentNum {
+		if s.indentLevel > 0 {
+			s.indentLevel--
 		}
 	}
+}
 
-	if s.prevIndentColumn > 0 {
-		if s.prevIndentColumn < s.column {
+func (s *Scanner) indentStateFromIndentNumDifference() IndentState {
+	switch {
+	case s.prevLineIndentNum < s.indentNum:
+		return IndentStateUp
+	case s.prevLineIndentNum == s.indentNum:
+		return IndentStateEqual
+	default:
+		return IndentStateDown
+	}
+}
+
+func (s *Scanner) updateIndentState(ctx *Context) {
+	s.updateIndentLevel()
+
+	if s.lastDelimColumn > 0 {
+		if s.lastDelimColumn < s.column {
 			s.indentState = IndentStateUp
-		} else if s.prevIndentColumn != s.column || indentNumBasedIndentState != IndentStateEqual {
+		} else if s.lastDelimColumn != s.column || s.prevLineIndentNum != s.indentNum {
 			// The following case ( current position is 'd' ), some variables becomes like here
-			// - prevIndentColumn: 1 of 'a'
+			// - lastDelimColumn: 1 of 'a'
 			// - indentNumBasedIndentState: IndentStateDown because d's indentNum(1) is less than c's indentNum(3).
-			// Therefore, s.prevIndentColumn(1) == s.column(1) is true, but we want to treat this as IndentStateDown.
-			// So, we look also current indentState value by the above prevIndentNum based logic, and determines finally indentState.
+			// Therefore, s.lastDelimColumn(1) == s.column(1) is true, but we want to treat this as IndentStateDown.
+			// So, we look also current indentState value by the above prevLineIndentNum based logic, and determines finally indentState.
 			// ---
 			// a:
 			//   b
@@ -176,7 +179,7 @@ func (s *Scanner) updateIndentState(ctx *Context) {
 			s.indentState = IndentStateEqual
 		}
 	} else {
-		s.indentState = indentNumBasedIndentState
+		s.indentState = s.indentStateFromIndentNumDifference()
 	}
 }
 
@@ -194,14 +197,6 @@ func (s *Scanner) updateIndent(ctx *Context, c rune) {
 	}
 	s.updateIndentState(ctx)
 	s.isFirstCharAtLine = false
-	if s.isNeededKeepPreviousIndentNum(ctx, c) {
-		return
-	}
-	if s.indentState != IndentStateUp {
-		s.prevIndentColumn = 0
-	}
-	s.prevIndentNum = s.indentNum
-	s.prevIndentLevel = s.indentLevel
 }
 
 func (s *Scanner) isChangedToIndentStateDown() bool {
@@ -640,7 +635,7 @@ func (s *Scanner) scan(ctx *Context) (pos int) {
 		c := ctx.currentChar()
 		s.updateIndent(ctx, c)
 		if ctx.isDocument() {
-			if s.isChangedToIndentStateEqual() ||
+			if (s.indentNum == 0 && s.isChangedToIndentStateEqual()) ||
 				s.isChangedToIndentStateDown() {
 				s.addBufferedTokenIfExists(ctx)
 				s.breakLiteral(ctx)
@@ -684,7 +679,7 @@ func (s *Scanner) scan(ctx *Context) (pos int) {
 			}
 		case '<':
 			if s.isMergeKey(ctx) {
-				s.prevIndentColumn = s.column
+				s.lastDelimColumn = s.column
 				ctx.addToken(token.MergeKey(string(ctx.obuf)+"<<", s.pos()))
 				s.progressColumn(ctx, 1)
 				pos++
@@ -718,7 +713,7 @@ func (s *Scanner) scan(ctx *Context) (pos int) {
 				s.addBufferedTokenIfExists(ctx)
 				ctx.addOriginBuf(c)
 				tk := token.SequenceEntry(string(ctx.obuf), s.pos())
-				s.prevIndentColumn = tk.Position.Column
+				s.lastDelimColumn = tk.Position.Column
 				ctx.addToken(tk)
 				s.progressColumn(ctx, 1)
 				return
@@ -754,13 +749,13 @@ func (s *Scanner) scan(ctx *Context) (pos int) {
 				// mapping value
 				tk := s.bufferedToken(ctx)
 				if tk != nil {
-					s.prevIndentColumn = tk.Position.Column
+					s.lastDelimColumn = tk.Position.Column
 					ctx.addToken(tk)
 				} else if tk := ctx.lastToken(); tk != nil {
 					// If the map key is quote, the buffer does not exist because it has already been cut into tokens.
 					// Therefore, we need to check the last token.
 					if tk.Indicator == token.QuotedScalarIndicator {
-						s.prevIndentColumn = tk.Position.Column
+						s.lastDelimColumn = tk.Position.Column
 					}
 				}
 				ctx.addToken(token.MappingValue(s.pos()))
@@ -878,9 +873,8 @@ func (s *Scanner) Init(text string) {
 	s.line = 1
 	s.column = 1
 	s.offset = 1
-	s.prevIndentLevel = 0
-	s.prevIndentNum = 0
-	s.prevIndentColumn = 0
+	s.prevLineIndentNum = 0
+	s.lastDelimColumn = 0
 	s.indentLevel = 0
 	s.indentNum = 0
 	s.isFirstCharAtLine = true

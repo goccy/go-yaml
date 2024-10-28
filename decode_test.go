@@ -14,8 +14,6 @@ import (
 	"testing"
 	"time"
 
-	"golang.org/x/xerrors"
-
 	"github.com/goccy/go-yaml"
 	"github.com/goccy/go-yaml/ast"
 	"github.com/goccy/go-yaml/internal/errors"
@@ -2119,7 +2117,7 @@ map: &map
 		var buf bytes.Buffer
 		var v bool
 		err := yaml.NewDecoder(&buf).DecodeFromNode(nil, v)
-		if !xerrors.Is(err, errors.ErrDecodeRequiredPointerType) {
+		if !errors.Is(err, errors.ErrDecodeRequiredPointerType) {
 			t.Fatalf("unexpected error: %s", err)
 		}
 	})
@@ -2159,10 +2157,10 @@ unknown: string
 
 	// OUTPUT:
 	// [3:1] unknown field "unknown"
-	//        1 | ---
-	//        2 | simple: string
-	//     >  3 | unknown: string
-	//            ^
+	//    1 | ---
+	//    2 | simple: string
+	// >  3 | unknown: string
+	//        ^
 }
 
 func Example_Unmarshal_Node() {
@@ -2668,7 +2666,7 @@ func (u *unmarshalList) UnmarshalYAML(b []byte) error {
  - h: i`
 	actual := "\n" + string(b)
 	if expected != actual {
-		return xerrors.Errorf("unexpected bytes: expected [%q] but got [%q]", expected, actual)
+		return fmt.Errorf("unexpected bytes: expected [%q] but got [%q]", expected, actual)
 	}
 	var v []map[string]unmarshalString
 	if err := yaml.Unmarshal(b, &v); err != nil {

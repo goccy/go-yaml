@@ -7,8 +7,6 @@ import (
 	"reflect"
 	"sync"
 
-	"golang.org/x/xerrors"
-
 	"github.com/goccy/go-yaml/ast"
 	"github.com/goccy/go-yaml/internal/errors"
 )
@@ -139,7 +137,7 @@ func MarshalWithOptions(v interface{}, opts ...EncodeOption) ([]byte, error) {
 func MarshalContext(ctx context.Context, v interface{}, opts ...EncodeOption) ([]byte, error) {
 	var buf bytes.Buffer
 	if err := NewEncoder(&buf, opts...).EncodeContext(ctx, v); err != nil {
-		return nil, errors.Wrapf(err, "failed to marshal")
+		return nil, err
 	}
 	return buf.Bytes(), nil
 }
@@ -149,7 +147,7 @@ func ValueToNode(v interface{}, opts ...EncodeOption) (ast.Node, error) {
 	var buf bytes.Buffer
 	node, err := NewEncoder(&buf, opts...).EncodeToNode(v)
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to convert value to node")
+		return nil, err
 	}
 	return node, nil
 }
@@ -193,7 +191,7 @@ func UnmarshalContext(ctx context.Context, data []byte, v interface{}, opts ...D
 		if err == io.EOF {
 			return nil
 		}
-		return errors.Wrapf(err, "failed to unmarshal")
+		return err
 	}
 	return nil
 }
@@ -202,7 +200,7 @@ func UnmarshalContext(ctx context.Context, data []byte, v interface{}, opts ...D
 func NodeToValue(node ast.Node, v interface{}, opts ...DecodeOption) error {
 	var buf bytes.Buffer
 	if err := NewDecoder(&buf, opts...).DecodeFromNode(node, v); err != nil {
-		return errors.Wrapf(err, "failed to convert node to value")
+		return err
 	}
 	return nil
 }
@@ -215,7 +213,7 @@ func NodeToValue(node ast.Node, v interface{}, opts ...DecodeOption) error {
 // contain snippets of the YAML source that was used.
 func FormatError(e error, colored, inclSource bool) string {
 	var pp errors.PrettyPrinter
-	if xerrors.As(e, &pp) {
+	if errors.As(e, &pp) {
 		var buf bytes.Buffer
 		pp.PrettyPrint(&errors.Sink{Buffer: &buf}, colored, inclSource)
 		return buf.String()
@@ -228,11 +226,11 @@ func FormatError(e error, colored, inclSource bool) string {
 func YAMLToJSON(bytes []byte) ([]byte, error) {
 	var v interface{}
 	if err := UnmarshalWithOptions(bytes, &v, UseOrderedMap()); err != nil {
-		return nil, errors.Wrapf(err, "failed to unmarshal")
+		return nil, err
 	}
 	out, err := MarshalWithOptions(v, JSON())
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to marshal with json option")
+		return nil, err
 	}
 	return out, nil
 }
@@ -241,11 +239,11 @@ func YAMLToJSON(bytes []byte) ([]byte, error) {
 func JSONToYAML(bytes []byte) ([]byte, error) {
 	var v interface{}
 	if err := UnmarshalWithOptions(bytes, &v, UseOrderedMap()); err != nil {
-		return nil, errors.Wrapf(err, "failed to unmarshal from json bytes")
+		return nil, err
 	}
 	out, err := Marshal(v)
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to marshal")
+		return nil, err
 	}
 	return out, nil
 }

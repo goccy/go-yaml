@@ -195,10 +195,6 @@ func (s *Scanner) isChangedToIndentStateUp() bool {
 	return s.indentState == IndentStateUp
 }
 
-func (s *Scanner) isChangedToIndentStateEqual() bool {
-	return s.indentState == IndentStateEqual
-}
-
 func (s *Scanner) addBufferedTokenIfExists(ctx *Context) {
 	ctx.addToken(s.bufferedToken(ctx))
 }

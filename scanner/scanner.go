@@ -32,7 +32,6 @@ type Scanner struct {
 	line                   int
 	column                 int
 	offset                 int
-	prevIndentLevel        int
 	prevIndentNum          int
 	prevIndentColumn       int
 	docStartColumn         int
@@ -132,15 +131,14 @@ func (s *Scanner) newLineCount(src []rune) int {
 func (s *Scanner) updateIndentState(ctx *Context) {
 	var indentNumBasedIndentState IndentState
 	if s.prevIndentNum < s.indentNum {
-		s.indentLevel = s.prevIndentLevel + 1
+		s.indentLevel++
 		indentNumBasedIndentState = IndentStateUp
 	} else if s.prevIndentNum == s.indentNum {
-		s.indentLevel = s.prevIndentLevel
 		indentNumBasedIndentState = IndentStateEqual
 	} else {
 		indentNumBasedIndentState = IndentStateDown
-		if s.prevIndentLevel > 0 {
-			s.indentLevel = s.prevIndentLevel - 1
+		if s.indentLevel > 0 {
+			s.indentLevel--
 		}
 	}
 
@@ -182,7 +180,6 @@ func (s *Scanner) updateIndent(ctx *Context, c rune) {
 	}
 	s.updateIndentState(ctx)
 	s.isFirstCharAtLine = false
-	s.prevIndentLevel = s.indentLevel
 }
 
 func (s *Scanner) isChangedToIndentStateDown() bool {
@@ -859,7 +856,6 @@ func (s *Scanner) Init(text string) {
 	s.line = 1
 	s.column = 1
 	s.offset = 1
-	s.prevIndentLevel = 0
 	s.prevIndentNum = 0
 	s.prevIndentColumn = 0
 	s.indentLevel = 0

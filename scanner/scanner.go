@@ -510,7 +510,225 @@ func (s *Scanner) scanLiteral(ctx *Context, c rune) {
 	}
 }
 
-func (s *Scanner) scanLiteralHeader(ctx *Context) (pos int, err error) {
+func (s *Scanner) scanNewLine(ctx *Context, c rune) {
+	if len(ctx.buf) > 0 && s.savedPos == nil {
+		s.savedPos = s.pos()
+		s.savedPos.Column -= len(ctx.bufferedSrc())
+	}
+
+	// if the following case, origin buffer has unnecessary two spaces.
+	// So, `removeRightSpaceFromOriginBuf` remove them, also fix column number too.
+	// ---
+	// a:[space][space]
+	//   b: c
+	removedNum := ctx.removeRightSpaceFromBuf()
+	if removedNum > 0 {
+		s.column -= removedNum
+		s.offset -= removedNum
+		if s.savedPos != nil {
+			s.savedPos.Column -= removedNum
+		}
+	}
+
+	// There is no problem that we ignore CR which followed by LF and normalize it to LF, because of following YAML1.2 spec.
+	// > Line breaks inside scalar content must be normalized by the YAML processor. Each such line break must be parsed into a single line feed character.
+	// > Outside scalar content, YAML allows any line break to be used to terminate lines.
+	// > -- https://yaml.org/spec/1.2/spec.html
+	if c == '\r' && ctx.nextChar() == '\n' {
+		ctx.addOriginBuf('\r')
+		ctx.progress(1)
+		c = '\n'
+	}
+
+	if ctx.isEOS() {
+		s.addBufferedTokenIfExists(ctx)
+	} else if s.isAnchor {
+		s.addBufferedTokenIfExists(ctx)
+	}
+	ctx.addBuf(' ')
+	ctx.addOriginBuf(c)
+	ctx.isSingleLine = false
+	s.progressLine(ctx)
+}
+
+func (s *Scanner) scanFlowMapStart(ctx *Context) bool {
+	if ctx.existsBuffer() {
+		return false
+	}
+
+	ctx.addOriginBuf('{')
+	ctx.addToken(token.MappingStart(string(ctx.obuf), s.pos()))
+	s.startedFlowMapNum++
+	s.progressColumn(ctx, 1)
+	return true
+}
+
+func (s *Scanner) scanFlowMapEnd(ctx *Context) bool {
+	if s.startedFlowMapNum <= 0 {
+		return false
+	}
+
+	s.addBufferedTokenIfExists(ctx)
+	ctx.addOriginBuf('}')
+	ctx.addToken(token.MappingEnd(string(ctx.obuf), s.pos()))
+	s.startedFlowMapNum--
+	s.progressColumn(ctx, 1)
+	return true
+}
+
+func (s *Scanner) scanFlowArrayStart(ctx *Context) bool {
+	if ctx.existsBuffer() {
+		return false
+	}
+
+	ctx.addOriginBuf('[')
+	ctx.addToken(token.SequenceStart(string(ctx.obuf), s.pos()))
+	s.startedFlowSequenceNum++
+	s.progressColumn(ctx, 1)
+	return true
+}
+
+func (s *Scanner) scanFlowArrayEnd(ctx *Context) bool {
+	if s.startedFlowSequenceNum <= 0 {
+		return false
+	}
+
+	s.addBufferedTokenIfExists(ctx)
+	ctx.addOriginBuf(']')
+	ctx.addToken(token.SequenceEnd(string(ctx.obuf), s.pos()))
+	s.startedFlowSequenceNum--
+	s.progressColumn(ctx, 1)
+	return true
+}
+
+func (s *Scanner) scanFlowEntry(ctx *Context, c rune) bool {
+	if s.startedFlowSequenceNum <= 0 && s.startedFlowMapNum <= 0 {
+		return false
+	}
+
+	s.addBufferedTokenIfExists(ctx)
+	ctx.addOriginBuf(c)
+	ctx.addToken(token.CollectEntry(string(ctx.obuf), s.pos()))
+	s.progressColumn(ctx, 1)
+	return true
+}
+
+func (s *Scanner) scanMapDelim(ctx *Context) bool {
+	nc := ctx.nextChar()
+	if s.startedFlowMapNum <= 0 && nc != ' ' && !s.isNewLineChar(nc) && !ctx.isNextEOS() {
+		return false
+	}
+
+	// mapping value
+	tk := s.bufferedToken(ctx)
+	if tk != nil {
+		s.lastDelimColumn = tk.Position.Column
+		ctx.addToken(tk)
+	} else if tk := ctx.lastToken(); tk != nil {
+		// If the map key is quote, the buffer does not exist because it has already been cut into tokens.
+		// Therefore, we need to check the last token.
+		if tk.Indicator == token.QuotedScalarIndicator {
+			s.lastDelimColumn = tk.Position.Column
+		}
+	}
+	ctx.addToken(token.MappingValue(s.pos()))
+	s.progressColumn(ctx, 1)
+	return true
+}
+
+func (s *Scanner) scanDocumentStart(ctx *Context) bool {
+	if s.indentNum != 0 {
+		return false
+	}
+	if s.column != 1 {
+		return false
+	}
+	if ctx.repeatNum('-') != 3 {
+		return false
+	}
+
+	s.addBufferedTokenIfExists(ctx)
+	ctx.addToken(token.DocumentHeader(string(ctx.obuf)+"---", s.pos()))
+	s.progressColumn(ctx, 3)
+	return true
+}
+
+func (s *Scanner) scanDocumentEnd(ctx *Context) bool {
+	if s.indentNum != 0 {
+		return false
+	}
+	if s.column != 1 {
+		return false
+	}
+	if ctx.repeatNum('.') != 3 {
+		return false
+	}
+
+	ctx.addToken(token.DocumentEnd(string(ctx.obuf)+"...", s.pos()))
+	s.progressColumn(ctx, 3)
+	return true
+}
+
+func (s *Scanner) scanMergeKey(ctx *Context) bool {
+	if !s.isMergeKey(ctx) {
+		return false
+	}
+
+	s.lastDelimColumn = s.column
+	ctx.addToken(token.MergeKey(string(ctx.obuf)+"<<", s.pos()))
+	s.progressColumn(ctx, 1)
+	return true
+}
+
+func (s *Scanner) scanRawFoldedChar(ctx *Context) bool {
+	if !ctx.existsBuffer() {
+		return false
+	}
+	if !s.isChangedToIndentStateUp() {
+		return false
+	}
+
+	ctx.isRawFolded = true
+	ctx.addBuf('-')
+	ctx.addOriginBuf('-')
+	s.progressColumn(ctx, 1)
+	return true
+}
+
+func (s *Scanner) scanSequence(ctx *Context) bool {
+	if ctx.existsBuffer() {
+		return false
+	}
+
+	nc := ctx.nextChar()
+	if nc != ' ' && !s.isNewLineChar(nc) {
+		return false
+	}
+
+	s.addBufferedTokenIfExists(ctx)
+	ctx.addOriginBuf('-')
+	tk := token.SequenceEntry(string(ctx.obuf), s.pos())
+	s.lastDelimColumn = tk.Position.Column
+	ctx.addToken(tk)
+	s.progressColumn(ctx, 1)
+	return true
+}
+
+func (s *Scanner) scanLiteralHeader(ctx *Context) (bool, error) {
+	if ctx.existsBuffer() {
+		return false, nil
+	}
+
+	progress, err := s.scanLiteralHeaderOption(ctx)
+	if err != nil {
+		return false, err
+	}
+	s.progressColumn(ctx, progress)
+	s.progressLine(ctx)
+	return true, nil
+}
+
+func (s *Scanner) scanLiteralHeaderOption(ctx *Context) (pos int, err error) {
 	header := ctx.currentChar()
 	ctx.addOriginBuf(header)
 	ctx.progress(1) // skip '|' or '>' character
@@ -572,52 +790,70 @@ func (s *Scanner) scanLiteralHeader(ctx *Context) (pos int, err error) {
 	return
 }
 
-func (s *Scanner) scanNewLine(ctx *Context, c rune) {
-	if len(ctx.buf) > 0 && s.savedPos == nil {
-		s.savedPos = s.pos()
-		s.savedPos.Column -= len(ctx.bufferedSrc())
+func (s *Scanner) scanMapKey(ctx *Context) bool {
+	if ctx.existsBuffer() {
+		return false
 	}
 
-	// if the following case, origin buffer has unnecessary two spaces.
-	// So, `removeRightSpaceFromOriginBuf` remove them, also fix column number too.
-	// ---
-	// a:[space][space]
-	//   b: c
-	removedNum := ctx.removeRightSpaceFromBuf()
-	if removedNum > 0 {
-		s.column -= removedNum
-		s.offset -= removedNum
-		if s.savedPos != nil {
-			s.savedPos.Column -= removedNum
-		}
+	nc := ctx.nextChar()
+	if nc != ' ' {
+		return false
 	}
 
-	// There is no problem that we ignore CR which followed by LF and normalize it to LF, because of following YAML1.2 spec.
-	// > Line breaks inside scalar content must be normalized by the YAML processor. Each such line break must be parsed into a single line feed character.
-	// > Outside scalar content, YAML allows any line break to be used to terminate lines.
-	// > -- https://yaml.org/spec/1.2/spec.html
-	if c == '\r' && ctx.nextChar() == '\n' {
-		ctx.addOriginBuf('\r')
-		ctx.progress(1)
-		c = '\n'
+	ctx.addToken(token.MappingKey(s.pos()))
+	s.progressColumn(ctx, 1)
+	return true
+}
+
+func (s *Scanner) scanDirective(ctx *Context) bool {
+	if ctx.existsBuffer() {
+		return false
+	}
+	if s.indentNum != 0 {
+		return false
 	}
 
-	if ctx.isEOS() {
-		s.addBufferedTokenIfExists(ctx)
-	} else if s.isAnchor {
-		s.addBufferedTokenIfExists(ctx)
+	ctx.addToken(token.Directive(string(ctx.obuf)+"%", s.pos()))
+	s.progressColumn(ctx, 1)
+	return true
+}
+
+func (s *Scanner) scanAnchor(ctx *Context) bool {
+	if ctx.existsBuffer() {
+		return false
 	}
-	ctx.addBuf(' ')
-	ctx.addOriginBuf(c)
-	ctx.isSingleLine = false
-	s.progressLine(ctx)
+
+	s.addBufferedTokenIfExists(ctx)
+	ctx.addOriginBuf('&')
+	ctx.addToken(token.Anchor(string(ctx.obuf), s.pos()))
+	s.progressColumn(ctx, 1)
+	s.isAnchor = true
+	return true
+}
+
+func (s *Scanner) scanAlias(ctx *Context) bool {
+	if ctx.existsBuffer() {
+		return false
+	}
+
+	s.addBufferedTokenIfExists(ctx)
+	ctx.addOriginBuf('*')
+	ctx.addToken(token.Alias(string(ctx.obuf), s.pos()))
+	s.progressColumn(ctx, 1)
+	return true
 }
 
 func (s *Scanner) scan(ctx *Context) (pos int) {
 	for ctx.next() {
 		pos = ctx.nextPos()
 		c := ctx.currentChar()
+
+		// First, change the IndentState.
+		// If the target character is the first character in a line, IndentState is Up/Down/Equal state.
+		// The second and subsequent letters are Keep.
 		s.updateIndent(ctx, c)
+
+		// If IndentState is down, tokens are split, so the buffer accumulated until that point needs to be cutted as a token.
 		if s.isChangedToIndentStateDown() {
 			s.addBufferedTokenIfExists(ctx)
 		}
@@ -631,52 +867,33 @@ func (s *Scanner) scan(ctx *Context) (pos int) {
 		}
 		switch c {
 		case '{':
-			if !ctx.existsBuffer() {
-				ctx.addOriginBuf(c)
-				ctx.addToken(token.MappingStart(string(ctx.obuf), s.pos()))
-				s.startedFlowMapNum++
-				s.progressColumn(ctx, 1)
+			if s.scanFlowMapStart(ctx) {
 				return
 			}
 		case '}':
-			if !ctx.existsBuffer() || s.startedFlowMapNum > 0 {
-				ctx.addToken(s.bufferedToken(ctx))
-				ctx.addOriginBuf(c)
-				ctx.addToken(token.MappingEnd(string(ctx.obuf), s.pos()))
-				s.startedFlowMapNum--
-				s.progressColumn(ctx, 1)
+			if s.scanFlowMapEnd(ctx) {
 				return
 			}
 		case '.':
-			if s.indentNum == 0 && s.column == 1 && ctx.repeatNum('.') == 3 {
-				ctx.addToken(token.DocumentEnd(string(ctx.obuf)+"...", s.pos()))
-				s.progressColumn(ctx, 3)
+			if s.scanDocumentEnd(ctx) {
 				pos += 2
 				return
 			}
 		case '<':
-			if s.isMergeKey(ctx) {
-				s.lastDelimColumn = s.column
-				ctx.addToken(token.MergeKey(string(ctx.obuf)+"<<", s.pos()))
-				s.progressColumn(ctx, 1)
+			if s.scanMergeKey(ctx) {
 				pos++
 				return
 			}
 		case '-':
-			if s.indentNum == 0 && s.column == 1 && ctx.repeatNum('-') == 3 {
-				s.addBufferedTokenIfExists(ctx)
-				ctx.addToken(token.DocumentHeader(string(ctx.obuf)+"---", s.pos()))
-				s.progressColumn(ctx, 3)
+			if s.scanDocumentStart(ctx) {
 				pos += 2
 				return
 			}
-			if ctx.existsBuffer() && s.isChangedToIndentStateUp() {
-				// raw folded
-				ctx.isRawFolded = true
-				ctx.addBuf(c)
-				ctx.addOriginBuf(c)
-				s.progressColumn(ctx, 1)
+			if s.scanRawFoldedChar(ctx) {
 				continue
+			}
+			if s.scanSequence(ctx) {
+				return
 			}
 			if ctx.existsBuffer() {
 				// '-' is literal
@@ -685,69 +902,29 @@ func (s *Scanner) scan(ctx *Context) (pos int) {
 				s.progressColumn(ctx, 1)
 				continue
 			}
-			nc := ctx.nextChar()
-			if nc == ' ' || s.isNewLineChar(nc) {
-				s.addBufferedTokenIfExists(ctx)
-				ctx.addOriginBuf(c)
-				tk := token.SequenceEntry(string(ctx.obuf), s.pos())
-				s.lastDelimColumn = tk.Position.Column
-				ctx.addToken(tk)
-				s.progressColumn(ctx, 1)
-				return
-			}
 		case '[':
-			if !ctx.existsBuffer() {
-				ctx.addOriginBuf(c)
-				ctx.addToken(token.SequenceStart(string(ctx.obuf), s.pos()))
-				s.startedFlowSequenceNum++
-				s.progressColumn(ctx, 1)
+			if s.scanFlowArrayStart(ctx) {
 				return
 			}
 		case ']':
-			if !ctx.existsBuffer() || s.startedFlowSequenceNum > 0 {
-				s.addBufferedTokenIfExists(ctx)
-				ctx.addOriginBuf(c)
-				ctx.addToken(token.SequenceEnd(string(ctx.obuf), s.pos()))
-				s.startedFlowSequenceNum--
-				s.progressColumn(ctx, 1)
+			if s.scanFlowArrayEnd(ctx) {
 				return
 			}
 		case ',':
-			if s.startedFlowSequenceNum > 0 || s.startedFlowMapNum > 0 {
-				s.addBufferedTokenIfExists(ctx)
-				ctx.addOriginBuf(c)
-				ctx.addToken(token.CollectEntry(string(ctx.obuf), s.pos()))
-				s.progressColumn(ctx, 1)
+			if s.scanFlowEntry(ctx, c) {
 				return
 			}
 		case ':':
-			nc := ctx.nextChar()
-			if s.startedFlowMapNum > 0 || nc == ' ' || s.isNewLineChar(nc) || ctx.isNextEOS() {
-				// mapping value
-				tk := s.bufferedToken(ctx)
-				if tk != nil {
-					s.lastDelimColumn = tk.Position.Column
-					ctx.addToken(tk)
-				} else if tk := ctx.lastToken(); tk != nil {
-					// If the map key is quote, the buffer does not exist because it has already been cut into tokens.
-					// Therefore, we need to check the last token.
-					if tk.Indicator == token.QuotedScalarIndicator {
-						s.lastDelimColumn = tk.Position.Column
-					}
-				}
-				ctx.addToken(token.MappingValue(s.pos()))
-				s.progressColumn(ctx, 1)
+			if s.scanMapDelim(ctx) {
 				return
 			}
 		case '|', '>':
-			if !ctx.existsBuffer() {
-				progress, err := s.scanLiteralHeader(ctx)
-				if err != nil {
-					// TODO: returns syntax error object
-					return
-				}
-				s.progressColumn(ctx, progress)
-				s.progressLine(ctx)
+			scanned, err := s.scanLiteralHeader(ctx)
+			if err != nil {
+				// TODO: returns syntax error object
+				return
+			}
+			if scanned {
 				continue
 			}
 		case '!':
@@ -762,33 +939,19 @@ func (s *Scanner) scan(ctx *Context) (pos int) {
 				return
 			}
 		case '%':
-			if !ctx.existsBuffer() && s.indentNum == 0 {
-				ctx.addToken(token.Directive(string(ctx.obuf)+"%", s.pos()))
-				s.progressColumn(ctx, 1)
+			if s.scanDirective(ctx) {
 				return
 			}
 		case '?':
-			nc := ctx.nextChar()
-			if !ctx.existsBuffer() && nc == ' ' {
-				ctx.addToken(token.MappingKey(s.pos()))
-				s.progressColumn(ctx, 1)
+			if s.scanMapKey(ctx) {
 				return
 			}
 		case '&':
-			if !ctx.existsBuffer() {
-				s.addBufferedTokenIfExists(ctx)
-				ctx.addOriginBuf(c)
-				ctx.addToken(token.Anchor(string(ctx.obuf), s.pos()))
-				s.progressColumn(ctx, 1)
-				s.isAnchor = true
+			if s.scanAnchor(ctx) {
 				return
 			}
 		case '*':
-			if !ctx.existsBuffer() {
-				s.addBufferedTokenIfExists(ctx)
-				ctx.addOriginBuf(c)
-				ctx.addToken(token.Alias(string(ctx.obuf), s.pos()))
-				s.progressColumn(ctx, 1)
+			if s.scanAlias(ctx) {
 				return
 			}
 		case '#':

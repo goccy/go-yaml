@@ -145,6 +145,20 @@ func (s *Scanner) updateIndentLevel() {
 	}
 }
 
+func (s *Scanner) updateIndentState(ctx *Context) {
+	if s.lastDelimColumn > 0 {
+		if s.lastDelimColumn < s.column {
+			s.indentState = IndentStateUp
+		} else {
+			// If lastDelimColumn and s.column are the same,
+			// treat as Down state since it is the same column as delimiter.
+			s.indentState = IndentStateDown
+		}
+	} else {
+		s.indentState = s.indentStateFromIndentNumDifference()
+	}
+}
+
 func (s *Scanner) indentStateFromIndentNumDifference() IndentState {
 	switch {
 	case s.prevLineIndentNum < s.indentNum:
@@ -153,33 +167,6 @@ func (s *Scanner) indentStateFromIndentNumDifference() IndentState {
 		return IndentStateEqual
 	default:
 		return IndentStateDown
-	}
-}
-
-func (s *Scanner) updateIndentState(ctx *Context) {
-	s.updateIndentLevel()
-
-	if s.lastDelimColumn > 0 {
-		if s.lastDelimColumn < s.column {
-			s.indentState = IndentStateUp
-		} else if s.lastDelimColumn != s.column || s.prevLineIndentNum != s.indentNum {
-			// The following case ( current position is 'd' ), some variables becomes like here
-			// - lastDelimColumn: 1 of 'a'
-			// - indentNumBasedIndentState: IndentStateDown because d's indentNum(1) is less than c's indentNum(3).
-			// Therefore, s.lastDelimColumn(1) == s.column(1) is true, but we want to treat this as IndentStateDown.
-			// So, we look also current indentState value by the above prevLineIndentNum based logic, and determines finally indentState.
-			// ---
-			// a:
-			//   b
-			//   c
-			// d: e
-			// ^
-			s.indentState = IndentStateDown
-		} else {
-			s.indentState = IndentStateEqual
-		}
-	} else {
-		s.indentState = s.indentStateFromIndentNumDifference()
 	}
 }
 
@@ -195,6 +182,7 @@ func (s *Scanner) updateIndent(ctx *Context, c rune) {
 		s.indentState = IndentStateKeep
 		return
 	}
+	s.updateIndentLevel()
 	s.updateIndentState(ctx)
 	s.isFirstCharAtLine = false
 }
@@ -205,10 +193,6 @@ func (s *Scanner) isChangedToIndentStateDown() bool {
 
 func (s *Scanner) isChangedToIndentStateUp() bool {
 	return s.indentState == IndentStateUp
-}
-
-func (s *Scanner) isChangedToIndentStateEqual() bool {
-	return s.indentState == IndentStateEqual
 }
 
 func (s *Scanner) addBufferedTokenIfExists(ctx *Context) {
@@ -634,22 +618,15 @@ func (s *Scanner) scan(ctx *Context) (pos int) {
 		pos = ctx.nextPos()
 		c := ctx.currentChar()
 		s.updateIndent(ctx, c)
+		if s.isChangedToIndentStateDown() {
+			s.addBufferedTokenIfExists(ctx)
+		}
 		if ctx.isDocument() {
-			if (s.indentNum == 0 && s.isChangedToIndentStateEqual()) ||
-				s.isChangedToIndentStateDown() {
-				s.addBufferedTokenIfExists(ctx)
+			if s.isChangedToIndentStateDown() {
 				s.breakLiteral(ctx)
 			} else {
 				s.scanLiteral(ctx, c)
 				continue
-			}
-		} else if s.isChangedToIndentStateDown() {
-			s.addBufferedTokenIfExists(ctx)
-		} else if s.isChangedToIndentStateEqual() {
-			// if first character is new line character, buffer expect to raw folded literal
-			if len(ctx.obuf) > 0 && s.newLineCount(ctx.obuf) <= 1 {
-				// doesn't raw folded literal
-				s.addBufferedTokenIfExists(ctx)
 			}
 		}
 		switch c {

@@ -15,10 +15,6 @@ const (
 	defaultIncludeSource = true
 )
 
-var (
-	ErrDecodeRequiredPointerType = errors.New("required pointer type value")
-)
-
 // ErrSyntax create syntax error instance with message and token
 func ErrSyntax(msg string, tk *token.Token) *syntaxError {
 	return &syntaxError{

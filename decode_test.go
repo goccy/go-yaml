@@ -2117,7 +2117,7 @@ map: &map
 		var buf bytes.Buffer
 		var v bool
 		err := yaml.NewDecoder(&buf).DecodeFromNode(nil, v)
-		if !errors.Is(err, errors.ErrDecodeRequiredPointerType) {
+		if !errors.Is(err, yaml.ErrDecodeRequiredPointerType) {
 			t.Fatalf("unexpected error: %s", err)
 		}
 	})

@@ -724,7 +724,7 @@ func (d *Decoder) decodeByUnmarshaler(ctx context.Context, dst reflect.Value, sr
 		if err := unmarshaler.UnmarshalYAML(ctx, func(v interface{}) error {
 			rv := reflect.ValueOf(v)
 			if rv.Type().Kind() != reflect.Ptr {
-				return errors.ErrDecodeRequiredPointerType
+				return ErrDecodeRequiredPointerType
 			}
 			if err := d.decodeValue(ctx, rv.Elem(), src); err != nil {
 				return err
@@ -740,7 +740,7 @@ func (d *Decoder) decodeByUnmarshaler(ctx context.Context, dst reflect.Value, sr
 		if err := unmarshaler.UnmarshalYAML(func(v interface{}) error {
 			rv := reflect.ValueOf(v)
 			if rv.Type().Kind() != reflect.Ptr {
-				return errors.ErrDecodeRequiredPointerType
+				return ErrDecodeRequiredPointerType
 			}
 			if err := d.decodeValue(ctx, rv.Elem(), src); err != nil {
 				return err
@@ -1728,7 +1728,7 @@ func (d *Decoder) Decode(v interface{}) error {
 func (d *Decoder) DecodeContext(ctx context.Context, v interface{}) error {
 	rv := reflect.ValueOf(v)
 	if rv.Type().Kind() != reflect.Ptr {
-		return errors.ErrDecodeRequiredPointerType
+		return ErrDecodeRequiredPointerType
 	}
 	if d.isInitialized() {
 		if err := d.decode(ctx, rv); err != nil {
@@ -1760,7 +1760,7 @@ func (d *Decoder) DecodeFromNode(node ast.Node, v interface{}) error {
 func (d *Decoder) DecodeFromNodeContext(ctx context.Context, node ast.Node, v interface{}) error {
 	rv := reflect.ValueOf(v)
 	if rv.Type().Kind() != reflect.Ptr {
-		return errors.ErrDecodeRequiredPointerType
+		return ErrDecodeRequiredPointerType
 	}
 	if !d.isInitialized() {
 		if err := d.decodeInit(); err != nil {

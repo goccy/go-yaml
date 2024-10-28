@@ -1,21 +1,20 @@
 package ast
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"math"
 	"strconv"
 	"strings"
 
-	"golang.org/x/xerrors"
-
 	"github.com/goccy/go-yaml/token"
 )
 
 var (
-	ErrInvalidTokenType  = xerrors.New("invalid token type")
-	ErrInvalidAnchorName = xerrors.New("invalid anchor name")
-	ErrInvalidAliasName  = xerrors.New("invalid alias name")
+	ErrInvalidTokenType  = errors.New("invalid token type")
+	ErrInvalidAnchorName = errors.New("invalid anchor name")
+	ErrInvalidAliasName  = errors.New("invalid alias name")
 )
 
 // NodeType type identifier of node
@@ -1492,7 +1491,7 @@ type SequenceNode struct {
 // Replace replace value node.
 func (n *SequenceNode) Replace(idx int, value Node) error {
 	if len(n.Values) <= idx {
-		return xerrors.Errorf(
+		return fmt.Errorf(
 			"invalid index for sequence: sequence length is %d, but specified %d index",
 			len(n.Values), idx,
 		)

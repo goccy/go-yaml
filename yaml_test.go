@@ -2,11 +2,11 @@ package yaml_test
 
 import (
 	"bytes"
+	"errors"
 	"strings"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
-	"golang.org/x/xerrors"
 
 	"github.com/goccy/go-yaml"
 	"github.com/goccy/go-yaml/ast"
@@ -116,13 +116,13 @@ type unmarshalTest struct {
 
 func (t *unmarshalTest) UnmarshalYAML(b []byte) error {
 	if t.a != 0 {
-		return xerrors.New("unexpected field value to a")
+		return errors.New("unexpected field value to a")
 	}
 	if t.b != "" {
-		return xerrors.New("unexpected field value to b")
+		return errors.New("unexpected field value to b")
 	}
 	if t.c {
-		return xerrors.New("unexpected field value to c")
+		return errors.New("unexpected field value to c")
 	}
 	var v struct {
 		A int
@@ -151,13 +151,13 @@ func (t *unmarshalTest2) UnmarshalYAML(unmarshal func(interface{}) error) error 
 		C bool
 	}
 	if t.a != 0 {
-		return xerrors.New("unexpected field value to a")
+		return errors.New("unexpected field value to a")
 	}
 	if t.b != "" {
-		return xerrors.New("unexpected field value to b")
+		return errors.New("unexpected field value to b")
 	}
 	if t.c {
-		return xerrors.New("unexpected field value to c")
+		return errors.New("unexpected field value to c")
 	}
 	if err := unmarshal(&v); err != nil {
 		return err

@@ -1,10 +1,9 @@
 package scanner
 
 import (
+	"errors"
 	"io"
 	"strings"
-
-	"golang.org/x/xerrors"
 
 	"github.com/goccy/go-yaml/token"
 )
@@ -351,7 +350,7 @@ func (s *Scanner) scanDoubleQuote(ctx *Context) (tk *token.Token, pos int) {
 				progress = 3
 				if idx+progress >= size {
 					// TODO: need to return error
-					//err = xerrors.New("invalid escape character \\x")
+					//err = errors.New("invalid escape character \\x")
 					return
 				}
 				codeNum := hexRunesToInt(src[idx+2 : idx+progress+1])
@@ -360,7 +359,7 @@ func (s *Scanner) scanDoubleQuote(ctx *Context) (tk *token.Token, pos int) {
 				progress = 5
 				if idx+progress >= size {
 					// TODO: need to return error
-					//err = xerrors.New("invalid escape character \\u")
+					//err = errors.New("invalid escape character \\u")
 					return
 				}
 				codeNum := hexRunesToInt(src[idx+2 : idx+progress+1])
@@ -369,7 +368,7 @@ func (s *Scanner) scanDoubleQuote(ctx *Context) (tk *token.Token, pos int) {
 				progress = 9
 				if idx+progress >= size {
 					// TODO: need to return error
-					//err = xerrors.New("invalid escape character \\U")
+					//err = errors.New("invalid escape character \\U")
 					return
 				}
 				codeNum := hexRunesToInt(src[idx+2 : idx+progress+1])
@@ -474,7 +473,7 @@ func trimCommentFromLiteralOpt(text string) (string, error) {
 		return text, nil
 	}
 	if idx == 0 {
-		return "", xerrors.New("invalid literal header")
+		return "", errors.New("invalid literal header")
 	}
 	return text[:idx-1], nil
 }
@@ -786,7 +785,7 @@ func (s *Scanner) scanLiteralHeaderOption(ctx *Context) (pos int, err error) {
 			}
 		}
 	}
-	err = xerrors.New("invalid literal header")
+	err = errors.New("invalid literal header")
 	return
 }
 

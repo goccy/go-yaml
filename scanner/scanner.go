@@ -91,6 +91,7 @@ func (s *Scanner) progressColumn(ctx *Context, num int) {
 }
 
 func (s *Scanner) progressLine(ctx *Context) {
+	s.prevIndentNum = s.indentNum
 	s.column = 1
 	s.line++
 	s.offset++
@@ -98,19 +99,6 @@ func (s *Scanner) progressLine(ctx *Context) {
 	s.isFirstCharAtLine = true
 	s.isAnchor = false
 	ctx.progress(1)
-}
-
-func (s *Scanner) isNeededKeepPreviousIndentNum(ctx *Context, c rune) bool {
-	if !s.isChangedToIndentStateUp() {
-		return false
-	}
-	if ctx.isDocument() {
-		return true
-	}
-	if c == '-' && ctx.existsBuffer() {
-		return true
-	}
-	return false
 }
 
 func (s *Scanner) isNewLineChar(c rune) bool {
@@ -159,7 +147,7 @@ func (s *Scanner) updateIndentState(ctx *Context) {
 	if s.prevIndentColumn > 0 {
 		if s.prevIndentColumn < s.column {
 			s.indentState = IndentStateUp
-		} else if s.prevIndentColumn != s.column || indentNumBasedIndentState != IndentStateEqual {
+		} else if s.prevIndentColumn != s.column || s.prevIndentNum != s.indentNum {
 			// The following case ( current position is 'd' ), some variables becomes like here
 			// - prevIndentColumn: 1 of 'a'
 			// - indentNumBasedIndentState: IndentStateDown because d's indentNum(1) is less than c's indentNum(3).
@@ -194,13 +182,9 @@ func (s *Scanner) updateIndent(ctx *Context, c rune) {
 	}
 	s.updateIndentState(ctx)
 	s.isFirstCharAtLine = false
-	if s.isNeededKeepPreviousIndentNum(ctx, c) {
-		return
-	}
 	if s.indentState != IndentStateUp {
 		s.prevIndentColumn = 0
 	}
-	s.prevIndentNum = s.indentNum
 	s.prevIndentLevel = s.indentLevel
 }
 
@@ -640,7 +624,7 @@ func (s *Scanner) scan(ctx *Context) (pos int) {
 		c := ctx.currentChar()
 		s.updateIndent(ctx, c)
 		if ctx.isDocument() {
-			if s.isChangedToIndentStateEqual() ||
+			if (s.indentNum == 0 && s.isChangedToIndentStateEqual()) ||
 				s.isChangedToIndentStateDown() {
 				s.addBufferedTokenIfExists(ctx)
 				s.breakLiteral(ctx)

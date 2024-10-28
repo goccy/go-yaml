@@ -126,7 +126,7 @@ func (c *Context) isEOS() bool {
 }
 
 func (c *Context) isNextEOS() bool {
-	return len(c.src)-1 <= c.idx+1
+	return len(c.src) <= c.idx+1
 }
 
 func (c *Context) next() bool {

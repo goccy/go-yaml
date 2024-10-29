@@ -406,11 +406,36 @@ func (s *Scanner) scanDoubleQuote(ctx *Context) *token.Token {
 	return tk
 }
 
-func (s *Scanner) scanQuote(ctx *Context, ch rune) *token.Token {
-	if ch == '\'' {
-		return s.scanSingleQuote(ctx)
+func (s *Scanner) scanQuote(ctx *Context, ch rune) bool {
+	if ctx.existsBuffer() {
+		return false
 	}
-	return s.scanDoubleQuote(ctx)
+	if ch == '\'' {
+		ctx.addToken(s.scanSingleQuote(ctx))
+	} else {
+		ctx.addToken(s.scanDoubleQuote(ctx))
+	}
+	ctx.clear()
+	return true
+}
+
+func (s *Scanner) scanWhiteSpace(ctx *Context) bool {
+	if ctx.isDocument() {
+		return false
+	}
+	if !s.isAnchor && !s.isFirstCharAtLine {
+		return false
+	}
+
+	if s.isFirstCharAtLine {
+		s.progressColumn(ctx, 1)
+		ctx.addOriginBuf(' ')
+		return true
+	}
+
+	s.addBufferedTokenIfExists(ctx)
+	s.isAnchor = false
+	return true
 }
 
 func (s *Scanner) isMergeKey(ctx *Context) bool {
@@ -942,13 +967,6 @@ func (s *Scanner) scan(ctx *Context) error {
 			if s.scanSequence(ctx) {
 				continue
 			}
-			if ctx.existsBuffer() {
-				// '-' is literal
-				ctx.addBuf(c)
-				ctx.addOriginBuf(c)
-				s.progressColumn(ctx, 1)
-				continue
-			}
 		case '[':
 			if s.scanFlowArrayStart(ctx) {
 				continue
@@ -998,36 +1016,16 @@ func (s *Scanner) scan(ctx *Context) error {
 				continue
 			}
 		case '\'', '"':
-			if !ctx.existsBuffer() {
-				ctx.addToken(s.scanQuote(ctx, c))
-				// If the non-whitespace character immediately following the quote is ':', the quote should be treated as a map key.
-				// Therefore, do not return and continue processing as a normal map key.
-				if ctx.currentCharWithSkipWhitespace() == ':' {
-					continue
-				}
-				ctx.clear()
+			if s.scanQuote(ctx, c) {
 				continue
 			}
 		case '\r', '\n':
 			s.scanNewLine(ctx, c)
 			continue
 		case ' ':
-			if ctx.isDocument() || (!s.isAnchor && !s.isFirstCharAtLine) {
-				ctx.addBuf(c)
-				ctx.addOriginBuf(c)
-				s.progressColumn(ctx, 1)
+			if s.scanWhiteSpace(ctx) {
 				continue
 			}
-			if s.isFirstCharAtLine {
-				s.progressColumn(ctx, 1)
-				ctx.addOriginBuf(c)
-				continue
-			}
-			s.addBufferedTokenIfExists(ctx)
-			s.isAnchor = false
-			// rescan white space at next scanning for adding white space to next buffer.
-			ctx.clear()
-			continue
 		}
 		ctx.addBuf(c)
 		ctx.addOriginBuf(c)

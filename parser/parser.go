@@ -719,6 +719,9 @@ func ParseBytes(bytes []byte, mode Mode) (*ast.File, error) {
 
 // Parse parse from token instances, and returns ast.File
 func Parse(tokens token.Tokens, mode Mode) (*ast.File, error) {
+	if tk := tokens.InvalidToken(); tk != nil {
+		return nil, errors.ErrSyntax("found invalid token", tk)
+	}
 	var p parser
 	f, err := p.parse(tokens, mode)
 	if err != nil {

@@ -2393,3 +2393,30 @@ b: 1`,
 		})
 	}
 }
+
+func TestInvalid(t *testing.T) {
+	tests := []struct {
+		name string
+		src  string
+	}{
+		{
+			name: "literal opt",
+			src: `
+a: |invalid
+  foo`,
+		},
+		{
+			name: "literal opt",
+			src: `
+a: |invalid`,
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			got := lexer.Tokenize(test.src)
+			if got.InvalidToken() == nil {
+				t.Fatal("expected contains invalid token")
+			}
+		})
+	}
+}

@@ -6,8 +6,6 @@ import (
 	"github.com/goccy/go-yaml/token"
 )
 
-const whitespace = ' '
-
 // Context context at scanning
 type Context struct {
 	idx                int
@@ -148,18 +146,6 @@ func (c *Context) previousChar() rune {
 func (c *Context) currentChar() rune {
 	if c.size > c.idx {
 		return c.src[c.idx]
-	}
-	return rune(0)
-}
-
-func (c *Context) currentCharWithSkipWhitespace() rune {
-	idx := c.idx
-	for c.size > idx {
-		ch := c.src[idx]
-		if ch != whitespace {
-			return ch
-		}
-		idx++
 	}
 	return rune(0)
 }

@@ -109,6 +109,20 @@ func CustomUnmarshaler[T any](unmarshaler func(*T, []byte) error) DecodeOption {
 	}
 }
 
+// CustomInterfaceUnmarshaler overrides any decoding process for the type specified in generics.
+//
+// NOTE: If RegisterCustomUnmarshaler and CustomUnmarshaler of DecodeOption are specified for the same type,
+// the CustomUnmarshaler specified in DecodeOption takes precedence.
+func CustomInterfaceUnmarshaler[T any](unmarshaler func(*T, func(interface{}) error) error) DecodeOption {
+	return func(d *Decoder) error {
+		var typ *T
+		d.customInterfaceUnmarshalerMap[reflect.TypeOf(typ)] = func(v interface{}, f func(interface{}) error) error {
+			return unmarshaler(v.(*T), f)
+		}
+		return nil
+	}
+}
+
 // EncodeOption functional option type for Encoder
 type EncodeOption func(e *Encoder) error
 
@@ -189,6 +203,21 @@ func CustomMarshaler[T any](marshaler func(T) ([]byte, error)) EncodeOption {
 	return func(e *Encoder) error {
 		var typ T
 		e.customMarshalerMap[reflect.TypeOf(typ)] = func(v interface{}) ([]byte, error) {
+			return marshaler(v.(T))
+		}
+		return nil
+	}
+}
+
+// CustomInterfaceMarshaler overrides any encoding process for the type specified in generics.
+//
+// NOTE: If type T implements MarshalYAML for pointer receiver, the type specified in CustomMarshaler must be *T.
+// If RegisterCustomMarshaler and CustomMarshaler of EncodeOption are specified for the same type,
+// the CustomMarshaler specified in EncodeOption takes precedence.
+func CustomInterfaceMarshaler[T any](marshaler func(T) (interface{}, error)) EncodeOption {
+	return func(e *Encoder) error {
+		var typ T
+		e.customInterfaceMarshalerMap[reflect.TypeOf(typ)] = func(v interface{}) (interface{}, error) {
 			return marshaler(v.(T))
 		}
 		return nil

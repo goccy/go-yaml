@@ -1282,3 +1282,44 @@ func TestRegisterCustomUnmarshaler(t *testing.T) {
 		t.Fatalf("failed to decode. got %q", v.Foo)
 	}
 }
+
+func TestRegisterCustomInterfaceMarshaler(t *testing.T) {
+	type T struct {
+		Foo []byte `yaml:"foo"`
+	}
+	yaml.RegisterCustomInterfaceMarshaler[T](func(_ T) (interface{}, error) {
+		return "override", nil
+	})
+	b, err := yaml.Marshal(&T{Foo: []byte("bar")})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(b, []byte("override\n")) {
+		t.Fatalf("failed to register custom interface marshaler. got: %q", b)
+	}
+}
+
+func TestRegisterCustomInterfaceUnmarshaler(t *testing.T) {
+	type T struct {
+		Foo []byte `yaml:"foo"`
+	}
+	yaml.RegisterCustomInterfaceUnmarshaler[T](func(v *T, unmarshaler func(interface{}) error) error {
+		m := map[string]string{}
+		if err := unmarshaler(&m); err != nil {
+			return err
+		}
+		if m["foo"] != "bar" {
+			t.Fatalf("failed to use unmarshal function. got %q", m["foo"])
+			return nil
+		}
+		v.Foo = []byte("override")
+		return nil
+	})
+	var v T
+	if err := yaml.Unmarshal([]byte(`foo: "bar"`), &v); err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(v.Foo, []byte("override")) {
+		t.Fatalf("failed to decode. got %q", v.Foo)
+	}
+}

@@ -49,6 +49,14 @@ func (c *Context) release() {
 	ctxPool.Put(c)
 }
 
+func (c *Context) clear() {
+	c.resetBuffer()
+	c.isRawFolded = false
+	c.isLiteral = false
+	c.isFolded = false
+	c.literalOpt = ""
+}
+
 func (c *Context) reset(src []rune) {
 	c.idx = 0
 	c.size = len(src)

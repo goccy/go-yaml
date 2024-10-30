@@ -948,7 +948,21 @@ func TestDecoder(t *testing.T) {
 			"a: &a [1, 2]\nb: *a\n",
 			struct{ B []int }{[]int{1, 2}},
 		},
-
+		{
+			"&0: *0\n*0:\n*0:",
+			map[string]any{"null": nil},
+		},
+		{
+			"key1: &anchor\n  subkey: *anchor\nkey2: *anchor\n",
+			map[string]any{
+				"key1": map[string]any{
+					"subkey": nil,
+				},
+				"key2": map[string]any{
+					"subkey": nil,
+				},
+			},
+		},
 		{
 			"tags:\n- hello-world\na: foo",
 			struct {

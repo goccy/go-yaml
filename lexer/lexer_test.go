@@ -2400,7 +2400,7 @@ func TestInvalid(t *testing.T) {
 		src  string
 	}{
 		{
-			name: "literal opt",
+			name: "literal opt with content",
 			src: `
 a: |invalid
   foo`,

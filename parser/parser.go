@@ -154,6 +154,9 @@ func (p *parser) createMapValueNode(ctx *context, key ast.MapKeyNode, colonToken
 		nullToken := p.createNullToken(colonToken)
 		ctx.insertToken(ctx.idx, nullToken)
 		return ast.Null(nullToken), nil
+	} else if tk.Type == token.CollectEntryType {
+		// implicit null value.
+		return ast.Null(tk), nil
 	}
 	var comment *ast.CommentGroupNode
 	if tk.Type == token.CommentType {

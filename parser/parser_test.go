@@ -87,6 +87,7 @@ func TestParser(t *testing.T) {
 		"a_ok: \r  bc: 2\r",
 		"a_mk: \n  bd: 3\n",
 		"a: :a",
+		"{a: , b: c}",
 	}
 	for _, src := range sources {
 		if _, err := parser.Parse(lexer.Tokenize(src), 0); err != nil {

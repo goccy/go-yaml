@@ -978,6 +978,10 @@ func TestDecoder(t *testing.T) {
 			"{}", struct{}{},
 		},
 		{
+			"{a: , b: c}",
+			map[string]any{"a": nil, "b": "c"},
+		},
+		{
 			"v: /a/{b}",
 			map[string]string{"v": "/a/{b}"},
 		},

@@ -185,7 +185,8 @@ a: 0 - 1
 a: 0 - 1
 `,
 		},
-		{`
+		{
+			`
 - a:
    b: c
    d: e
@@ -475,7 +476,7 @@ d: eeeeeeeeeeeeeeeee
 		},
 		{
 			`
-a: b    
+a: b
   c
 `,
 			`
@@ -484,7 +485,7 @@ a: b c
 		},
 		{
 			`
-a:    
+a:
   b: c
 `,
 			`
@@ -494,7 +495,7 @@ a:
 		},
 		{
 			`
-a: b    
+a: b
 c: d
 `,
 			`
@@ -641,6 +642,20 @@ b: 1
 		if expect != actual {
 			t.Fatal("unexpected result")
 		}
+	}
+}
+
+func TestIndentedNewLine(t *testing.T) {
+	ast, err := parser.ParseFile(filepath.Join("testdata", "indented_new_line.yml"), 0)
+	if err != nil {
+		t.Fatalf("%+v", err)
+	}
+	actual := fmt.Sprintf("%v", ast)
+	expect := `a: b
+c: d
+`
+	if expect != actual {
+		t.Fatalf("Expected:\n%s\n\nActual:\n%s\n", expect, actual)
 	}
 }
 
@@ -1029,8 +1044,7 @@ func (c *pathCapturer) Visit(node ast.Node) ast.Visitor {
 	return c
 }
 
-type Visitor struct {
-}
+type Visitor struct{}
 
 func (v *Visitor) Visit(node ast.Node) ast.Visitor {
 	tk := node.GetToken()

@@ -26,6 +26,7 @@ type Decoder struct {
 	reader               io.Reader
 	referenceReaders     []io.Reader
 	anchorNodeMap        map[string]ast.Node
+	aliasValueMap        map[*ast.AliasNode]any
 	anchorValueMap       map[string]reflect.Value
 	customUnmarshalerMap map[reflect.Type]func(interface{}, []byte) error
 	toCommentMap         CommentMap
@@ -48,6 +49,7 @@ func NewDecoder(r io.Reader, opts ...DecodeOption) *Decoder {
 	return &Decoder{
 		reader:               r,
 		anchorNodeMap:        map[string]ast.Node{},
+		aliasValueMap:        make(map[*ast.AliasNode]any),
 		anchorValueMap:       map[string]reflect.Value{},
 		customUnmarshalerMap: map[reflect.Type]func(interface{}, []byte) error{},
 		opts:                 opts,
@@ -301,9 +303,19 @@ func (d *Decoder) nodeToValue(node ast.Node) interface{} {
 		d.anchorNodeMap[anchorName] = n.Value
 		return anchorValue
 	case *ast.AliasNode:
+		if v, exists := d.aliasValueMap[n]; exists {
+			return v
+		}
+		// To handle the case where alias is processed recursively, the result of alias can be set to nil in advance.
+		d.aliasValueMap[n] = nil
+
 		aliasName := n.Value.GetToken().Value
 		node := d.anchorNodeMap[aliasName]
-		return d.nodeToValue(node)
+		aliasValue := d.nodeToValue(node)
+
+		// once the correct alias value is obtained, overwrite with that value.
+		d.aliasValueMap[n] = aliasValue
+		return aliasValue
 	case *ast.LiteralNode:
 		return n.Value.GetValue()
 	case *ast.MappingKeyNode:

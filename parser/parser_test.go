@@ -724,6 +724,56 @@ a: |invalidopt
           ^
    3 |   foo`,
 		},
+		{
+			`
+a: 1
+b
+`,
+			`
+[3:1] required ':' and map value
+   2 | a: 1
+>  3 | b
+       ^
+`,
+		},
+		{
+			`
+a: 1
+b
+- c
+`,
+			`
+[4:1] required ':' and map value
+   2 | a: 1
+   3 | b
+>  4 | - c
+       ^
+`,
+		},
+		{
+			`a: [`,
+			`
+[1:4] sequence end token ']' not found
+>  1 | a: [
+          ^
+`,
+		},
+		{
+			`a: ]`,
+			`
+[1:4] could not find '[' character corresponding to ']'
+>  1 | a: ]
+          ^
+`,
+		},
+		{
+			`a: [ [1] [2] [3] ]`,
+			`
+[1:10] ',' or ']' must be specified
+>  1 | a: [ [1] [2] [3] ]
+                ^
+`,
+		},
 	}
 	for _, test := range tests {
 		t.Run(test.source, func(t *testing.T) {

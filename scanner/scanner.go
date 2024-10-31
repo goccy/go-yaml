@@ -649,7 +649,7 @@ func (s *Scanner) scanFlowArrayStart(ctx *Context) bool {
 }
 
 func (s *Scanner) scanFlowArrayEnd(ctx *Context) bool {
-	if s.startedFlowSequenceNum <= 0 {
+	if ctx.existsBuffer() && s.startedFlowSequenceNum <= 0 {
 		return false
 	}
 

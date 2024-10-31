@@ -46,6 +46,8 @@ func (p *parser) parseSequence(ctx *context) (*ast.SequenceNode, error) {
 	node := ast.Sequence(ctx.currentToken(), true)
 	node.SetPath(ctx.path)
 	ctx.progress(1) // skip SequenceStart token
+
+	isFirst := true
 	for ctx.next() {
 		tk := ctx.currentToken()
 		if tk.Type == token.SequenceEndType {
@@ -53,15 +55,27 @@ func (p *parser) parseSequence(ctx *context) (*ast.SequenceNode, error) {
 			break
 		} else if tk.Type == token.CollectEntryType {
 			ctx.progress(1)
-			continue
+		} else if !isFirst {
+			return nil, errors.ErrSyntax("',' or ']' must be specified", tk)
 		}
 
-		value, err := p.parseToken(ctx.withIndex(uint(len(node.Values))), tk)
+		if tk := ctx.currentToken(); tk != nil && tk.Type == token.SequenceEndType {
+			// this case is here: "[ elem, ]".
+			// In this case, ignore the last element and break sequence parsing.
+			node.End = tk
+			break
+		}
+
+		value, err := p.parseToken(ctx.withIndex(uint(len(node.Values))), ctx.currentToken())
 		if err != nil {
 			return nil, err
 		}
 		node.Values = append(node.Values, value)
 		ctx.progress(1)
+		isFirst = false
+	}
+	if node.End == nil || node.End.Type != token.SequenceEndType {
+		return nil, errors.ErrSyntax("sequence end token ']' not found", node.Start)
 	}
 	return node, nil
 }
@@ -227,7 +241,7 @@ func (p *parser) validateMapValue(ctx *context, key, value ast.Node) error {
 	}
 	ntk := ctx.nextToken()
 	if ntk == nil || (ntk.Type != token.MappingValueType && ntk.Type != token.SequenceEntryType) {
-		return errors.ErrSyntax("could not found expected ':' token", value.GetToken())
+		return errors.ErrSyntax("could not find expected ':' token", value.GetToken())
 	}
 	return nil
 }
@@ -272,8 +286,16 @@ func (p *parser) parseMappingValue(ctx *context) (ast.Node, error) {
 
 	ntk := ctx.nextNotCommentToken()
 	antk := ctx.afterNextNotCommentToken()
-	for antk != nil && antk.Type == token.MappingValueType &&
-		ntk.Position.Column == key.GetToken().Position.Column {
+	for ntk != nil && ntk.Position.Column == key.GetToken().Position.Column {
+		if ntk.Type == token.DocumentHeaderType || ntk.Type == token.DocumentEndType {
+			break
+		}
+		if antk == nil {
+			return nil, errors.ErrSyntax("required ':' and map value", ntk)
+		}
+		if antk.Type != token.MappingValueType {
+			return nil, errors.ErrSyntax("required ':' and map value", antk)
+		}
 		ctx.progressIgnoreComment(1)
 		value, err := p.parseToken(ctx, ctx.currentToken())
 		if err != nil {
@@ -667,6 +689,10 @@ func (p *parser) createNodeFromToken(ctx *context, tk *token.Token) (ast.Node, e
 		return p.parseMapping(ctx)
 	case token.SequenceStartType:
 		return p.parseSequence(ctx)
+	case token.SequenceEndType:
+		// SequenceEndType is always validated in parseSequence.
+		// Therefore, if this is found in other cases, it is treated as a syntax error.
+		return nil, errors.ErrSyntax("could not find '[' character corresponding to ']'", tk)
 	case token.SequenceEntryType:
 		return p.parseSequenceEntry(ctx)
 	case token.AnchorType:

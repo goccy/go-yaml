@@ -209,7 +209,7 @@ func (s *Scanner) breakLiteral(ctx *Context) {
 	ctx.breakLiteral()
 }
 
-func (s *Scanner) scanSingleQuote(ctx *Context) *token.Token {
+func (s *Scanner) scanSingleQuote(ctx *Context) (*token.Token, error) {
 	ctx.addOriginBuf('\'')
 	srcpos := s.pos()
 	startIndex := ctx.idx + 1
@@ -219,7 +219,6 @@ func (s *Scanner) scanSingleQuote(ctx *Context) *token.Token {
 	isFirstLineChar := false
 	isNewLine := false
 
-	var tk *token.Token
 	for idx := startIndex; idx < size; idx++ {
 		if !isNewLine {
 			s.progressColumn(ctx, 1)
@@ -250,10 +249,13 @@ func (s *Scanner) scanSingleQuote(ctx *Context) *token.Token {
 			continue
 		}
 		s.progressColumn(ctx, 1)
-		tk = token.SingleQuote(string(value), string(ctx.obuf), srcpos)
-		return tk
+		return token.SingleQuote(string(value), string(ctx.obuf), srcpos), nil
 	}
-	return tk
+	s.progressColumn(ctx, 1)
+	return nil, ErrInvalidToken(
+		"could not find end character of single-quotated text",
+		token.Invalid(string(ctx.obuf), srcpos),
+	)
 }
 
 func hexToInt(b rune) int {
@@ -274,7 +276,7 @@ func hexRunesToInt(b []rune) int {
 	return sum
 }
 
-func (s *Scanner) scanDoubleQuote(ctx *Context) *token.Token {
+func (s *Scanner) scanDoubleQuote(ctx *Context) (*token.Token, error) {
 	ctx.addOriginBuf('"')
 	srcpos := s.pos()
 	startIndex := ctx.idx + 1
@@ -284,7 +286,6 @@ func (s *Scanner) scanDoubleQuote(ctx *Context) *token.Token {
 	isFirstLineChar := false
 	isNewLine := false
 
-	var tk *token.Token
 	for idx := startIndex; idx < size; idx++ {
 		if !isNewLine {
 			s.progressColumn(ctx, 1)
@@ -400,23 +401,34 @@ func (s *Scanner) scanDoubleQuote(ctx *Context) *token.Token {
 			continue
 		}
 		s.progressColumn(ctx, 1)
-		tk = token.DoubleQuote(string(value), string(ctx.obuf), srcpos)
-		return tk
+		return token.DoubleQuote(string(value), string(ctx.obuf), srcpos), nil
 	}
-	return tk
+	s.progressColumn(ctx, 1)
+	return nil, ErrInvalidToken(
+		"could not find end character of double-quotated text",
+		token.Invalid(string(ctx.obuf), srcpos),
+	)
 }
 
-func (s *Scanner) scanQuote(ctx *Context, ch rune) bool {
+func (s *Scanner) scanQuote(ctx *Context, ch rune) (bool, error) {
 	if ctx.existsBuffer() {
-		return false
+		return false, nil
 	}
 	if ch == '\'' {
-		ctx.addToken(s.scanSingleQuote(ctx))
+		tk, err := s.scanSingleQuote(ctx)
+		if err != nil {
+			return false, err
+		}
+		ctx.addToken(tk)
 	} else {
-		ctx.addToken(s.scanDoubleQuote(ctx))
+		tk, err := s.scanDoubleQuote(ctx)
+		if err != nil {
+			return false, err
+		}
+		ctx.addToken(tk)
 	}
 	ctx.clear()
-	return true
+	return true, nil
 }
 
 func (s *Scanner) scanWhiteSpace(ctx *Context) bool {
@@ -850,16 +862,16 @@ func (s *Scanner) scanLiteralHeaderOption(ctx *Context) error {
 				s.progressColumn(ctx, progress)
 				return nil
 			default:
-				tk := token.Invalid(string(header)+opt, s.pos())
+				invalidTk := token.Invalid(string(ctx.obuf), s.pos())
 				s.progressColumn(ctx, progress)
-				return ErrInvalidToken(fmt.Sprintf("invalid literal header: %q", opt), tk)
+				return ErrInvalidToken(fmt.Sprintf("invalid literal header: %q", opt), invalidTk)
 			}
 		}
 	}
 	text := string(ctx.src[ctx.idx:])
-	tk := token.Invalid(string(header)+text, s.pos())
+	invalidTk := token.Invalid(string(ctx.obuf), s.pos())
 	s.progressColumn(ctx, len(text))
-	return ErrInvalidToken(fmt.Sprintf("invalid literal header: %q", text), tk)
+	return ErrInvalidToken(fmt.Sprintf("invalid literal header: %q", text), invalidTk)
 }
 
 func (s *Scanner) scanMapKey(ctx *Context) bool {
@@ -1016,7 +1028,11 @@ func (s *Scanner) scan(ctx *Context) error {
 				continue
 			}
 		case '\'', '"':
-			if s.scanQuote(ctx, c) {
+			scanned, err := s.scanQuote(ctx, c)
+			if err != nil {
+				return err
+			}
+			if scanned {
 				continue
 			}
 		case '\r', '\n':

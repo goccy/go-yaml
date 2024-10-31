@@ -2410,6 +2410,14 @@ a: |invalid
 			src: `
 a: |invalid`,
 		},
+		{
+			name: "invalid single-quoted",
+			src:  `a: 'foobarbaz`,
+		},
+		{
+			name: "invalid double-quoted",
+			src:  `a: "\"key\": \"value:\"`,
+		},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {

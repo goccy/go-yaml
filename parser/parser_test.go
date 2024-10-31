@@ -720,7 +720,7 @@ a: |invalidopt
 `,
 			`
 [2:4] found invalid token
->  2 | a:|invalidopt
+>  2 | a: |invalidopt
           ^
    3 |   foo`,
 		},
@@ -796,6 +796,22 @@ b: - 2
 >  2 | a: - 1
           ^
    3 | b: - 2`,
+		},
+		{
+			`a: 'foobarbaz`,
+			`
+[1:4] found invalid token
+>  1 | a: 'foobarbaz
+          ^
+`,
+		},
+		{
+			`a: "\"key\": \"value:\"`,
+			`
+[1:4] found invalid token
+>  1 | a: "\"key\": \"value:\"
+          ^
+`,
 		},
 	}
 	for _, test := range tests {

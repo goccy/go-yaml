@@ -231,9 +231,13 @@ func (p *parser) createMapValueNode(ctx *context, key ast.MapKeyNode, colonToken
 }
 
 func (p *parser) validateMapValue(ctx *context, key, value ast.Node) error {
-	keyColumn := key.GetToken().Position.Column
-	valueColumn := value.GetToken().Position.Column
-	if keyColumn != valueColumn {
+	keyTk := key.GetToken()
+	valueTk := value.GetToken()
+
+	if keyTk.Position.Line == valueTk.Position.Line && valueTk.Type == token.SequenceEntryType {
+		return errors.ErrSyntax("block sequence entries are not allowed in this context", valueTk)
+	}
+	if keyTk.Position.Column != valueTk.Position.Column {
 		return nil
 	}
 	if value.Type() != ast.StringType {
@@ -241,7 +245,7 @@ func (p *parser) validateMapValue(ctx *context, key, value ast.Node) error {
 	}
 	ntk := ctx.nextToken()
 	if ntk == nil || (ntk.Type != token.MappingValueType && ntk.Type != token.SequenceEntryType) {
-		return errors.ErrSyntax("could not find expected ':' token", value.GetToken())
+		return errors.ErrSyntax("could not find expected ':' token", valueTk)
 	}
 	return nil
 }
@@ -352,7 +356,7 @@ func (p *parser) parseSequenceEntry(ctx *context) (*ast.SequenceNode, error) {
 		ctx.progress(1) // skip sequence token
 		tk = ctx.currentToken()
 		if tk == nil {
-			return nil, errors.ErrSyntax("empty sequence entry", ctx.previousToken())
+			return nil, errors.ErrSyntax("empty sequence value", ctx.previousToken())
 		}
 		var comment *ast.CommentGroupNode
 		if tk.Type == token.CommentType {

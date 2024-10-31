@@ -706,7 +706,7 @@ a:
 - b: c
 - `,
 			`
-[4:1] empty sequence entry
+[4:1] empty sequence value
    2 | a:
    3 | - b: c
 >  4 | -
@@ -773,6 +773,29 @@ b
 >  1 | a: [ [1] [2] [3] ]
                 ^
 `,
+		},
+		{
+			`
+a: -
+b: -
+`,
+			`
+[3:4] empty sequence value
+   2 | a: -
+>  3 | b: -
+          ^
+`,
+		},
+		{
+			`
+a: - 1
+b: - 2
+`,
+			`
+[2:4] block sequence entries are not allowed in this context
+>  2 | a: - 1
+          ^
+   3 | b: - 2`,
 		},
 	}
 	for _, test := range tests {

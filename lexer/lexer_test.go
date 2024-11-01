@@ -533,17 +533,18 @@ func TestTokenize(t *testing.T) {
 			},
 		},
 		{
-			YAML: `v:
-		- A
-		- B
-		`,
+			YAML: `
+v:
+- A
+- B
+`,
 			Tokens: token.Tokens{
 				{
 					Type:          token.StringType,
 					CharacterType: token.CharacterTypeMiscellaneous,
 					Indicator:     token.NotIndicator,
 					Value:         "v",
-					Origin:        "v",
+					Origin:        "\nv",
 				},
 				{
 					Type:          token.MappingValueType,
@@ -557,7 +558,7 @@ func TestTokenize(t *testing.T) {
 					CharacterType: token.CharacterTypeIndicator,
 					Indicator:     token.BlockStructureIndicator,
 					Value:         "-",
-					Origin:        "\n\t\t-",
+					Origin:        "\n-",
 				},
 				{
 					Type:          token.StringType,
@@ -571,31 +572,32 @@ func TestTokenize(t *testing.T) {
 					CharacterType: token.CharacterTypeIndicator,
 					Indicator:     token.BlockStructureIndicator,
 					Value:         "-",
-					Origin:        "\t\t-",
+					Origin:        "-",
 				},
 				{
 					Type:          token.StringType,
 					CharacterType: token.CharacterTypeMiscellaneous,
 					Indicator:     token.NotIndicator,
 					Value:         "B",
-					Origin:        " B\n",
+					Origin:        " B",
 				},
 			},
 		},
 		{
-			YAML: `v:
-		- A
-		- |-
-		 B
-		 C
-		`,
+			YAML: `
+v:
+- A
+- |-
+ B
+ C
+`,
 			Tokens: token.Tokens{
 				{
 					Type:          token.StringType,
 					CharacterType: token.CharacterTypeMiscellaneous,
 					Indicator:     token.NotIndicator,
 					Value:         "v",
-					Origin:        "v",
+					Origin:        "\nv",
 				},
 				{
 					Type:          token.MappingValueType,
@@ -609,7 +611,7 @@ func TestTokenize(t *testing.T) {
 					CharacterType: token.CharacterTypeIndicator,
 					Indicator:     token.BlockStructureIndicator,
 					Value:         "-",
-					Origin:        "\n\t\t-",
+					Origin:        "\n-",
 				},
 				{
 					Type:          token.StringType,
@@ -623,7 +625,7 @@ func TestTokenize(t *testing.T) {
 					CharacterType: token.CharacterTypeIndicator,
 					Indicator:     token.BlockStructureIndicator,
 					Value:         "-",
-					Origin:        "\t\t-",
+					Origin:        "-",
 				},
 				{
 					Type:          token.LiteralType,
@@ -636,33 +638,27 @@ func TestTokenize(t *testing.T) {
 					Type:          token.StringType,
 					CharacterType: token.CharacterTypeMiscellaneous,
 					Indicator:     token.NotIndicator,
-					Value:         "\t\t B",
-					Origin:        "\t\t B\n",
-				},
-				{
-					Type:          token.StringType,
-					CharacterType: token.CharacterTypeMiscellaneous,
-					Indicator:     token.NotIndicator,
-					Value:         "\t\t C",
-					Origin:        "\t\t C\n",
+					Value:         "B\nC",
+					Origin:        " B\n C\n",
 				},
 			},
 		},
 		{
-			YAML: `v:
-		- A
-		- 1
-		- B:
-		 - 2
-		 - 3
-		`,
+			YAML: `
+v:
+- A
+- 1
+- B:
+ - 2
+ - 3
+`,
 			Tokens: token.Tokens{
 				{
 					Type:          token.StringType,
 					CharacterType: token.CharacterTypeMiscellaneous,
 					Indicator:     token.NotIndicator,
 					Value:         "v",
-					Origin:        "v",
+					Origin:        "\nv",
 				},
 				{
 					Type:          token.MappingValueType,
@@ -676,7 +672,7 @@ func TestTokenize(t *testing.T) {
 					CharacterType: token.CharacterTypeIndicator,
 					Indicator:     token.BlockStructureIndicator,
 					Value:         "-",
-					Origin:        "\n\t\t-",
+					Origin:        "\n-",
 				},
 				{
 					Type:          token.StringType,
@@ -690,7 +686,7 @@ func TestTokenize(t *testing.T) {
 					CharacterType: token.CharacterTypeIndicator,
 					Indicator:     token.BlockStructureIndicator,
 					Value:         "-",
-					Origin:        "\t\t-",
+					Origin:        "-",
 				},
 				{
 					Type:          token.IntegerType,
@@ -704,7 +700,7 @@ func TestTokenize(t *testing.T) {
 					CharacterType: token.CharacterTypeIndicator,
 					Indicator:     token.BlockStructureIndicator,
 					Value:         "-",
-					Origin:        "\t\t-",
+					Origin:        "-",
 				},
 				{
 					Type:          token.StringType,
@@ -725,42 +721,43 @@ func TestTokenize(t *testing.T) {
 					CharacterType: token.CharacterTypeIndicator,
 					Indicator:     token.BlockStructureIndicator,
 					Value:         "-",
-					Origin:        "\n\t\t -",
+					Origin:        "\n -",
 				},
 				{
 					Type:          token.IntegerType,
 					CharacterType: token.CharacterTypeMiscellaneous,
 					Indicator:     token.NotIndicator,
 					Value:         "2",
-					Origin:        " 2\n",
+					Origin:        " 2\n ",
 				},
 				{
 					Type:          token.SequenceEntryType,
 					CharacterType: token.CharacterTypeIndicator,
 					Indicator:     token.BlockStructureIndicator,
 					Value:         "-",
-					Origin:        "\t\t -",
+					Origin:        "-",
 				},
 				{
 					Type:          token.IntegerType,
 					CharacterType: token.CharacterTypeMiscellaneous,
 					Indicator:     token.NotIndicator,
 					Value:         "3",
-					Origin:        " 3\n",
+					Origin:        " 3",
 				},
 			},
 		},
 		{
-			YAML: `a:
-		 b: c
-		`,
+			YAML: `
+a:
+ b: c
+`,
 			Tokens: token.Tokens{
 				{
 					Type:          token.StringType,
 					CharacterType: token.CharacterTypeMiscellaneous,
 					Indicator:     token.NotIndicator,
 					Value:         "a",
-					Origin:        "a",
+					Origin:        "\na",
 				},
 				{
 					Type:          token.MappingValueType,
@@ -773,8 +770,8 @@ func TestTokenize(t *testing.T) {
 					Type:          token.StringType,
 					CharacterType: token.CharacterTypeMiscellaneous,
 					Indicator:     token.NotIndicator,
-					Value:         "\t\t b",
-					Origin:        "\n\t\t b",
+					Value:         "b",
+					Origin:        "\n b",
 				},
 				{
 					Type:          token.MappingValueType,
@@ -788,7 +785,7 @@ func TestTokenize(t *testing.T) {
 					CharacterType: token.CharacterTypeMiscellaneous,
 					Indicator:     token.NotIndicator,
 					Value:         "c",
-					Origin:        " c\n",
+					Origin:        " c",
 				},
 			},
 		},
@@ -834,7 +831,7 @@ func TestTokenize(t *testing.T) {
 		},
 		{
 			YAML: `hello: world
-		`,
+`,
 			Tokens: token.Tokens{
 				{
 					Type:          token.StringType,
@@ -855,7 +852,7 @@ func TestTokenize(t *testing.T) {
 					CharacterType: token.CharacterTypeMiscellaneous,
 					Indicator:     token.NotIndicator,
 					Value:         "world",
-					Origin:        " world\n",
+					Origin:        " world",
 				},
 			},
 		},
@@ -1271,17 +1268,18 @@ func TestTokenize(t *testing.T) {
 			},
 		},
 		{
-			YAML: `a: !!binary |
-		 kJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJ
-		 CQ
-		`,
+			YAML: `
+a: !!binary |
+ kJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJ
+ CQ
+`,
 			Tokens: token.Tokens{
 				{
 					Type:          token.StringType,
 					CharacterType: token.CharacterTypeMiscellaneous,
 					Indicator:     token.NotIndicator,
 					Value:         "a",
-					Origin:        "a",
+					Origin:        "\na",
 				},
 				{
 					Type:          token.MappingValueType,
@@ -1308,15 +1306,8 @@ func TestTokenize(t *testing.T) {
 					Type:          token.StringType,
 					CharacterType: token.CharacterTypeMiscellaneous,
 					Indicator:     token.NotIndicator,
-					Value:         "\t\t kJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJ",
-					Origin:        "\t\t kJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJ\n",
-				},
-				{
-					Type:          token.StringType,
-					CharacterType: token.CharacterTypeMiscellaneous,
-					Indicator:     token.NotIndicator,
-					Value:         "\t\t CQ",
-					Origin:        "\t\t CQ\n",
+					Value:         "kJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJ\nCQ\n",
+					Origin:        " kJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJ\n CQ\n",
 				},
 			},
 		},

@@ -88,6 +88,10 @@ func TestParser(t *testing.T) {
 		"a_mk: \n  bd: 3\n",
 		"a: :a",
 		"{a: , b: c}",
+		"value: >\n",
+		"value: >\n\n",
+		"value: >\nother:",
+		"value: >\n\nother:",
 	}
 	for _, src := range sources {
 		if _, err := parser.Parse(lexer.Tokenize(src), 0); err != nil {
@@ -811,6 +815,22 @@ b: - 2
 [1:4] found invalid token
 >  1 | a: "\"key\": \"value:\"
           ^
+`,
+		},
+		{
+			`foo: [${should not be allowed}]`,
+			`
+[1:8] ',' or ']' must be specified
+>  1 | foo: [${should not be allowed}]
+              ^
+`,
+		},
+		{
+			`foo: [$[should not be allowed]]`,
+			`
+[1:8] ',' or ']' must be specified
+>  1 | foo: [$[should not be allowed]]
+              ^
 `,
 		},
 	}

@@ -654,6 +654,10 @@ func (p *parser) parseLiteral(ctx *context) (*ast.LiteralNode, error) {
 	p.progress(1) // skip literal/folded token
 
 	tk := p.currentToken()
+	if tk == nil {
+		node.Value = ast.String(token.New("", "", node.Start.Position))
+		return node, nil
+	}
 	var comment *ast.CommentGroupNode
 	if tk.Type == token.CommentType {
 		comment = p.parseCommentOnly(ctx)

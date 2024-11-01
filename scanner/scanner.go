@@ -620,11 +620,22 @@ func (s *Scanner) scanNewLine(ctx *Context, c rune) {
 	s.progressLine(ctx)
 }
 
+func (s *Scanner) isFlowMode() bool {
+	if s.startedFlowSequenceNum > 0 {
+		return true
+	}
+	if s.startedFlowMapNum > 0 {
+		return true
+	}
+	return false
+}
+
 func (s *Scanner) scanFlowMapStart(ctx *Context) bool {
-	if ctx.existsBuffer() {
+	if ctx.existsBuffer() && !s.isFlowMode() {
 		return false
 	}
 
+	s.addBufferedTokenIfExists(ctx)
 	ctx.addOriginBuf('{')
 	ctx.addToken(token.MappingStart(string(ctx.obuf), s.pos()))
 	s.startedFlowMapNum++
@@ -648,10 +659,11 @@ func (s *Scanner) scanFlowMapEnd(ctx *Context) bool {
 }
 
 func (s *Scanner) scanFlowArrayStart(ctx *Context) bool {
-	if ctx.existsBuffer() {
+	if ctx.existsBuffer() && !s.isFlowMode() {
 		return false
 	}
 
+	s.addBufferedTokenIfExists(ctx)
 	ctx.addOriginBuf('[')
 	ctx.addToken(token.SequenceStart(string(ctx.obuf), s.pos()))
 	s.startedFlowSequenceNum++
@@ -946,6 +958,13 @@ func (s *Scanner) scan(ctx *Context) error {
 		}
 		if ctx.isDocument() {
 			if s.isChangedToIndentStateDown() {
+				if tk := ctx.lastToken(); tk != nil {
+					// If literal/folded content is empty, no string token is added.
+					// Therefore, add an empty string token.
+					if tk.Type != token.StringType {
+						ctx.addToken(token.String("", "", s.pos()))
+					}
+				}
 				s.breakLiteral(ctx)
 			} else {
 				s.scanLiteral(ctx, c)

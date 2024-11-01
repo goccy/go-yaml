@@ -283,7 +283,7 @@ func checkLineBreak(t *token.Token) bool {
 		lbc := "\n"
 		prev := t.Prev
 		var adjustment int
-		// if the previous type is sequence entry user the previous type for that
+		// if the previous type is sequence entry use the previous type for that
 		if prev.Type == token.SequenceEntryType {
 			// as well as switching to previous type count any new lines in origin to account for:
 			// -

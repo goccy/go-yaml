@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"strconv"
 	"strings"
 
 	"github.com/goccy/go-yaml/token"
@@ -43,7 +44,6 @@ type Scanner struct {
 	prevLineIndentNum int
 	// indentLevel indicates the level of indent depth. This value does not match the column value.
 	indentLevel            int
-	docStartColumn         int
 	isFirstCharAtLine      bool
 	isAnchor               bool
 	startedFlowSequenceNum int
@@ -204,9 +204,8 @@ func (s *Scanner) addBufferedTokenIfExists(ctx *Context) {
 	ctx.addToken(s.bufferedToken(ctx))
 }
 
-func (s *Scanner) breakLiteral(ctx *Context) {
-	s.docStartColumn = 0
-	ctx.breakLiteral()
+func (s *Scanner) breakDocument(ctx *Context) {
+	ctx.breakDocument()
 }
 
 func (s *Scanner) scanSingleQuote(ctx *Context) (*token.Token, error) {
@@ -535,26 +534,32 @@ func (s *Scanner) scanComment(ctx *Context) bool {
 	return true
 }
 
-func (s *Scanner) trimCommentFromLiteralOpt(text string, header rune) (string, error) {
+func (s *Scanner) trimCommentFromDocumentOpt(text string, header rune) (string, error) {
 	idx := strings.Index(text, "#")
 	if idx < 0 {
 		return text, nil
 	}
 	if idx == 0 {
 		return "", ErrInvalidToken(
-			fmt.Sprintf("invalid literal header %s", text),
+			fmt.Sprintf("invalid document header %s", text),
 			token.Invalid(string(header)+text, s.pos()),
 		)
 	}
 	return text[:idx-1], nil
 }
 
-func (s *Scanner) scanLiteral(ctx *Context, c rune) {
+func (s *Scanner) scanDocument(ctx *Context, c rune) error {
 	ctx.addOriginBuf(c)
 	if ctx.isEOS() {
+		ctx.updateDocumentLineIndentColumn(s.column)
+		if err := ctx.validateDocumentLineIndentColumn(); err != nil {
+			invalidTk := token.Invalid(string(ctx.obuf), s.pos())
+			s.progressColumn(ctx, 1)
+			return ErrInvalidToken(err.Error(), invalidTk)
+		}
 		if ctx.isLiteral {
 			ctx.addBuf(c)
-		} else if ctx.isFolded && !s.isNewLineChar(c) {
+		} else if ctx.isFolded {
 			ctx.addBuf(c)
 		}
 		value := ctx.bufferedSrc()
@@ -567,19 +572,23 @@ func (s *Scanner) scanLiteral(ctx *Context, c rune) {
 		} else {
 			ctx.addBuf(' ')
 		}
+		ctx.updateDocumentNewLineState()
 		s.progressLine(ctx)
 	} else if s.isFirstCharAtLine && c == ' ' {
-		if 0 < s.docStartColumn && s.docStartColumn <= s.column {
-			ctx.addBuf(c)
-		}
+		ctx.addDocumentIndent(s.column)
 		s.progressColumn(ctx, 1)
 	} else {
-		if s.docStartColumn == 0 {
-			s.docStartColumn = s.column
+		ctx.updateDocumentLineIndentColumn(s.column)
+		if err := ctx.validateDocumentLineIndentColumn(); err != nil {
+			invalidTk := token.Invalid(string(ctx.obuf), s.pos())
+			s.progressColumn(ctx, 1)
+			return ErrInvalidToken(err.Error(), invalidTk)
 		}
+		ctx.addDocumentNewLineInFolded(s.column)
 		ctx.addBuf(c)
 		s.progressColumn(ctx, 1)
 	}
+	return nil
 }
 
 func (s *Scanner) scanNewLine(ctx *Context, c rune) {
@@ -807,19 +816,36 @@ func (s *Scanner) scanSequence(ctx *Context) bool {
 	return true
 }
 
-func (s *Scanner) scanLiteralHeader(ctx *Context) (bool, error) {
+func (s *Scanner) scanDocumentHeader(ctx *Context) (bool, error) {
 	if ctx.existsBuffer() {
 		return false, nil
 	}
 
-	if err := s.scanLiteralHeaderOption(ctx); err != nil {
+	if err := s.scanDocumentHeaderOption(ctx); err != nil {
 		return false, err
 	}
+	ctx.updateDocumentIndentColumn()
 	s.progressLine(ctx)
 	return true, nil
 }
 
-func (s *Scanner) scanLiteralHeaderOption(ctx *Context) error {
+func (s *Scanner) validateDocumentHeaderOption(opt string) error {
+	if len(opt) == 0 {
+		return nil
+	}
+	if opt[0] == '+' || opt[0] == '-' {
+		opt = opt[1:]
+	}
+	if len(opt) == 0 {
+		return nil
+	}
+	if _, err := strconv.ParseInt(opt, 10, 64); err != nil {
+		return fmt.Errorf("invalid header option: %q", opt)
+	}
+	return nil
+}
+
+func (s *Scanner) scanDocumentHeaderOption(ctx *Context) error {
 	header := ctx.currentChar()
 	ctx.addOriginBuf(header)
 	s.progress(ctx, 1) // skip '|' or '>' character
@@ -831,64 +857,61 @@ func (s *Scanner) scanLiteralHeaderOption(ctx *Context) error {
 			value := ctx.source(ctx.idx, ctx.idx+idx)
 			opt := strings.TrimRight(value, " ")
 			orgOptLen := len(opt)
-			opt, err := s.trimCommentFromLiteralOpt(opt, header)
+			opt, err := s.trimCommentFromDocumentOpt(opt, header)
 			if err != nil {
 				return err
 			}
-			switch opt {
-			case "", "+", "-",
-				"0", "1", "2", "3", "4", "5", "6", "7", "8", "9":
-				hasComment := len(opt) < orgOptLen
-				if s.column == 1 {
-					s.lastDelimColumn = 1
-				}
-				if header == '|' {
-					if hasComment {
-						commentLen := orgOptLen - len(opt)
-						headerPos := strings.Index(string(ctx.obuf), "|")
-						litBuf := ctx.obuf[:len(ctx.obuf)-commentLen-headerPos]
-						commentBuf := ctx.obuf[len(litBuf):]
-						ctx.addToken(token.Literal("|"+opt, string(litBuf), s.pos()))
-						s.column += len(litBuf)
-						s.offset += len(litBuf)
-						commentHeader := strings.Index(value, "#")
-						ctx.addToken(token.Comment(string(value[commentHeader+1:]), string(commentBuf), s.pos()))
-					} else {
-						ctx.addToken(token.Literal("|"+opt, string(ctx.obuf), s.pos()))
-					}
-					ctx.isLiteral = true
-				} else if header == '>' {
-					if hasComment {
-						commentLen := orgOptLen - len(opt)
-						headerPos := strings.Index(string(ctx.obuf), ">")
-						foldedBuf := ctx.obuf[:len(ctx.obuf)-commentLen-headerPos]
-						commentBuf := ctx.obuf[len(foldedBuf):]
-						ctx.addToken(token.Folded(">"+opt, string(foldedBuf), s.pos()))
-						s.column += len(foldedBuf)
-						s.offset += len(foldedBuf)
-						commentHeader := strings.Index(value, "#")
-						ctx.addToken(token.Comment(string(value[commentHeader+1:]), string(commentBuf), s.pos()))
-					} else {
-						ctx.addToken(token.Folded(">"+opt, string(ctx.obuf), s.pos()))
-					}
-					ctx.isFolded = true
-				}
-				s.indentState = IndentStateKeep
-				ctx.resetBuffer()
-				ctx.literalOpt = opt
-				s.progressColumn(ctx, progress)
-				return nil
-			default:
+			if err := s.validateDocumentHeaderOption(opt); err != nil {
 				invalidTk := token.Invalid(string(ctx.obuf), s.pos())
 				s.progressColumn(ctx, progress)
-				return ErrInvalidToken(fmt.Sprintf("invalid literal header: %q", opt), invalidTk)
+				return ErrInvalidToken(err.Error(), invalidTk)
 			}
+			hasComment := len(opt) < orgOptLen
+			if s.column == 1 {
+				s.lastDelimColumn = 1
+			}
+			if header == '|' {
+				if hasComment {
+					commentLen := orgOptLen - len(opt)
+					headerPos := strings.Index(string(ctx.obuf), "|")
+					litBuf := ctx.obuf[:len(ctx.obuf)-commentLen-headerPos]
+					commentBuf := ctx.obuf[len(litBuf):]
+					ctx.addToken(token.Literal("|"+opt, string(litBuf), s.pos()))
+					s.column += len(litBuf)
+					s.offset += len(litBuf)
+					commentHeader := strings.Index(value, "#")
+					ctx.addToken(token.Comment(string(value[commentHeader+1:]), string(commentBuf), s.pos()))
+				} else {
+					ctx.addToken(token.Literal("|"+opt, string(ctx.obuf), s.pos()))
+				}
+				ctx.isLiteral = true
+			} else if header == '>' {
+				if hasComment {
+					commentLen := orgOptLen - len(opt)
+					headerPos := strings.Index(string(ctx.obuf), ">")
+					foldedBuf := ctx.obuf[:len(ctx.obuf)-commentLen-headerPos]
+					commentBuf := ctx.obuf[len(foldedBuf):]
+					ctx.addToken(token.Folded(">"+opt, string(foldedBuf), s.pos()))
+					s.column += len(foldedBuf)
+					s.offset += len(foldedBuf)
+					commentHeader := strings.Index(value, "#")
+					ctx.addToken(token.Comment(string(value[commentHeader+1:]), string(commentBuf), s.pos()))
+				} else {
+					ctx.addToken(token.Folded(">"+opt, string(ctx.obuf), s.pos()))
+				}
+				ctx.isFolded = true
+			}
+			s.indentState = IndentStateKeep
+			ctx.resetBuffer()
+			ctx.docOpt = opt
+			s.progressColumn(ctx, progress)
+			return nil
 		}
 	}
 	text := string(ctx.src[ctx.idx:])
 	invalidTk := token.Invalid(string(ctx.obuf), s.pos())
 	s.progressColumn(ctx, len(text))
-	return ErrInvalidToken(fmt.Sprintf("invalid literal header: %q", text), invalidTk)
+	return ErrInvalidToken(fmt.Sprintf("invalid document header: %q", text), invalidTk)
 }
 
 func (s *Scanner) scanMapKey(ctx *Context) bool {
@@ -977,9 +1000,11 @@ func (s *Scanner) scan(ctx *Context) error {
 						ctx.addToken(token.String("", "", s.pos()))
 					}
 				}
-				s.breakLiteral(ctx)
+				s.breakDocument(ctx)
 			} else {
-				s.scanLiteral(ctx, c)
+				if err := s.scanDocument(ctx, c); err != nil {
+					return err
+				}
 				continue
 			}
 		}
@@ -1027,7 +1052,7 @@ func (s *Scanner) scan(ctx *Context) error {
 				continue
 			}
 		case '|', '>':
-			scanned, err := s.scanLiteralHeader(ctx)
+			scanned, err := s.scanDocumentHeader(ctx)
 			if err != nil {
 				return err
 			}

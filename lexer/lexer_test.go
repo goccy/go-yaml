@@ -2421,6 +2421,14 @@ a: |invalid`,
 			name: "invalid double-quoted",
 			src:  `a: "\"key\": \"value:\"`,
 		},
+		{
+			name: "invalid document folded",
+			src:  ">\n>",
+		},
+		{
+			name: "invalid document number",
+			src:  ">\n1",
+		},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {

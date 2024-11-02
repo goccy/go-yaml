@@ -837,6 +837,9 @@ func (s *Scanner) scanLiteralHeaderOption(ctx *Context) error {
 			case "", "+", "-",
 				"0", "1", "2", "3", "4", "5", "6", "7", "8", "9":
 				hasComment := len(opt) < orgOptLen
+				if s.column == 1 {
+					s.lastDelimColumn = 1
+				}
 				if header == '|' {
 					if hasComment {
 						commentLen := orgOptLen - len(opt)
@@ -961,6 +964,13 @@ func (s *Scanner) scan(ctx *Context) error {
 				if tk := ctx.lastToken(); tk != nil {
 					// If literal/folded content is empty, no string token is added.
 					// Therefore, add an empty string token.
+					// But if literal/folded token column is 1, it is invalid at down state.
+					if tk.Position.Column == 1 {
+						return ErrInvalidToken(
+							"could not find document",
+							token.Invalid(string(ctx.obuf), s.pos()),
+						)
+					}
 					if tk.Type != token.StringType {
 						ctx.addToken(token.String("", "", s.pos()))
 					}

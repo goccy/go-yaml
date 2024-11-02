@@ -2153,7 +2153,6 @@ s: >-3
 	for _, test := range tests {
 		t.Run(test.YAML, func(t *testing.T) {
 			tokens := lexer.Tokenize(test.YAML)
-			tokens.Dump()
 			if len(tokens) != len(test.Tokens) {
 				t.Fatalf("Tokenize(%q) token count mismatch, expected: %d got: %d", test.YAML, len(test.Tokens), len(tokens))
 			}

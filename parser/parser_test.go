@@ -615,6 +615,10 @@ i: 'j'
 			if err != nil {
 				t.Fatalf("%+v", err)
 			}
+			got := f.String()
+			if got != strings.TrimPrefix(test.expect, "\n") {
+				t.Fatalf("failed to parse comment:\nexpected:\n%s\ngot:\n%s", strings.TrimPrefix(test.expect, "\n"), got)
+			}
 			var v Visitor
 			for _, doc := range f.Docs {
 				ast.Walk(&v, doc.Body)
@@ -623,6 +627,268 @@ i: 'j'
 			if test.expect != expect {
 				tokens.Dump()
 				t.Fatalf("unexpected output: [%s] != [%s]", test.expect, expect)
+			}
+		})
+	}
+}
+
+func TestParseWhitespace(t *testing.T) {
+	tests := []struct {
+		source string
+		expect string
+	}{
+		{
+			`
+a: b
+
+c: d
+
+
+e: f
+g: h
+`,
+			`
+a: b
+
+c: d
+
+e: f
+g: h
+`,
+		},
+		{
+			`
+a:
+  - b: c
+    d: e
+
+  - f: g
+    h: i
+`,
+			`
+a:
+  - b: c
+    d: e
+
+  - f: g
+    h: i
+`,
+		},
+		{
+			`
+a:
+  - b: c
+    d: e
+
+  - f: g
+    h: i
+`,
+			`
+a:
+  - b: c
+    d: e
+
+  - f: g
+    h: i
+`,
+		},
+		{
+			`
+a:
+- b: c
+  d: e
+
+- f: g
+  h: i
+`,
+			`
+a:
+- b: c
+  d: e
+
+- f: g
+  h: i
+`,
+		},
+		{
+			`
+a:
+# comment 1
+- b: c
+  d: e
+
+# comment 2
+- f: g
+  h: i
+`,
+			`
+a:
+# comment 1
+- b: c
+  d: e
+
+# comment 2
+- f: g
+  h: i
+`,
+		},
+		{
+			`
+a:
+  # comment 1
+  - b: c
+    # comment 2
+    d: e
+
+  # comment 3
+  # comment 4
+  - f: g
+    h: i # comment 5
+`,
+			`
+a:
+  # comment 1
+  - b: c
+    # comment 2
+    d: e
+
+  # comment 3
+  # comment 4
+  - f: g
+    h: i # comment 5
+`,
+		},
+		{
+			`
+a:
+  # comment 1
+  - b: c
+    # comment 2
+    d: e
+
+  # comment 3
+  # comment 4
+  - f: |
+      g
+      g
+    h: i # comment 5
+`,
+			`
+a:
+  # comment 1
+  - b: c
+    # comment 2
+    d: e
+
+  # comment 3
+  # comment 4
+  - f: |
+      g
+      g
+    h: i # comment 5
+`,
+		},
+		{
+			`
+a:
+  # comment 1
+  - b: c
+    # comment 2
+    d: e
+
+  # comment 3
+  # comment 4
+  - f: |
+      asd
+      def
+
+    h: i # comment 5
+`,
+			`
+a:
+  # comment 1
+  - b: c
+    # comment 2
+    d: e
+
+  # comment 3
+  # comment 4
+  - f: |
+      asd
+      def
+
+    h: i # comment 5
+`,
+		},
+		{
+			`
+- b: c
+  d: e
+
+- f: g
+  h: i # comment 4
+		`,
+			`
+- b: c
+  d: e
+
+- f: g
+  h: i # comment 4
+`,
+		},
+		{
+			`
+a: null
+b: null
+
+d: e
+`,
+			`
+a: null
+b: null
+
+d: e
+`,
+		},
+		{
+			`
+foo:
+  bar: null # comment
+
+  baz: 1
+`,
+			`
+foo:
+  bar: null # comment
+
+  baz: 1
+`,
+		},
+		{
+			`
+foo:
+  bar: null # comment
+
+baz: 1
+`,
+			`
+foo:
+  bar: null # comment
+
+baz: 1
+`,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.source, func(t *testing.T) {
+			f, err := parser.ParseBytes([]byte(test.source), parser.ParseComments)
+			if err != nil {
+				t.Fatal(err)
+			}
+			got := f.String()
+			if got != strings.TrimPrefix(test.expect, "\n") {
+				t.Fatalf("failed to parse comment:\nexpected:\n%s\ngot:\n%s", strings.TrimPrefix(test.expect, "\n"), got)
 			}
 		})
 	}
@@ -640,10 +906,11 @@ func TestNewLineChar(t *testing.T) {
 		}
 		actual := fmt.Sprintf("%v", ast)
 		expect := `a: "a"
+
 b: 1
 `
 		if expect != actual {
-			t.Fatal("unexpected result")
+			t.Fatalf("unexpected result\nexpected:\n%s\ngot:\n%s", expect, actual)
 		}
 	}
 }
@@ -966,8 +1233,9 @@ foo:
 		if len(f.Docs) != 1 {
 			t.Fatal("failed to parse content with same line comment")
 		}
-		if f.Docs[0].String() != strings.TrimPrefix(expected, "\n") {
-			t.Fatal("failed to parse comment")
+		got := f.Docs[0].String()
+		if got != strings.TrimPrefix(expected, "\n") {
+			t.Fatalf("failed to parse comment:\nexpected:\n%s\ngot:\n%s", strings.TrimPrefix(expected, "\n"), got)
 		}
 	})
 	t.Run("next line", func(t *testing.T) {
@@ -988,8 +1256,9 @@ foo:
 		if len(f.Docs) != 1 {
 			t.Fatal("failed to parse content with next line comment")
 		}
-		if f.Docs[0].String() != strings.TrimPrefix(expected, "\n") {
-			t.Fatal("failed to parse comment")
+		got := f.Docs[0].String()
+		if got != strings.TrimPrefix(expected, "\n") {
+			t.Fatalf("failed to parse comment:\nexpected:\n%s\ngot:\n%s", strings.TrimPrefix(expected, "\n"), got)
 		}
 	})
 	t.Run("next line and different indent", func(t *testing.T) {
@@ -1009,8 +1278,9 @@ baz: 1`
 foo:
   bar: null # comment
 baz: 1`
-		if f.Docs[0].String() != strings.TrimPrefix(expected, "\n") {
-			t.Fatal("failed to parse comment")
+		got := f.Docs[0].String()
+		if got != strings.TrimPrefix(expected, "\n") {
+			t.Fatalf("failed to parse comment:\nexpected:\n%s\ngot:\n%s", strings.TrimPrefix(expected, "\n"), got)
 		}
 	})
 }
@@ -1036,8 +1306,9 @@ foo:
   - bar: 1
 baz:
   - xxx`
-	if f.Docs[0].String() != strings.TrimPrefix(expected, "\n") {
-		t.Fatal("failed to parse comment")
+	got := f.Docs[0].String()
+	if got != strings.TrimPrefix(expected, "\n") {
+		t.Fatalf("failed to parse comment:\nexpected:\n%s\ngot:\n%s", strings.TrimPrefix(expected, "\n"), got)
 	}
 	t.Run("foo[0].bar", func(t *testing.T) {
 		path, err := yaml.PathString("$.foo[0].bar")
@@ -1138,8 +1409,7 @@ func (c *pathCapturer) Visit(node ast.Node) ast.Visitor {
 	return c
 }
 
-type Visitor struct {
-}
+type Visitor struct{}
 
 func (v *Visitor) Visit(node ast.Node) ast.Visitor {
 	tk := node.GetToken()

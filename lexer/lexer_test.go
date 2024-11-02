@@ -1815,6 +1815,41 @@ a: !!binary |
 				},
 			},
 		},
+		{
+			YAML: `
+a: >
+  Text`,
+			Tokens: token.Tokens{
+				{
+					Type:          token.StringType,
+					CharacterType: token.CharacterTypeMiscellaneous,
+					Indicator:     token.NotIndicator,
+					Value:         "a",
+					Origin:        "\na",
+				},
+				{
+					Type:          token.MappingValueType,
+					CharacterType: token.CharacterTypeIndicator,
+					Indicator:     token.BlockStructureIndicator,
+					Value:         ":",
+					Origin:        ":",
+				},
+				{
+					Type:          token.FoldedType,
+					CharacterType: token.CharacterTypeIndicator,
+					Indicator:     token.BlockScalarIndicator,
+					Value:         ">",
+					Origin:        " >\n",
+				},
+				{
+					Type:          token.StringType,
+					CharacterType: token.CharacterTypeMiscellaneous,
+					Indicator:     token.NotIndicator,
+					Value:         "Text",
+					Origin:        "  Text",
+				},
+			},
+		},
 	}
 	for _, test := range tests {
 		t.Run(test.YAML, func(t *testing.T) {

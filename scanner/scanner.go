@@ -554,6 +554,8 @@ func (s *Scanner) scanLiteral(ctx *Context, c rune) {
 	if ctx.isEOS() {
 		if ctx.isLiteral {
 			ctx.addBuf(c)
+		} else if ctx.isFolded && !s.isNewLineChar(c) {
+			ctx.addBuf(c)
 		}
 		value := ctx.bufferedSrc()
 		ctx.addToken(token.String(string(value), string(ctx.obuf), s.pos()))

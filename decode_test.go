@@ -1125,6 +1125,35 @@ c:
 	}
 }
 
+func TestDecoder_Invalid(t *testing.T) {
+	tests := []struct {
+		src    string
+		expect string
+	}{
+		{
+			"*-0",
+			`
+[1:2] could not find alias "-0"
+>  1 | *-0
+        ^
+`,
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.src, func(t *testing.T) {
+			var v any
+			err := yaml.Unmarshal([]byte(test.src), &v)
+			if err == nil {
+				t.Fatal("cannot catch decode error")
+			}
+			actual := "\n" + err.Error()
+			if test.expect != actual {
+				t.Fatalf("expected: [%s] but got [%s]", test.expect, actual)
+			}
+		})
+	}
+}
+
 func TestDecoder_ScientificNotation(t *testing.T) {
 	tests := []struct {
 		source string
@@ -2634,7 +2663,7 @@ map:
  <<: *z
  e: f
 `,
-			err: "cannot find anchor by alias name y",
+			err: `could not find alias "y"`,
 		},
 	}
 

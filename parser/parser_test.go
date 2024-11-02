@@ -17,6 +17,7 @@ import (
 func TestParser(t *testing.T) {
 	sources := []string{
 		"null\n",
+		"0_",
 		"{}\n",
 		"v: hi\n",
 		"v: \"true\"\n",

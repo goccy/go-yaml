@@ -1128,6 +1128,15 @@ b: - 2
        ^
 `,
 		},
+		{
+			"a: >3\n  1",
+			`
+[2:3] found invalid token
+   1 | a: >3
+>  2 |   1
+         ^
+`,
+		},
 	}
 	for _, test := range tests {
 		t.Run(test.source, func(t *testing.T) {

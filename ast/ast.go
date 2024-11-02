@@ -341,25 +341,19 @@ func Bool(tk *token.Token) *BoolNode {
 
 // Integer create node for integer value
 func Integer(tk *token.Token) *IntegerNode {
-	value := removeUnderScoreFromNumber(tk.Value)
 	switch tk.Type {
 	case token.BinaryIntegerType:
 		// skip two characters because binary token starts with '0b'
-		skipCharacterNum := 2
-		negativePrefix := ""
-		if value[0] == '-' {
-			skipCharacterNum++
-			negativePrefix = "-"
-		}
-		if len(negativePrefix) > 0 {
-			i, _ := strconv.ParseInt(negativePrefix+value[skipCharacterNum:], 2, 64)
+		parsedNum := parseNumber("0b", tk.Value)
+		if parsedNum.isNegative {
+			i, _ := strconv.ParseInt(parsedNum.String(), 2, 64)
 			return &IntegerNode{
 				BaseNode: &BaseNode{},
 				Token:    tk,
 				Value:    i,
 			}
 		}
-		i, _ := strconv.ParseUint(negativePrefix+value[skipCharacterNum:], 2, 64)
+		i, _ := strconv.ParseUint(parsedNum.String(), 2, 64)
 		return &IntegerNode{
 			BaseNode: &BaseNode{},
 			Token:    tk,
@@ -367,28 +361,16 @@ func Integer(tk *token.Token) *IntegerNode {
 		}
 	case token.OctetIntegerType:
 		// octet token starts with '0o' or '-0o' or '0' or '-0'
-		skipCharacterNum := 1
-		negativePrefix := ""
-		if value[0] == '-' {
-			skipCharacterNum++
-			if len(value) > 2 && value[2] == 'o' {
-				skipCharacterNum++
-			}
-			negativePrefix = "-"
-		} else {
-			if value[1] == 'o' {
-				skipCharacterNum++
-			}
-		}
-		if len(negativePrefix) > 0 {
-			i, _ := strconv.ParseInt(negativePrefix+value[skipCharacterNum:], 8, 64)
+		parsedNum := parseNumber("0o", tk.Value)
+		if parsedNum.isNegative {
+			i, _ := strconv.ParseInt(parsedNum.String(), 8, 64)
 			return &IntegerNode{
 				BaseNode: &BaseNode{},
 				Token:    tk,
 				Value:    i,
 			}
 		}
-		i, _ := strconv.ParseUint(value[skipCharacterNum:], 8, 64)
+		i, _ := strconv.ParseUint(parsedNum.String(), 8, 64)
 		return &IntegerNode{
 			BaseNode: &BaseNode{},
 			Token:    tk,
@@ -396,36 +378,32 @@ func Integer(tk *token.Token) *IntegerNode {
 		}
 	case token.HexIntegerType:
 		// hex token starts with '0x' or '-0x'
-		skipCharacterNum := 2
-		negativePrefix := ""
-		if value[0] == '-' {
-			skipCharacterNum++
-			negativePrefix = "-"
-		}
-		if len(negativePrefix) > 0 {
-			i, _ := strconv.ParseInt(negativePrefix+value[skipCharacterNum:], 16, 64)
+		parsedNum := parseNumber("0x", tk.Value)
+		if parsedNum.isNegative {
+			i, _ := strconv.ParseInt(parsedNum.String(), 16, 64)
 			return &IntegerNode{
 				BaseNode: &BaseNode{},
 				Token:    tk,
 				Value:    i,
 			}
 		}
-		i, _ := strconv.ParseUint(value[skipCharacterNum:], 16, 64)
+		i, _ := strconv.ParseUint(parsedNum.String(), 16, 64)
 		return &IntegerNode{
 			BaseNode: &BaseNode{},
 			Token:    tk,
 			Value:    i,
 		}
 	}
-	if value[0] == '-' || value[0] == '+' {
-		i, _ := strconv.ParseInt(value, 10, 64)
+	parsedNum := parseNumber("", tk.Value)
+	if parsedNum.isNegative {
+		i, _ := strconv.ParseInt(parsedNum.String(), 10, 64)
 		return &IntegerNode{
 			BaseNode: &BaseNode{},
 			Token:    tk,
 			Value:    i,
 		}
 	}
-	i, _ := strconv.ParseUint(value, 10, 64)
+	i, _ := strconv.ParseUint(parsedNum.String(), 10, 64)
 	return &IntegerNode{
 		BaseNode: &BaseNode{},
 		Token:    tk,
@@ -433,9 +411,44 @@ func Integer(tk *token.Token) *IntegerNode {
 	}
 }
 
+type parsedNumber struct {
+	isNegative bool
+	num        string
+}
+
+func (n *parsedNumber) String() string {
+	if n.isNegative {
+		return "-" + n.num
+	}
+	return n.num
+}
+
+func parseNumber(prefix, value string) *parsedNumber {
+	isNegative := value[0] == '-'
+	trimmed := strings.TrimPrefix(value, "+")
+	trimmed = strings.TrimPrefix(trimmed, "-")
+	trimmed = strings.TrimPrefix(trimmed, prefix)
+
+	num := make([]rune, 0, len(trimmed))
+	for _, v := range trimmed {
+		if v == '_' {
+			continue
+		}
+		num = append(num, v)
+	}
+	if len(num) == 0 {
+		num = append(num, '0')
+	}
+	return &parsedNumber{
+		isNegative: isNegative,
+		num:        string(num),
+	}
+}
+
 // Float create node for float value
 func Float(tk *token.Token) *FloatNode {
-	f, _ := strconv.ParseFloat(removeUnderScoreFromNumber(tk.Value), 64)
+	parsedNum := parseNumber("", tk.Value)
+	f, _ := strconv.ParseFloat(parsedNum.String(), 64)
 	return &FloatNode{
 		BaseNode: &BaseNode{},
 		Token:    tk,
@@ -660,10 +673,6 @@ func (d *DocumentNode) String() string {
 // MarshalYAML encodes to a YAML text
 func (d *DocumentNode) MarshalYAML() ([]byte, error) {
 	return []byte(d.String()), nil
-}
-
-func removeUnderScoreFromNumber(num string) string {
-	return strings.ReplaceAll(num, "_", "")
 }
 
 // NullNode type of null node

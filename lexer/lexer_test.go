@@ -27,6 +27,18 @@ func TestTokenize(t *testing.T) {
 			},
 		},
 		{
+			YAML: `0_`,
+			Tokens: token.Tokens{
+				{
+					Type:          token.OctetIntegerType,
+					CharacterType: token.CharacterTypeMiscellaneous,
+					Indicator:     token.NotIndicator,
+					Value:         "0_",
+					Origin:        "0_",
+				},
+			},
+		},
+		{
 			YAML: `{}
 		`,
 			Tokens: token.Tokens{

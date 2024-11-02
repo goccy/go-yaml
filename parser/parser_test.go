@@ -1101,6 +1101,33 @@ b: - 2
               ^
 `,
 		},
+		{
+			">\n>",
+			`
+[2:1] found invalid token
+   1 | >
+>  2 | >
+       ^
+`,
+		},
+		{
+			">\n1",
+			`
+[2:1] found invalid token
+   1 | >
+>  2 | 1
+       ^
+`,
+		},
+		{
+			"|\n1",
+			`
+[2:1] found invalid token
+   1 | |
+>  2 | 1
+       ^
+`,
+		},
 	}
 	for _, test := range tests {
 		t.Run(test.source, func(t *testing.T) {

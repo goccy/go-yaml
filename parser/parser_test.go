@@ -93,6 +93,7 @@ func TestParser(t *testing.T) {
 		"value: >\n\n",
 		"value: >\nother:",
 		"value: >\n\nother:",
+		"a:\n-",
 	}
 	for _, src := range sources {
 		if _, err := parser.Parse(lexer.Tokenize(src), 0); err != nil {
@@ -974,19 +975,6 @@ a
 		},
 		{
 			`
-a:
-- b: c
-- `,
-			`
-[4:1] empty sequence value
-   2 | a:
-   3 | - b: c
->  4 | -
-       ^
-`,
-		},
-		{
-			`
 a: |invalidopt
   foo
 `,
@@ -1052,7 +1040,7 @@ a: -
 b: -
 `,
 			`
-[3:4] empty sequence value
+[3:4] block sequence entries are not allowed in this context
    2 | a: -
 >  3 | b: -
           ^

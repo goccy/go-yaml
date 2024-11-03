@@ -802,7 +802,7 @@ func (s *Scanner) scanSequence(ctx *Context) bool {
 	}
 
 	nc := ctx.nextChar()
-	if nc != ' ' && !s.isNewLineChar(nc) {
+	if nc != 0 && nc != ' ' && !s.isNewLineChar(nc) {
 		return false
 	}
 

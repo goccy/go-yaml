@@ -998,6 +998,44 @@ b
 		},
 		{
 			`
+a: 'b'
+  c: d
+`,
+			`
+[3:3] value is not allowed in this context
+   2 | a: 'b'
+>  3 |   c: d
+         ^
+`,
+		},
+		{
+			`
+a: 'b'
+  - c
+`,
+			`
+[3:3] value is not allowed in this context
+   2 | a: 'b'
+>  3 |   - c
+         ^
+`,
+		},
+		{
+			`
+a: 'b'
+  # comment
+  - c
+`,
+			`
+[4:3] value is not allowed in this context
+   2 | a: 'b'
+   3 |   # comment
+>  4 |   - c
+         ^
+`,
+		},
+		{
+			`
 a: 1
 b
 - c

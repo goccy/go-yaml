@@ -476,9 +476,11 @@ func (p *parser) parseSequenceEntry(ctx *context) (*ast.SequenceNode, error) {
 	curColumn := tk.Position.Column
 	for tk.Type == token.SequenceEntryType {
 		p.progress(1) // skip sequence token
+		entryTk := tk
 		tk = p.currentToken()
 		if tk == nil {
-			return nil, errors.ErrSyntax("empty sequence value", p.previousToken())
+			sequenceNode.Values = append(sequenceNode.Values, ast.Null(p.createNullToken(entryTk)))
+			break
 		}
 		var comment *ast.CommentGroupNode
 		if tk.Type == token.CommentType {

@@ -7,7 +7,8 @@ import (
 
 // context context at parsing
 type context struct {
-	path string
+	path   string
+	isFlow bool
 }
 
 var pathSpecialChars = []string{
@@ -39,6 +40,12 @@ func (c *context) withChild(path string) *context {
 func (c *context) withIndex(idx uint) *context {
 	ctx := *c
 	ctx.path = c.path + "[" + fmt.Sprint(idx) + "]"
+	return &ctx
+}
+
+func (c *context) withFlow(isFlow bool) *context {
+	ctx := *c
+	ctx.isFlow = isFlow
 	return &ctx
 }
 

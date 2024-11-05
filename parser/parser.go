@@ -140,17 +140,27 @@ func (p *parser) parseMapping(ctx *context) (*ast.MappingNode, error) {
 	node := ast.Mapping(mapTk, true)
 	node.SetPath(ctx.path)
 	p.progress(1) // skip MappingStart token
+
+	isFirst := true
 	for p.next() {
 		tk := p.currentToken()
 		if tk.Type == token.MappingEndType {
 			node.End = tk
-			return node, nil
+			break
 		} else if tk.Type == token.CollectEntryType {
 			p.progress(1)
-			continue
+		} else if !isFirst {
+			return nil, errors.ErrSyntax("',' or '}' must be specified", tk)
 		}
 
-		value, err := p.parseMappingValue(ctx)
+		if tk := p.currentToken(); tk != nil && tk.Type == token.MappingEndType {
+			// this case is here: "{ elem, }".
+			// In this case, ignore the last element and break mapping parsing.
+			node.End = tk
+			break
+		}
+
+		value, err := p.parseMappingValue(ctx.withFlow(true))
 		if err != nil {
 			return nil, err
 		}
@@ -160,8 +170,12 @@ func (p *parser) parseMapping(ctx *context) (*ast.MappingNode, error) {
 		}
 		node.Values = append(node.Values, mvnode)
 		p.progress(1)
+		isFirst = false
 	}
-	return nil, errors.ErrSyntax("unterminated flow mapping", node.GetToken())
+	if node.End == nil || node.End.Type != token.MappingEndType {
+		return nil, errors.ErrSyntax("could not find flow mapping end token '}'", node.Start)
+	}
+	return node, nil
 }
 
 func (p *parser) parseSequence(ctx *context) (*ast.SequenceNode, error) {
@@ -382,12 +396,32 @@ func (p *parser) parseMappingValue(ctx *context) (ast.Node, error) {
 	if err := p.validateMapKey(key.GetToken()); err != nil {
 		return nil, err
 	}
-	p.progress(1)          // progress to mapping value token
-	tk := p.currentToken() // get mapping value token
+	p.progress(1) // progress to mapping value token
+	if ctx.isFlow {
+		// if "{key}" or "{key," style, returns MappingValueNode.
+		node, err := p.parseFlowMapNullValue(ctx, key)
+		if err != nil {
+			return nil, err
+		}
+		if node != nil {
+			return node, nil
+		}
+	}
+	tk := p.currentToken() // get mapping value (':') token.
 	if tk == nil {
 		return nil, errors.ErrSyntax("unexpected map", key.GetToken())
 	}
 	p.progress(1) // progress to value token
+	if ctx.isFlow {
+		// if "{key:}" or "{key:," style, returns MappingValueNode.
+		node, err := p.parseFlowMapNullValue(ctx, key)
+		if err != nil {
+			return nil, err
+		}
+		if node != nil {
+			return node, nil
+		}
+	}
 	if err := p.setSameLineCommentIfExists(ctx.withChild(keyText), key); err != nil {
 		return nil, err
 	}
@@ -471,6 +505,25 @@ func (p *parser) parseMappingValue(ctx *context) (ast.Node, error) {
 		comment := p.parseFootComment(ctx, mapCol)
 		node.FootComment = comment
 	}
+	return node, nil
+}
+
+func (p *parser) parseFlowMapNullValue(ctx *context, key ast.MapKeyNode) (*ast.MappingValueNode, error) {
+	tk := p.currentToken()
+	if tk == nil {
+		return nil, errors.ErrSyntax("unexpected map", key.GetToken())
+	}
+	if tk.Type != token.MappingEndType && tk.Type != token.CollectEntryType {
+		return nil, nil
+	}
+	nullTk := p.createNullToken(tk)
+	p.insertToken(p.idx, nullTk)
+	value, err := p.parseToken(ctx, nullTk)
+	if err != nil {
+		return nil, err
+	}
+	node := ast.MappingValue(tk, key, value)
+	node.SetPath(ctx.withChild(key.GetToken().Value).path)
 	return node, nil
 }
 

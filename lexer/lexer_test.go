@@ -2149,6 +2149,29 @@ s: >-3
 				},
 			},
 		},
+		{
+			YAML: `
+|2-
+
+                  text
+`,
+			Tokens: token.Tokens{
+				{
+					Type:          token.LiteralType,
+					CharacterType: token.CharacterTypeIndicator,
+					Indicator:     token.BlockScalarIndicator,
+					Value:         "|2-",
+					Origin:        "\n|2-\n",
+				},
+				{
+					Type:          token.StringType,
+					CharacterType: token.CharacterTypeMiscellaneous,
+					Indicator:     token.NotIndicator,
+					Value:         "\n                text",
+					Origin:        "\n                  text\n",
+				},
+			},
+		},
 	}
 	for _, test := range tests {
 		t.Run(test.YAML, func(t *testing.T) {

@@ -104,9 +104,12 @@ func (c *Context) updateDocumentIndentColumn() {
 }
 
 func (c *Context) docFirstLineIndentColumnByDocOpt() int {
-	trimmed := strings.TrimPrefix(c.docOpt, "-")
-	trimmed = strings.TrimPrefix(trimmed, "+")
-	i, _ := strconv.ParseInt(trimmed, 10, 64)
+	opt := c.docOpt
+	opt = strings.TrimPrefix(opt, "-")
+	opt = strings.TrimPrefix(opt, "+")
+	opt = strings.TrimSuffix(opt, "-")
+	opt = strings.TrimSuffix(opt, "+")
+	i, _ := strconv.ParseInt(opt, 10, 64)
 	return int(i)
 }
 
@@ -270,7 +273,7 @@ func (c *Context) existsBuffer() bool {
 
 func (c *Context) bufferedSrc() []rune {
 	src := c.buf[:c.notSpaceCharPos]
-	if c.isDocument() && strings.HasPrefix(c.docOpt, "-") {
+	if c.isDocument() && (strings.HasPrefix(c.docOpt, "-") || strings.HasSuffix(c.docOpt, "-")) {
 		// remove end '\n' character and trailing empty lines
 		// https://yaml.org/spec/1.2.2/#8112-block-chomping-indicator
 		for {

@@ -833,9 +833,10 @@ func (s *Scanner) validateDocumentHeaderOption(opt string) error {
 	if len(opt) == 0 {
 		return nil
 	}
-	if opt[0] == '+' || opt[0] == '-' {
-		opt = opt[1:]
-	}
+	opt = strings.TrimPrefix(opt, "-")
+	opt = strings.TrimPrefix(opt, "+")
+	opt = strings.TrimSuffix(opt, "-")
+	opt = strings.TrimSuffix(opt, "+")
 	if len(opt) == 0 {
 		return nil
 	}

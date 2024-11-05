@@ -94,6 +94,8 @@ func TestParser(t *testing.T) {
 		"value: >\nother:",
 		"value: >\n\nother:",
 		"a:\n-",
+		"a: {foo}",
+		"a: {foo,bar}",
 	}
 	for _, src := range sources {
 		if _, err := parser.Parse(lexer.Tokenize(src), 0); err != nil {
@@ -968,7 +970,7 @@ a
 		{
 			`{ "key": "value" `,
 			`
-[1:1] unterminated flow mapping
+[1:1] could not find flow mapping end token '}'
 >  1 | { "key": "value"
        ^
 `,

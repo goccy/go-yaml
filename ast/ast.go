@@ -341,118 +341,30 @@ func Bool(tk *token.Token) *BoolNode {
 
 // Integer create node for integer value
 func Integer(tk *token.Token) *IntegerNode {
-	switch tk.Type {
-	case token.BinaryIntegerType:
-		// skip two characters because binary token starts with '0b'
-		parsedNum := parseNumber("0b", tk.Value)
-		if parsedNum.isNegative {
-			i, _ := strconv.ParseInt(parsedNum.String(), 2, 64)
-			return &IntegerNode{
-				BaseNode: &BaseNode{},
-				Token:    tk,
-				Value:    i,
-			}
-		}
-		i, _ := strconv.ParseUint(parsedNum.String(), 2, 64)
-		return &IntegerNode{
-			BaseNode: &BaseNode{},
-			Token:    tk,
-			Value:    i,
-		}
-	case token.OctetIntegerType:
-		// octet token starts with '0o' or '-0o' or '0' or '-0'
-		parsedNum := parseNumber("0o", tk.Value)
-		if parsedNum.isNegative {
-			i, _ := strconv.ParseInt(parsedNum.String(), 8, 64)
-			return &IntegerNode{
-				BaseNode: &BaseNode{},
-				Token:    tk,
-				Value:    i,
-			}
-		}
-		i, _ := strconv.ParseUint(parsedNum.String(), 8, 64)
-		return &IntegerNode{
-			BaseNode: &BaseNode{},
-			Token:    tk,
-			Value:    i,
-		}
-	case token.HexIntegerType:
-		// hex token starts with '0x' or '-0x'
-		parsedNum := parseNumber("0x", tk.Value)
-		if parsedNum.isNegative {
-			i, _ := strconv.ParseInt(parsedNum.String(), 16, 64)
-			return &IntegerNode{
-				BaseNode: &BaseNode{},
-				Token:    tk,
-				Value:    i,
-			}
-		}
-		i, _ := strconv.ParseUint(parsedNum.String(), 16, 64)
-		return &IntegerNode{
-			BaseNode: &BaseNode{},
-			Token:    tk,
-			Value:    i,
-		}
+	var v any
+	if num := token.ToNumber(tk.Value); num != nil {
+		v = num.Value
 	}
-	parsedNum := parseNumber("", tk.Value)
-	if parsedNum.isNegative {
-		i, _ := strconv.ParseInt(parsedNum.String(), 10, 64)
-		return &IntegerNode{
-			BaseNode: &BaseNode{},
-			Token:    tk,
-			Value:    i,
-		}
-	}
-	i, _ := strconv.ParseUint(parsedNum.String(), 10, 64)
 	return &IntegerNode{
 		BaseNode: &BaseNode{},
 		Token:    tk,
-		Value:    i,
-	}
-}
-
-type parsedNumber struct {
-	isNegative bool
-	num        string
-}
-
-func (n *parsedNumber) String() string {
-	if n.isNegative {
-		return "-" + n.num
-	}
-	return n.num
-}
-
-func parseNumber(prefix, value string) *parsedNumber {
-	isNegative := value[0] == '-'
-	trimmed := strings.TrimPrefix(value, "+")
-	trimmed = strings.TrimPrefix(trimmed, "-")
-	trimmed = strings.TrimPrefix(trimmed, prefix)
-
-	num := make([]rune, 0, len(trimmed))
-	for _, v := range trimmed {
-		if v == '_' {
-			continue
-		}
-		num = append(num, v)
-	}
-	if len(num) == 0 {
-		num = append(num, '0')
-	}
-	return &parsedNumber{
-		isNegative: isNegative,
-		num:        string(num),
+		Value:    v,
 	}
 }
 
 // Float create node for float value
 func Float(tk *token.Token) *FloatNode {
-	parsedNum := parseNumber("", tk.Value)
-	f, _ := strconv.ParseFloat(parsedNum.String(), 64)
+	var v float64
+	if num := token.ToNumber(tk.Value); num != nil && num.Type == token.NumberTypeFloat {
+		value, ok := num.Value.(float64)
+		if ok {
+			v = value
+		}
+	}
 	return &FloatNode{
 		BaseNode: &BaseNode{},
 		Token:    tk,
-		Value:    f,
+		Value:    v,
 	}
 }
 

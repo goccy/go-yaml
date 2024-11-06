@@ -523,84 +523,89 @@ type numStat struct {
 	typ   numType
 }
 
-func getNumberStat(str string) *numStat {
+func getNumberStat(value string) *numStat {
 	stat := &numStat{}
-	if str == "" {
+	if value == "" {
 		return stat
 	}
-	if str == "-" || str == "." || str == "+" || str == "_" {
+	dotCount := strings.Count(value, ".")
+	if dotCount > 1 {
 		return stat
 	}
-	if str[0] == '_' {
+
+	trimmed := strings.TrimPrefix(strings.TrimPrefix(value, "+"), "-")
+
+	var typ numType
+	switch {
+	case strings.HasPrefix(trimmed, "0x"):
+		trimmed = strings.TrimPrefix(trimmed, "0x")
+		typ = numTypeHex
+	case strings.HasPrefix(trimmed, "0o"):
+		trimmed = strings.TrimPrefix(trimmed, "0o")
+		typ = numTypeOctet
+	case strings.HasPrefix(trimmed, "0b"):
+		trimmed = strings.TrimPrefix(trimmed, "0b")
+		typ = numTypeBinary
+	case dotCount == 1:
+		typ = numTypeFloat
+	}
+
+	if trimmed == "" {
 		return stat
 	}
-	dotFound := false
-	isNegative := false
-	isExponent := false
-	if str[0] == '-' {
-		isNegative = true
-	}
-	for idx, c := range str {
-		switch c {
-		case 'x':
-			if (isNegative && idx == 2) || (!isNegative && idx == 1) {
-				continue
-			}
-		case 'o':
-			if (isNegative && idx == 2) || (!isNegative && idx == 1) {
-				continue
-			}
-		case '0', '1', '2', '3', '4', '5', '6', '7', '8', '9':
-			continue
-		case 'a', 'b', 'c', 'd', 'e', 'f', 'A', 'B', 'C', 'D', 'E', 'F':
-			if (len(str) > 2 && str[0] == '0' && str[1] == 'x') ||
-				(len(str) > 3 && isNegative && str[1] == '0' && str[2] == 'x') {
-				// hex number
-				continue
-			}
-			if c == 'b' && ((isNegative && idx == 2) || (!isNegative && idx == 1)) {
-				// binary number
-				continue
-			}
-			if (c == 'e' || c == 'E') && dotFound {
-				// exponent
-				isExponent = true
-				continue
-			}
-		case '.':
-			if dotFound {
-				// multiple dot
-				return stat
-			}
-			dotFound = true
-			continue
-		case '-':
-			if idx == 0 || isExponent {
-				continue
-			}
-		case '+':
-			if idx == 0 || isExponent {
-				continue
-			}
-		case '_':
+
+	var numCount int
+	for idx, c := range trimmed {
+		if isNumber(c) {
+			numCount++
 			continue
 		}
-		return stat
+		switch c {
+		case '_', '.':
+			continue
+		case 'a', 'b', 'c', 'd', 'f', 'A', 'B', 'C', 'D', 'F':
+			if typ != numTypeHex && typ != numTypeBinary {
+				return stat
+			}
+		case 'e', 'E':
+			if typ == numTypeHex || typ == numTypeBinary {
+				continue
+			}
+			if typ != numTypeFloat {
+				return stat
+			}
+
+			// looks like exponent number.
+			if len(trimmed) <= idx+2 {
+				return stat
+			}
+			sign := trimmed[idx+1]
+			if sign != '+' && sign != '-' {
+				return stat
+			}
+			for _, c := range trimmed[idx+2:] {
+				if !isNumber(c) {
+					return stat
+				}
+			}
+			stat.isNum = true
+			stat.typ = typ
+			return stat
+		default:
+			return stat
+		}
+	}
+	if numCount > 1 && trimmed[0] == '0' && typ == numTypeNone {
+		// YAML 1.1 Spec ?
+		typ = numTypeOctet
 	}
 	stat.isNum = true
-	switch {
-	case dotFound:
-		stat.typ = numTypeFloat
-	case strings.HasPrefix(str, "0b") || strings.HasPrefix(str, "-0b"):
-		stat.typ = numTypeBinary
-	case strings.HasPrefix(str, "0x") || strings.HasPrefix(str, "-0x"):
-		stat.typ = numTypeHex
-	case strings.HasPrefix(str, "0o") || strings.HasPrefix(str, "-0o"):
-		stat.typ = numTypeOctet
-	case (len(str) > 1 && str[0] == '0') || (len(str) > 1 && str[0] == '-' && str[1] == '0'):
-		stat.typ = numTypeOctet
-	}
+	stat.typ = typ
 	return stat
+}
+
+func isNumber(c rune) bool {
+	return c >= '0' && c <= '9'
 }
 
 func looksLikeTimeValue(value string) bool {
@@ -672,7 +677,7 @@ func LiteralBlockHeader(value string) string {
 	}
 }
 
-// New create reserved keyword token or number token and other string token
+// New create reserved keyword token or number token and other string token.
 func New(value string, org string, pos *Position) *Token {
 	fn := reservedKeywordMap[value]
 	if fn != nil {

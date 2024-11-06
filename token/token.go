@@ -2,6 +2,7 @@ package token
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 )
 
@@ -508,104 +509,95 @@ var (
 	}
 )
 
-type numType int
+type NumberType string
 
 const (
-	numTypeNone numType = iota
-	numTypeBinary
-	numTypeOctet
-	numTypeHex
-	numTypeFloat
+	NumberTypeDecimal NumberType = "decimal"
+	NumberTypeBinary  NumberType = "binary"
+	NumberTypeOctet   NumberType = "octet"
+	NumberTypeHex     NumberType = "hex"
+	NumberTypeFloat   NumberType = "float"
 )
 
-type numStat struct {
-	isNum bool
-	typ   numType
+type NumberValue struct {
+	Type  NumberType
+	Value any
+	Text  string
 }
 
-func getNumberStat(value string) *numStat {
-	stat := &numStat{}
-	if value == "" {
-		return stat
+func ToNumber(value string) *NumberValue {
+	if len(value) == 0 {
+		return nil
+	}
+	if strings.HasPrefix(value, "_") {
+		return nil
 	}
 	dotCount := strings.Count(value, ".")
 	if dotCount > 1 {
-		return stat
+		return nil
 	}
 
-	trimmed := strings.TrimPrefix(strings.TrimPrefix(value, "+"), "-")
+	isNegative := strings.HasPrefix(value, "-")
+	normalized := strings.ReplaceAll(strings.TrimPrefix(strings.TrimPrefix(value, "+"), "-"), "_", "")
 
-	var typ numType
+	var (
+		typ  NumberType
+		base int
+	)
 	switch {
-	case strings.HasPrefix(trimmed, "0x"):
-		trimmed = strings.TrimPrefix(trimmed, "0x")
-		typ = numTypeHex
-	case strings.HasPrefix(trimmed, "0o"):
-		trimmed = strings.TrimPrefix(trimmed, "0o")
-		typ = numTypeOctet
-	case strings.HasPrefix(trimmed, "0b"):
-		trimmed = strings.TrimPrefix(trimmed, "0b")
-		typ = numTypeBinary
+	case strings.HasPrefix(normalized, "0x"):
+		normalized = strings.TrimPrefix(normalized, "0x")
+		base = 16
+		typ = NumberTypeHex
+	case strings.HasPrefix(normalized, "0o"):
+		normalized = strings.TrimPrefix(normalized, "0o")
+		base = 8
+		typ = NumberTypeOctet
+	case strings.HasPrefix(normalized, "0b"):
+		normalized = strings.TrimPrefix(normalized, "0b")
+		base = 2
+		typ = NumberTypeBinary
+	case strings.HasPrefix(normalized, "0") && len(normalized) > 1 && dotCount == 0:
+		base = 8
+		typ = NumberTypeOctet
 	case dotCount == 1:
-		typ = numTypeFloat
+		typ = NumberTypeFloat
+	default:
+		typ = NumberTypeDecimal
+		base = 10
 	}
 
-	if trimmed == "" {
-		return stat
+	text := normalized
+	if isNegative {
+		text = "-" + text
 	}
 
-	var numCount int
-	for idx, c := range trimmed {
-		if isNumber(c) {
-			numCount++
-			continue
+	var v any
+	if typ == NumberTypeFloat {
+		f, err := strconv.ParseFloat(text, 64)
+		if err != nil {
+			return nil
 		}
-		switch c {
-		case '_', '.':
-			continue
-		case 'a', 'b', 'c', 'd', 'f', 'A', 'B', 'C', 'D', 'F':
-			if typ != numTypeHex && typ != numTypeBinary {
-				return stat
-			}
-		case 'e', 'E':
-			if typ == numTypeHex || typ == numTypeBinary {
-				continue
-			}
-			if typ != numTypeFloat {
-				return stat
-			}
-
-			// looks like exponent number.
-			if len(trimmed) <= idx+2 {
-				return stat
-			}
-			sign := trimmed[idx+1]
-			if sign != '+' && sign != '-' {
-				return stat
-			}
-			for _, c := range trimmed[idx+2:] {
-				if !isNumber(c) {
-					return stat
-				}
-			}
-			stat.isNum = true
-			stat.typ = typ
-			return stat
-		default:
-			return stat
+		v = f
+	} else if isNegative {
+		i, err := strconv.ParseInt(text, base, 64)
+		if err != nil {
+			return nil
 		}
+		v = i
+	} else {
+		u, err := strconv.ParseUint(text, base, 64)
+		if err != nil {
+			return nil
+		}
+		v = u
 	}
-	if numCount > 1 && trimmed[0] == '0' && typ == numTypeNone {
-		// YAML 1.1 Spec ?
-		typ = numTypeOctet
-	}
-	stat.isNum = true
-	stat.typ = typ
-	return stat
-}
 
-func isNumber(c rune) bool {
-	return c >= '0' && c <= '9'
+	return &NumberValue{
+		Type:  typ,
+		Value: v,
+		Text:  text,
+	}
 }
 
 func looksLikeTimeValue(value string) bool {
@@ -632,7 +624,7 @@ func IsNeedQuoted(value string) bool {
 	if _, exists := reservedEncKeywordMap[value]; exists {
 		return true
 	}
-	if stat := getNumberStat(value); stat.isNum {
+	if num := ToNumber(value); num != nil {
 		return true
 	}
 	first := value[0]
@@ -683,7 +675,7 @@ func New(value string, org string, pos *Position) *Token {
 	if fn != nil {
 		return fn(value, org, pos)
 	}
-	if stat := getNumberStat(value); stat.isNum {
+	if num := ToNumber(value); num != nil {
 		tk := &Token{
 			Type:          IntegerType,
 			CharacterType: CharacterTypeMiscellaneous,
@@ -692,14 +684,14 @@ func New(value string, org string, pos *Position) *Token {
 			Origin:        org,
 			Position:      pos,
 		}
-		switch stat.typ {
-		case numTypeFloat:
+		switch num.Type {
+		case NumberTypeFloat:
 			tk.Type = FloatType
-		case numTypeBinary:
+		case NumberTypeBinary:
 			tk.Type = BinaryIntegerType
-		case numTypeOctet:
+		case NumberTypeOctet:
 			tk.Type = OctetIntegerType
-		case numTypeHex:
+		case NumberTypeHex:
 			tk.Type = HexIntegerType
 		}
 		return tk

@@ -87,6 +87,18 @@ func TestTokenize(t *testing.T) {
 			},
 		},
 		{
+			YAML: `0.123e+123`,
+			Tokens: token.Tokens{
+				{
+					Type:          token.FloatType,
+					CharacterType: token.CharacterTypeMiscellaneous,
+					Indicator:     token.NotIndicator,
+					Value:         "0.123e+123",
+					Origin:        "0.123e+123",
+				},
+			},
+		},
+		{
 			YAML: `{}
 		`,
 			Tokens: token.Tokens{
@@ -2254,6 +2266,42 @@ s: >-3
 					Indicator:     token.NotIndicator,
 					Value:         "1x0",
 					Origin:        "1x0",
+				},
+			},
+		},
+		{
+			YAML: `0b98765`,
+			Tokens: token.Tokens{
+				{
+					Type:          token.StringType,
+					CharacterType: token.CharacterTypeMiscellaneous,
+					Indicator:     token.NotIndicator,
+					Value:         "0b98765",
+					Origin:        "0b98765",
+				},
+			},
+		},
+		{
+			YAML: `098765`,
+			Tokens: token.Tokens{
+				{
+					Type:          token.StringType,
+					CharacterType: token.CharacterTypeMiscellaneous,
+					Indicator:     token.NotIndicator,
+					Value:         "098765",
+					Origin:        "098765",
+				},
+			},
+		},
+		{
+			YAML: `0o98765`,
+			Tokens: token.Tokens{
+				{
+					Type:          token.StringType,
+					CharacterType: token.CharacterTypeMiscellaneous,
+					Indicator:     token.NotIndicator,
+					Value:         "0o98765",
+					Origin:        "0o98765",
 				},
 			},
 		},

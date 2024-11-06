@@ -154,6 +154,7 @@ func (d *Decoder) setToMapValue(node ast.Node, m map[string]interface{}) error {
 }
 
 func (d *Decoder) setToOrderedMapValue(node ast.Node, m *MapSlice) error {
+	d.setPathToCommentMap(node)
 	switch n := node.(type) {
 	case *ast.MappingValueNode:
 		if n.Key.Type() == ast.MergeKeyType {

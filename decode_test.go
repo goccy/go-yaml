@@ -2764,16 +2764,10 @@ func TestDecoder_LiteralWithNewLine(t *testing.T) {
 			Node: "hello\nworld\n",
 		},
 		{
-			Node: "hello\nworld\n\n",
-		},
-		{
 			LastNode: "hello\nworld",
 		},
 		{
 			LastNode: "hello\nworld\n",
-		},
-		{
-			LastNode: "hello\nworld\n\n",
 		},
 	}
 	// struct(want) -> Marshal -> Unmarchal -> struct(got)

@@ -30,11 +30,59 @@ func TestTokenize(t *testing.T) {
 			YAML: `0_`,
 			Tokens: token.Tokens{
 				{
-					Type:          token.OctetIntegerType,
+					Type:          token.IntegerType,
 					CharacterType: token.CharacterTypeMiscellaneous,
 					Indicator:     token.NotIndicator,
 					Value:         "0_",
 					Origin:        "0_",
+				},
+			},
+		},
+		{
+			YAML: `0x_1A_2B_3C`,
+			Tokens: token.Tokens{
+				{
+					Type:          token.HexIntegerType,
+					CharacterType: token.CharacterTypeMiscellaneous,
+					Indicator:     token.NotIndicator,
+					Value:         "0x_1A_2B_3C",
+					Origin:        "0x_1A_2B_3C",
+				},
+			},
+		},
+		{
+			YAML: `+0b1010`,
+			Tokens: token.Tokens{
+				{
+					Type:          token.BinaryIntegerType,
+					CharacterType: token.CharacterTypeMiscellaneous,
+					Indicator:     token.NotIndicator,
+					Value:         "+0b1010",
+					Origin:        "+0b1010",
+				},
+			},
+		},
+		{
+			YAML: `0100`,
+			Tokens: token.Tokens{
+				{
+					Type:          token.OctetIntegerType,
+					CharacterType: token.CharacterTypeMiscellaneous,
+					Indicator:     token.NotIndicator,
+					Value:         "0100",
+					Origin:        "0100",
+				},
+			},
+		},
+		{
+			YAML: `0o10`,
+			Tokens: token.Tokens{
+				{
+					Type:          token.OctetIntegerType,
+					CharacterType: token.CharacterTypeMiscellaneous,
+					Indicator:     token.NotIndicator,
+					Value:         "0o10",
+					Origin:        "0o10",
 				},
 			},
 		},
@@ -2194,6 +2242,18 @@ s: >-3
 					Indicator:     token.NotIndicator,
 					Value:         "a\n",
 					Origin:        "  a\n\n\n\n",
+				},
+			},
+		},
+		{
+			YAML: `1x0`,
+			Tokens: token.Tokens{
+				{
+					Type:          token.StringType,
+					CharacterType: token.CharacterTypeMiscellaneous,
+					Indicator:     token.NotIndicator,
+					Value:         "1x0",
+					Origin:        "1x0",
 				},
 			},
 		},

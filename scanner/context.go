@@ -273,25 +273,37 @@ func (c *Context) existsBuffer() bool {
 
 func (c *Context) bufferedSrc() []rune {
 	src := c.buf[:c.notSpaceCharPos]
-	if c.isDocument() && (strings.HasPrefix(c.docOpt, "-") || strings.HasSuffix(c.docOpt, "-")) {
-		// remove end '\n' character and trailing empty lines
+	if c.isDocument() {
+		// remove end '\n' character and trailing empty lines.
 		// https://yaml.org/spec/1.2.2/#8112-block-chomping-indicator
-		for {
-			if len(src) > 0 && src[len(src)-1] == '\n' {
-				src = src[:len(src)-1]
-				continue
+		if c.hasTrimAllEndNewlineOpt() {
+			// If the '-' flag is specified, all trailing newline characters will be removed.
+			src = []rune(strings.TrimRight(string(src), "\n"))
+		} else {
+			// Normally, all but one of the trailing newline characters are removed.
+			var newLineCharCount int
+			for i := len(src) - 1; i >= 0; i-- {
+				if src[i] == '\n' {
+					newLineCharCount++
+					continue
+				}
+				break
 			}
-			break
-		}
-		for {
-			if len(src) > 0 && src[len(src)-1] == ' ' {
-				src = src[:len(src)-1]
-				continue
+			removedNewLineCharCount := newLineCharCount - 1
+			for removedNewLineCharCount > 0 {
+				src = []rune(strings.TrimSuffix(string(src), "\n"))
+				removedNewLineCharCount--
 			}
-			break
 		}
+
+		// If the text ends with a space character, remove all of them.
+		src = []rune(strings.TrimRight(string(src), " "))
 	}
 	return src
+}
+
+func (c *Context) hasTrimAllEndNewlineOpt() bool {
+	return strings.HasPrefix(c.docOpt, "-") || strings.HasSuffix(c.docOpt, "-")
 }
 
 func (c *Context) bufferedToken(pos *token.Position) *token.Token {

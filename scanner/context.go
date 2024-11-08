@@ -145,10 +145,6 @@ func (c *Context) addDocumentIndent(column int) {
 
 	// If the first line of the document has already been evaluated, the number is treated as the threshold, since the `docFirstLineIndentColumn` is a positive number.
 	if c.docFirstLineIndentColumn <= column {
-		// In the folded state, new-line-char is normally treated as space,
-		// but if the number of indents is different from the number of indents in the first line,
-		// new-line-char is used as is instead of space.
-		// Therefore, it is necessary to replace the space already added to buf.
 		// `c.docFoldedNewLine` is a variable that is set to true for every newline.
 		if (c.isFolded || c.isRawFolded) && c.docFoldedNewLine {
 			c.docFoldedNewLine = false
@@ -158,10 +154,15 @@ func (c *Context) addDocumentIndent(column int) {
 	}
 }
 
-func (c *Context) addDocumentNewLineInFolded(column int) {
+// updateDocumentNewLineInFolded if Folded or RawFolded context and the content on the current line starts at the same column as the previous line,
+// treat the new-line-char as a space.
+func (c *Context) updateDocumentNewLineInFolded(column int) {
 	if c.isLiteral {
 		return
 	}
+
+	// Folded or RawFolded.
+
 	if !c.docFoldedNewLine {
 		return
 	}
@@ -169,11 +170,6 @@ func (c *Context) addDocumentNewLineInFolded(column int) {
 		if c.buf[len(c.buf)-1] == '\n' {
 			c.buf[len(c.buf)-1] = ' '
 		}
-	}
-	if c.docFirstLineIndentColumn == c.docLineIndentColumn &&
-		c.docLineIndentColumn == c.docPrevLineIndentColumn {
-		// use space as a new line delimiter.
-		return
 	}
 	c.docFoldedNewLine = false
 }

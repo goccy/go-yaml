@@ -576,7 +576,7 @@ func (s *Scanner) scanDocument(ctx *Context, c rune) error {
 			s.progressColumn(ctx, 1)
 			return ErrInvalidToken(err.Error(), invalidTk)
 		}
-		ctx.addDocumentNewLineInFolded(s.column)
+		ctx.updateDocumentNewLineInFolded(s.column)
 		ctx.addBuf(c)
 		s.progressColumn(ctx, 1)
 	}

@@ -150,8 +150,7 @@ func (c *Context) addDocumentIndent(column int) {
 		// new-line-char is used as is instead of space.
 		// Therefore, it is necessary to replace the space already added to buf.
 		// `c.docFoldedNewLine` is a variable that is set to true for every newline.
-		if c.isFolded && c.docFoldedNewLine {
-			c.buf[len(c.buf)-1] = '\n'
+		if (c.isFolded || c.isRawFolded) && c.docFoldedNewLine {
 			c.docFoldedNewLine = false
 		}
 		// Since addBuf ignore space character, add to the buffer directly.
@@ -160,18 +159,22 @@ func (c *Context) addDocumentIndent(column int) {
 }
 
 func (c *Context) addDocumentNewLineInFolded(column int) {
-	if !c.isFolded {
+	if c.isLiteral {
 		return
 	}
 	if !c.docFoldedNewLine {
 		return
+	}
+	if c.docLineIndentColumn == c.docPrevLineIndentColumn {
+		if c.buf[len(c.buf)-1] == '\n' {
+			c.buf[len(c.buf)-1] = ' '
+		}
 	}
 	if c.docFirstLineIndentColumn == c.docLineIndentColumn &&
 		c.docLineIndentColumn == c.docPrevLineIndentColumn {
 		// use space as a new line delimiter.
 		return
 	}
-	c.buf[len(c.buf)-1] = '\n'
 	c.docFoldedNewLine = false
 }
 
@@ -276,7 +279,7 @@ func (c *Context) bufferedSrc() []rune {
 	if c.isDocument() {
 		// remove end '\n' character and trailing empty lines.
 		// https://yaml.org/spec/1.2.2/#8112-block-chomping-indicator
-		if c.hasTrimAllEndNewlineOpt() {
+		if c.hasTrimAllEndNewlineOpt() || c.isRawFolded {
 			// If the '-' flag is specified, all trailing newline characters will be removed.
 			src = []rune(strings.TrimRight(string(src), "\n"))
 		} else {
@@ -298,6 +301,9 @@ func (c *Context) bufferedSrc() []rune {
 
 		// If the text ends with a space character, remove all of them.
 		src = []rune(strings.TrimRight(string(src), " "))
+		if string(src) == "\n" {
+			src = []rune{}
+		}
 	}
 	return src
 }

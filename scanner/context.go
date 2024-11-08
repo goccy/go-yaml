@@ -275,7 +275,7 @@ func (c *Context) bufferedSrc() []rune {
 	if c.isDocument() {
 		// remove end '\n' character and trailing empty lines.
 		// https://yaml.org/spec/1.2.2/#8112-block-chomping-indicator
-		if c.hasTrimAllEndNewlineOpt() || c.isRawFolded {
+		if c.hasTrimAllEndNewlineOpt() {
 			// If the '-' flag is specified, all trailing newline characters will be removed.
 			src = []rune(strings.TrimRight(string(src), "\n"))
 		} else {
@@ -298,6 +298,9 @@ func (c *Context) bufferedSrc() []rune {
 		// If the text ends with a space character, remove all of them.
 		src = []rune(strings.TrimRight(string(src), " "))
 		if string(src) == "\n" {
+			// If the content consists only of a newline,
+			// it can be considered as the document ending without any specified value,
+			// so it is treated as an empty string.
 			src = []rune{}
 		}
 	}
@@ -305,7 +308,7 @@ func (c *Context) bufferedSrc() []rune {
 }
 
 func (c *Context) hasTrimAllEndNewlineOpt() bool {
-	return strings.HasPrefix(c.docOpt, "-") || strings.HasSuffix(c.docOpt, "-")
+	return strings.HasPrefix(c.docOpt, "-") || strings.HasSuffix(c.docOpt, "-") || c.isRawFolded
 }
 
 func (c *Context) bufferedToken(pos *token.Position) *token.Token {

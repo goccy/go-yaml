@@ -72,7 +72,7 @@ jobs:
           make ycat/build
       - name: run
         run: |
-          ./ycat .github/workflows/go.yml
+          ./bin/ycat .github/workflows/go.yml
 
   coverage:
     name: Coverage

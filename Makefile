@@ -1,22 +1,35 @@
+## Location to install dependencies to
+LOCALBIN ?= $(shell pwd)/bin
+TESTMOD := testdata/go_test.mod
+
+$(LOCALBIN):
+	mkdir -p $(LOCALBIN)
+
+.PHONY: testmod
+	cp go.mod testdata/go_test.mod
+	go mod tidy -modfile=$(TESTMOD)
+
 .PHONY: test
-test:
+test: testmod
 	go test -v -race ./...
+	go test -v -race ./testdata -modfile=$(TESTMOD)
 
 .PHONY: simple-test
-simple-test:
+simple-test: testmod
 	go test -v ./...
+	go test -v ./testdata -modfile=$(TESTMOD)
 
 .PHONY: cover
-cover:
-	go test -coverprofile=cover.out ./...
+cover: testmod
+	go test -coverpkg=.,./ast,./lexer,./parser,./printer,./scanner,./token -coverprofile=cover.out -modfile=$(TESTMOD) ./... ./testdata
 
 .PHONY: cover-html
 cover-html: cover
 	go tool cover -html=cover.out
 
 .PHONY: ycat/build
-ycat/build:
-	go build -o ycat ./cmd/ycat
+ycat/build: $(LOCALBIN)
+	cd ./cmd/ycat && go build -o $(LOCALBIN)/ycat .
 
 .PHONY: lint
 lint: golangci-lint ## Run golangci-lint
@@ -27,11 +40,6 @@ fmt: golangci-lint ## Ensure consistent code style
 	@go mod tidy
 	@go fmt ./...
 	@$(GOLANGCI_LINT) run --fix
-
-## Location to install dependencies to
-LOCALBIN ?= $(shell pwd)/bin
-$(LOCALBIN):
-	mkdir -p $(LOCALBIN)
 
 ## Tool Binaries
 GOLANGCI_LINT ?= $(LOCALBIN)/golangci-lint

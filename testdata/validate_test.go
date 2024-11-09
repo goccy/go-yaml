@@ -117,11 +117,11 @@ name: myDocument
 roles:
   name: myRole
   permissions:
-	- hello
-	- how
-	- are
-	- you
-	`,
+    - hello
+    - how
+    - are
+    - you
+`,
 			ExpectedErr: `[4:7] mapping was used where sequence is expected
    1 | ---
    2 | name: myDocument
@@ -129,9 +129,9 @@ roles:
 >  4 |   name: myRole
              ^
    5 |   permissions:
-   6 | 	- hello
-   7 | 	- how
-   8 | `,
+   6 |     - hello
+   7 |     - how
+   8 |     `,
 			Instance: &struct {
 				Name  string `yaml:"name"`
 				Roles []struct {

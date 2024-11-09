@@ -571,6 +571,9 @@ func (s *Scanner) scanDocument(ctx *Context, c rune) error {
 		s.progressColumn(ctx, 1)
 	} else {
 		ctx.updateDocumentLineIndentColumn(s.column)
+		if ctx.docFirstLineIndentColumn > 0 {
+			s.lastDelimColumn = ctx.docFirstLineIndentColumn - 1
+		}
 		if err := ctx.validateDocumentLineIndentColumn(); err != nil {
 			invalidTk := token.Invalid(string(ctx.obuf), s.pos())
 			s.progressColumn(ctx, 1)

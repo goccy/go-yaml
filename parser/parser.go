@@ -481,7 +481,11 @@ func (p *parser) parseMappingValue(ctx *context) (ast.Node, error) {
 		ntk = p.nextNotCommentToken()
 		antk = p.afterNextNotCommentToken()
 	}
-	if tk := p.nextNotCommentToken(); tk != nil && tk.Position.Line > node.Start.Position.Line && tk.Position.Column > node.Start.Position.Column {
+	validationTk := node.Start
+	if len(node.Values) != 0 {
+		validationTk = node.Values[len(node.Values)-1].Key.GetToken()
+	}
+	if tk := p.nextNotCommentToken(); tk != nil && tk.Position.Line > validationTk.Position.Line && tk.Position.Column > validationTk.Position.Column {
 		// a: b
 		//   c <= this token is invalid.
 		return nil, errors.ErrSyntax("value is not allowed in this context", tk)

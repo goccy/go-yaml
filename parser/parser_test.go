@@ -1212,6 +1212,18 @@ a:
            ^
    6 |       d: e`,
 		},
+		{
+			"key: [@val]",
+			`
+[1:7] found invalid token
+>  1 | key: [@val]
+             ^
+`,
+		},
+		{
+			"key: [`val]",
+			"\n[1:7] found invalid token\n>  1 | key: [`val]\n             ^\n",
+		},
 	}
 	for _, test := range tests {
 		t.Run(test.source, func(t *testing.T) {

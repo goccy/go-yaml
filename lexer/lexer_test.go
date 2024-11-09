@@ -3133,6 +3133,14 @@ a: |invalid`,
 			name: "invalid document header option number",
 			src:  "a: >3\n  1",
 		},
+		{
+			name: "use reserved character @",
+			src:  "key: [@val]",
+		},
+		{
+			name: "use reserved character `",
+			src:  "key: [`val]",
+		},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {

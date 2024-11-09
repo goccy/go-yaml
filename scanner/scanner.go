@@ -976,6 +976,19 @@ func (s *Scanner) scanAlias(ctx *Context) bool {
 	return true
 }
 
+func (s *Scanner) scanReservedChar(ctx *Context, c rune) error {
+	if ctx.existsBuffer() {
+		return nil
+	}
+
+	ctx.addBuf(c)
+	ctx.addOriginBuf(c)
+	err := ErrInvalidToken("%q is a reserved character", token.Invalid(string(ctx.obuf), s.pos()))
+	s.progressColumn(ctx, 1)
+	ctx.clear()
+	return err
+}
+
 func (s *Scanner) scan(ctx *Context) error {
 	for ctx.next() {
 		c := ctx.currentChar()
@@ -1102,6 +1115,10 @@ func (s *Scanner) scan(ctx *Context) error {
 		case ' ':
 			if s.scanWhiteSpace(ctx) {
 				continue
+			}
+		case '@', '`':
+			if err := s.scanReservedChar(ctx, c); err != nil {
+				return err
 			}
 		}
 		ctx.addBuf(c)

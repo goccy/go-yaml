@@ -71,6 +71,12 @@ func _main(args []string) error {
 			Suffix: format(color.Reset),
 		}
 	}
+	p.Comment = func() *printer.Property {
+		return &printer.Property{
+			Prefix: format(color.FgHiBlack),
+			Suffix: format(color.Reset),
+		}
+	}
 	writer := colorable.NewColorableStdout()
 	_, _ = writer.Write([]byte(p.PrintTokens(tokens) + "\n"))
 	return nil

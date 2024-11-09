@@ -363,8 +363,15 @@ print yaml file with color
 ### Installation
 
 ```sh
-go install github.com/goccy/go-yaml/cmd/ycat@latest
+git clone https://github.com/goccy/go-yaml.git
+cd ./cmd/ycat && go insatll .
 ```
+
+
+# For Developers
+
+> [!NOTE]
+> In this project, we manage such test code under the `testdata` directory to avoid adding dependencies  on libraries that are only needed for testing to the top `go.mod` file. Therefore, if you want to add test cases that use 3rd party libraries, please add the test code to the `testdata` directory.
 
 # Looking for Sponsors
 

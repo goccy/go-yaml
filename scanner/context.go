@@ -145,13 +145,8 @@ func (c *Context) addDocumentIndent(column int) {
 
 	// If the first line of the document has already been evaluated, the number is treated as the threshold, since the `docFirstLineIndentColumn` is a positive number.
 	if c.docFirstLineIndentColumn <= column {
-		// In the folded state, new-line-char is normally treated as space,
-		// but if the number of indents is different from the number of indents in the first line,
-		// new-line-char is used as is instead of space.
-		// Therefore, it is necessary to replace the space already added to buf.
 		// `c.docFoldedNewLine` is a variable that is set to true for every newline.
-		if c.isFolded && c.docFoldedNewLine {
-			c.buf[len(c.buf)-1] = '\n'
+		if (c.isFolded || c.isRawFolded) && c.docFoldedNewLine {
 			c.docFoldedNewLine = false
 		}
 		// Since addBuf ignore space character, add to the buffer directly.
@@ -159,19 +154,23 @@ func (c *Context) addDocumentIndent(column int) {
 	}
 }
 
-func (c *Context) addDocumentNewLineInFolded(column int) {
-	if !c.isFolded {
+// updateDocumentNewLineInFolded if Folded or RawFolded context and the content on the current line starts at the same column as the previous line,
+// treat the new-line-char as a space.
+func (c *Context) updateDocumentNewLineInFolded(column int) {
+	if c.isLiteral {
 		return
 	}
+
+	// Folded or RawFolded.
+
 	if !c.docFoldedNewLine {
 		return
 	}
-	if c.docFirstLineIndentColumn == c.docLineIndentColumn &&
-		c.docLineIndentColumn == c.docPrevLineIndentColumn {
-		// use space as a new line delimiter.
-		return
+	if c.docLineIndentColumn == c.docPrevLineIndentColumn {
+		if c.buf[len(c.buf)-1] == '\n' {
+			c.buf[len(c.buf)-1] = ' '
+		}
 	}
-	c.buf[len(c.buf)-1] = '\n'
 	c.docFoldedNewLine = false
 }
 
@@ -298,12 +297,18 @@ func (c *Context) bufferedSrc() []rune {
 
 		// If the text ends with a space character, remove all of them.
 		src = []rune(strings.TrimRight(string(src), " "))
+		if string(src) == "\n" {
+			// If the content consists only of a newline,
+			// it can be considered as the document ending without any specified value,
+			// so it is treated as an empty string.
+			src = []rune{}
+		}
 	}
 	return src
 }
 
 func (c *Context) hasTrimAllEndNewlineOpt() bool {
-	return strings.HasPrefix(c.docOpt, "-") || strings.HasSuffix(c.docOpt, "-")
+	return strings.HasPrefix(c.docOpt, "-") || strings.HasSuffix(c.docOpt, "-") || c.isRawFolded
 }
 
 func (c *Context) bufferedToken(pos *token.Position) *token.Token {

@@ -176,7 +176,7 @@ func (s *Scanner) indentStateFromIndentNumDifference() IndentState {
 }
 
 func (s *Scanner) updateIndent(ctx *Context, c rune) {
-	if s.isFirstCharAtLine && s.isNewLineChar(c) && ctx.isDocument() {
+	if s.isFirstCharAtLine && s.isNewLineChar(c) {
 		return
 	}
 	if s.isFirstCharAtLine && c == ' ' {
@@ -557,21 +557,13 @@ func (s *Scanner) scanDocument(ctx *Context, c rune) error {
 			s.progressColumn(ctx, 1)
 			return ErrInvalidToken(err.Error(), invalidTk)
 		}
-		if ctx.isLiteral {
-			ctx.addBuf(c)
-		} else if ctx.isFolded {
-			ctx.addBuf(c)
-		}
+		ctx.addBuf(c)
 		value := ctx.bufferedSrc()
 		ctx.addToken(token.String(string(value), string(ctx.obuf), s.pos()))
 		ctx.resetBuffer()
 		s.progressColumn(ctx, 1)
 	} else if s.isNewLineChar(c) {
-		if ctx.isLiteral {
-			ctx.addBuf(c)
-		} else {
-			ctx.addBuf(' ')
-		}
+		ctx.addBuf(c)
 		ctx.updateDocumentNewLineState()
 		s.progressLine(ctx)
 	} else if s.isFirstCharAtLine && c == ' ' {
@@ -579,12 +571,15 @@ func (s *Scanner) scanDocument(ctx *Context, c rune) error {
 		s.progressColumn(ctx, 1)
 	} else {
 		ctx.updateDocumentLineIndentColumn(s.column)
+		if ctx.docFirstLineIndentColumn > 0 {
+			s.lastDelimColumn = ctx.docFirstLineIndentColumn - 1
+		}
 		if err := ctx.validateDocumentLineIndentColumn(); err != nil {
 			invalidTk := token.Invalid(string(ctx.obuf), s.pos())
 			s.progressColumn(ctx, 1)
 			return ErrInvalidToken(err.Error(), invalidTk)
 		}
-		ctx.addDocumentNewLineInFolded(s.column)
+		ctx.updateDocumentNewLineInFolded(s.column)
 		ctx.addBuf(c)
 		s.progressColumn(ctx, 1)
 	}
@@ -626,7 +621,15 @@ func (s *Scanner) scanNewLine(ctx *Context, c rune) {
 	} else if s.isAnchor {
 		s.addBufferedTokenIfExists(ctx)
 	}
-	ctx.addBuf(' ')
+	if ctx.existsBuffer() && s.isFirstCharAtLine {
+		if ctx.buf[len(ctx.buf)-1] == ' ' {
+			ctx.buf[len(ctx.buf)-1] = '\n'
+		} else {
+			ctx.buf = append(ctx.buf, '\n')
+		}
+	} else {
+		ctx.addBuf(' ')
+	}
 	ctx.addOriginBuf(c)
 	s.progressLine(ctx)
 }
@@ -789,6 +792,7 @@ func (s *Scanner) scanRawFoldedChar(ctx *Context) bool {
 		return false
 	}
 
+	ctx.updateDocumentLineIndentColumn(s.column)
 	ctx.isRawFolded = true
 	ctx.addBuf('-')
 	ctx.addOriginBuf('-')

@@ -922,9 +922,6 @@ func TestEncodeWithNestedYAML(t *testing.T) {
 			value:           map[string]interface{}{"v": "# comment\n"},
 			expectDifferent: true,
 		},
-		{
-			value: map[string]interface{}{"v": "\n"},
-		},
 	}
 
 	for _, test := range tests {

@@ -610,6 +610,20 @@ g: "h"
 i: 'j'
 `,
 		},
+		{
+			`
+a:
+  - |2
+        b
+    c: d
+`,
+			`
+a:
+  - |2
+        b
+    c: d
+`,
+		},
 	}
 
 	for _, test := range tests {
@@ -1164,6 +1178,39 @@ b: - 2
 >  2 |   1
          ^
 `,
+		},
+		{
+			`
+a:
+  - |
+        b
+    c: d
+`,
+			`
+[5:5] value is not allowed in this context
+   2 | a:
+   3 |   - |
+   4 |         b
+>  5 |     c: d
+           ^
+`,
+		},
+		{
+			`
+a:
+  - |
+        b
+    c:
+      d: e
+`,
+			`
+[5:5] value is not allowed in this context
+   2 | a:
+   3 |   - |
+   4 |         b
+>  5 |     c:
+           ^
+   6 |       d: e`,
 		},
 	}
 	for _, test := range tests {

@@ -525,6 +525,14 @@ func (e *Encoder) encodeFloat(v float64, bitSize int) ast.Node {
 		// append x.0 suffix to keep float value context
 		value = fmt.Sprintf("%s.0", value)
 	}
+
+	// prevent unwanted promotions of integers to float (Issue 427)
+	intVal := int64(v)
+	if float64(intVal) == v {
+		value := fmt.Sprint(intVal)
+		return ast.Integer(token.New(value, value, e.pos(e.column)))
+	}
+
 	return ast.Float(token.New(value, value, e.pos(e.column)))
 }
 

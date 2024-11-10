@@ -273,7 +273,7 @@ func TestEncoder(t *testing.T) {
 			nil,
 		},
 		{
-			"t2: 2018-01-09T10:40:47Z\nt4: 2098-01-09T10:40:47Z\n",
+			"t2: \"2018-01-09T10:40:47Z\"\nt4: \"2098-01-09T10:40:47Z\"\n",
 			map[string]string{
 				"t2": "2018-01-09T10:40:47Z",
 				"t4": "2098-01-09T10:40:47Z",
@@ -717,14 +717,16 @@ func TestEncoder(t *testing.T) {
 		},
 	}
 	for _, test := range tests {
-		var buf bytes.Buffer
-		enc := yaml.NewEncoder(&buf, test.options...)
-		if err := enc.Encode(test.value); err != nil {
-			t.Fatalf("%+v", err)
-		}
-		if test.source != buf.String() {
-			t.Fatalf("expect = [%s], actual = [%s]", test.source, buf.String())
-		}
+		t.Run(test.source, func(t *testing.T) {
+			var buf bytes.Buffer
+			enc := yaml.NewEncoder(&buf, test.options...)
+			if err := enc.Encode(test.value); err != nil {
+				t.Fatalf("%+v", err)
+			}
+			if test.source != buf.String() {
+				t.Fatalf("expect = [%s], actual = [%s]", test.source, buf.String())
+			}
+		})
 	}
 }
 

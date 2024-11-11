@@ -551,6 +551,41 @@ func TestTokenize(t *testing.T) {
 			},
 		},
 		{
+			YAML: `
+a:
+  "bbb  \
+      ccc
+
+      ddd eee\n\
+  \ \ fff ggg\nhhh iii\n
+  jjj kkk
+  "
+`,
+			Tokens: token.Tokens{
+				{
+					Type:          token.StringType,
+					CharacterType: token.CharacterTypeMiscellaneous,
+					Indicator:     token.NotIndicator,
+					Value:         "a",
+					Origin:        "\na",
+				},
+				{
+					Type:          token.MappingValueType,
+					CharacterType: token.CharacterTypeIndicator,
+					Indicator:     token.BlockStructureIndicator,
+					Value:         ":",
+					Origin:        ":",
+				},
+				{
+					Type:          token.DoubleQuoteType,
+					CharacterType: token.CharacterTypeIndicator,
+					Indicator:     token.QuotedScalarIndicator,
+					Value:         "bbb  ccc\nddd eee\n  fff ggg\nhhh iii\n jjj kkk ",
+					Origin:        "\n  \"bbb  \\\n      ccc\n\n      ddd eee\\n\\\n  \\ \\ fff ggg\\nhhh iii\\n\n  jjj kkk\n  \"",
+				},
+			},
+		},
+		{
 			YAML: `v: null
 		`,
 			Tokens: token.Tokens{
@@ -2948,7 +2983,7 @@ foo2: 'bar2'`,
 				{
 					line:   1,
 					column: 6,
-					value:  "test     bar",
+					value:  "test\n\n\n\nbar",
 				},
 				{
 					line:   7,

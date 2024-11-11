@@ -294,7 +294,15 @@ func (s *Scanner) scanDoubleQuote(ctx *Context) (*token.Token, error) {
 		c := src[idx]
 		ctx.addOriginBuf(c)
 		if s.isNewLineChar(c) {
-			value = append(value, ' ')
+			if isFirstLineChar {
+				if value[len(value)-1] == ' ' {
+					value[len(value)-1] = '\n'
+				} else {
+					value = append(value, '\n')
+				}
+			} else {
+				value = append(value, ' ')
+			}
 			isFirstLineChar = true
 			isNewLine = true
 			s.progressLine(ctx)
@@ -388,6 +396,16 @@ func (s *Scanner) scanDoubleQuote(ctx *Context) (*token.Token, error) {
 				progress = 1
 				ctx.addOriginBuf(nextChar)
 				value = append(value, c)
+			case '\n':
+				isFirstLineChar = true
+				isNewLine = true
+				ctx.addOriginBuf(nextChar)
+				s.progressColumn(ctx, 1)
+				s.progressLine(ctx)
+				idx++
+				continue
+			case ' ':
+				// skip escape character.
 			default:
 				value = append(value, c)
 			}

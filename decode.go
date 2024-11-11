@@ -607,6 +607,16 @@ type unknownFieldError struct {
 	err error
 }
 
+func (e *unknownFieldError) PrettyPrint(p errors.Printer, colored, inclSource bool) error {
+	var pp errors.PrettyPrinter
+	if errors.As(e.err, &pp) {
+		return pp.PrettyPrint(p, colored, inclSource)
+	}
+
+	p.Print(e)
+	return nil
+}
+
 func (e *unknownFieldError) Error() string {
 	return e.err.Error()
 }
@@ -621,6 +631,16 @@ func errUnexpectedNodeType(actual, expected ast.NodeType, tk *token.Token) error
 
 type duplicateKeyError struct {
 	err error
+}
+
+func (e *duplicateKeyError) PrettyPrint(p errors.Printer, colored, inclSource bool) error {
+	var pp errors.PrettyPrinter
+	if errors.As(e.err, &pp) {
+		return pp.PrettyPrint(p, colored, inclSource)
+	}
+
+	p.Print(e)
+	return nil
 }
 
 func (e *duplicateKeyError) Error() string {

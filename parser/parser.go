@@ -899,6 +899,8 @@ func (p *parser) createNodeFromToken(ctx *context, tk *token.Token) (ast.Node, e
 		return p.parseTag(ctx)
 	case token.LiteralType, token.FoldedType:
 		return p.parseLiteral(ctx)
+	case token.MappingValueType:
+		return nil, errors.ErrSyntax("found an invalid key for this map", tk)
 	}
 	return nil, nil
 }

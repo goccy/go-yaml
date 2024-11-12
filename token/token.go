@@ -401,6 +401,8 @@ const (
 	SetTag ReservedTagKeyword = "!!set"
 	// TimestampTag `!!timestamp` tag
 	TimestampTag ReservedTagKeyword = "!!timestamp"
+	// BooleanTag `!!bool` tag
+	BooleanTag ReservedTagKeyword = "!!bool"
 )
 
 var (
@@ -497,6 +499,16 @@ var (
 			}
 		},
 		TimestampTag: func(value, org string, pos *Position) *Token {
+			return &Token{
+				Type:          TagType,
+				CharacterType: CharacterTypeIndicator,
+				Indicator:     NodePropertyIndicator,
+				Value:         value,
+				Origin:        org,
+				Position:      pos,
+			}
+		},
+		BooleanTag: func(value, org string, pos *Position) *Token {
 			return &Token{
 				Type:          TagType,
 				CharacterType: CharacterTypeIndicator,

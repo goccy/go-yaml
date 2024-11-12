@@ -13,6 +13,7 @@ import (
 	"reflect"
 	"sort"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/goccy/go-yaml/ast"
@@ -332,9 +333,28 @@ func (d *Decoder) nodeToValue(node ast.Node) (any, error) {
 			}
 			b, _ := base64.StdEncoding.DecodeString(v.(string))
 			return b, nil
+		case token.BooleanTag:
+			v, err := d.nodeToValue(n.Value)
+			if err != nil {
+				return nil, err
+			}
+			str := strings.ToLower(fmt.Sprint(v))
+			b, err := strconv.ParseBool(str)
+			if err == nil {
+				return b, nil
+			}
+			switch str {
+			case "yes":
+				return true, nil
+			case "no":
+				return false, nil
+			}
+			return nil, errors.ErrSyntax(fmt.Sprintf("cannot convert %q to boolean", fmt.Sprint(v)), n.Value.GetToken())
 		case token.StringTag:
 			return d.nodeToValue(n.Value)
 		case token.MappingTag:
+			return d.nodeToValue(n.Value)
+		default:
 			return d.nodeToValue(n.Value)
 		}
 	case *ast.AnchorNode:

@@ -96,6 +96,26 @@ func TestParser(t *testing.T) {
 		"a:\n-",
 		"a: {foo}",
 		"a: {foo,bar}",
+		`
+{
+  a: {
+    b: c
+  },
+  d: e
+}
+`,
+		`
+[
+  a: {
+    b: c
+  }]
+`,
+		`
+{
+  a: {
+    b: c
+  }}
+`,
 	}
 	for _, src := range sources {
 		if _, err := parser.Parse(lexer.Tokenize(src), 0); err != nil {

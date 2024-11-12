@@ -202,7 +202,7 @@ func (p *parser) parseSequence(ctx *context) (*ast.SequenceNode, error) {
 			break
 		}
 
-		value, err := p.parseToken(ctx.withIndex(uint(len(node.Values))), p.currentToken())
+		value, err := p.parseToken(ctx.withIndex(uint(len(node.Values))).withFlow(true), p.currentToken())
 		if err != nil {
 			return nil, err
 		}
@@ -481,14 +481,8 @@ func (p *parser) parseMappingValue(ctx *context) (ast.Node, error) {
 		ntk = p.nextNotCommentToken()
 		antk = p.afterNextNotCommentToken()
 	}
-	validationTk := node.Start
-	if len(node.Values) != 0 {
-		validationTk = node.Values[len(node.Values)-1].Key.GetToken()
-	}
-	if tk := p.nextNotCommentToken(); tk != nil && tk.Position.Line > validationTk.Position.Line && tk.Position.Column > validationTk.Position.Column {
-		// a: b
-		//   c <= this token is invalid.
-		return nil, errors.ErrSyntax("value is not allowed in this context", tk)
+	if err := p.validateMapNextToken(ctx, node); err != nil {
+		return nil, err
 	}
 	if len(node.Values) == 1 {
 		mapKeyCol := mvnode.Key.GetToken().Position.Column
@@ -510,6 +504,31 @@ func (p *parser) parseMappingValue(ctx *context) (ast.Node, error) {
 		node.FootComment = comment
 	}
 	return node, nil
+}
+
+func (p *parser) validateMapNextToken(ctx *context, node *ast.MappingNode) error {
+	keyTk := node.Start
+	if len(node.Values) != 0 {
+		keyTk = node.Values[len(node.Values)-1].Key.GetToken()
+	}
+	tk := p.nextNotCommentToken()
+	if tk == nil {
+		return nil
+	}
+
+	if ctx.isFlow && (tk.Type == token.CollectEntryType || tk.Type == token.SequenceEndType || tk.Type == token.MappingEndType) {
+		// a: {
+		//  key: value
+		// } , <= if context is flow mode, "," or "]" or "}" is allowed.
+		return nil
+	}
+
+	if tk.Position.Line > keyTk.Position.Line && tk.Position.Column > keyTk.Position.Column {
+		// a: b
+		//   c <= this token is invalid.
+		return errors.ErrSyntax("value is not allowed in this context", tk)
+	}
+	return nil
 }
 
 func (p *parser) parseFlowMapNullValue(ctx *context, key ast.MapKeyNode) (*ast.MappingValueNode, error) {

@@ -226,9 +226,16 @@ func (p *parser) parseTag(ctx *context) (*ast.TagNode, error) {
 		err   error
 	)
 	switch token.ReservedTagKeyword(tagToken.Value) {
-	case token.MappingTag,
-		token.OrderedMapTag:
-		value, err = p.parseMapping(ctx)
+	case token.MappingTag, token.OrderedMapTag:
+		tk := p.currentToken()
+		if tk.Type == token.CommentType {
+			tk = p.nextNotCommentToken()
+		}
+		if tk != nil && tk.Type == token.MappingStartType {
+			value, err = p.parseMapping(ctx)
+		} else {
+			value, err = p.parseMappingValue(ctx)
+		}
 	case token.IntegerTag,
 		token.FloatTag,
 		token.StringTag,
@@ -245,8 +252,7 @@ func (p *parser) parseTag(ctx *context) (*ast.TagNode, error) {
 		token.SetTag:
 		err = errors.ErrSyntax(fmt.Sprintf("sorry, currently not supported %s tag", tagToken.Value), tagToken)
 	default:
-		// custom tag
-		value, err = p.parseToken(ctx, p.currentToken())
+		err = errors.ErrSyntax(fmt.Sprintf("unknown tag name %q specified", tagToken.Value), tagToken)
 	}
 	if err != nil {
 		return nil, err

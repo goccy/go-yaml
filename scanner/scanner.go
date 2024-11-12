@@ -504,14 +504,20 @@ func (s *Scanner) scanTag(ctx *Context) bool {
 		progress = idx + 1
 		ctx.addOriginBuf(c)
 		switch c {
-		case ' ', '\n', '\r':
+		case ' ':
 			value := ctx.source(ctx.idx-1, ctx.idx+idx)
 			ctx.addToken(token.Tag(value, string(ctx.obuf), s.pos()))
-			progress = len([]rune(value))
-			goto END
+			s.progressColumn(ctx, len([]rune(value)))
+			ctx.clear()
+			return true
+		case '\n', '\r':
+			value := ctx.source(ctx.idx-1, ctx.idx+idx)
+			ctx.addToken(token.Tag(value, string(ctx.obuf), s.pos()))
+			s.progressColumn(ctx, len([]rune(value))-1) // progress column before new-line-char for scanning new-line-char at scanNewLine function.
+			ctx.clear()
+			return true
 		}
 	}
-END:
 	s.progressColumn(ctx, progress)
 	ctx.clear()
 	return true

@@ -70,7 +70,6 @@ func TestParser(t *testing.T) {
 		"%YAML 1.2\n---\n",
 		"a: !!binary gIGC\n",
 		"a: !!binary |\n  " + strings.Repeat("kJCQ", 17) + "kJ\n  CQ\n",
-		"- !tag\n  a: b\n  c: d\n",
 		"v:\n- A\n- |-\n  B\n  C\n",
 		"v:\n- A\n- >-\n  B\n  C\n",
 		"v: |-\n  0\n",
@@ -958,6 +957,43 @@ func TestSyntaxError(t *testing.T) {
 		source string
 		expect string
 	}{
+		{
+			`
+- !tag
+  a: b
+  c: d
+`,
+			`
+[2:3] unknown tag name "!tag" specified
+>  2 | - !tag
+         ^
+   3 |   a: b
+   4 |   c: d`,
+		},
+		{
+			`
+a: !tag
+  b: c
+`,
+			`
+[2:4] unknown tag name "!tag" specified
+>  2 | a: !tag
+          ^
+   3 |   b: c`,
+		},
+		{
+			`
+a: !tag
+  b: c
+  d: e
+`,
+			`
+[2:4] unknown tag name "!tag" specified
+>  2 | a: !tag
+          ^
+   3 |   b: c
+   4 |   d: e`,
+		},
 		{
 			`
 a:

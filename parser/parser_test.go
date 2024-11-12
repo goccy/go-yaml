@@ -972,6 +972,14 @@ func TestSyntaxError(t *testing.T) {
 		expect string
 	}{
 		{
+			`v: !!int64 2`,
+			`
+[1:4] unknown secondary tag name "!!int64" specified
+>  1 | v: !!int64 2
+          ^
+`,
+		},
+		{
 			`
 a:
 - b

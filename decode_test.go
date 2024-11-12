@@ -582,6 +582,14 @@ func TestDecoder(t *testing.T) {
 			"v: !!timestamp 2015-01-01",
 			map[string]time.Time{"v": time.Date(2015, 1, 1, 0, 0, 0, 0, time.UTC)},
 		},
+		{
+			"v: !!bool yes",
+			map[string]bool{"v": true},
+		},
+		{
+			"v: !!bool False",
+			map[string]bool{"v": false},
+		},
 
 		// Flow sequence
 		{

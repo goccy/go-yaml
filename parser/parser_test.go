@@ -115,6 +115,20 @@ func TestParser(t *testing.T) {
     b: c
   }}
 `,
+		`
+- !tag
+  a: b
+  c: d
+`,
+		`
+a: !tag
+  b: c
+`,
+		`
+a: !tag
+  b: c
+  d: e
+`,
 	}
 	for _, src := range sources {
 		if _, err := parser.Parse(lexer.Tokenize(src), 0); err != nil {
@@ -958,41 +972,12 @@ func TestSyntaxError(t *testing.T) {
 		expect string
 	}{
 		{
+			`v: !!int64 2`,
 			`
-- !tag
-  a: b
-  c: d
-`,
-			`
-[2:3] unknown tag name "!tag" specified
->  2 | - !tag
-         ^
-   3 |   a: b
-   4 |   c: d`,
-		},
-		{
-			`
-a: !tag
-  b: c
-`,
-			`
-[2:4] unknown tag name "!tag" specified
->  2 | a: !tag
+[1:4] unknown secondary tag name "!!int64" specified
+>  1 | v: !!int64 2
           ^
-   3 |   b: c`,
-		},
-		{
-			`
-a: !tag
-  b: c
-  d: e
 `,
-			`
-[2:4] unknown tag name "!tag" specified
->  2 | a: !tag
-          ^
-   3 |   b: c
-   4 |   d: e`,
 		},
 		{
 			`

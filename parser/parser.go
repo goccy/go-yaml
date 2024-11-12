@@ -241,6 +241,7 @@ func (p *parser) parseTag(ctx *context) (*ast.TagNode, error) {
 		token.StringTag,
 		token.BinaryTag,
 		token.TimestampTag,
+		token.BooleanTag,
 		token.NullTag:
 		typ := p.currentToken().Type
 		if typ == token.LiteralType || typ == token.FoldedType {
@@ -252,7 +253,11 @@ func (p *parser) parseTag(ctx *context) (*ast.TagNode, error) {
 		token.SetTag:
 		err = errors.ErrSyntax(fmt.Sprintf("sorry, currently not supported %s tag", tagToken.Value), tagToken)
 	default:
-		err = errors.ErrSyntax(fmt.Sprintf("unknown tag name %q specified", tagToken.Value), tagToken)
+		if strings.HasPrefix(tagToken.Value, "!!") {
+			err = errors.ErrSyntax(fmt.Sprintf("unknown secondary tag name %q specified", tagToken.Value), tagToken)
+		} else {
+			value, err = p.parseToken(ctx, p.currentToken())
+		}
 	}
 	if err != nil {
 		return nil, err

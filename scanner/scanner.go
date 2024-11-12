@@ -606,8 +606,10 @@ func (s *Scanner) scanDocument(ctx *Context, c rune) error {
 
 func (s *Scanner) scanNewLine(ctx *Context, c rune) {
 	if len(ctx.buf) > 0 && s.savedPos == nil {
+		bufLen := len(ctx.bufferedSrc())
 		s.savedPos = s.pos()
-		s.savedPos.Column -= len(ctx.bufferedSrc())
+		s.savedPos.Column -= bufLen
+		s.savedPos.Offset -= bufLen
 	}
 
 	// if the following case, origin buffer has unnecessary two spaces.
@@ -631,6 +633,7 @@ func (s *Scanner) scanNewLine(ctx *Context, c rune) {
 	if c == '\r' && ctx.nextChar() == '\n' {
 		ctx.addOriginBuf('\r')
 		s.progress(ctx, 1)
+		s.offset++
 		c = '\n'
 	}
 

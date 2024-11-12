@@ -3186,3 +3186,32 @@ a: |invalid`,
 		})
 	}
 }
+
+func TestTokenOffset(t *testing.T) {
+	t.Run("crlf", func(t *testing.T) {
+		content := "project:\r\n  version: 1.2.3\r\n"
+		tokens := lexer.Tokenize(content)
+		if len(tokens) != 5 {
+			t.Fatalf("invalid token num. got %d", len(tokens))
+		}
+		if tokens[4].Value != "1.2.3" {
+			t.Fatalf("unexpected value. got %q", tokens[4].Value)
+		}
+		if tokens[4].Position.Offset != 22 {
+			t.Fatalf("unexpected offset. got %d", tokens[4].Position.Offset)
+		}
+	})
+	t.Run("lf", func(t *testing.T) {
+		content := "project:\n  version: 1.2.3\n"
+		tokens := lexer.Tokenize(content)
+		if len(tokens) != 5 {
+			t.Fatalf("invalid token num. got %d", len(tokens))
+		}
+		if tokens[4].Value != "1.2.3" {
+			t.Fatalf("unexpected value. got %q", tokens[4].Value)
+		}
+		if tokens[4].Position.Offset != 21 {
+			t.Fatalf("unexpected offset. got %d", tokens[4].Position.Offset)
+		}
+	})
+}

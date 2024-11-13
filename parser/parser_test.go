@@ -883,7 +883,7 @@ a:
 
 - f: g
   h: i # comment 4
-		`,
+`,
 			`
 - b: c
   d: e

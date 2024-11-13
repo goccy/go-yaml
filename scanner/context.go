@@ -182,7 +182,7 @@ func (c *Context) addToken(tk *token.Token) {
 }
 
 func (c *Context) addBuf(r rune) {
-	if len(c.buf) == 0 && r == ' ' {
+	if len(c.buf) == 0 && (r == ' ' || r == '\t') {
 		return
 	}
 	c.buf = append(c.buf, r)

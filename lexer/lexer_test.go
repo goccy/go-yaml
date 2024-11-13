@@ -15,14 +15,14 @@ func TestTokenize(t *testing.T) {
 	}{
 		{
 			YAML: `null
-		`,
+  `,
 			Tokens: token.Tokens{
 				{
 					Type:          token.NullType,
 					CharacterType: token.CharacterTypeMiscellaneous,
 					Indicator:     token.NotIndicator,
 					Value:         "null",
-					Origin:        "null\n\t\t",
+					Origin:        "null\n  ",
 				},
 			},
 		},
@@ -100,7 +100,7 @@ func TestTokenize(t *testing.T) {
 		},
 		{
 			YAML: `{}
-		`,
+  `,
 			Tokens: token.Tokens{
 				{
 					Type:          token.MappingStartType,
@@ -119,8 +119,7 @@ func TestTokenize(t *testing.T) {
 			},
 		},
 		{
-			YAML: `v: hi
-		`,
+			YAML: `v: hi`,
 			Tokens: token.Tokens{
 				{
 					Type:          token.StringType,
@@ -141,13 +140,38 @@ func TestTokenize(t *testing.T) {
 					CharacterType: token.CharacterTypeMiscellaneous,
 					Indicator:     token.NotIndicator,
 					Value:         "hi",
-					Origin:        " hi\n",
+					Origin:        " hi",
 				},
 			},
 		},
 		{
-			YAML: `v: "true"
-		`,
+			YAML: `v:	a`,
+			Tokens: token.Tokens{
+				{
+					Type:          token.StringType,
+					CharacterType: token.CharacterTypeMiscellaneous,
+					Indicator:     token.NotIndicator,
+					Value:         "v",
+					Origin:        "v",
+				},
+				{
+					Type:          token.MappingValueType,
+					CharacterType: token.CharacterTypeIndicator,
+					Indicator:     token.BlockStructureIndicator,
+					Value:         ":",
+					Origin:        ":",
+				},
+				{
+					Type:          token.StringType,
+					CharacterType: token.CharacterTypeMiscellaneous,
+					Indicator:     token.NotIndicator,
+					Value:         "a",
+					Origin: "	a",
+				},
+			},
+		},
+		{
+			YAML: `v: "true"`,
 			Tokens: token.Tokens{
 				{
 					Type:          token.StringType,
@@ -173,8 +197,7 @@ func TestTokenize(t *testing.T) {
 			},
 		},
 		{
-			YAML: `v: "false"
-		`,
+			YAML: `v: "false"`,
 			Tokens: token.Tokens{
 				{
 					Type:          token.StringType,
@@ -200,8 +223,7 @@ func TestTokenize(t *testing.T) {
 			},
 		},
 		{
-			YAML: `v: true
-		`,
+			YAML: `v: true`,
 			Tokens: token.Tokens{
 				{
 					Type:          token.StringType,
@@ -222,13 +244,12 @@ func TestTokenize(t *testing.T) {
 					CharacterType: token.CharacterTypeMiscellaneous,
 					Indicator:     token.NotIndicator,
 					Value:         "true",
-					Origin:        " true\n",
+					Origin:        " true",
 				},
 			},
 		},
 		{
-			YAML: `v: false
-		`,
+			YAML: `v: false`,
 			Tokens: token.Tokens{
 				{
 					Type:          token.StringType,
@@ -249,13 +270,12 @@ func TestTokenize(t *testing.T) {
 					CharacterType: token.CharacterTypeMiscellaneous,
 					Indicator:     token.NotIndicator,
 					Value:         "false",
-					Origin:        " false\n",
+					Origin:        " false",
 				},
 			},
 		},
 		{
-			YAML: `v: 10
-		`,
+			YAML: `v: 10`,
 			Tokens: token.Tokens{
 				{
 					Type:          token.StringType,
@@ -276,13 +296,12 @@ func TestTokenize(t *testing.T) {
 					CharacterType: token.CharacterTypeMiscellaneous,
 					Indicator:     token.NotIndicator,
 					Value:         "10",
-					Origin:        " 10\n",
+					Origin:        " 10",
 				},
 			},
 		},
 		{
-			YAML: `v: -10
-		`,
+			YAML: `v: -10`,
 			Tokens: token.Tokens{
 				{
 					Type:          token.StringType,
@@ -303,13 +322,12 @@ func TestTokenize(t *testing.T) {
 					CharacterType: token.CharacterTypeMiscellaneous,
 					Indicator:     token.NotIndicator,
 					Value:         "-10",
-					Origin:        " -10\n",
+					Origin:        " -10",
 				},
 			},
 		},
 		{
-			YAML: `v: 42
-		`,
+			YAML: `v: 42`,
 			Tokens: token.Tokens{
 				{
 					Type:          token.StringType,
@@ -330,13 +348,12 @@ func TestTokenize(t *testing.T) {
 					CharacterType: token.CharacterTypeMiscellaneous,
 					Indicator:     token.NotIndicator,
 					Value:         "42",
-					Origin:        " 42\n",
+					Origin:        " 42",
 				},
 			},
 		},
 		{
-			YAML: `v: 4294967296
-		`,
+			YAML: `v: 4294967296`,
 			Tokens: token.Tokens{
 				{
 					Type:          token.StringType,
@@ -357,13 +374,12 @@ func TestTokenize(t *testing.T) {
 					CharacterType: token.CharacterTypeMiscellaneous,
 					Indicator:     token.NotIndicator,
 					Value:         "4294967296",
-					Origin:        " 4294967296\n",
+					Origin:        " 4294967296",
 				},
 			},
 		},
 		{
-			YAML: `v: "10"
-		`,
+			YAML: `v: "10"`,
 			Tokens: token.Tokens{
 				{
 					Type:          token.StringType,
@@ -389,8 +405,7 @@ func TestTokenize(t *testing.T) {
 			},
 		},
 		{
-			YAML: `v: 0.1
-		`,
+			YAML: `v: 0.1`,
 			Tokens: token.Tokens{
 				{
 					Type:          token.StringType,
@@ -411,13 +426,12 @@ func TestTokenize(t *testing.T) {
 					CharacterType: token.CharacterTypeMiscellaneous,
 					Indicator:     token.NotIndicator,
 					Value:         "0.1",
-					Origin:        " 0.1\n",
+					Origin:        " 0.1",
 				},
 			},
 		},
 		{
-			YAML: `v: 0.99
-		`,
+			YAML: `v: 0.99`,
 			Tokens: token.Tokens{
 				{
 					Type:          token.StringType,
@@ -438,13 +452,12 @@ func TestTokenize(t *testing.T) {
 					CharacterType: token.CharacterTypeMiscellaneous,
 					Indicator:     token.NotIndicator,
 					Value:         "0.99",
-					Origin:        " 0.99\n",
+					Origin:        " 0.99",
 				},
 			},
 		},
 		{
-			YAML: `v: -0.1
-		`,
+			YAML: `v: -0.1`,
 			Tokens: token.Tokens{
 				{
 					Type:          token.StringType,
@@ -465,13 +478,12 @@ func TestTokenize(t *testing.T) {
 					CharacterType: token.CharacterTypeMiscellaneous,
 					Indicator:     token.NotIndicator,
 					Value:         "-0.1",
-					Origin:        " -0.1\n",
+					Origin:        " -0.1",
 				},
 			},
 		},
 		{
-			YAML: `v: .inf
-		`,
+			YAML: `v: .inf`,
 			Tokens: token.Tokens{
 				{
 					Type:          token.StringType,
@@ -492,13 +504,12 @@ func TestTokenize(t *testing.T) {
 					CharacterType: token.CharacterTypeMiscellaneous,
 					Indicator:     token.NotIndicator,
 					Value:         ".inf",
-					Origin:        " .inf\n",
+					Origin:        " .inf",
 				},
 			},
 		},
 		{
-			YAML: `v: -.inf
-		`,
+			YAML: `v: -.inf`,
 			Tokens: token.Tokens{
 				{
 					Type:          token.StringType,
@@ -519,13 +530,12 @@ func TestTokenize(t *testing.T) {
 					CharacterType: token.CharacterTypeMiscellaneous,
 					Indicator:     token.NotIndicator,
 					Value:         "-.inf",
-					Origin:        " -.inf\n",
+					Origin:        " -.inf",
 				},
 			},
 		},
 		{
-			YAML: `v: .nan
-		`,
+			YAML: `v: .nan`,
 			Tokens: token.Tokens{
 				{
 					Type:          token.StringType,
@@ -546,7 +556,7 @@ func TestTokenize(t *testing.T) {
 					CharacterType: token.CharacterTypeMiscellaneous,
 					Indicator:     token.NotIndicator,
 					Value:         ".nan",
-					Origin:        " .nan\n",
+					Origin:        " .nan",
 				},
 			},
 		},
@@ -586,8 +596,7 @@ a:
 			},
 		},
 		{
-			YAML: `v: null
-		`,
+			YAML: `v: null`,
 			Tokens: token.Tokens{
 				{
 					Type:          token.StringType,
@@ -608,13 +617,12 @@ a:
 					CharacterType: token.CharacterTypeMiscellaneous,
 					Indicator:     token.NotIndicator,
 					Value:         "null",
-					Origin:        " null\n",
+					Origin:        " null",
 				},
 			},
 		},
 		{
-			YAML: `v: ""
-		`,
+			YAML: `v: ""`,
 			Tokens: token.Tokens{
 				{
 					Type:          token.StringType,
@@ -897,8 +905,7 @@ a:
 			},
 		},
 		{
-			YAML: `a: '-'
-		`,
+			YAML: `a: '-'`,
 			Tokens: token.Tokens{
 				{
 					Type:          token.StringType,
@@ -924,15 +931,14 @@ a:
 			},
 		},
 		{
-			YAML: `123
-		`,
+			YAML: `123`,
 			Tokens: token.Tokens{
 				{
 					Type:          token.IntegerType,
 					CharacterType: token.CharacterTypeMiscellaneous,
 					Indicator:     token.NotIndicator,
 					Value:         "123",
-					Origin:        "123\n\t\t",
+					Origin:        "123",
 				},
 			},
 		},
@@ -964,8 +970,7 @@ a:
 			},
 		},
 		{
-			YAML: `a: null
-		`,
+			YAML: `a: null`,
 			Tokens: token.Tokens{
 				{
 					Type:          token.StringType,
@@ -986,13 +991,12 @@ a:
 					CharacterType: token.CharacterTypeMiscellaneous,
 					Indicator:     token.NotIndicator,
 					Value:         "null",
-					Origin:        " null\n",
+					Origin:        " null",
 				},
 			},
 		},
 		{
-			YAML: `a: {x: 1}
-		`,
+			YAML: `a: {x: 1}`,
 			Tokens: token.Tokens{
 				{
 					Type:          token.StringType,
@@ -1046,8 +1050,7 @@ a:
 			},
 		},
 		{
-			YAML: `a: [1, 2]
-		`,
+			YAML: `a: [1, 2]`,
 			Tokens: token.Tokens{
 				{
 					Type:          token.StringType,
@@ -1101,16 +1104,17 @@ a:
 			},
 		},
 		{
-			YAML: `t2: 2018-01-09T10:40:47Z
-		t4: 2098-01-09T10:40:47Z
-		`,
+			YAML: `
+t2: 2018-01-09T10:40:47Z
+t4: 2098-01-09T10:40:47Z
+`,
 			Tokens: token.Tokens{
 				{
 					Type:          token.StringType,
 					CharacterType: token.CharacterTypeMiscellaneous,
 					Indicator:     token.NotIndicator,
 					Value:         "t2",
-					Origin:        "t2",
+					Origin:        "\nt2",
 				},
 				{
 					Type:          token.MappingValueType,
@@ -1130,8 +1134,8 @@ a:
 					Type:          token.StringType,
 					CharacterType: token.CharacterTypeMiscellaneous,
 					Indicator:     token.NotIndicator,
-					Value:         "\t\tt4",
-					Origin:        "\t\tt4",
+					Value:         "t4",
+					Origin:        "t4",
 				},
 				{
 					Type:          token.MappingValueType,
@@ -1145,13 +1149,12 @@ a:
 					CharacterType: token.CharacterTypeMiscellaneous,
 					Indicator:     token.NotIndicator,
 					Value:         "2098-01-09T10:40:47Z",
-					Origin:        " 2098-01-09T10:40:47Z\n",
+					Origin:        " 2098-01-09T10:40:47Z",
 				},
 			},
 		},
 		{
-			YAML: `a: {b: c, d: e}
-		`,
+			YAML: `a: {b: c, d: e}`,
 			Tokens: token.Tokens{
 				{
 					Type:          token.StringType,
@@ -1233,8 +1236,7 @@ a:
 			},
 		},
 		{
-			YAML: `a: 3s
-		`,
+			YAML: `a: 3s`,
 			Tokens: token.Tokens{
 				{
 					Type:          token.StringType,
@@ -1255,13 +1257,12 @@ a:
 					CharacterType: token.CharacterTypeMiscellaneous,
 					Indicator:     token.NotIndicator,
 					Value:         "3s",
-					Origin:        " 3s\n",
+					Origin:        " 3s",
 				},
 			},
 		},
 		{
-			YAML: `a: <foo>
-		`,
+			YAML: `a: <foo>`,
 			Tokens: token.Tokens{
 				{
 					Type:          token.StringType,
@@ -1282,13 +1283,12 @@ a:
 					CharacterType: token.CharacterTypeMiscellaneous,
 					Indicator:     token.NotIndicator,
 					Value:         "<foo>",
-					Origin:        " <foo>\n",
+					Origin:        " <foo>",
 				},
 			},
 		},
 		{
-			YAML: `a: "1:1"
-		`,
+			YAML: `a: "1:1"`,
 			Tokens: token.Tokens{
 				{
 					Type:          token.StringType,
@@ -1314,8 +1314,7 @@ a:
 			},
 		},
 		{
-			YAML: `a: "\0"
-		`,
+			YAML: `a: "\0"`,
 			Tokens: token.Tokens{
 				{
 					Type:          token.StringType,
@@ -1341,8 +1340,7 @@ a:
 			},
 		},
 		{
-			YAML: `a: !!binary gIGC
-		`,
+			YAML: `a: !!binary gIGC`,
 			Tokens: token.Tokens{
 				{
 					Type:          token.StringType,
@@ -1370,7 +1368,7 @@ a:
 					CharacterType: token.CharacterTypeMiscellaneous,
 					Indicator:     token.NotIndicator,
 					Value:         "gIGC",
-					Origin:        "gIGC\n",
+					Origin:        "gIGC",
 				},
 			},
 		},
@@ -1419,20 +1417,21 @@ a: !!binary |
 			},
 		},
 		{
-			YAML: `b: 2
-		a: 1
-		d: 4
-		c: 3
-		sub:
-		 e: 5
-		`,
+			YAML: `
+b: 2
+a: 1
+d: 4
+c: 3
+sub:
+  e: 5
+`,
 			Tokens: token.Tokens{
 				{
 					Type:          token.StringType,
 					CharacterType: token.CharacterTypeMiscellaneous,
 					Indicator:     token.NotIndicator,
 					Value:         "b",
-					Origin:        "b",
+					Origin:        "\nb",
 				},
 				{
 					Type:          token.MappingValueType,
@@ -1452,8 +1451,8 @@ a: !!binary |
 					Type:          token.StringType,
 					CharacterType: token.CharacterTypeMiscellaneous,
 					Indicator:     token.NotIndicator,
-					Value:         "\t\ta",
-					Origin:        "\t\ta",
+					Value:         "a",
+					Origin:        "a",
 				},
 				{
 					Type:          token.MappingValueType,
@@ -1473,8 +1472,8 @@ a: !!binary |
 					Type:          token.StringType,
 					CharacterType: token.CharacterTypeMiscellaneous,
 					Indicator:     token.NotIndicator,
-					Value:         "\t\td",
-					Origin:        "\t\td",
+					Value:         "d",
+					Origin:        "d",
 				},
 				{
 					Type:          token.MappingValueType,
@@ -1494,8 +1493,8 @@ a: !!binary |
 					Type:          token.StringType,
 					CharacterType: token.CharacterTypeMiscellaneous,
 					Indicator:     token.NotIndicator,
-					Value:         "\t\tc",
-					Origin:        "\t\tc",
+					Value:         "c",
+					Origin:        "c",
 				},
 				{
 					Type:          token.MappingValueType,
@@ -1515,8 +1514,8 @@ a: !!binary |
 					Type:          token.StringType,
 					CharacterType: token.CharacterTypeMiscellaneous,
 					Indicator:     token.NotIndicator,
-					Value:         "\t\tsub",
-					Origin:        "\t\tsub",
+					Value:         "sub",
+					Origin:        "sub",
 				},
 				{
 					Type:          token.MappingValueType,
@@ -1529,8 +1528,8 @@ a: !!binary |
 					Type:          token.StringType,
 					CharacterType: token.CharacterTypeMiscellaneous,
 					Indicator:     token.NotIndicator,
-					Value:         "\t\t e",
-					Origin:        "\n\t\t e",
+					Value:         "e",
+					Origin:        "\n  e",
 				},
 				{
 					Type:          token.MappingValueType,
@@ -1544,13 +1543,12 @@ a: !!binary |
 					CharacterType: token.CharacterTypeMiscellaneous,
 					Indicator:     token.NotIndicator,
 					Value:         "5",
-					Origin:        " 5\n",
+					Origin:        " 5",
 				},
 			},
 		},
 		{
-			YAML: `a: 1.2.3.4
-		`,
+			YAML: `a: 1.2.3.4`,
 			Tokens: token.Tokens{
 				{
 					Type:          token.StringType,
@@ -1571,13 +1569,12 @@ a: !!binary |
 					CharacterType: token.CharacterTypeMiscellaneous,
 					Indicator:     token.NotIndicator,
 					Value:         "1.2.3.4",
-					Origin:        " 1.2.3.4\n",
+					Origin:        " 1.2.3.4",
 				},
 			},
 		},
 		{
-			YAML: `a: "2015-02-24T18:19:39Z"
-		`,
+			YAML: `a: "2015-02-24T18:19:39Z"`,
 			Tokens: token.Tokens{
 				{
 					Type:          token.StringType,
@@ -1603,8 +1600,7 @@ a: !!binary |
 			},
 		},
 		{
-			YAML: `a: 'b: c'
-		`,
+			YAML: `a: 'b: c'`,
 			Tokens: token.Tokens{
 				{
 					Type:          token.StringType,
@@ -1630,8 +1626,7 @@ a: !!binary |
 			},
 		},
 		{
-			YAML: `a: 'Hello #comment'
-		`,
+			YAML: `a: 'Hello #comment'`,
 			Tokens: token.Tokens{
 				{
 					Type:          token.StringType,
@@ -1657,8 +1652,7 @@ a: !!binary |
 			},
 		},
 		{
-			YAML: `a: 100.5
-		`,
+			YAML: `a: 100.5`,
 			Tokens: token.Tokens{
 				{
 					Type:          token.StringType,
@@ -1679,13 +1673,12 @@ a: !!binary |
 					CharacterType: token.CharacterTypeMiscellaneous,
 					Indicator:     token.NotIndicator,
 					Value:         "100.5",
-					Origin:        " 100.5\n",
+					Origin:        " 100.5",
 				},
 			},
 		},
 		{
-			YAML: `a: bogus
-		`,
+			YAML: `a: bogus`,
 			Tokens: token.Tokens{
 				{
 					Type:          token.StringType,
@@ -1706,7 +1699,7 @@ a: !!binary |
 					CharacterType: token.CharacterTypeMiscellaneous,
 					Indicator:     token.NotIndicator,
 					Value:         "bogus",
-					Origin:        " bogus\n",
+					Origin:        " bogus",
 				},
 			},
 		},
@@ -1763,15 +1756,16 @@ a: !!binary |
 			},
 		},
 		{
-			YAML: `a: "double quoted"
-		b: "value map"`,
+			YAML: `
+a: "double quoted"
+b: "value map"`,
 			Tokens: token.Tokens{
 				{
 					Type:          token.StringType,
 					CharacterType: token.CharacterTypeMiscellaneous,
 					Indicator:     token.NotIndicator,
 					Value:         "a",
-					Origin:        "a",
+					Origin:        "\na",
 				},
 				{
 					Type:          token.MappingValueType,
@@ -1791,8 +1785,8 @@ a: !!binary |
 					Type:          token.StringType,
 					CharacterType: token.CharacterTypeMiscellaneous,
 					Indicator:     token.NotIndicator,
-					Value:         "\t\tb",
-					Origin:        "\n\t\tb",
+					Value:         "b",
+					Origin:        "\nb",
 				},
 				{
 					Type:          token.MappingValueType,
@@ -1811,15 +1805,16 @@ a: !!binary |
 			},
 		},
 		{
-			YAML: `a: 'single quoted'
-		b: 'value map'`,
+			YAML: `
+a: 'single quoted'
+b: 'value map'`,
 			Tokens: token.Tokens{
 				{
 					Type:          token.StringType,
 					CharacterType: token.CharacterTypeMiscellaneous,
 					Indicator:     token.NotIndicator,
 					Value:         "a",
-					Origin:        "a",
+					Origin:        "\na",
 				},
 				{
 					Type:          token.MappingValueType,
@@ -1839,8 +1834,8 @@ a: !!binary |
 					Type:          token.StringType,
 					CharacterType: token.CharacterTypeMiscellaneous,
 					Indicator:     token.NotIndicator,
-					Value:         "\t\tb",
-					Origin:        "\n\t\tb",
+					Value:         "b",
+					Origin:        "\nb",
 				},
 				{
 					Type:          token.MappingValueType,
@@ -3175,6 +3170,18 @@ a: |invalid`,
 		{
 			name: "use reserved character `",
 			src:  "key: [`val]",
+		},
+		{
+			name: "use tab character as indent",
+			src: "	a: b",
+		},
+		{
+			name: "use tab character as indent in literal",
+			src: `
+a: |
+	b
+	c
+`,
 		},
 	}
 	for _, test := range tests {

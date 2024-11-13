@@ -644,7 +644,7 @@ doc:
     - value1
     - value2
   other: value3
-	`
+`
 	path, err := yaml.PathString("$.doc.map[0]")
 	if err != nil {
 		log.Fatal(err)
@@ -662,7 +662,6 @@ doc:
 	//              ^
 	//    8 |     - value2
 	//    9 |   other: value3
-	//   10 |
 }
 
 func ExamplePath_PathString() {

@@ -183,6 +183,11 @@ func (s *Scanner) updateIndent(ctx *Context, c rune) {
 		s.indentNum++
 		return
 	}
+	if s.isFirstCharAtLine && c == '\t' {
+		// found tab indent.
+		// In this case, scanTab returns error.
+		return
+	}
 	if !s.isFirstCharAtLine {
 		s.indentState = IndentStateKeep
 		return
@@ -593,6 +598,13 @@ func (s *Scanner) scanDocument(ctx *Context, c rune) error {
 	} else if s.isFirstCharAtLine && c == ' ' {
 		ctx.addDocumentIndent(s.column)
 		s.progressColumn(ctx, 1)
+	} else if s.isFirstCharAtLine && c == '\t' {
+		err := ErrInvalidToken(
+			"found a tab character where an indentation space is expected",
+			token.Invalid(string(ctx.obuf), s.pos()),
+		)
+		s.progressColumn(ctx, 1)
+		return err
 	} else {
 		ctx.updateDocumentLineIndentColumn(s.column)
 		if ctx.docFirstLineIndentColumn > 0 {
@@ -735,7 +747,7 @@ func (s *Scanner) scanFlowEntry(ctx *Context, c rune) bool {
 
 func (s *Scanner) scanMapDelim(ctx *Context) bool {
 	nc := ctx.nextChar()
-	if s.startedFlowMapNum <= 0 && nc != ' ' && !s.isNewLineChar(nc) && !ctx.isNextEOS() {
+	if s.startedFlowMapNum <= 0 && nc != ' ' && nc != '\t' && !s.isNewLineChar(nc) && !ctx.isNextEOS() {
 		return false
 	}
 
@@ -1009,10 +1021,22 @@ func (s *Scanner) scanReservedChar(ctx *Context, c rune) error {
 	return err
 }
 
+func (s *Scanner) scanTab(ctx *Context, c rune) error {
+	if !s.isFirstCharAtLine {
+		return nil
+	}
+
+	ctx.addBuf(c)
+	ctx.addOriginBuf(c)
+	err := ErrInvalidToken("found character '\t' that cannot start any token", token.Invalid(string(ctx.obuf), s.pos()))
+	s.progressColumn(ctx, 1)
+	ctx.clear()
+	return err
+}
+
 func (s *Scanner) scan(ctx *Context) error {
 	for ctx.next() {
 		c := ctx.currentChar()
-
 		// First, change the IndentState.
 		// If the target character is the first character in a line, IndentState is Up/Down/Equal state.
 		// The second and subsequent letters are Keep.
@@ -1138,6 +1162,10 @@ func (s *Scanner) scan(ctx *Context) error {
 			}
 		case '@', '`':
 			if err := s.scanReservedChar(ctx, c); err != nil {
+				return err
+			}
+		case '\t':
+			if err := s.scanTab(ctx, c); err != nil {
 				return err
 			}
 		}

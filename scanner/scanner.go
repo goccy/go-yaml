@@ -623,14 +623,7 @@ func (s *Scanner) scanNewLine(ctx *Context, c rune) {
 	// ---
 	// a:[space][space]
 	//   b: c
-	removedNum := ctx.removeRightSpaceFromBuf()
-	if removedNum > 0 {
-		s.column -= removedNum
-		s.offset -= removedNum
-		if s.savedPos != nil {
-			s.savedPos.Column -= removedNum
-		}
-	}
+	ctx.removeRightSpaceFromBuf()
 
 	// There is no problem that we ignore CR which followed by LF and normalize it to LF, because of following YAML1.2 spec.
 	// > Line breaks inside scalar content must be normalized by the YAML processor. Each such line break must be parsed into a single line feed character.

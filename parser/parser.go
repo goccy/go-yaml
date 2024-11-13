@@ -388,7 +388,12 @@ func (p *parser) createMapValueNode(ctx *context, key ast.MapKeyNode, colonToken
 		return nil, err
 	}
 	if comment != nil {
-		_ = value.SetComment(comment)
+		nextLineComment := key.GetToken().Position.Line < comment.GetToken().Position.Line
+		if n, ok := value.(*ast.MappingNode); ok && nextLineComment && len(n.Values) > 1 {
+			_ = n.Values[0].SetComment(comment)
+		} else {
+			_ = value.SetComment(comment)
+		}
 	}
 	return value, nil
 }

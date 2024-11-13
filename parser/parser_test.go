@@ -1560,6 +1560,63 @@ baz:
 	})
 }
 
+func TestCommentWithMap(t *testing.T) {
+	yml := `
+single:
+  # foo comment
+  foo: bar
+
+multiple:
+    # a comment
+    a: b
+    # c comment
+    c: d
+`
+
+	file, err := parser.ParseBytes([]byte(yml), parser.ParseComments)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(file.Docs) == 0 {
+		t.Fatal("cannot get file docs")
+	}
+	if file.Docs[0].Body == nil {
+		t.Fatal("cannot get docs body")
+	}
+	mapNode, ok := file.Docs[0].Body.(*ast.MappingNode)
+	if !ok {
+		t.Fatalf("failed to get map node. got: %T\n", file.Docs[0].Body)
+	}
+	if len(mapNode.Values) != 2 {
+		t.Fatalf("failed to get map values. got %d", len(mapNode.Values))
+	}
+
+	singleNode, ok := mapNode.Values[0].Value.(*ast.MappingValueNode)
+	if !ok {
+		t.Fatalf("failed to get single node. got %T", mapNode.Values[0].Value)
+	}
+	if singleNode.GetComment().GetToken().Value != " foo comment" {
+		t.Fatalf("failed to get comment from single. got %q", singleNode.GetComment().GetToken().Value)
+	}
+
+	multiNode, ok := mapNode.Values[1].Value.(*ast.MappingNode)
+	if !ok {
+		t.Fatalf("failed to get multiple node. got: %T", mapNode.Values[1])
+	}
+	if multiNode.GetComment() != nil {
+		t.Fatalf("found unexpected comment")
+	}
+	if len(multiNode.Values) != 2 {
+		t.Fatalf("failed to get multiple node values. got %d", len(multiNode.Values))
+	}
+	if multiNode.Values[0].GetComment().GetToken().Value != " a comment" {
+		t.Fatalf("failed to get comment from multiple[0]. got %q", multiNode.Values[0].GetComment().GetToken().Value)
+	}
+	if multiNode.Values[1].GetComment().GetToken().Value != " c comment" {
+		t.Fatalf("failed to get comment from multiple[1]. got %q", multiNode.Values[1].GetComment().GetToken().Value)
+	}
+}
+
 func TestNodePath(t *testing.T) {
 	yml := `
 a: # commentA

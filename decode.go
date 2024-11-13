@@ -38,7 +38,7 @@ type Decoder struct {
 	isResolvedReference  bool
 	validator            StructValidator
 	disallowUnknownField bool
-	disallowDuplicateKey bool
+	allowDuplicateMapKey bool
 	useOrderedMap        bool
 	useJSONUnmarshaler   bool
 	parsedFile           *ast.File
@@ -60,7 +60,7 @@ func NewDecoder(r io.Reader, opts ...DecodeOption) *Decoder {
 		isRecursiveDir:       false,
 		isResolvedReference:  false,
 		disallowUnknownField: false,
-		disallowDuplicateKey: false,
+		allowDuplicateMapKey: false,
 		useOrderedMap:        false,
 	}
 }
@@ -1570,7 +1570,7 @@ func (d *Decoder) validateDuplicateKey(keyMap map[string]struct{}, key interface
 	if !ok {
 		return nil
 	}
-	if d.disallowDuplicateKey {
+	if !d.allowDuplicateMapKey {
 		if _, exists := keyMap[k]; exists {
 			return errDuplicateKey(fmt.Sprintf(`duplicate key "%s"`, k), keyNode.GetToken())
 		}
@@ -1806,7 +1806,11 @@ func (d *Decoder) parse(bytes []byte) (*ast.File, error) {
 	if d.toCommentMap != nil {
 		parseMode = parser.ParseComments
 	}
-	f, err := parser.ParseBytes(bytes, parseMode)
+	var opts []parser.Option
+	if d.allowDuplicateMapKey {
+		opts = append(opts, parser.AllowDuplicateMapKey())
+	}
+	f, err := parser.ParseBytes(bytes, parseMode, opts...)
 	if err != nil {
 		return nil, err
 	}

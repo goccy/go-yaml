@@ -957,10 +957,6 @@ func TestDecoder(t *testing.T) {
 			struct{ B []int }{[]int{1, 2}},
 		},
 		{
-			"&0: *0\n*0:\n*0:",
-			map[string]any{"null": nil},
-		},
-		{
 			"key1: &anchor\n  subkey: *anchor\nkey2: *anchor\n",
 			map[string]any{
 				"key1": map[string]any{
@@ -1502,7 +1498,7 @@ items:
 		Items []*Item
 	}
 	buf := bytes.NewBufferString(yml)
-	dec := yaml.NewDecoder(buf)
+	dec := yaml.NewDecoder(buf, yaml.AllowDuplicateMapKey())
 	var v T
 	if err := dec.Decode(&v); err != nil {
 		t.Fatalf("%+v", err)
@@ -1834,39 +1830,23 @@ children:
 	})
 }
 
-func TestDecoder_DisallowDuplicateKey(t *testing.T) {
+func TestDecoder_AllowDuplicateMapKey(t *testing.T) {
 	yml := `
 a: b
 a: c
 `
-	expected := `
-[3:1] duplicate key "a"
-   2 | a: b
->  3 | a: c
-       ^
-`
 	t.Run("map", func(t *testing.T) {
 		var v map[string]string
-		err := yaml.NewDecoder(strings.NewReader(yml), yaml.DisallowDuplicateKey()).Decode(&v)
-		if err == nil {
-			t.Fatal("decoding should fail")
-		}
-		actual := "\n" + err.Error()
-		if expected != actual {
-			t.Fatalf("expected:[%s] actual:[%s]", expected, actual)
+		if err := yaml.NewDecoder(strings.NewReader(yml), yaml.AllowDuplicateMapKey()).Decode(&v); err != nil {
+			t.Fatal(err)
 		}
 	})
 	t.Run("struct", func(t *testing.T) {
 		var v struct {
 			A string
 		}
-		err := yaml.NewDecoder(strings.NewReader(yml), yaml.DisallowDuplicateKey()).Decode(&v)
-		if err == nil {
-			t.Fatal("decoding should fail")
-		}
-		actual := "\n" + err.Error()
-		if expected != actual {
-			t.Fatalf("expected:[%s] actual:[%s]", expected, actual)
+		if err := yaml.NewDecoder(strings.NewReader(yml), yaml.AllowDuplicateMapKey()).Decode(&v); err != nil {
+			t.Fatal(err)
 		}
 	})
 }
@@ -3097,5 +3077,25 @@ nested:
 	}
 	if v.Default.Val != "default" {
 		t.Fatal("decoder doesn't preserve struct defaults")
+	}
+}
+
+func TestDecodeError(t *testing.T) {
+	tests := []struct {
+		name   string
+		source string
+	}{
+		{
+			name:   "duplicated map key name with anchor-alias",
+			source: "&0: *0\n*0:\n*0:",
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			var v any
+			if err := yaml.Unmarshal([]byte(test.source), &v); err == nil {
+				t.Fatal("cannot catch decode error")
+			}
+		})
 	}
 }

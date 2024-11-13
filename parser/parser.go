@@ -12,12 +12,14 @@ import (
 )
 
 type parser struct {
-	idx    int
-	size   int
-	tokens token.Tokens
+	idx                  int
+	size                 int
+	tokens               token.Tokens
+	pathMap              map[string]ast.Node
+	allowDuplicateMapKey bool
 }
 
-func newParser(tokens token.Tokens, mode Mode) *parser {
+func newParser(tokens token.Tokens, mode Mode, opts []Option) *parser {
 	filteredTokens := []*token.Token{}
 	if mode&ParseComments != 0 {
 		filteredTokens = tokens
@@ -31,11 +33,16 @@ func newParser(tokens token.Tokens, mode Mode) *parser {
 			filteredTokens = append(filteredTokens, tk)
 		}
 	}
-	return &parser{
-		idx:    0,
-		size:   len(filteredTokens),
-		tokens: token.Tokens(filteredTokens),
+	p := &parser{
+		idx:     0,
+		size:    len(filteredTokens),
+		tokens:  token.Tokens(filteredTokens),
+		pathMap: make(map[string]ast.Node),
 	}
+	for _, opt := range opts {
+		opt(p)
+	}
+	return p
 }
 
 func (p *parser) next() bool {
@@ -281,7 +288,16 @@ func (p *parser) existsNewLineCharacter(src string) bool {
 	return false
 }
 
-func (p *parser) validateMapKey(tk *token.Token) error {
+func (p *parser) validateMapKey(tk *token.Token, keyPath string) error {
+	if !p.allowDuplicateMapKey {
+		if n, exists := p.pathMap[keyPath]; exists {
+			pos := n.GetToken().Position
+			return errors.ErrSyntax(
+				fmt.Sprintf("mapping key %q already defined at [%d:%d]", tk.Value, pos.Line, pos.Column),
+				tk,
+			)
+		}
+	}
 	if tk.Type != token.StringType {
 		return nil
 	}
@@ -323,7 +339,7 @@ func (p *parser) createMapValueNode(ctx *context, key ast.MapKeyNode, colonToken
 	if tk.Type == token.CommentType {
 		comment = p.parseCommentOnly(ctx)
 		if comment != nil {
-			comment.SetPath(ctx.withChild(key.GetToken().Value).path)
+			comment.SetPath(ctx.withChild(p.mapKeyText(key)).path)
 		}
 		tk = p.currentToken()
 	}
@@ -397,16 +413,28 @@ func (p *parser) validateMapValue(ctx *context, key, value ast.Node) error {
 	return nil
 }
 
+func (p *parser) mapKeyText(n ast.Node) string {
+	switch nn := n.(type) {
+	case *ast.MappingKeyNode:
+		return p.mapKeyText(nn.Value)
+	case *ast.TagNode:
+		return p.mapKeyText(nn.Value)
+	}
+	return n.GetToken().Value
+}
+
 func (p *parser) parseMappingValue(ctx *context) (ast.Node, error) {
 	key, err := p.parseMapKey(ctx)
 	if err != nil {
 		return nil, err
 	}
-	keyText := key.GetToken().Value
-	key.SetPath(ctx.withChild(keyText).path)
-	if err := p.validateMapKey(key.GetToken()); err != nil {
+	keyText := p.mapKeyText(key)
+	keyPath := ctx.withChild(keyText).path
+	key.SetPath(keyPath)
+	if err := p.validateMapKey(key.GetToken(), keyPath); err != nil {
 		return nil, err
 	}
+	p.pathMap[keyPath] = key
 	p.progress(1) // progress to mapping value token
 	if ctx.isFlow {
 		// if "{key}" or "{key," style, returns MappingValueNode.
@@ -557,7 +585,7 @@ func (p *parser) parseFlowMapNullValue(ctx *context, key ast.MapKeyNode) (*ast.M
 		return nil, err
 	}
 	node := ast.MappingValue(tk, key, value)
-	node.SetPath(ctx.withChild(key.GetToken().Value).path)
+	node.SetPath(ctx.withChild(p.mapKeyText(key)).path)
 	return node, nil
 }
 
@@ -868,7 +896,7 @@ func (p *parser) parseMappingKey(ctx *context) (*ast.MappingKeyNode, error) {
 	node := ast.MappingKey(keyTk)
 	node.SetPath(ctx.path)
 	p.progress(1) // skip mapping key token
-	value, err := p.parseToken(ctx.withChild(keyTk.Value), p.currentToken())
+	value, err := p.parseToken(ctx, p.currentToken())
 	if err != nil {
 		return nil, err
 	}
@@ -962,9 +990,9 @@ const (
 )
 
 // ParseBytes parse from byte slice, and returns ast.File
-func ParseBytes(bytes []byte, mode Mode) (*ast.File, error) {
+func ParseBytes(bytes []byte, mode Mode, opts ...Option) (*ast.File, error) {
 	tokens := lexer.Tokenize(string(bytes))
-	f, err := Parse(tokens, mode)
+	f, err := Parse(tokens, mode, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -972,11 +1000,11 @@ func ParseBytes(bytes []byte, mode Mode) (*ast.File, error) {
 }
 
 // Parse parse from token instances, and returns ast.File
-func Parse(tokens token.Tokens, mode Mode) (*ast.File, error) {
+func Parse(tokens token.Tokens, mode Mode, opts ...Option) (*ast.File, error) {
 	if tk := tokens.InvalidToken(); tk != nil {
 		return nil, errors.ErrSyntax("found invalid token", tk)
 	}
-	f, err := newParser(tokens, mode).parse(newContext())
+	f, err := newParser(tokens, mode, opts).parse(newContext())
 	if err != nil {
 		return nil, err
 	}
@@ -984,12 +1012,12 @@ func Parse(tokens token.Tokens, mode Mode) (*ast.File, error) {
 }
 
 // Parse parse from filename, and returns ast.File
-func ParseFile(filename string, mode Mode) (*ast.File, error) {
+func ParseFile(filename string, mode Mode, opts ...Option) (*ast.File, error) {
 	file, err := os.ReadFile(filename)
 	if err != nil {
 		return nil, err
 	}
-	f, err := ParseBytes(file, mode)
+	f, err := ParseBytes(file, mode, opts...)
 	if err != nil {
 		return nil, err
 	}

@@ -1286,6 +1286,42 @@ a:
           ^
 `,
 		},
+		{
+			`
+foo:
+  bar:
+    foo: 2
+  baz:
+    foo: 3
+foo: 2
+`,
+			`
+[7:1] mapping key "foo" already defined at [2:1]
+   4 |     foo: 2
+   5 |   baz:
+   6 |     foo: 3
+>  7 | foo: 2
+       ^
+`,
+		},
+		{
+			`
+foo:
+  bar:
+    foo: 2
+  baz:
+    foo: 3
+    foo: 4
+`,
+			`
+[7:5] mapping key "foo" already defined at [6:5]
+   4 |     foo: 2
+   5 |   baz:
+   6 |     foo: 3
+>  7 |     foo: 4
+           ^
+`,
+		},
 	}
 	for _, test := range tests {
 		t.Run(test.source, func(t *testing.T) {

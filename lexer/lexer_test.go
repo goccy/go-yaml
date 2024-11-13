@@ -166,6 +166,7 @@ func TestTokenize(t *testing.T) {
 					CharacterType: token.CharacterTypeMiscellaneous,
 					Indicator:     token.NotIndicator,
 					Value:         "a",
+					//nolint: gci
 					Origin: "	a",
 				},
 			},
@@ -3173,6 +3174,7 @@ a: |invalid`,
 		},
 		{
 			name: "use tab character as indent",
+			//nolint: gci
 			src: "	a: b",
 		},
 		{

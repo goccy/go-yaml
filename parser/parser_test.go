@@ -129,6 +129,11 @@ a: !tag
   b: c
   d: e
 `,
+		`
+a:
+  b: c
+     
+`,
 	}
 	for _, src := range sources {
 		if _, err := parser.Parse(lexer.Tokenize(src), 0); err != nil {

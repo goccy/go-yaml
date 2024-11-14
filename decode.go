@@ -528,7 +528,7 @@ func (d *Decoder) getMapNode(node ast.Node) (ast.MapNode, error) {
 		if ok {
 			return mapNode, nil
 		}
-		return nil, errUnexpectedNodeType(anchor.Value.Type(), ast.MappingType, node.GetToken())
+		return nil, errors.ErrUnexpectedNodeType(anchor.Value.Type(), ast.MappingType, node.GetToken())
 	}
 	if alias, ok := node.(*ast.AliasNode); ok {
 		aliasName := alias.Value.GetToken().Value
@@ -540,11 +540,11 @@ func (d *Decoder) getMapNode(node ast.Node) (ast.MapNode, error) {
 		if ok {
 			return mapNode, nil
 		}
-		return nil, errUnexpectedNodeType(node.Type(), ast.MappingType, node.GetToken())
+		return nil, errors.ErrUnexpectedNodeType(node.Type(), ast.MappingType, node.GetToken())
 	}
 	mapNode, ok := node.(ast.MapNode)
 	if !ok {
-		return nil, errUnexpectedNodeType(node.Type(), ast.MappingType, node.GetToken())
+		return nil, errors.ErrUnexpectedNodeType(node.Type(), ast.MappingType, node.GetToken())
 	}
 	return mapNode, nil
 }
@@ -559,7 +559,7 @@ func (d *Decoder) getArrayNode(node ast.Node) (ast.ArrayNode, error) {
 			return arrayNode, nil
 		}
 
-		return nil, errUnexpectedNodeType(anchor.Value.Type(), ast.SequenceType, node.GetToken())
+		return nil, errors.ErrUnexpectedNodeType(anchor.Value.Type(), ast.SequenceType, node.GetToken())
 	}
 	if alias, ok := node.(*ast.AliasNode); ok {
 		aliasName := alias.Value.GetToken().Value
@@ -571,11 +571,11 @@ func (d *Decoder) getArrayNode(node ast.Node) (ast.ArrayNode, error) {
 		if ok {
 			return arrayNode, nil
 		}
-		return nil, errUnexpectedNodeType(node.Type(), ast.SequenceType, node.GetToken())
+		return nil, errors.ErrUnexpectedNodeType(node.Type(), ast.SequenceType, node.GetToken())
 	}
 	arrayNode, ok := node.(ast.ArrayNode)
 	if !ok {
-		return nil, errUnexpectedNodeType(node.Type(), ast.SequenceType, node.GetToken())
+		return nil, errors.ErrUnexpectedNodeType(node.Type(), ast.SequenceType, node.GetToken())
 	}
 	return arrayNode, nil
 }
@@ -598,7 +598,7 @@ func (d *Decoder) convertValue(v reflect.Value, typ reflect.Type, src ast.Node) 
 					// else, fall through to the error below
 				}
 			}
-			return reflect.Zero(typ), errTypeMismatch(typ, v.Type(), src.GetToken())
+			return reflect.Zero(typ), errors.ErrTypeMismatch(typ, v.Type(), src.GetToken())
 		}
 		return v.Convert(typ), nil
 	}
@@ -614,41 +614,9 @@ func (d *Decoder) convertValue(v reflect.Value, typ reflect.Type, src ast.Node) 
 		return reflect.ValueOf(fmt.Sprint(v.Bool())), nil
 	}
 	if !v.Type().ConvertibleTo(typ) {
-		return reflect.Zero(typ), errTypeMismatch(typ, v.Type(), src.GetToken())
+		return reflect.Zero(typ), errors.ErrTypeMismatch(typ, v.Type(), src.GetToken())
 	}
 	return v.Convert(typ), nil
-}
-
-func errTypeMismatch(dstType, srcType reflect.Type, token *token.Token) *errors.TypeError {
-	return &errors.TypeError{DstType: dstType, SrcType: srcType, Token: token}
-}
-
-type unknownFieldError struct {
-	err error
-}
-
-func (e *unknownFieldError) Error() string {
-	return e.err.Error()
-}
-
-func errUnknownField(msg string, tk *token.Token) *unknownFieldError {
-	return &unknownFieldError{err: errors.ErrSyntax(msg, tk)}
-}
-
-func errUnexpectedNodeType(actual, expected ast.NodeType, tk *token.Token) error {
-	return errors.ErrSyntax(fmt.Sprintf("%s was used where %s is expected", actual.YAMLName(), expected.YAMLName()), tk)
-}
-
-type duplicateKeyError struct {
-	err error
-}
-
-func (e *duplicateKeyError) Error() string {
-	return e.err.Error()
-}
-
-func errDuplicateKey(msg string, tk *token.Token) *duplicateKeyError {
-	return &duplicateKeyError{err: errors.ErrSyntax(msg, tk)}
 }
 
 func (d *Decoder) deleteStructKeys(structType reflect.Type, unknownFields map[string]ast.Node) error {
@@ -988,10 +956,10 @@ func (d *Decoder) decodeValue(ctx context.Context, dst reflect.Value, src ast.No
 					return nil
 				}
 			} else { // couldn't be parsed as float
-				return errTypeMismatch(valueType, reflect.TypeOf(v), src.GetToken())
+				return errors.ErrTypeMismatch(valueType, reflect.TypeOf(v), src.GetToken())
 			}
 		default:
-			return errTypeMismatch(valueType, reflect.TypeOf(v), src.GetToken())
+			return errors.ErrTypeMismatch(valueType, reflect.TypeOf(v), src.GetToken())
 		}
 		return errors.ErrOverflow(valueType, fmt.Sprint(v), src.GetToken())
 	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
@@ -1022,11 +990,11 @@ func (d *Decoder) decodeValue(ctx context.Context, dst reflect.Value, src ast.No
 					return nil
 				}
 			} else { // couldn't be parsed as float
-				return errTypeMismatch(valueType, reflect.TypeOf(v), src.GetToken())
+				return errors.ErrTypeMismatch(valueType, reflect.TypeOf(v), src.GetToken())
 			}
 
 		default:
-			return errTypeMismatch(valueType, reflect.TypeOf(v), src.GetToken())
+			return errors.ErrTypeMismatch(valueType, reflect.TypeOf(v), src.GetToken())
 		}
 		return errors.ErrOverflow(valueType, fmt.Sprint(v), src.GetToken())
 	}
@@ -1215,7 +1183,7 @@ func (d *Decoder) castToTime(src ast.Node) (time.Time, error) {
 	}
 	s, ok := v.(string)
 	if !ok {
-		return time.Time{}, errTypeMismatch(reflect.TypeOf(time.Time{}), reflect.TypeOf(v), src.GetToken())
+		return time.Time{}, errors.ErrTypeMismatch(reflect.TypeOf(time.Time{}), reflect.TypeOf(v), src.GetToken())
 	}
 	for _, format := range allowedTimestampFormats {
 		t, err := time.Parse(format, s)
@@ -1250,7 +1218,7 @@ func (d *Decoder) castToDuration(src ast.Node) (time.Duration, error) {
 	}
 	s, ok := v.(string)
 	if !ok {
-		return 0, errTypeMismatch(reflect.TypeOf(time.Duration(0)), reflect.TypeOf(v), src.GetToken())
+		return 0, errors.ErrTypeMismatch(reflect.TypeOf(time.Duration(0)), reflect.TypeOf(v), src.GetToken())
 	}
 	t, err := time.ParseDuration(s)
 	if err != nil {
@@ -1421,7 +1389,7 @@ func (d *Decoder) decodeStruct(ctx context.Context, dst reflect.Value, src ast.N
 	// Unknown fields are expected (they could be fields from the parent struct).
 	if len(unknownFields) != 0 && d.disallowUnknownField && src.GetToken() != nil {
 		for key, node := range unknownFields {
-			return errUnknownField(fmt.Sprintf(`unknown field "%s"`, key), node.GetToken())
+			return errors.ErrUnknownField(fmt.Sprintf(`unknown field "%s"`, key), node.GetToken())
 		}
 	}
 
@@ -1572,7 +1540,7 @@ func (d *Decoder) validateDuplicateKey(keyMap map[string]struct{}, key interface
 	}
 	if !d.allowDuplicateMapKey {
 		if _, exists := keyMap[k]; exists {
-			return errDuplicateKey(fmt.Sprintf(`duplicate key "%s"`, k), keyNode.GetToken())
+			return errors.ErrDuplicateKey(fmt.Sprintf(`duplicate key "%s"`, k), keyNode.GetToken())
 		}
 	}
 	keyMap[k] = struct{}{}

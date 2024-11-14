@@ -1041,7 +1041,7 @@ a: |invalidopt
   foo
 `,
 			`
-[2:4] found invalid token
+[2:4] invalid header option: "invalidopt"
 >  2 | a: |invalidopt
           ^
    3 |   foo`,
@@ -1160,7 +1160,7 @@ b: - 2
 		{
 			`a: 'foobarbaz`,
 			`
-[1:4] found invalid token
+[1:4] could not find end character of single-quoted text
 >  1 | a: 'foobarbaz
           ^
 `,
@@ -1168,7 +1168,7 @@ b: - 2
 		{
 			`a: "\"key\": \"value:\"`,
 			`
-[1:4] found invalid token
+[1:4] could not find end character of double-quoted text
 >  1 | a: "\"key\": \"value:\"
           ^
 `,
@@ -1192,7 +1192,7 @@ b: - 2
 		{
 			">\n>",
 			`
-[2:1] found invalid token
+[2:1] could not find document
    1 | >
 >  2 | >
        ^
@@ -1201,7 +1201,7 @@ b: - 2
 		{
 			">\n1",
 			`
-[2:1] found invalid token
+[2:1] could not find document
    1 | >
 >  2 | 1
        ^
@@ -1210,7 +1210,7 @@ b: - 2
 		{
 			"|\n1",
 			`
-[2:1] found invalid token
+[2:1] could not find document
    1 | |
 >  2 | 1
        ^
@@ -1219,7 +1219,7 @@ b: - 2
 		{
 			"a: >3\n  1",
 			`
-[2:3] found invalid token
+[2:3] invalid number of indent is specified in the document header
    1 | a: >3
 >  2 |   1
          ^
@@ -1261,14 +1261,14 @@ a:
 		{
 			"key: [@val]",
 			`
-[1:7] found invalid token
+[1:7] '@' is a reserved character
 >  1 | key: [@val]
              ^
 `,
 		},
 		{
 			"key: [`val]",
-			"\n[1:7] found invalid token\n>  1 | key: [`val]\n             ^\n",
+			"\n[1:7] '`' is a reserved character\n>  1 | key: [`val]\n             ^\n",
 		},
 		{
 			`{a: b}: v`,

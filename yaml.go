@@ -212,11 +212,9 @@ func NodeToValue(node ast.Node, v interface{}, opts ...DecodeOption) error {
 // If the third argument `inclSource` is true, the error message will
 // contain snippets of the YAML source that was used.
 func FormatError(e error, colored, inclSource bool) string {
-	var pp errors.PrettyPrinter
-	if errors.As(e, &pp) {
-		var buf bytes.Buffer
-		pp.PrettyPrint(&errors.Sink{Buffer: &buf}, colored, inclSource)
-		return buf.String()
+	var pe errors.PrettyFormatError
+	if errors.As(e, &pe) {
+		return pe.FormatError(colored, inclSource)
 	}
 
 	return e.Error()

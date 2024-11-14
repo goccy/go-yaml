@@ -1,10 +1,10 @@
 package yaml
 
 import (
-	"errors"
 	"fmt"
 
 	"github.com/goccy/go-yaml/ast"
+	"github.com/goccy/go-yaml/internal/errors"
 )
 
 var (
@@ -15,6 +15,15 @@ var (
 	ErrUnknownCommentPositionType = errors.New("unknown comment position type")
 	ErrInvalidCommentMapValue     = errors.New("invalid comment map value. it must be not nil value")
 	ErrDecodeRequiredPointerType  = errors.New("required pointer type value")
+)
+
+type (
+	SyntaxError             = errors.SyntaxError
+	TypeError               = errors.TypeError
+	OverflowError           = errors.OverflowError
+	DuplicateKeyError       = errors.DuplicateKeyError
+	UnknownFieldError       = errors.UnknownFieldError
+	UnexpectedNodeTypeError = errors.UnexpectedNodeTypeError
 )
 
 func ErrUnsupportedHeadPositionType(node ast.Node) error {

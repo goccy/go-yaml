@@ -727,14 +727,24 @@ func (p *Position) String() string {
 
 // Token type for token
 type Token struct {
-	Type          Type
+	// Type is a token type.
+	Type Type
+	// CharacterType is a character type.
 	CharacterType CharacterType
-	Indicator     Indicator
-	Value         string
-	Origin        string
-	Position      *Position
-	Next          *Token
-	Prev          *Token
+	// Indicator is a indicator type.
+	Indicator Indicator
+	// Value is a string extracted with only meaningful characters, with spaces and such removed.
+	Value string
+	// Origin is a string that stores the original text as-is.
+	Origin string
+	// Error keeps error message for InvalidToken.
+	Error string
+	// Position is a token position.
+	Position *Position
+	// Next is a next token reference.
+	Next *Token
+	// Prev is a previous token reference.
+	Prev *Token
 }
 
 // PreviousType previous token type
@@ -1090,13 +1100,14 @@ func DocumentEnd(org string, pos *Position) *Token {
 	}
 }
 
-func Invalid(org string, pos *Position) *Token {
+func Invalid(err string, org string, pos *Position) *Token {
 	return &Token{
 		Type:          InvalidType,
 		CharacterType: CharacterTypeInvalid,
 		Indicator:     NotIndicator,
 		Value:         org,
 		Origin:        org,
+		Error:         err,
 		Position:      pos,
 	}
 }

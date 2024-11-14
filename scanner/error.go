@@ -3,17 +3,15 @@ package scanner
 import "github.com/goccy/go-yaml/token"
 
 type InvalidTokenError struct {
-	Message string
-	Token   *token.Token
+	Token *token.Token
 }
 
 func (e *InvalidTokenError) Error() string {
-	return e.Message
+	return e.Token.Error
 }
 
-func ErrInvalidToken(msg string, tk *token.Token) *InvalidTokenError {
+func ErrInvalidToken(tk *token.Token) *InvalidTokenError {
 	return &InvalidTokenError{
-		Message: msg,
-		Token:   tk,
+		Token: tk,
 	}
 }

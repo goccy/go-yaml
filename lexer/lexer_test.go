@@ -39,6 +39,18 @@ func TestTokenize(t *testing.T) {
 			},
 		},
 		{
+			YAML: `"hello\tworld"`,
+			Tokens: token.Tokens{
+				{
+					Type:          token.DoubleQuoteType,
+					CharacterType: token.CharacterTypeIndicator,
+					Indicator:     token.QuotedScalarIndicator,
+					Value:         "hello\tworld",
+					Origin:        `"hello\tworld"`,
+				},
+			},
+		},
+		{
 			YAML: `0x_1A_2B_3C`,
 			Tokens: token.Tokens{
 				{

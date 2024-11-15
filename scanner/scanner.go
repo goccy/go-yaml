@@ -345,6 +345,10 @@ func (s *Scanner) scanDoubleQuote(ctx *Context) (*token.Token, error) {
 				progress = 1
 				ctx.addOriginBuf(nextChar)
 				value = append(value, '\r')
+			case 't':
+				progress = 1
+				ctx.addOriginBuf(nextChar)
+				value = append(value, '\t')
 			case 'v':
 				progress = 1
 				ctx.addOriginBuf(nextChar)

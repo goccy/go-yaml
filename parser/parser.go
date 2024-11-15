@@ -830,6 +830,7 @@ func (p *parser) setSameLineCommentIfExists(ctx *context, node ast.Node) error {
 }
 
 func (p *parser) parseDocument(ctx *context) (*ast.DocumentNode, error) {
+	p.pathMap = make(map[string]ast.Node)
 	startTk := p.currentToken()
 	p.progress(1) // skip document header token
 	body, err := p.parseToken(ctx, p.currentToken())

@@ -134,6 +134,13 @@ a:
   b: c
      
 `,
+		`
+foo: xxx
+---
+foo: yyy
+---
+foo: zzz
+`,
 	}
 	for _, src := range sources {
 		if _, err := parser.Parse(lexer.Tokenize(src), 0); err != nil {

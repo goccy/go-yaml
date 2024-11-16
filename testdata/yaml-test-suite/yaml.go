@@ -8,6 +8,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"runtime"
 	"sort"
 	"strings"
 )
@@ -20,9 +21,15 @@ type TestSuite struct {
 	Error   bool
 }
 
+func curDir() string {
+	_, file, _, _ := runtime.Caller(0) //nolint:dogsled
+	return filepath.Dir(file)
+}
+
 func TestSuites() ([]*TestSuite, error) {
+	dir := curDir()
 	testMap := make(map[string]*TestSuite)
-	if err := filepath.Walk(".", func(path string, info fs.FileInfo, err error) error {
+	if err := filepath.Walk(dir, func(path string, info fs.FileInfo, err error) error {
 		if strings.HasSuffix(path, ".go") {
 			// this file.
 			return nil
@@ -33,7 +40,7 @@ func TestSuites() ([]*TestSuite, error) {
 		if err != nil {
 			return err
 		}
-		name := strings.TrimPrefix(path, "yaml-test-suite/")
+		name := strings.TrimPrefix(path, dir+"/")
 		name = strings.TrimSuffix(name, "/"+filepath.Base(name))
 		if _, exists := testMap[name]; !exists {
 			testMap[name] = &TestSuite{}

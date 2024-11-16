@@ -277,7 +277,7 @@ func (c *Context) bufferedSrc() []rune {
 		if c.hasTrimAllEndNewlineOpt() {
 			// If the '-' flag is specified, all trailing newline characters will be removed.
 			src = []rune(strings.TrimRight(string(src), "\n"))
-		} else {
+		} else if !c.hasKeepAllEndNewlineOpt() {
 			// Normally, all but one of the trailing newline characters are removed.
 			var newLineCharCount int
 			for i := len(src) - 1; i >= 0; i-- {
@@ -302,12 +302,19 @@ func (c *Context) bufferedSrc() []rune {
 			// so it is treated as an empty string.
 			src = []rune{}
 		}
+		if c.hasKeepAllEndNewlineOpt() && len(src) == 0 {
+			src = []rune{'\n'}
+		}
 	}
 	return src
 }
 
 func (c *Context) hasTrimAllEndNewlineOpt() bool {
 	return strings.HasPrefix(c.docOpt, "-") || strings.HasSuffix(c.docOpt, "-") || c.isRawFolded
+}
+
+func (c *Context) hasKeepAllEndNewlineOpt() bool {
+	return strings.HasPrefix(c.docOpt, "+") || strings.HasSuffix(c.docOpt, "+")
 }
 
 func (c *Context) bufferedToken(pos *token.Position) *token.Token {

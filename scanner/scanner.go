@@ -633,7 +633,7 @@ func (s *Scanner) scanDocument(ctx *Context, c rune) error {
 		ctx.addBuf(c)
 		value := ctx.bufferedSrc()
 		ctx.addToken(token.String(string(value), string(ctx.obuf), s.pos()))
-		ctx.resetBuffer()
+		ctx.clear()
 		s.progressColumn(ctx, 1)
 	} else if s.isNewLineChar(c) {
 		ctx.addBuf(c)

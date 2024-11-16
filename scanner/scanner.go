@@ -309,7 +309,9 @@ func (s *Scanner) scanDoubleQuote(ctx *Context) (*token.Token, error) {
 				notSpaceIdx = i
 				break
 			}
-			value = value[:notSpaceIdx+1]
+			if notSpaceIdx > 0 {
+				value = value[:notSpaceIdx+1]
+			}
 			if isFirstLineChar {
 				value = append(value, '\n')
 			} else {

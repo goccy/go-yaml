@@ -999,7 +999,13 @@ func (p *parser) parse(ctx *context) (*ast.File, error) {
 		}
 		if doc, ok := node.(*ast.DocumentNode); ok {
 			file.Docs = append(file.Docs, doc)
+		} else if len(file.Docs) == 0 {
+			file.Docs = append(file.Docs, ast.Document(nil, node))
 		} else {
+			lastNode := file.Docs[len(file.Docs)-1]
+			if lastNode.GetToken().Position.Column != node.GetToken().Position.Column {
+				return nil, errors.ErrSyntax("value is not allowed in this context", node.GetToken())
+			}
 			file.Docs = append(file.Docs, ast.Document(nil, node))
 		}
 	}

@@ -537,7 +537,7 @@ func (s *Scanner) scanTag(ctx *Context) bool {
 }
 
 func (s *Scanner) scanComment(ctx *Context) bool {
-	if ctx.existsBuffer() && ctx.previousChar() != ' ' {
+	if ctx.existsBuffer() && (ctx.previousChar() != ' ' && ctx.previousChar() != '\t') {
 		return false
 	}
 

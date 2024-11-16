@@ -1440,7 +1440,6 @@ func TestDecoder_AnchorReferenceDirsRecursive(t *testing.T) {
 	buf := bytes.NewBufferString("a: *a\n")
 	dec := yaml.NewDecoder(
 		buf,
-		yaml.RecursiveDir(true),
 		yaml.ReferenceDirs("testdata"),
 	)
 	var v struct {

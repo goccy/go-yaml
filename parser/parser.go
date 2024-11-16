@@ -254,7 +254,7 @@ func (p *parser) parseTag(ctx *context) (*ast.TagNode, error) {
 		if typ == token.LiteralType || typ == token.FoldedType {
 			value, err = p.parseLiteral(ctx)
 		} else {
-			value = p.parseScalarValue(p.currentToken())
+			value, err = p.parseScalarValueWithComment(ctx, p.currentToken())
 		}
 	case token.SequenceTag,
 		token.SetTag:
@@ -657,11 +657,15 @@ func (p *parser) parseAnchor(ctx *context) (*ast.AnchorNode, error) {
 		return nil, errors.ErrSyntax("unexpected anchor. anchor name is undefined", tk)
 	}
 	p.progress(1) // skip anchor token
-	name, err := p.parseToken(ctx, p.currentToken())
+	anchorNameTk := p.currentToken()
+	anchorNameNode, err := p.parseScalarValueWithComment(ctx, anchorNameTk)
 	if err != nil {
 		return nil, err
 	}
-	anchor.Name = name
+	if anchorNameNode == nil {
+		return nil, errors.ErrSyntax("unexpected anchor. anchor name is not scalar value", anchorNameTk)
+	}
+	anchor.Name = anchorNameNode
 	ntk = p.nextToken()
 	if ntk == nil {
 		return nil, errors.ErrSyntax("unexpected anchor. anchor value is undefined", p.currentToken())
@@ -684,17 +688,21 @@ func (p *parser) parseAlias(ctx *context) (*ast.AliasNode, error) {
 		return nil, errors.ErrSyntax("unexpected alias. alias name is undefined", tk)
 	}
 	p.progress(1) // skip alias token
-	name, err := p.parseToken(ctx, p.currentToken())
+	aliasNameTk := p.currentToken()
+	aliasNameNode, err := p.parseScalarValueWithComment(ctx, aliasNameTk)
 	if err != nil {
 		return nil, err
 	}
-	alias.Value = name
+	if aliasNameNode == nil {
+		return nil, errors.ErrSyntax("unexpected alias. alias name is not scalar value", aliasNameTk)
+	}
+	alias.Value = aliasNameNode
 	return alias, nil
 }
 
 func (p *parser) parseMapKey(ctx *context) (ast.MapKeyNode, error) {
 	tk := p.currentToken()
-	if value := p.parseScalarValue(tk); value != nil {
+	if value, _ := p.parseScalarValueWithComment(ctx, tk); value != nil {
 		return value, nil
 	}
 	switch tk.Type {
@@ -702,6 +710,8 @@ func (p *parser) parseMapKey(ctx *context) (ast.MapKeyNode, error) {
 		return ast.MergeKey(tk), nil
 	case token.MappingKeyType:
 		return p.parseMappingKey(ctx)
+	case token.AliasType:
+		return p.parseAlias(ctx)
 	}
 	return nil, errors.ErrSyntax("unexpected mapping key", tk)
 }
@@ -928,6 +938,13 @@ func (p *parser) createNodeFromToken(ctx *context, tk *token.Token) (ast.Node, e
 	if tk.NextType() == token.MappingValueType {
 		node, err := p.parseMappingValue(ctx)
 		return node, err
+	}
+	if tk.Type == token.AliasType {
+		aliasValueTk := p.nextToken()
+		if aliasValueTk != nil && aliasValueTk.NextType() == token.MappingValueType {
+			node, err := p.parseMappingValue(ctx)
+			return node, err
+		}
 	}
 	node, err := p.parseScalarValueWithComment(ctx, tk)
 	if err != nil {

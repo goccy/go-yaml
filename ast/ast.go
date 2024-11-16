@@ -1658,6 +1658,10 @@ type AliasNode struct {
 	Value Node
 }
 
+func (n *AliasNode) stringWithoutComment() string {
+	return n.Value.String()
+}
+
 func (n *AliasNode) SetName(name string) error {
 	if n.Value == nil {
 		return ErrInvalidAliasName

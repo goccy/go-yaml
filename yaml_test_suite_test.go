@@ -65,7 +65,7 @@ func TestYAMLTestSuite(t *testing.T) {
 						break
 					}
 					failure++
-					fatal(t, err.Error())
+					fatal(t, err.Error()) //nolint: govet
 					return
 				}
 				if len(test.InJSON) <= idx {

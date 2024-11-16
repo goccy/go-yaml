@@ -420,6 +420,10 @@ func (s *Scanner) scanDoubleQuote(ctx *Context) (*token.Token, error) {
 				s.progressLine(ctx)
 				idx++
 				continue
+			case '\t':
+				progress = 1
+				ctx.addOriginBuf(nextChar)
+				value = append(value, nextChar)
 			case ' ':
 				// skip escape character.
 			default:
@@ -427,6 +431,29 @@ func (s *Scanner) scanDoubleQuote(ctx *Context) (*token.Token, error) {
 			}
 			idx += progress
 			s.progressColumn(ctx, progress)
+			continue
+		} else if c == '\t' {
+			var (
+				foundNotSpaceChar bool
+				progress          int
+			)
+			for i := idx + 1; i < size; i++ {
+				if src[i] == ' ' || src[i] == '\t' {
+					progress++
+					continue
+				}
+				if src[i] == '\n' {
+					break
+				}
+				foundNotSpaceChar = true
+			}
+			if foundNotSpaceChar {
+				value = append(value, c)
+				s.progressColumn(ctx, 1)
+			} else {
+				idx += progress
+				s.progressColumn(ctx, progress)
+			}
 			continue
 		} else if c != '"' {
 			value = append(value, c)

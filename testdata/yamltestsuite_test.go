@@ -11,7 +11,10 @@ import (
 	"github.com/goccy/go-yaml/testdata/yaml-test-suite"
 )
 
-const wip = true
+const (
+	wip                   = true
+	successCountThreshold = 199
+)
 
 func fatal(t *testing.T, msg string, args ...any) {
 	t.Helper()
@@ -93,5 +96,9 @@ func TestYAMLTestSuite(t *testing.T) {
 	total := len(tests)
 	if success+failure == total {
 		t.Logf("yaml-test-suite result: success/total = %d/%d (%f %%)\n", success, total, float32(success)/float32(total)*100)
+	}
+	if success < successCountThreshold {
+		// degrade occurred.
+		t.Fatalf("expected success count is over %d but got %d", successCountThreshold, success)
 	}
 }

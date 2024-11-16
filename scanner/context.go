@@ -323,6 +323,7 @@ func (c *Context) bufferedToken(pos *token.Position) *token.Token {
 	}
 	source := c.bufferedSrc()
 	if len(source) == 0 {
+		c.buf = c.buf[:0] // clear value's buffer only.
 		return nil
 	}
 	var tk *token.Token

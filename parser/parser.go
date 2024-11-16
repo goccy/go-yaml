@@ -1002,14 +1002,29 @@ func (p *parser) parse(ctx *context) (*ast.File, error) {
 		} else if len(file.Docs) == 0 {
 			file.Docs = append(file.Docs, ast.Document(nil, node))
 		} else {
-			lastNode := file.Docs[len(file.Docs)-1]
-			if lastNode.GetToken().Position.Column != node.GetToken().Position.Column {
-				return nil, errors.ErrSyntax("value is not allowed in this context", node.GetToken())
+			lastNode := p.comparableColumnNode(file.Docs[len(file.Docs)-1])
+			curNode := p.comparableColumnNode(node)
+			if lastNode.GetToken().Position.Column != curNode.GetToken().Position.Column {
+				return nil, errors.ErrSyntax("value is not allowed in this context", curNode.GetToken())
 			}
 			file.Docs = append(file.Docs, ast.Document(nil, node))
 		}
 	}
 	return file, nil
+}
+
+func (p *parser) comparableColumnNode(n ast.Node) ast.Node {
+	switch nn := n.(type) {
+	case *ast.MappingNode:
+		if len(nn.Values) != 0 {
+			return nn.Values[0].Key
+		}
+	case *ast.MappingValueNode:
+		return nn.Key
+	case *ast.DocumentNode:
+		return p.comparableColumnNode(nn.Body)
+	}
+	return n
 }
 
 type Mode uint

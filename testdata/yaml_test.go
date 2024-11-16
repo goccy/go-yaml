@@ -1093,7 +1093,7 @@ func TestRegisterCustomUnmarshaler(t *testing.T) {
 		return nil
 	})
 	var v T
-	if err := yaml.Unmarshal([]byte(`"foo: "bar"`), &v); err != nil {
+	if err := yaml.Unmarshal([]byte(`"foo": "bar"`), &v); err != nil {
 		t.Fatal(err)
 	}
 	if !bytes.Equal(v.Foo, []byte("override")) {

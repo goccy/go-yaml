@@ -301,12 +301,17 @@ func (s *Scanner) scanDoubleQuote(ctx *Context) (*token.Token, error) {
 		c := src[idx]
 		ctx.addOriginBuf(c)
 		if s.isNewLineChar(c) {
-			if isFirstLineChar {
-				if value[len(value)-1] == ' ' {
-					value[len(value)-1] = '\n'
-				} else {
-					value = append(value, '\n')
+			var notSpaceIdx int
+			for i := len(value) - 1; i > 0; i-- {
+				if value[i] == ' ' {
+					continue
 				}
+				notSpaceIdx = i
+				break
+			}
+			value = value[:notSpaceIdx+1]
+			if isFirstLineChar {
+				value = append(value, '\n')
 			} else {
 				value = append(value, ' ')
 			}

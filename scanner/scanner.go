@@ -639,13 +639,17 @@ func (s *Scanner) trimCommentFromDocumentOpt(text string, header rune) (string, 
 func (s *Scanner) scanDocument(ctx *Context, c rune) error {
 	ctx.addOriginBuf(c)
 	if ctx.isEOS() {
+		if s.isFirstCharAtLine && c == ' ' {
+			ctx.addDocumentIndent(s.column)
+		} else {
+			ctx.addBuf(c)
+		}
 		ctx.updateDocumentLineIndentColumn(s.column)
 		if err := ctx.validateDocumentLineIndentColumn(); err != nil {
 			invalidTk := token.Invalid(err.Error(), string(ctx.obuf), s.pos())
 			s.progressColumn(ctx, 1)
 			return ErrInvalidToken(invalidTk)
 		}
-		ctx.addBuf(c)
 		value := ctx.bufferedSrc()
 		ctx.addToken(token.String(string(value), string(ctx.obuf), s.pos()))
 		ctx.clear()

@@ -1287,6 +1287,7 @@ type MappingValueNode struct {
 	Start       *token.Token
 	Key         MapKeyNode
 	Value       Node
+	Anchor      *AnchorNode
 	FootComment *CommentGroupNode
 }
 
@@ -1597,6 +1598,10 @@ type AnchorNode struct {
 	Value Node
 }
 
+func (n *AnchorNode) stringWithoutComment() string {
+	return n.Value.String()
+}
+
 func (n *AnchorNode) SetName(name string) error {
 	if n.Name == nil {
 		return ErrInvalidAnchorName
@@ -1620,6 +1625,10 @@ func (n *AnchorNode) Type() NodeType { return AnchorType }
 // GetToken returns token instance
 func (n *AnchorNode) GetToken() *token.Token {
 	return n.Start
+}
+
+func (n *AnchorNode) GetValue() any {
+	return n.Value.GetToken().Value
 }
 
 // AddColumn add column number to child nodes recursively
@@ -1687,6 +1696,10 @@ func (n *AliasNode) GetToken() *token.Token {
 	return n.Start
 }
 
+func (n *AliasNode) GetValue() any {
+	return n.Value.GetToken().Value
+}
+
 // AddColumn add column number to child nodes recursively
 func (n *AliasNode) AddColumn(col int) {
 	n.Start.AddColumn(col)
@@ -1747,6 +1760,10 @@ type TagNode struct {
 	*BaseNode
 	Start *token.Token
 	Value Node
+}
+
+func (n *TagNode) stringWithoutComment() string {
+	return n.Value.String()
 }
 
 // Read implements (io.Reader).Read

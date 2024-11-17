@@ -429,7 +429,7 @@ func (p *parser) mapKeyText(n ast.Node) string {
 }
 
 func (p *parser) parseMappingValue(ctx *context) (ast.Node, error) {
-	key, err := p.parseMapKey(ctx)
+	key, err := p.parseMapKey(ctx.withMapKey())
 	if err != nil {
 		return nil, err
 	}
@@ -497,30 +497,55 @@ func (p *parser) parseMappingValue(ctx *context) (ast.Node, error) {
 		if antk == nil {
 			return nil, errors.ErrSyntax("required ':' and map value", ntk)
 		}
-		if antk.Type != token.MappingValueType {
-			return nil, errors.ErrSyntax("required ':' and map value", antk)
-		}
 		p.progressIgnoreComment(1)
-		value, err := p.parseToken(ctx, p.currentToken())
+		var comment *ast.CommentGroupNode
+		if tk := p.currentToken(); tk.Type == token.CommentType {
+			comment = p.parseCommentOnly(ctx)
+		}
+		value, err := p.parseMappingValue(ctx)
 		if err != nil {
 			return nil, err
 		}
-		switch value.Type() {
-		case ast.MappingType:
-			c, _ := value.(*ast.MappingNode)
-			comment := c.GetComment()
-			for idx, v := range c.Values {
+		if comment != nil {
+			comment.SetPath(value.GetPath())
+			if err := value.SetComment(comment); err != nil {
+				return nil, err
+			}
+		}
+		switch v := value.(type) {
+		case *ast.MappingNode:
+			comment := v.GetComment()
+			for idx, val := range v.Values {
 				if idx == 0 && comment != nil {
-					if err := v.SetComment(comment); err != nil {
+					if err := val.SetComment(comment); err != nil {
 						return nil, err
 					}
 				}
-				node.Values = append(node.Values, v)
+				node.Values = append(node.Values, val)
 			}
-		case ast.MappingValueType:
-			node.Values = append(node.Values, value.(*ast.MappingValueNode))
+		case *ast.MappingValueNode:
+			node.Values = append(node.Values, v)
+		case *ast.AnchorNode:
+			switch anchorV := v.Value.(type) {
+			case *ast.MappingNode:
+				comment := anchorV.GetComment()
+				for idx, val := range anchorV.Values {
+					if idx == 0 && comment != nil {
+						if err := val.SetComment(comment); err != nil {
+							return nil, err
+						}
+					}
+					val.Anchor = v
+					node.Values = append(node.Values, val)
+				}
+			case *ast.MappingValueNode:
+				anchorV.Anchor = v
+				node.Values = append(node.Values, anchorV)
+			default:
+				return nil, fmt.Errorf("failed to parse mapping value node. anchor node is %s", anchorV.Type())
+			}
 		default:
-			return nil, fmt.Errorf("failed to parse mapping value node node is %s", value.Type())
+			return nil, fmt.Errorf("failed to parse mapping value node. node is %s", value.Type())
 		}
 		ntk = p.nextNotCommentToken()
 		antk = p.afterNextNotCommentToken()
@@ -710,24 +735,17 @@ func (p *parser) parseMapKey(ctx *context) (ast.MapKeyNode, error) {
 		return ast.MergeKey(tk), nil
 	case token.MappingKeyType:
 		return p.parseMappingKey(ctx)
-	case token.AliasType:
-		return p.parseAlias(ctx)
+	case token.TagType:
+		return p.parseTag(ctx)
 	}
 	return nil, errors.ErrSyntax("unexpected mapping key", tk)
 }
 
-func (p *parser) parseStringValue(tk *token.Token) *ast.StringNode {
-	switch tk.Type {
-	case token.StringType,
-		token.SingleQuoteType,
-		token.DoubleQuoteType:
-		return ast.String(tk)
-	}
-	return nil
-}
-
 func (p *parser) parseScalarValueWithComment(ctx *context, tk *token.Token) (ast.ScalarNode, error) {
-	node := p.parseScalarValue(tk)
+	node, err := p.parseScalarValue(ctx, tk)
+	if err != nil {
+		return nil, err
+	}
 	if node == nil {
 		return nil, nil
 	}
@@ -741,28 +759,32 @@ func (p *parser) parseScalarValueWithComment(ctx *context, tk *token.Token) (ast
 	return node, nil
 }
 
-func (p *parser) parseScalarValue(tk *token.Token) ast.ScalarNode {
-	if node := p.parseStringValue(tk); node != nil {
-		return node
-	}
+func (p *parser) parseScalarValue(ctx *context, tk *token.Token) (ast.ScalarNode, error) {
 	switch tk.Type {
 	case token.NullType:
-		return ast.Null(tk)
+		return ast.Null(tk), nil
 	case token.BoolType:
-		return ast.Bool(tk)
+		return ast.Bool(tk), nil
 	case token.IntegerType,
 		token.BinaryIntegerType,
 		token.OctetIntegerType,
 		token.HexIntegerType:
-		return ast.Integer(tk)
+		return ast.Integer(tk), nil
 	case token.FloatType:
-		return ast.Float(tk)
+		return ast.Float(tk), nil
 	case token.InfinityType:
-		return ast.Infinity(tk)
+		return ast.Infinity(tk), nil
 	case token.NanType:
-		return ast.Nan(tk)
+		return ast.Nan(tk), nil
+	case token.StringType, token.SingleQuoteType,
+		token.DoubleQuoteType:
+		return ast.String(tk), nil
+	case token.AnchorType:
+		return p.parseAnchor(ctx)
+	case token.AliasType:
+		return p.parseAlias(ctx)
 	}
-	return nil
+	return nil, nil
 }
 
 func (p *parser) parseDirective(ctx *context) (*ast.DirectiveNode, error) {
@@ -935,15 +957,13 @@ func (p *parser) createNodeFromToken(ctx *context, tk *token.Token) (ast.Node, e
 	if tk == nil {
 		return nil, nil
 	}
-	if tk.NextType() == token.MappingValueType {
-		node, err := p.parseMappingValue(ctx)
-		return node, err
+	if !ctx.isMapKey && tk.NextType() == token.MappingValueType {
+		return p.parseMappingValue(ctx)
 	}
 	if tk.Type == token.AliasType {
 		aliasValueTk := p.nextToken()
 		if aliasValueTk != nil && aliasValueTk.NextType() == token.MappingValueType {
-			node, err := p.parseMappingValue(ctx)
-			return node, err
+			return p.parseMappingValue(ctx)
 		}
 	}
 	node, err := p.parseScalarValueWithComment(ctx, tk)

@@ -1110,12 +1110,11 @@ b
 - c
 `,
 			`
-[4:1] required ':' and map value
+[3:1] unexpected key name
    2 | a: 1
-   3 | b
->  4 | - c
+>  3 | b
        ^
-`,
+   4 | - c`,
 		},
 		{
 			`a: [`,

@@ -41,7 +41,7 @@ var failureTestNames = []string{
 	"double-quoted-scalar-with-escaped-single-quote",
 	"duplicate-yaml-directive",
 	"escaped-slash-in-double-quotes",
-	"explicit-key-and-value-seperated-by-comment",
+	"explicit-key-and-value-seperated-by-comment", //nolint: misspell
 	"extra-words-on-yaml-directive",
 	"empty-implicit-key-in-single-pair-flow-sequences",
 	"empty-keys-in-block-and-flow-mapping",

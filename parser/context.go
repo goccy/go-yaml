@@ -7,8 +7,9 @@ import (
 
 // context context at parsing
 type context struct {
-	path   string
-	isFlow bool
+	path     string
+	isFlow   bool
+	isMapKey bool
 }
 
 var pathSpecialChars = []string{
@@ -46,6 +47,12 @@ func (c *context) withIndex(idx uint) *context {
 func (c *context) withFlow(isFlow bool) *context {
 	ctx := *c
 	ctx.isFlow = isFlow
+	return &ctx
+}
+
+func (c *context) withMapKey() *context {
+	ctx := *c
+	ctx.isMapKey = true
 	return &ctx
 }
 

@@ -151,6 +151,7 @@ func (c *Context) addDocumentIndent(column int) {
 		}
 		// Since addBuf ignore space character, add to the buffer directly.
 		c.buf = append(c.buf, ' ')
+		c.notSpaceCharPos = len(c.buf)
 	}
 }
 
@@ -277,7 +278,7 @@ func (c *Context) bufferedSrc() []rune {
 		if c.hasTrimAllEndNewlineOpt() {
 			// If the '-' flag is specified, all trailing newline characters will be removed.
 			src = []rune(strings.TrimRight(string(src), "\n"))
-		} else {
+		} else if !c.hasKeepAllEndNewlineOpt() {
 			// Normally, all but one of the trailing newline characters are removed.
 			var newLineCharCount int
 			for i := len(src) - 1; i >= 0; i-- {
@@ -295,12 +296,17 @@ func (c *Context) bufferedSrc() []rune {
 		}
 
 		// If the text ends with a space character, remove all of them.
-		src = []rune(strings.TrimRight(string(src), " "))
+		if c.hasTrimAllEndNewlineOpt() {
+			src = []rune(strings.TrimRight(string(src), " "))
+		}
 		if string(src) == "\n" {
 			// If the content consists only of a newline,
 			// it can be considered as the document ending without any specified value,
 			// so it is treated as an empty string.
 			src = []rune{}
+		}
+		if c.hasKeepAllEndNewlineOpt() && len(src) == 0 {
+			src = []rune{'\n'}
 		}
 	}
 	return src
@@ -310,12 +316,17 @@ func (c *Context) hasTrimAllEndNewlineOpt() bool {
 	return strings.HasPrefix(c.docOpt, "-") || strings.HasSuffix(c.docOpt, "-") || c.isRawFolded
 }
 
+func (c *Context) hasKeepAllEndNewlineOpt() bool {
+	return strings.HasPrefix(c.docOpt, "+") || strings.HasSuffix(c.docOpt, "+")
+}
+
 func (c *Context) bufferedToken(pos *token.Position) *token.Token {
 	if c.idx == 0 {
 		return nil
 	}
 	source := c.bufferedSrc()
 	if len(source) == 0 {
+		c.buf = c.buf[:0] // clear value's buffer only.
 		return nil
 	}
 	var tk *token.Token

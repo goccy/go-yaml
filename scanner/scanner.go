@@ -232,7 +232,22 @@ func (s *Scanner) scanSingleQuote(ctx *Context) (*token.Token, error) {
 		c := src[idx]
 		ctx.addOriginBuf(c)
 		if s.isNewLineChar(c) {
-			value = append(value, ' ')
+			notSpaceIdx := -1
+			for i := len(value) - 1; i >= 0; i-- {
+				if value[i] == ' ' {
+					continue
+				}
+				notSpaceIdx = i
+				break
+			}
+			if len(value) > notSpaceIdx {
+				value = value[:notSpaceIdx+1]
+			}
+			if isFirstLineChar {
+				value = append(value, '\n')
+			} else {
+				value = append(value, ' ')
+			}
 			isFirstLineChar = true
 			isNewLine = true
 			s.progressLine(ctx)
@@ -301,12 +316,19 @@ func (s *Scanner) scanDoubleQuote(ctx *Context) (*token.Token, error) {
 		c := src[idx]
 		ctx.addOriginBuf(c)
 		if s.isNewLineChar(c) {
-			if isFirstLineChar {
-				if value[len(value)-1] == ' ' {
-					value[len(value)-1] = '\n'
-				} else {
-					value = append(value, '\n')
+			notSpaceIdx := -1
+			for i := len(value) - 1; i >= 0; i-- {
+				if value[i] == ' ' {
+					continue
 				}
+				notSpaceIdx = i
+				break
+			}
+			if len(value) > notSpaceIdx {
+				value = value[:notSpaceIdx+1]
+			}
+			if isFirstLineChar {
+				value = append(value, '\n')
 			} else {
 				value = append(value, ' ')
 			}
@@ -415,6 +437,10 @@ func (s *Scanner) scanDoubleQuote(ctx *Context) (*token.Token, error) {
 				s.progressLine(ctx)
 				idx++
 				continue
+			case '\t':
+				progress = 1
+				ctx.addOriginBuf(nextChar)
+				value = append(value, nextChar)
 			case ' ':
 				// skip escape character.
 			default:
@@ -422,6 +448,29 @@ func (s *Scanner) scanDoubleQuote(ctx *Context) (*token.Token, error) {
 			}
 			idx += progress
 			s.progressColumn(ctx, progress)
+			continue
+		} else if c == '\t' {
+			var (
+				foundNotSpaceChar bool
+				progress          int
+			)
+			for i := idx + 1; i < size; i++ {
+				if src[i] == ' ' || src[i] == '\t' {
+					progress++
+					continue
+				}
+				if src[i] == '\n' {
+					break
+				}
+				foundNotSpaceChar = true
+			}
+			if foundNotSpaceChar {
+				value = append(value, c)
+				s.progressColumn(ctx, 1)
+			} else {
+				idx += progress
+				s.progressColumn(ctx, progress)
+			}
 			continue
 		} else if c != '"' {
 			value = append(value, c)
@@ -537,7 +586,7 @@ func (s *Scanner) scanTag(ctx *Context) bool {
 }
 
 func (s *Scanner) scanComment(ctx *Context) bool {
-	if ctx.existsBuffer() && ctx.previousChar() != ' ' {
+	if ctx.existsBuffer() && (ctx.previousChar() != ' ' && ctx.previousChar() != '\t') {
 		return false
 	}
 
@@ -590,16 +639,20 @@ func (s *Scanner) trimCommentFromDocumentOpt(text string, header rune) (string, 
 func (s *Scanner) scanDocument(ctx *Context, c rune) error {
 	ctx.addOriginBuf(c)
 	if ctx.isEOS() {
+		if s.isFirstCharAtLine && c == ' ' {
+			ctx.addDocumentIndent(s.column)
+		} else {
+			ctx.addBuf(c)
+		}
 		ctx.updateDocumentLineIndentColumn(s.column)
 		if err := ctx.validateDocumentLineIndentColumn(); err != nil {
 			invalidTk := token.Invalid(err.Error(), string(ctx.obuf), s.pos())
 			s.progressColumn(ctx, 1)
 			return ErrInvalidToken(invalidTk)
 		}
-		ctx.addBuf(c)
 		value := ctx.bufferedSrc()
 		ctx.addToken(token.String(string(value), string(ctx.obuf), s.pos()))
-		ctx.resetBuffer()
+		ctx.clear()
 		s.progressColumn(ctx, 1)
 	} else if s.isNewLineChar(c) {
 		ctx.addBuf(c)

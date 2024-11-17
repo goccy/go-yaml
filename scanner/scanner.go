@@ -232,7 +232,22 @@ func (s *Scanner) scanSingleQuote(ctx *Context) (*token.Token, error) {
 		c := src[idx]
 		ctx.addOriginBuf(c)
 		if s.isNewLineChar(c) {
-			value = append(value, ' ')
+			notSpaceIdx := -1
+			for i := len(value) - 1; i >= 0; i-- {
+				if value[i] == ' ' {
+					continue
+				}
+				notSpaceIdx = i
+				break
+			}
+			if len(value) > notSpaceIdx {
+				value = value[:notSpaceIdx+1]
+			}
+			if isFirstLineChar {
+				value = append(value, '\n')
+			} else {
+				value = append(value, ' ')
+			}
 			isFirstLineChar = true
 			isNewLine = true
 			s.progressLine(ctx)
@@ -301,15 +316,15 @@ func (s *Scanner) scanDoubleQuote(ctx *Context) (*token.Token, error) {
 		c := src[idx]
 		ctx.addOriginBuf(c)
 		if s.isNewLineChar(c) {
-			var notSpaceIdx int
-			for i := len(value) - 1; i > 0; i-- {
+			notSpaceIdx := -1
+			for i := len(value) - 1; i >= 0; i-- {
 				if value[i] == ' ' {
 					continue
 				}
 				notSpaceIdx = i
 				break
 			}
-			if notSpaceIdx > 0 {
+			if len(value) > notSpaceIdx {
 				value = value[:notSpaceIdx+1]
 			}
 			if isFirstLineChar {

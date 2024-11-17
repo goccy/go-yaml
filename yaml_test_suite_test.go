@@ -178,13 +178,13 @@ var failureTestNames = []string{
 	"tags-in-implicit-mapping",
 	"tags-on-empty-scalars",
 	"three-dashes-and-content-without-space",
-	"trailing-line-of-spaces/01",
-	"various-combinations-of-explicit-block-mappings",
-	"various-trailing-comments",
-	"various-trailing-comments-1-3",
-	"wrong-indented-flow-sequence",
-	"wrong-indented-multiline-quoted-scalar",
-	"zero-indented-sequences-in-explicit-mapping-keys",
+	"trailing-line-of-spaces/01",                       // last '\n' character is needed ?
+	"various-combinations-of-explicit-block-mappings",  // no json
+	"various-trailing-comments",                        // no json
+	"various-trailing-comments-1-3",                    // no json
+	"wrong-indented-flow-sequence",                     // error ?
+	"wrong-indented-multiline-quoted-scalar",           // error ?
+	"zero-indented-sequences-in-explicit-mapping-keys", // no json
 }
 
 var failureTestNameMap map[string]struct{}

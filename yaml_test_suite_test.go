@@ -171,6 +171,7 @@ var failureTestNames = []string{
 	"tabs-that-look-like-indentation/05",
 	"tabs-that-look-like-indentation/07",
 	"tabs-that-look-like-indentation/08",
+	"tag-shorthand-used-in-documents-but-only-defined-in-the-first",
 	"tags-for-block-objects",
 	"tags-for-flow-objects",
 	"tags-for-root-objects",

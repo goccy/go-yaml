@@ -215,6 +215,14 @@ func (d *Decoder) addHeadOrLineCommentToMap(node ast.Node) {
 	}
 	commentPath := node.GetPath()
 	if minCommentLine < targetLine {
+		switch n := node.(type) {
+		case *ast.MappingNode:
+			if len(n.Values) != 0 {
+				commentPath = n.Values[0].Key.GetPath()
+			}
+		case *ast.MappingValueNode:
+			commentPath = n.Key.GetPath()
+		}
 		d.addCommentToMap(commentPath, HeadComment(texts...))
 	} else {
 		d.addCommentToMap(commentPath, LineComment(texts[0]))
@@ -255,14 +263,20 @@ func (d *Decoder) addFootCommentToMap(node ast.Node) {
 	)
 	switch n := node.(type) {
 	case *ast.SequenceNode:
-		if len(n.Values) != 0 {
-			footCommentPath = n.Values[len(n.Values)-1].GetPath()
-		}
 		footComment = n.FootComment
+		if n.FootComment != nil {
+			footCommentPath = n.FootComment.GetPath()
+		}
 	case *ast.MappingNode:
 		footComment = n.FootComment
+		if n.FootComment != nil {
+			footCommentPath = n.FootComment.GetPath()
+		}
 	case *ast.MappingValueNode:
 		footComment = n.FootComment
+		if n.FootComment != nil {
+			footCommentPath = n.FootComment.GetPath()
+		}
 	}
 	if footComment == nil {
 		return

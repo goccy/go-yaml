@@ -46,6 +46,7 @@ type Scanner struct {
 	indentLevel            int
 	isFirstCharAtLine      bool
 	isAnchor               bool
+	isDirective            bool
 	startedFlowSequenceNum int
 	startedFlowMapNum      int
 	indentState            IndentState
@@ -104,6 +105,7 @@ func (s *Scanner) progressLine(ctx *Context) {
 	s.indentNum = 0
 	s.isFirstCharAtLine = true
 	s.isAnchor = false
+	s.isDirective = false
 	s.progress(ctx, 1)
 }
 
@@ -812,6 +814,9 @@ func (s *Scanner) scanFlowEntry(ctx *Context, c rune) bool {
 
 func (s *Scanner) scanMapDelim(ctx *Context) bool {
 	nc := ctx.nextChar()
+	if s.isDirective {
+		return false
+	}
 	if s.startedFlowMapNum <= 0 && nc != ' ' && nc != '\t' && !s.isNewLineChar(nc) && !ctx.isNextEOS() {
 		return false
 	}
@@ -843,6 +848,12 @@ func (s *Scanner) scanDocumentStart(ctx *Context) bool {
 	}
 	if ctx.repeatNum('-') != 3 {
 		return false
+	}
+	if ctx.size > ctx.idx+3 {
+		c := ctx.src[ctx.idx+3]
+		if c != ' ' && c != '\t' && c != '\n' && c != '\r' {
+			return false
+		}
 	}
 
 	s.addBufferedTokenIfExists(ctx)
@@ -1046,6 +1057,7 @@ func (s *Scanner) scanDirective(ctx *Context) bool {
 	ctx.addToken(token.Directive(string(ctx.obuf)+"%", s.pos()))
 	s.progressColumn(ctx, 1)
 	ctx.clear()
+	s.isDirective = true
 	return true
 }
 

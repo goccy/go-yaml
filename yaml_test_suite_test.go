@@ -18,8 +18,6 @@ var failureTestNames = []string{
 	"aliases-in-flow-objects",
 	"aliases-in-explicit-block-mapping",
 	"aliases-in-implicit-block-mapping",
-	"anchor-before-sequence-entry-on-same-line",
-	"anchor-for-empty-node",
 	"anchor-plus-alias",
 	"anchors-in-mapping",
 	"anchors-with-colon-in-name",

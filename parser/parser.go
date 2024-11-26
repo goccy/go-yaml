@@ -620,8 +620,10 @@ func (p *parser) parseMapValue(ctx *context, key ast.MapKeyNode, colonTk *Token)
 	if ctx.isComment() {
 		tk = ctx.nextNotCommentToken()
 	}
+	keyCol := key.GetToken().Position.Column
+	keyLine := key.GetToken().Position.Line
 
-	if tk.Column() == key.GetToken().Position.Column && p.isMapToken(tk) {
+	if tk.Column() == keyCol && p.isMapToken(tk) {
 		// in this case,
 		// ----
 		// key: <value does not defined>
@@ -629,12 +631,48 @@ func (p *parser) parseMapValue(ctx *context, key ast.MapKeyNode, colonTk *Token)
 		return newNullNode(ctx, ctx.insertNullToken(colonTk))
 	}
 
-	if tk.Column() < key.GetToken().Position.Column {
+	if tk.Line() == keyLine && tk.GroupType() == TokenGroupAnchorName &&
+		ctx.nextToken().Column() == keyCol && p.isMapToken(ctx.nextToken()) {
+		// in this case,
+		// ----
+		// key: &anchor
+		// next
+		group := &TokenGroup{
+			Type:   TokenGroupAnchor,
+			Tokens: []*Token{tk, ctx.createNullToken(tk)},
+		}
+		anchor, err := p.parseAnchor(ctx.withGroup(group), group)
+		if err != nil {
+			return nil, err
+		}
+		ctx.goNext()
+		return anchor, nil
+	}
+
+	if tk.Column() < keyCol {
 		// in this case,
 		// ----
 		//   key: <value does not defined>
 		// next
 		return newNullNode(ctx, ctx.insertNullToken(colonTk))
+	}
+
+	if tk.Line() == keyLine && tk.GroupType() == TokenGroupAnchorName &&
+		ctx.nextToken().Column() < keyCol {
+		// in this case,
+		// ----
+		//   key: &anchor
+		// next
+		group := &TokenGroup{
+			Type:   TokenGroupAnchor,
+			Tokens: []*Token{tk, ctx.createNullToken(tk)},
+		}
+		anchor, err := p.parseAnchor(ctx.withGroup(group), group)
+		if err != nil {
+			return nil, err
+		}
+		ctx.goNext()
+		return anchor, nil
 	}
 
 	value, err := p.parseToken(ctx, ctx.currentToken())

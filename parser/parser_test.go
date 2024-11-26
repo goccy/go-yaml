@@ -669,6 +669,20 @@ a:
     c: d
 `,
 		},
+		{
+			`
+a:
+ b: &anchor
+ c: &anchor2
+d: e
+`,
+			`
+a:
+ b: &anchor null
+ c: &anchor2 null
+d: e
+`,
+		},
 	}
 
 	for _, test := range tests {

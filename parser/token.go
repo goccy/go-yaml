@@ -311,6 +311,9 @@ func createAnchorAndAliasTokenGroups(tokens []*Token) ([]*Token, error) {
 				},
 			}
 			valueTk := tokens[i+2]
+			if tk.Line() == valueTk.Line() && valueTk.Type() == token.SequenceEntryType {
+				return nil, errors.ErrSyntax("sequence entries are not allowed after anchor on the same line", valueTk.RawToken())
+			}
 			if tk.Line() == valueTk.Line() && isScalarType(valueTk) {
 				ret = append(ret, &Token{
 					Group: &TokenGroup{

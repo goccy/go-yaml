@@ -12,7 +12,6 @@ type TokenGroupType int
 
 const (
 	TokenGroupNone TokenGroupType = iota
-	TokenGroupComment
 	TokenGroupDirective
 	TokenGroupDocument
 	TokenGroupDocumentBody
@@ -30,8 +29,6 @@ func (t TokenGroupType) String() string {
 	switch t {
 	case TokenGroupNone:
 		return "none"
-	case TokenGroupComment:
-		return "comment"
 	case TokenGroupDirective:
 		return "directive"
 	case TokenGroupDocument:

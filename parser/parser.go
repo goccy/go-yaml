@@ -325,9 +325,7 @@ func (p *parser) parseFlowMap(ctx *context) (*ast.MappingNode, error) {
 			}
 			colonTk := mapKeyTk.Group.Last()
 			if p.isFlowMapDelim(ctx.nextToken()) {
-				nullToken := p.createNullToken(colonTk)
-				ctx.insertToken(nullToken)
-				value, err := newNullNode(ctx, nullToken)
+				value, err := newNullNode(ctx, ctx.insertNullToken(colonTk))
 				if err != nil {
 					return nil, err
 				}
@@ -335,7 +333,6 @@ func (p *parser) parseFlowMap(ctx *context) (*ast.MappingNode, error) {
 				if err != nil {
 					return nil, err
 				}
-				ctx.goNext()
 				node.Values = append(node.Values, mapValue)
 				ctx.goNext()
 			} else {
@@ -358,13 +355,10 @@ func (p *parser) parseFlowMap(ctx *context) (*ast.MappingNode, error) {
 			if err != nil {
 				return nil, err
 			}
-			nullToken := p.createNullToken(mapKeyTk)
-			ctx.insertToken(nullToken)
-			value, err := newNullNode(ctx, nullToken)
+			value, err := newNullNode(ctx, ctx.insertNullToken(mapKeyTk))
 			if err != nil {
 				return nil, err
 			}
-			ctx.goNext()
 			mapValue, err := newMappingValueNode(ctx, mapKeyTk, key, value)
 			if err != nil {
 				return nil, err
@@ -619,17 +613,7 @@ func (p *parser) mapKeyText(n ast.Node) string {
 func (p *parser) parseMapValue(ctx *context, key ast.MapKeyNode, colonTk *Token) (ast.Node, error) {
 	tk := ctx.currentToken()
 	if tk == nil {
-		nullToken := p.createNullToken(colonTk)
-		ctx.insertToken(nullToken)
-		nullNode, err := newNullNode(ctx, nullToken)
-		if err != nil {
-			return nil, err
-		}
-		ctx.goNext()
-		return nullNode, nil
-	} else if tk.Type() == token.CollectEntryType {
-		// implicit null value.
-		return newNullNode(ctx, tk)
+		return newNullNode(ctx, ctx.insertNullToken(colonTk))
 	}
 
 	if ctx.isComment() {
@@ -641,15 +625,7 @@ func (p *parser) parseMapValue(ctx *context, key ast.MapKeyNode, colonTk *Token)
 		// ----
 		// key: <value does not defined>
 		// next
-
-		nullToken := p.createNullToken(colonTk)
-		ctx.insertToken(nullToken)
-		nullNode, err := newNullNode(ctx, nullToken)
-		if err != nil {
-			return nil, err
-		}
-		ctx.goNext()
-		return nullNode, nil
+		return newNullNode(ctx, ctx.insertNullToken(colonTk))
 	}
 
 	if tk.Column() < key.GetToken().Position.Column {
@@ -657,15 +633,7 @@ func (p *parser) parseMapValue(ctx *context, key ast.MapKeyNode, colonTk *Token)
 		// ----
 		//   key: <value does not defined>
 		// next
-		nullToken := p.createNullToken(colonTk)
-		ctx.insertToken(nullToken)
-		nullNode, err := newNullNode(ctx, nullToken)
-		if err != nil {
-			return nil, err
-		}
-
-		ctx.goNext()
-		return nullNode, nil
+		return newNullNode(ctx, ctx.insertNullToken(colonTk))
 	}
 
 	value, err := p.parseToken(ctx, ctx.currentToken())
@@ -776,7 +744,7 @@ func (p *parser) parseTag(ctx *context) (*ast.TagNode, error) {
 
 func (p *parser) parseTagValue(ctx *context, tagRawTk *token.Token, tk *Token) (ast.Node, error) {
 	if tk == nil {
-		return newNullNode(ctx, p.createNullToken(&Token{Token: tagRawTk}))
+		return newNullNode(ctx, ctx.createNullToken(&Token{Token: tagRawTk}))
 	}
 	switch token.ReservedTagKeyword(tagRawTk.Value) {
 	case token.MappingTag, token.OrderedMapTag:
@@ -863,7 +831,7 @@ func (p *parser) parseSequence(ctx *context) (*ast.SequenceNode, error) {
 
 		valueTk := ctx.currentToken()
 		if valueTk == nil {
-			node, err := newNullNode(ctx, p.createNullToken(seqTk))
+			node, err := newNullNode(ctx, ctx.createNullToken(seqTk))
 			if err != nil {
 				return nil, err
 			}
@@ -944,10 +912,4 @@ func (p *parser) parseFootComment(ctx *context, col int) *ast.CommentGroupNode {
 		return nil
 	}
 	return ast.CommentGroup(tks)
-}
-
-func (p *parser) createNullToken(base *Token) *Token {
-	pos := *(base.RawToken().Position)
-	pos.Column++
-	return &Token{Token: token.New("null", "null", &pos)}
 }

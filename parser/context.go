@@ -115,26 +115,41 @@ func (c *context) next() bool {
 	return c.tokenRef.idx < c.tokenRef.size
 }
 
+func (c *context) insertNullToken(tk *Token) *Token {
+	nullToken := c.createNullToken(tk)
+	c.insertToken(nullToken)
+	c.goNext()
+
+	return nullToken
+}
+
+func (c *context) createNullToken(base *Token) *Token {
+	pos := *(base.RawToken().Position)
+	pos.Column++
+	return &Token{Token: token.New("null", "null", &pos)}
+}
+
 func (c *context) insertToken(tk *Token) {
-	idx := c.tokenRef.idx
-	if c.tokenRef.size < idx {
+	ref := c.tokenRef
+	idx := ref.idx
+	if ref.size < idx {
 		return
 	}
-	if c.tokenRef.size == idx {
-		curToken := c.tokenRef.tokens[c.tokenRef.size-1]
+	if ref.size == idx {
+		curToken := ref.tokens[ref.size-1]
 		tk.RawToken().Next = curToken.RawToken()
 		curToken.RawToken().Prev = tk.RawToken()
 
-		c.tokenRef.tokens = append(c.tokenRef.tokens, tk)
-		c.tokenRef.size = len(c.tokenRef.tokens)
+		ref.tokens = append(ref.tokens, tk)
+		ref.size = len(ref.tokens)
 		return
 	}
 
-	curToken := c.tokenRef.tokens[idx]
+	curToken := ref.tokens[idx]
 	tk.RawToken().Next = curToken.RawToken()
 	curToken.RawToken().Prev = tk.RawToken()
 
-	c.tokenRef.tokens = append(c.tokenRef.tokens[:idx+1], c.tokenRef.tokens[idx:]...)
-	c.tokenRef.tokens[idx] = tk
-	c.tokenRef.size = len(c.tokenRef.tokens)
+	ref.tokens = append(ref.tokens[:idx+1], ref.tokens[idx:]...)
+	ref.tokens[idx] = tk
+	ref.size = len(ref.tokens)
 }

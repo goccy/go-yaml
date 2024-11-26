@@ -18,9 +18,6 @@ var failureTestNames = []string{
 	"aliases-in-flow-objects",
 	"aliases-in-explicit-block-mapping",
 	"aliases-in-implicit-block-mapping",
-	"allowed-characters-in-alias",
-	"anchor-before-sequence-entry-on-same-line",
-	"anchor-for-empty-node",
 	"anchor-plus-alias",
 	"anchors-in-mapping",
 	"anchors-with-colon-in-name",
@@ -156,13 +153,7 @@ var failureTestNames = []string{
 	"syntax-character-edge-cases/00",
 	"tab-at-beginning-of-line-followed-by-a-flow-mapping",
 	"tab-indented-top-flow",
-	"tabs-in-various-contexts/001",
-	"tabs-in-various-contexts/002",
-	"tabs-in-various-contexts/004",
-	"tabs-in-various-contexts/005",
-	"tabs-in-various-contexts/006",
-	"tabs-in-various-contexts/008",
-	"tabs-in-various-contexts/010",
+	"tabs-in-various-contexts/003",
 	"tabs-that-look-like-indentation/00",
 	"tabs-that-look-like-indentation/01",
 	"tabs-that-look-like-indentation/02",
@@ -178,7 +169,6 @@ var failureTestNames = []string{
 	"tags-in-explicit-mapping",
 	"tags-in-implicit-mapping",
 	"tags-on-empty-scalars",
-	"three-dashes-and-content-without-space",
 	"trailing-line-of-spaces/01",                       // last '\n' character is needed ?
 	"various-combinations-of-explicit-block-mappings",  // no json
 	"various-trailing-comments",                        // no json

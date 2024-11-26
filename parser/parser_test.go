@@ -669,6 +669,20 @@ a:
     c: d
 `,
 		},
+		{
+			`
+a:
+ b: &anchor
+ c: &anchor2
+d: e
+`,
+			`
+a:
+ b: &anchor null
+ c: &anchor2 null
+d: e
+`,
+		},
 	}
 
 	for _, test := range tests {
@@ -939,6 +953,38 @@ foo:
   bar: null # comment
 
 baz: 1
+`,
+		},
+		{
+			`
+{
+	"apiVersion": "apps/v1",
+	"kind": "Deployment",
+	"metadata": {
+		"name": "foo",
+		"labels": {
+			"app": "bar"
+		}
+	},
+	"spec": {
+		"replicas": 3,
+		"selector": {
+			"matchLabels": {
+				"app": "bar"
+			}
+		},
+		"template": {
+			"metadata": {
+				"labels": {
+					"app": "bar"
+				}
+			}
+		}
+	}
+}
+`,
+			`
+{"apiVersion": "apps/v1", "kind": "Deployment", "metadata": {"name": "foo", "labels": {"app": "bar"}}, "spec": {"replicas": 3, "selector": {"matchLabels": {"app": "bar"}}, "template": {"metadata": {"labels": {"app": "bar"}}}}}
 `,
 		},
 	}

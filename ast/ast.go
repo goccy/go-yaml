@@ -1762,6 +1762,14 @@ type TagNode struct {
 	Value Node
 }
 
+func (n *TagNode) GetValue() any {
+	scalar, ok := n.Value.(ScalarNode)
+	if !ok {
+		return nil
+	}
+	return scalar.GetValue()
+}
+
 func (n *TagNode) stringWithoutComment() string {
 	return n.Value.String()
 }

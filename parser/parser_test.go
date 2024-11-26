@@ -1021,15 +1021,15 @@ a
 		{
 			`%YAML 1.1 {}`,
 			`
-[1:2] unexpected directive value. document not started
+[1:1] unexpected directive value. document not started
 >  1 | %YAML 1.1 {}
-        ^
+       ^
 `,
 		},
 		{
 			`{invalid`,
 			`
-[1:2] unexpected map
+[1:2] could not find flow map content
 >  1 | {invalid
         ^
 `,
@@ -1059,7 +1059,7 @@ a: 1
 b
 `,
 			`
-[3:1] required ':' and map value
+[3:1] non-map value is specified
    2 | a: 1
 >  3 | b
        ^
@@ -1071,7 +1071,7 @@ a: 'b'
   c: d
 `,
 			`
-[3:3] value is not allowed in this context
+[3:3] value is not allowed in this context. map key-value is pre-defined
    2 | a: 'b'
 >  3 |   c: d
          ^
@@ -1083,7 +1083,7 @@ a: 'b'
   - c
 `,
 			`
-[3:3] value is not allowed in this context
+[3:3] value is not allowed in this context. map key-value is pre-defined
    2 | a: 'b'
 >  3 |   - c
          ^
@@ -1096,7 +1096,7 @@ a: 'b'
   - c
 `,
 			`
-[4:3] value is not allowed in this context
+[4:3] value is not allowed in this context. map key-value is pre-defined
    2 | a: 'b'
    3 |   # comment
 >  4 |   - c
@@ -1110,7 +1110,7 @@ b
 - c
 `,
 			`
-[3:1] unexpected key name
+[3:1] non-map value is specified
    2 | a: 1
 >  3 | b
        ^
@@ -1146,11 +1146,10 @@ a: -
 b: -
 `,
 			`
-[3:4] block sequence entries are not allowed in this context
-   2 | a: -
->  3 | b: -
+[2:4] block sequence entries are not allowed in this context
+>  2 | a: -
           ^
-`,
+   3 | b: -`,
 		},
 		{
 			`
@@ -1475,7 +1474,8 @@ foo:
 `
 		expected := `
 foo:
-  bar: null # comment
+  bar: null
+  # comment
   baz: 1`
 		f, err := parser.ParseBytes([]byte(content), parser.ParseComments)
 		if err != nil {
@@ -1504,7 +1504,8 @@ baz: 1`
 		}
 		expected := `
 foo:
-  bar: null # comment
+  bar: null
+# comment
 baz: 1`
 		got := f.Docs[0].String()
 		if got != strings.TrimPrefix(expected, "\n") {
@@ -1597,11 +1598,14 @@ multiple:
 		t.Fatalf("failed to get map values. got %d", len(mapNode.Values))
 	}
 
-	singleNode, ok := mapNode.Values[0].Value.(*ast.MappingValueNode)
+	singleNode, ok := mapNode.Values[0].Value.(*ast.MappingNode)
 	if !ok {
 		t.Fatalf("failed to get single node. got %T", mapNode.Values[0].Value)
 	}
-	if singleNode.GetComment().GetToken().Value != " foo comment" {
+	if len(singleNode.Values) != 1 {
+		t.Fatalf("failed to get single node values. got %d", len(singleNode.Values))
+	}
+	if singleNode.Values[0].GetComment().GetToken().Value != " foo comment" {
 		t.Fatalf("failed to get comment from single. got %q", singleNode.GetComment().GetToken().Value)
 	}
 

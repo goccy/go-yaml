@@ -138,6 +138,13 @@ func (c *Context) updateDocumentNewLineState() {
 	c.docLineIndentColumn = 0
 }
 
+func (c *Context) isIndentColumn(column int) bool {
+	if c.docFirstLineIndentColumn == 0 {
+		return column == 1
+	}
+	return c.docFirstLineIndentColumn > column
+}
+
 func (c *Context) addDocumentIndent(column int) {
 	if c.docFirstLineIndentColumn == 0 {
 		return
@@ -188,6 +195,16 @@ func (c *Context) addBuf(r rune) {
 	}
 	c.buf = append(c.buf, r)
 	if r != ' ' && r != '\t' {
+		c.notSpaceCharPos = len(c.buf)
+	}
+}
+
+func (c *Context) addBufWithTab(r rune) {
+	if len(c.buf) == 0 && r == ' ' {
+		return
+	}
+	c.buf = append(c.buf, r)
+	if r != ' ' {
 		c.notSpaceCharPos = len(c.buf)
 	}
 }

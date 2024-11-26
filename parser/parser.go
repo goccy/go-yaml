@@ -323,6 +323,7 @@ func (p *parser) parseFlowMap(ctx *context) (*ast.MappingNode, error) {
 			if err != nil {
 				return nil, err
 			}
+			ctx := ctx.withChild(p.mapKeyText(key))
 			colonTk := mapKeyTk.Group.Last()
 			if p.isFlowMapDelim(ctx.nextToken()) {
 				value, err := newNullNode(ctx, ctx.insertNullToken(colonTk))

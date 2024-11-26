@@ -46,6 +46,7 @@ type Scanner struct {
 	indentLevel            int
 	isFirstCharAtLine      bool
 	isAnchor               bool
+	isAlias                bool
 	isDirective            bool
 	startedFlowSequenceNum int
 	startedFlowMapNum      int
@@ -105,6 +106,7 @@ func (s *Scanner) progressLine(ctx *Context) {
 	s.indentNum = 0
 	s.isFirstCharAtLine = true
 	s.isAnchor = false
+	s.isAlias = false
 	s.isDirective = false
 	s.progress(ctx, 1)
 }
@@ -516,7 +518,7 @@ func (s *Scanner) scanWhiteSpace(ctx *Context) bool {
 	if ctx.isDocument() {
 		return false
 	}
-	if !s.isAnchor && !s.isFirstCharAtLine {
+	if !s.isAnchor && !s.isAlias && !s.isFirstCharAtLine {
 		return false
 	}
 
@@ -528,6 +530,7 @@ func (s *Scanner) scanWhiteSpace(ctx *Context) bool {
 
 	s.addBufferedTokenIfExists(ctx)
 	s.isAnchor = false
+	s.isAlias = false
 	return true
 }
 
@@ -663,7 +666,7 @@ func (s *Scanner) scanDocument(ctx *Context, c rune) error {
 	} else if s.isFirstCharAtLine && c == ' ' {
 		ctx.addDocumentIndent(s.column)
 		s.progressColumn(ctx, 1)
-	} else if s.isFirstCharAtLine && c == '\t' {
+	} else if s.isFirstCharAtLine && c == '\t' && ctx.isIndentColumn(s.column) {
 		err := ErrInvalidToken(
 			token.Invalid(
 				"found a tab character where an indentation space is expected",
@@ -683,7 +686,7 @@ func (s *Scanner) scanDocument(ctx *Context, c rune) error {
 			return ErrInvalidToken(invalidTk)
 		}
 		ctx.updateDocumentNewLineInFolded(s.column)
-		ctx.addBuf(c)
+		ctx.addBufWithTab(c)
 		s.progressColumn(ctx, 1)
 	}
 	return nil
@@ -717,7 +720,7 @@ func (s *Scanner) scanNewLine(ctx *Context, c rune) {
 
 	if ctx.isEOS() {
 		s.addBufferedTokenIfExists(ctx)
-	} else if s.isAnchor {
+	} else if s.isAnchor || s.isAlias {
 		s.addBufferedTokenIfExists(ctx)
 	}
 	if ctx.existsBuffer() && s.isFirstCharAtLine {
@@ -812,13 +815,19 @@ func (s *Scanner) scanFlowEntry(ctx *Context, c rune) bool {
 	return true
 }
 
-func (s *Scanner) scanMapDelim(ctx *Context) bool {
+func (s *Scanner) scanMapDelim(ctx *Context) (bool, error) {
 	nc := ctx.nextChar()
-	if s.isDirective {
-		return false
+	if s.isDirective || s.isAnchor || s.isAlias {
+		return false, nil
 	}
 	if s.startedFlowMapNum <= 0 && nc != ' ' && nc != '\t' && !s.isNewLineChar(nc) && !ctx.isNextEOS() {
-		return false
+		return false, nil
+	}
+
+	if strings.HasPrefix(strings.TrimPrefix(string(ctx.obuf), " "), "\t") && !strings.HasPrefix(string(ctx.buf), "\t") {
+		invalidTk := token.Invalid("tab character cannot use as a map key directly", string(ctx.obuf), s.pos())
+		s.progressColumn(ctx, 1)
+		return false, ErrInvalidToken(invalidTk)
 	}
 
 	// mapping value
@@ -836,7 +845,7 @@ func (s *Scanner) scanMapDelim(ctx *Context) bool {
 	ctx.addToken(token.MappingValue(s.pos()))
 	s.progressColumn(ctx, 1)
 	ctx.clear()
-	return true
+	return true, nil
 }
 
 func (s *Scanner) scanDocumentStart(ctx *Context) bool {
@@ -908,14 +917,20 @@ func (s *Scanner) scanRawFoldedChar(ctx *Context) bool {
 	return true
 }
 
-func (s *Scanner) scanSequence(ctx *Context) bool {
+func (s *Scanner) scanSequence(ctx *Context) (bool, error) {
 	if ctx.existsBuffer() {
-		return false
+		return false, nil
 	}
 
 	nc := ctx.nextChar()
-	if nc != 0 && nc != ' ' && !s.isNewLineChar(nc) {
-		return false
+	if nc != 0 && nc != ' ' && nc != '\t' && !s.isNewLineChar(nc) {
+		return false, nil
+	}
+
+	if strings.HasPrefix(strings.TrimPrefix(string(ctx.obuf), " "), "\t") {
+		invalidTk := token.Invalid("tab character cannot use as a sequence delimiter", string(ctx.obuf), s.pos())
+		s.progressColumn(ctx, 1)
+		return false, ErrInvalidToken(invalidTk)
 	}
 
 	s.addBufferedTokenIfExists(ctx)
@@ -925,7 +940,7 @@ func (s *Scanner) scanSequence(ctx *Context) bool {
 	ctx.addToken(tk)
 	s.progressColumn(ctx, 1)
 	ctx.clear()
-	return true
+	return true, nil
 }
 
 func (s *Scanner) scanDocumentHeader(ctx *Context) (bool, error) {
@@ -1036,7 +1051,7 @@ func (s *Scanner) scanMapKey(ctx *Context) bool {
 	}
 
 	nc := ctx.nextChar()
-	if nc != ' ' {
+	if nc != ' ' && nc != '\t' {
 		return false
 	}
 
@@ -1084,6 +1099,7 @@ func (s *Scanner) scanAlias(ctx *Context) bool {
 	ctx.addOriginBuf('*')
 	ctx.addToken(token.Alias(string(ctx.obuf), s.pos()))
 	s.progressColumn(ctx, 1)
+	s.isAlias = true
 	ctx.clear()
 	return true
 }
@@ -1107,6 +1123,11 @@ func (s *Scanner) scanReservedChar(ctx *Context, c rune) error {
 }
 
 func (s *Scanner) scanTab(ctx *Context, c rune) error {
+	if s.startedFlowSequenceNum > 0 || s.startedFlowMapNum > 0 {
+		// tabs character is allowed in flow mode.
+		return nil
+	}
+
 	if !s.isFirstCharAtLine {
 		return nil
 	}
@@ -1185,7 +1206,11 @@ func (s *Scanner) scan(ctx *Context) error {
 			if s.scanRawFoldedChar(ctx) {
 				continue
 			}
-			if s.scanSequence(ctx) {
+			scanned, err := s.scanSequence(ctx)
+			if err != nil {
+				return err
+			}
+			if scanned {
 				continue
 			}
 		case '[':
@@ -1201,7 +1226,11 @@ func (s *Scanner) scan(ctx *Context) error {
 				continue
 			}
 		case ':':
-			if s.scanMapDelim(ctx) {
+			scanned, err := s.scanMapDelim(ctx)
+			if err != nil {
+				return err
+			}
+			if scanned {
 				continue
 			}
 		case '|', '>':

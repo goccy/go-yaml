@@ -955,6 +955,38 @@ foo:
 baz: 1
 `,
 		},
+		{
+			`
+{
+	"apiVersion": "apps/v1",
+	"kind": "Deployment",
+	"metadata": {
+		"name": "foo",
+		"labels": {
+			"app": "bar"
+		}
+	},
+	"spec": {
+		"replicas": 3,
+		"selector": {
+			"matchLabels": {
+				"app": "bar"
+			}
+		},
+		"template": {
+			"metadata": {
+				"labels": {
+					"app": "bar"
+				}
+			}
+		}
+	}
+}
+`,
+			`
+{"apiVersion": "apps/v1", "kind": "Deployment", "metadata": {"name": "foo", "labels": {"app": "bar"}}, "spec": {"replicas": 3, "selector": {"matchLabels": {"app": "bar"}}, "template": {"metadata": {"labels": {"app": "bar"}}}}}
+`,
+		},
 	}
 
 	for _, test := range tests {

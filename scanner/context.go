@@ -175,7 +175,7 @@ func (c *Context) updateDocumentNewLineInFolded(column int) {
 		return
 	}
 	if c.docLineIndentColumn == c.docPrevLineIndentColumn {
-		if c.buf[len(c.buf)-1] == '\n' {
+		if len(c.buf) != 0 && c.buf[len(c.buf)-1] == '\n' {
 			c.buf[len(c.buf)-1] = ' '
 		}
 	}

@@ -36,7 +36,7 @@ jobs:
     - name: test
       run: |
         make test
-  
+
   i386-test:
     name: Test in i386
     strategy:
@@ -56,7 +56,21 @@ jobs:
     - name: test
       run: |
         make simple-test
-  
+
+  fuzz:
+    name: Fuzzing Test
+    runs-on: ubuntu-latest
+    steps:
+      - name: checkout
+        uses: actions/checkout@v4
+      - name: setup Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: "1.23"
+      - name: run
+        run: |
+          make fuzz
+
   ycat:
     name: ycat
     runs-on: ubuntu-latest

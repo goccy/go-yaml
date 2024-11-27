@@ -175,6 +175,9 @@ func (p *parser) parseToken(ctx *context, tk *Token) (ast.Node, error) {
 			return nil, err
 		}
 		ctx.goNext()
+		if ctx.isTokenNotFound() {
+			return nil, errors.ErrSyntax("could not find anchor value", tk.RawToken())
+		}
 		value, err := p.parseToken(ctx, ctx.currentToken())
 		if err != nil {
 			return nil, err
@@ -244,6 +247,9 @@ func (p *parser) parseScalarValue(ctx *context, tk *Token) (ast.ScalarNode, erro
 				return nil, err
 			}
 			ctx.goNext()
+			if ctx.isTokenNotFound() {
+				return nil, errors.ErrSyntax("could not find anchor value", tk.RawToken())
+			}
 			value, err := p.parseToken(ctx, ctx.currentToken())
 			if err != nil {
 				return nil, err
@@ -338,6 +344,9 @@ func (p *parser) parseFlowMap(ctx *context) (*ast.MappingNode, error) {
 				ctx.goNext()
 			} else {
 				ctx.goNext()
+				if ctx.isTokenNotFound() {
+					return nil, errors.ErrSyntax("could not find map value", colonTk.RawToken())
+				}
 				value, err := p.parseToken(ctx, ctx.currentToken())
 				if err != nil {
 					return nil, err
@@ -472,6 +481,9 @@ func (p *parser) parseMap(ctx *context) (*ast.MappingNode, error) {
 }
 
 func (p *parser) validateMapKeyValueNextToken(ctx *context, keyTk, tk *Token) error {
+	if tk == nil {
+		return nil
+	}
 	if tk.Column() <= keyTk.Column() {
 		return nil
 	}
@@ -519,12 +531,18 @@ func (p *parser) parseMapKey(ctx *context, g *TokenGroup) (ast.MapKeyNode, error
 	}
 	if g.First().Type() == token.MappingKeyType {
 		mapKeyTk := g.First()
+		if mapKeyTk.Group == nil {
+			return nil, errors.ErrSyntax("could not find value for mapping key", mapKeyTk.RawToken())
+		}
 		ctx := ctx.withGroup(mapKeyTk.Group)
 		key, err := newMappingKeyNode(ctx, mapKeyTk)
 		if err != nil {
 			return nil, err
 		}
 		ctx.goNext() // skip mapping key token
+		if ctx.isTokenNotFound() {
+			return nil, errors.ErrSyntax("could not find value for mapping key", mapKeyTk.RawToken())
+		}
 
 		scalar, err := p.parseScalarValue(ctx, ctx.currentToken())
 		if err != nil {
@@ -689,6 +707,10 @@ func (p *parser) parseAnchor(ctx *context, g *TokenGroup) (*ast.AnchorNode, erro
 		return nil, err
 	}
 	ctx.goNext()
+	if ctx.isTokenNotFound() {
+		return nil, errors.ErrSyntax("could not find anchor value", anchor.GetToken())
+	}
+
 	value, err := p.parseToken(ctx, ctx.currentToken())
 	if err != nil {
 		return nil, err
@@ -703,6 +725,10 @@ func (p *parser) parseAnchorName(ctx *context) (*ast.AnchorNode, error) {
 		return nil, err
 	}
 	ctx.goNext()
+	if ctx.isTokenNotFound() {
+		return nil, errors.ErrSyntax("could not find anchor value", anchor.GetToken())
+	}
+
 	anchorName, err := p.parseScalarValue(ctx, ctx.currentToken())
 	if err != nil {
 		return nil, err
@@ -720,6 +746,9 @@ func (p *parser) parseAlias(ctx *context) (*ast.AliasNode, error) {
 		return nil, err
 	}
 	ctx.goNext()
+	if ctx.isTokenNotFound() {
+		return nil, errors.ErrSyntax("could not find alias value", alias.GetToken())
+	}
 
 	aliasName, err := p.parseScalarValue(ctx, ctx.currentToken())
 	if err != nil {
@@ -834,10 +863,14 @@ func (p *parser) parseFlowSequence(ctx *context) (*ast.SequenceNode, error) {
 			return nil, errors.ErrSyntax("',' or ']' must be specified", tk.RawToken())
 		}
 
-		if tk := ctx.currentToken(); tk != nil && tk.Type() == token.SequenceEndType {
+		if tk := ctx.currentToken(); tk.Type() == token.SequenceEndType {
 			// this case is here: "[ elem, ]".
 			// In this case, ignore the last element and break sequence parsing.
 			node.End = tk.RawToken()
+			break
+		}
+
+		if ctx.isTokenNotFound() {
 			break
 		}
 

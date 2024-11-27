@@ -1674,6 +1674,12 @@ func (d *Decoder) decodeMap(ctx context.Context, dst reflect.Value, src ast.Node
 			mapValue.SetMapIndex(d.createDecodableValue(keyType), d.castToAssignableValue(dstValue, valueType))
 			continue
 		}
+		if keyType.Kind() != k.Kind() {
+			return errors.ErrSyntax(
+				fmt.Sprintf("cannot convert %q type to %q type", k.Kind(), keyType.Kind()),
+				key.GetToken(),
+			)
+		}
 		mapValue.SetMapIndex(k, d.castToAssignableValue(dstValue, valueType))
 	}
 	dst.Set(mapValue)

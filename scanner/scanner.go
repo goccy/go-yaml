@@ -1002,6 +1002,11 @@ func (s *Scanner) scanDocumentHeaderOption(ctx *Context) error {
 				if hasComment {
 					commentLen := orgOptLen - len(opt)
 					headerPos := strings.Index(string(ctx.obuf), "|")
+					if len(ctx.obuf) < commentLen+headerPos {
+						invalidTk := token.Invalid("found invalid literal header option", string(ctx.obuf), s.pos())
+						s.progressColumn(ctx, progress)
+						return ErrInvalidToken(invalidTk)
+					}
 					litBuf := ctx.obuf[:len(ctx.obuf)-commentLen-headerPos]
 					commentBuf := ctx.obuf[len(litBuf):]
 					ctx.addToken(token.Literal("|"+opt, string(litBuf), s.pos()))
@@ -1017,6 +1022,11 @@ func (s *Scanner) scanDocumentHeaderOption(ctx *Context) error {
 				if hasComment {
 					commentLen := orgOptLen - len(opt)
 					headerPos := strings.Index(string(ctx.obuf), ">")
+					if len(ctx.obuf) < commentLen+headerPos {
+						invalidTk := token.Invalid("found invalid folded header option", string(ctx.obuf), s.pos())
+						s.progressColumn(ctx, progress)
+						return ErrInvalidToken(invalidTk)
+					}
 					foldedBuf := ctx.obuf[:len(ctx.obuf)-commentLen-headerPos]
 					commentBuf := ctx.obuf[len(foldedBuf):]
 					ctx.addToken(token.Folded(">"+opt, string(foldedBuf), s.pos()))

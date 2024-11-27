@@ -19,6 +19,10 @@ simple-test: testmod
 	go test -v ./...
 	go test -v ./testdata -modfile=$(TESTMOD)
 
+.PHONY: fuzz
+fuzz:
+	go test -fuzz=Fuzz -fuzztime 60s
+
 .PHONY: cover
 cover: testmod
 	go test -coverpkg=.,./ast,./lexer,./parser,./printer,./scanner,./token -coverprofile=cover.out -modfile=$(TESTMOD) ./... ./testdata

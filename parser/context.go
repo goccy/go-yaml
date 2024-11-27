@@ -69,6 +69,10 @@ func (c *context) nextNotCommentToken() *Token {
 	return nil
 }
 
+func (c *context) isTokenNotFound() bool {
+	return c.currentToken() == nil
+}
+
 func (c *context) withGroup(g *TokenGroup) *context {
 	ctx := *c
 	ctx.tokenRef = &tokenRef{

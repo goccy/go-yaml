@@ -15,6 +15,7 @@ var (
 	ErrUnknownCommentPositionType = errors.New("unknown comment position type")
 	ErrInvalidCommentMapValue     = errors.New("invalid comment map value. it must be not nil value")
 	ErrDecodeRequiredPointerType  = errors.New("required pointer type value")
+	ErrExceededMaxDepth           = errors.New("exceeded max depth")
 )
 
 type (

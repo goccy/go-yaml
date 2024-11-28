@@ -256,7 +256,7 @@ func (s *Scanner) scanSingleQuote(ctx *Context) (*token.Token, error) {
 			isNewLine = true
 			s.progressLine(ctx)
 			continue
-		} else if c == ' ' && isFirstLineChar {
+		} else if isFirstLineChar && (c == ' ' || c == '\t') {
 			continue
 		} else if c != '\'' {
 			value = append(value, c)

@@ -34,7 +34,7 @@ var failureTestNames = []string{
 	"double-quoted-scalar-with-escaped-single-quote",
 	"duplicate-yaml-directive",
 	"escaped-slash-in-double-quotes",
-	"explicit-key-and-value-seperated-by-comment", //nolint: misspell
+	"explicit-key-and-value-separated-by-comment",
 	"extra-words-on-yaml-directive",
 	"empty-implicit-key-in-single-pair-flow-sequences",
 	"empty-keys-in-block-and-flow-mapping",
@@ -52,7 +52,7 @@ var failureTestNames = []string{
 	"invalid-comment-after-comma",
 	"invalid-comment-after-end-of-flow-sequence",
 	"invalid-document-end-marker-in-single-quoted-string",
-	"invalid-document-start-marker-in-doublequoted-tring",
+	"invalid-document-start-marker-in-doublequoted-string",
 	"invalid-escape-in-double-quoted-string",
 	"invalid-tag",
 	"key-with-anchor-after-missing-explicit-mapping-value",

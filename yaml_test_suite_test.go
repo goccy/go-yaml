@@ -79,7 +79,7 @@ var failureTestNames = []string{
 	"node-anchor-not-indented",
 	"plain-dashes-in-flow-sequence",
 	"plain-url-in-flow-mapping",
-	"question-mark-edge-cases/00", // panic
+	"question-mark-edge-cases/00",
 	"question-mark-edge-cases/01",
 	"scalar-doc-with-in-content/01",
 	"scalar-value-with-two-anchors",
@@ -91,7 +91,6 @@ var failureTestNames = []string{
 	"spec-example-7-3-completely-empty-flow-nodes",
 	"spec-example-8-18-implicit-block-mapping-entries",
 	"spec-example-8-19-compact-block-mappings",
-	"spec-example-5-12-tabs-and-spaces",
 	"spec-example-6-19-secondary-tag-handle",
 	"spec-example-6-21-local-tag-prefix",
 	"spec-example-6-24-verbatim-tags",

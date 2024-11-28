@@ -2201,7 +2201,7 @@ s: >
 		},
 		{
 			YAML: `
-s: >1
+s: >1        # comment
         1s
 `,
 			Tokens: token.Tokens{
@@ -2224,7 +2224,14 @@ s: >1
 					CharacterType: token.CharacterTypeIndicator,
 					Indicator:     token.BlockScalarIndicator,
 					Value:         ">1",
-					Origin:        " >1\n",
+					Origin:        " >1        ",
+				},
+				{
+					Type:          token.CommentType,
+					CharacterType: token.CharacterTypeIndicator,
+					Indicator:     token.CommentIndicator,
+					Value:         " comment",
+					Origin:        "# comment\n",
 				},
 				{
 					Type:          token.StringType,
@@ -2507,6 +2514,35 @@ s: >-3
 					Indicator:     token.NotIndicator,
 					Value:         "a\n",
 					Origin:        "  a\n\n\n\n",
+				},
+			},
+		},
+		{
+			YAML: `
+|  		  # comment
+  foo
+`,
+			Tokens: token.Tokens{
+				{
+					Type:          token.LiteralType,
+					CharacterType: token.CharacterTypeIndicator,
+					Indicator:     token.BlockScalarIndicator,
+					Value:         "|",
+					Origin: "\n|  		  ", //nolint:gci,gofmt
+				},
+				{
+					Type:          token.CommentType,
+					CharacterType: token.CharacterTypeIndicator,
+					Indicator:     token.CommentIndicator,
+					Value:         " comment",
+					Origin:        "# comment\n",
+				},
+				{
+					Type:          token.StringType,
+					CharacterType: token.CharacterTypeMiscellaneous,
+					Indicator:     token.NotIndicator,
+					Value:         "foo\n",
+					Origin:        "  foo\n",
 				},
 			},
 		},

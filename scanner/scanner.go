@@ -1031,7 +1031,9 @@ func (s *Scanner) scanMapKey(ctx *Context) bool {
 		return false
 	}
 
-	ctx.addToken(token.MappingKey(s.pos()))
+	tk := token.MappingKey(s.pos())
+	s.lastDelimColumn = tk.Position.Column
+	ctx.addToken(tk)
 	s.progressColumn(ctx, 1)
 	ctx.clear()
 	return true

@@ -91,7 +91,6 @@ var failureTestNames = []string{
 	"spec-example-7-3-completely-empty-flow-nodes",
 	"spec-example-8-18-implicit-block-mapping-entries",
 	"spec-example-8-19-compact-block-mappings",
-	"spec-example-2-25-unordered-sets",
 	"spec-example-2-26-ordered-mappings",
 	"spec-example-5-12-tabs-and-spaces",
 	"spec-example-6-19-secondary-tag-handle",

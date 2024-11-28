@@ -526,15 +526,11 @@ func (p *parser) parseMapKey(ctx *context, g *TokenGroup) (ast.MapKeyNode, error
 	if g.Type != TokenGroupMapKey {
 		return nil, errors.ErrSyntax("unexpected map key", g.RawToken())
 	}
-	if g.Last().Type() != token.MappingValueType {
-		return nil, errors.ErrSyntax("expected map key-value delimiter ':'", g.Last().RawToken())
-	}
 	if g.First().Type() == token.MappingKeyType {
 		mapKeyTk := g.First()
-		if mapKeyTk.Group == nil {
-			return nil, errors.ErrSyntax("could not find value for mapping key", mapKeyTk.RawToken())
+		if mapKeyTk.Group != nil {
+			ctx = ctx.withGroup(mapKeyTk.Group)
 		}
-		ctx := ctx.withGroup(mapKeyTk.Group)
 		key, err := newMappingKeyNode(ctx, mapKeyTk)
 		if err != nil {
 			return nil, err
@@ -557,6 +553,9 @@ func (p *parser) parseMapKey(ctx *context, g *TokenGroup) (ast.MapKeyNode, error
 		}
 		p.pathMap[keyPath] = key
 		return key, nil
+	}
+	if g.Last().Type() != token.MappingValueType {
+		return nil, errors.ErrSyntax("expected map key-value delimiter ':'", g.Last().RawToken())
 	}
 
 	scalar, err := p.parseScalarValue(ctx, g.First())
@@ -815,7 +814,7 @@ func (p *parser) parseTagValue(ctx *context, tagRawTk *token.Token, tk *Token) (
 		return newNullNode(ctx, ctx.createNullToken(&Token{Token: tagRawTk}))
 	}
 	switch token.ReservedTagKeyword(tagRawTk.Value) {
-	case token.MappingTag, token.OrderedMapTag:
+	case token.MappingTag, token.OrderedMapTag, token.SetTag:
 		if !p.isMapToken(tk) {
 			return nil, errors.ErrSyntax("could not find map", tk.RawToken())
 		}
@@ -833,7 +832,7 @@ func (p *parser) parseTagValue(ctx *context, tagRawTk *token.Token, tk *Token) (
 		}
 		ctx.goNext()
 		return scalar, nil
-	case token.SequenceTag, token.SetTag:
+	case token.SequenceTag:
 		return nil, errors.ErrSyntax(fmt.Sprintf("sorry, currently not supported %s tag", tagRawTk.Value), tagRawTk)
 	}
 	if strings.HasPrefix(tagRawTk.Value, "!!") {

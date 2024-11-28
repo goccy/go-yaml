@@ -853,6 +853,7 @@ func (s *Scanner) scanDocumentStart(ctx *Context) bool {
 	ctx.addToken(token.DocumentHeader(string(ctx.obuf)+"---", s.pos()))
 	s.progressColumn(ctx, 3)
 	ctx.clear()
+	s.clearState()
 	return true
 }
 
@@ -1284,11 +1285,15 @@ func (s *Scanner) Init(text string) {
 	s.line = 1
 	s.column = 1
 	s.offset = 1
+	s.isFirstCharAtLine = true
+	s.clearState()
+}
+
+func (s *Scanner) clearState() {
 	s.prevLineIndentNum = 0
 	s.lastDelimColumn = 0
 	s.indentLevel = 0
 	s.indentNum = 0
-	s.isFirstCharAtLine = true
 }
 
 // Scan scans the next token and returns the token collection. The source end is indicated by io.EOF.

@@ -91,7 +91,6 @@ var failureTestNames = []string{
 	"spec-example-7-3-completely-empty-flow-nodes",
 	"spec-example-8-18-implicit-block-mapping-entries",
 	"spec-example-8-19-compact-block-mappings",
-	"spec-example-2-26-ordered-mappings",
 	"spec-example-5-12-tabs-and-spaces",
 	"spec-example-6-19-secondary-tag-handle",
 	"spec-example-6-21-local-tag-prefix",
@@ -112,7 +111,6 @@ var failureTestNames = []string{
 	"spec-example-8-15-block-sequence-entry-types",
 	"spec-example-8-17-explicit-block-mapping-entries",
 	"spec-example-8-2-block-indentation-indicator",
-	"spec-example-8-22-block-collection-nodes",
 	"spec-example-9-3-bare-documents",
 	"spec-example-9-4-explicit-documents",
 	"spec-example-9-5-directives-documents",
@@ -132,8 +130,6 @@ var failureTestNames = []string{
 	"tabs-that-look-like-indentation/08",
 	"tag-shorthand-used-in-documents-but-only-defined-in-the-first",
 	"tags-for-block-objects",
-	"tags-for-flow-objects",
-	"tags-for-root-objects",
 	"tags-on-empty-scalars",
 	"trailing-line-of-spaces/01",                       // last '\n' character is needed ?
 	"various-combinations-of-explicit-block-mappings",  // no json

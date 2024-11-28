@@ -814,7 +814,7 @@ func (p *parser) parseTagValue(ctx *context, tagRawTk *token.Token, tk *Token) (
 		return newNullNode(ctx, ctx.createNullToken(&Token{Token: tagRawTk}))
 	}
 	switch token.ReservedTagKeyword(tagRawTk.Value) {
-	case token.MappingTag, token.OrderedMapTag, token.SetTag:
+	case token.MappingTag, token.SetTag:
 		if !p.isMapToken(tk) {
 			return nil, errors.ErrSyntax("could not find map", tk.RawToken())
 		}
@@ -832,8 +832,11 @@ func (p *parser) parseTagValue(ctx *context, tagRawTk *token.Token, tk *Token) (
 		}
 		ctx.goNext()
 		return scalar, nil
-	case token.SequenceTag:
-		return nil, errors.ErrSyntax(fmt.Sprintf("sorry, currently not supported %s tag", tagRawTk.Value), tagRawTk)
+	case token.SequenceTag, token.OrderedMapTag:
+		if tk.Type() == token.SequenceStartType {
+			return p.parseFlowSequence(ctx)
+		}
+		return p.parseSequence(ctx)
 	}
 	if strings.HasPrefix(tagRawTk.Value, "!!") {
 		return nil, errors.ErrSyntax(fmt.Sprintf("unknown secondary tag name %q specified", tagRawTk.Value), tagRawTk)

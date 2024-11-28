@@ -283,6 +283,10 @@ func (p *parser) parseScalarValue(ctx *context, tk *Token) (ast.ScalarNode, erro
 		return newNanNode(ctx, tk)
 	case token.StringType, token.SingleQuoteType, token.DoubleQuoteType:
 		return newStringNode(ctx, tk)
+	case token.TagType:
+		// this case applies when it is a scalar tag and its value does not exist.
+		// Examples of cases where the value does not exist include cases like `key: !!str,` or `!!str : value`.
+		return p.parseScalarTag(ctx)
 	}
 	return nil, errors.ErrSyntax("unexpected scalar value type", tk.RawToken())
 }
@@ -788,6 +792,20 @@ func (p *parser) parseLiteral(ctx *context) (*ast.LiteralNode, error) {
 	return node, nil
 }
 
+func (p *parser) parseScalarTag(ctx *context) (*ast.TagNode, error) {
+	tag, err := p.parseTag(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if tag.Value == nil {
+		return nil, errors.ErrSyntax("specified not scalar tag", tag.GetToken())
+	}
+	if _, ok := tag.Value.(ast.ScalarNode); !ok {
+		return nil, errors.ErrSyntax("specified not scalar tag", tag.GetToken())
+	}
+	return tag, nil
+}
+
 func (p *parser) parseTag(ctx *context) (*ast.TagNode, error) {
 	tagTk := ctx.currentToken()
 	tagRawTk := tagTk.RawToken()
@@ -825,6 +843,8 @@ func (p *parser) parseTagValue(ctx *context, tagRawTk *token.Token, tk *Token) (
 	case token.IntegerTag, token.FloatTag, token.StringTag, token.BinaryTag, token.TimestampTag, token.BooleanTag, token.NullTag:
 		if tk.GroupType() == TokenGroupLiteral || tk.GroupType() == TokenGroupFolded {
 			return p.parseLiteral(ctx.withGroup(tk.Group))
+		} else if tk.Type() == token.CollectEntryType || tk.Type() == token.MappingValueType {
+			return newTagDefaultScalarValueNode(ctx, tagRawTk)
 		}
 		scalar, err := p.parseScalarValue(ctx, tk)
 		if err != nil {

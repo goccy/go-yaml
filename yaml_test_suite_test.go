@@ -102,7 +102,6 @@ var failureTestNames = []string{
 	"spec-example-6-8-flow-folding",
 	"spec-example-7-12-plain-lines",
 	"spec-example-7-19-single-pair-flow-mappings",
-	"spec-example-7-2-empty-content",
 	"spec-example-7-20-single-pair-explicit-entry",
 	"spec-example-7-24-flow-nodes",
 	"spec-example-7-6-double-quoted-lines",

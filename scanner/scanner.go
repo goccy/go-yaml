@@ -256,7 +256,7 @@ func (s *Scanner) scanSingleQuote(ctx *Context) (*token.Token, error) {
 			isNewLine = true
 			s.progressLine(ctx)
 			continue
-		} else if c == ' ' && isFirstLineChar {
+		} else if isFirstLineChar && (c == ' ' || c == '\t') {
 			continue
 		} else if c != '\'' {
 			value = append(value, c)
@@ -340,7 +340,7 @@ func (s *Scanner) scanDoubleQuote(ctx *Context) (*token.Token, error) {
 			isNewLine = true
 			s.progressLine(ctx)
 			continue
-		} else if c == ' ' && isFirstLineChar {
+		} else if isFirstLineChar && (c == ' ' || c == '\t') {
 			continue
 		} else if c == '\\' {
 			isFirstLineChar = false
@@ -463,14 +463,16 @@ func (s *Scanner) scanDoubleQuote(ctx *Context) (*token.Token, error) {
 					progress++
 					continue
 				}
-				if src[i] == '\n' {
+				if s.isNewLineChar(src[i]) {
 					break
 				}
 				foundNotSpaceChar = true
 			}
 			if foundNotSpaceChar {
 				value = append(value, c)
-				s.progressColumn(ctx, 1)
+				if src[idx+1] != '"' {
+					s.progressColumn(ctx, 1)
+				}
 			} else {
 				idx += progress
 				s.progressColumn(ctx, progress)
@@ -569,20 +571,33 @@ func (s *Scanner) scanTag(ctx *Context) bool {
 	var progress int
 	for idx, c := range ctx.src[ctx.idx:] {
 		progress = idx + 1
-		ctx.addOriginBuf(c)
 		switch c {
 		case ' ':
+			ctx.addOriginBuf(c)
 			value := ctx.source(ctx.idx-1, ctx.idx+idx)
 			ctx.addToken(token.Tag(value, string(ctx.obuf), s.pos()))
 			s.progressColumn(ctx, len([]rune(value)))
 			ctx.clear()
 			return true
+		case ',':
+			if s.startedFlowSequenceNum > 0 || s.startedFlowMapNum > 0 {
+				value := ctx.source(ctx.idx-1, ctx.idx+idx)
+				ctx.addToken(token.Tag(value, string(ctx.obuf), s.pos()))
+				s.progressColumn(ctx, len([]rune(value))-1) // progress column before collect-entry for scanning it at scanFlowEntry function.
+				ctx.clear()
+				return true
+			} else {
+				ctx.addOriginBuf(c)
+			}
 		case '\n', '\r':
+			ctx.addOriginBuf(c)
 			value := ctx.source(ctx.idx-1, ctx.idx+idx)
 			ctx.addToken(token.Tag(value, string(ctx.obuf), s.pos()))
 			s.progressColumn(ctx, len([]rune(value))-1) // progress column before new-line-char for scanning new-line-char at scanNewLine function.
 			ctx.clear()
 			return true
+		default:
+			ctx.addOriginBuf(c)
 		}
 	}
 	s.progressColumn(ctx, progress)
@@ -853,6 +868,7 @@ func (s *Scanner) scanDocumentStart(ctx *Context) bool {
 	ctx.addToken(token.DocumentHeader(string(ctx.obuf)+"---", s.pos()))
 	s.progressColumn(ctx, 3)
 	ctx.clear()
+	s.clearState()
 	return true
 }
 
@@ -1031,7 +1047,9 @@ func (s *Scanner) scanMapKey(ctx *Context) bool {
 		return false
 	}
 
-	ctx.addToken(token.MappingKey(s.pos()))
+	tk := token.MappingKey(s.pos())
+	s.lastDelimColumn = tk.Position.Column
+	ctx.addToken(tk)
 	s.progressColumn(ctx, 1)
 	ctx.clear()
 	return true
@@ -1282,11 +1300,15 @@ func (s *Scanner) Init(text string) {
 	s.line = 1
 	s.column = 1
 	s.offset = 1
+	s.isFirstCharAtLine = true
+	s.clearState()
+}
+
+func (s *Scanner) clearState() {
 	s.prevLineIndentNum = 0
 	s.lastDelimColumn = 0
 	s.indentLevel = 0
 	s.indentNum = 0
-	s.isFirstCharAtLine = true
 }
 
 // Scan scans the next token and returns the token collection. The source end is indicated by io.EOF.

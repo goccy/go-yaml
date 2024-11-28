@@ -1,7 +1,10 @@
 package parser
 
 import (
+	"fmt"
+
 	"github.com/goccy/go-yaml/ast"
+	"github.com/goccy/go-yaml/internal/errors"
 	"github.com/goccy/go-yaml/token"
 )
 
@@ -159,6 +162,58 @@ func newSequenceNode(ctx *context, tk *Token, isFlow bool) (*ast.SequenceNode, e
 	if err := setLineComment(ctx, node, tk); err != nil {
 		return nil, err
 	}
+	return node, nil
+}
+
+func newTagDefaultScalarValueNode(ctx *context, tag *token.Token) (ast.ScalarNode, error) {
+	pos := *(tag.Position)
+	pos.Column++
+
+	var (
+		tk   *Token
+		node ast.ScalarNode
+	)
+	switch token.ReservedTagKeyword(tag.Value) {
+	case token.IntegerTag:
+		tk = &Token{Token: token.New("0", "0", &pos)}
+		n, err := newIntegerNode(ctx, tk)
+		if err != nil {
+			return nil, err
+		}
+		node = n
+	case token.FloatTag:
+		tk = &Token{Token: token.New("0", "0", &pos)}
+		n, err := newFloatNode(ctx, tk)
+		if err != nil {
+			return nil, err
+		}
+		node = n
+	case token.StringTag, token.BinaryTag, token.TimestampTag:
+		tk = &Token{Token: token.New("", "", &pos)}
+		n, err := newStringNode(ctx, tk)
+		if err != nil {
+			return nil, err
+		}
+		node = n
+	case token.BooleanTag:
+		tk = &Token{Token: token.New("false", "false", &pos)}
+		n, err := newBoolNode(ctx, tk)
+		if err != nil {
+			return nil, err
+		}
+		node = n
+	case token.NullTag:
+		tk = &Token{Token: token.New("null", "null", &pos)}
+		n, err := newNullNode(ctx, tk)
+		if err != nil {
+			return nil, err
+		}
+		node = n
+	default:
+		return nil, errors.ErrSyntax(fmt.Sprintf("cannot assign default value for %q tag", tag.Value), tag)
+	}
+	ctx.insertToken(tk)
+	ctx.goNext()
 	return node, nil
 }
 

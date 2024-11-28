@@ -625,22 +625,6 @@ func (s *Scanner) scanComment(ctx *Context) bool {
 	return true
 }
 
-func (s *Scanner) trimCommentFromDocumentOpt(text string, header rune) (string, error) {
-	idx := strings.Index(text, "#")
-	if idx < 0 {
-		return text, nil
-	}
-	if idx == 0 {
-		return "", ErrInvalidToken(
-			token.Invalid(
-				fmt.Sprintf("invalid document header %s", text),
-				string(header)+text, s.pos(),
-			),
-		)
-	}
-	return text[:idx-1], nil
-}
-
 func (s *Scanner) scanDocument(ctx *Context, c rune) error {
 	ctx.addOriginBuf(c)
 	if ctx.isEOS() {
@@ -982,62 +966,44 @@ func (s *Scanner) scanDocumentHeaderOption(ctx *Context) error {
 		ctx.addOriginBuf(c)
 		switch c {
 		case '\n', '\r':
-			value := ctx.source(ctx.idx, ctx.idx+idx)
-			opt := strings.TrimRight(value, " ")
-			orgOptLen := len(opt)
-			opt, err := s.trimCommentFromDocumentOpt(opt, header)
-			if err != nil {
-				return err
+			value := strings.TrimRight(ctx.source(ctx.idx, ctx.idx+idx), " ")
+			commentValueIndex := strings.Index(value, "#")
+			opt := value
+			if commentValueIndex > 0 {
+				opt = value[:commentValueIndex]
 			}
-			if err := s.validateDocumentHeaderOption(opt); err != nil {
-				invalidTk := token.Invalid(err.Error(), string(ctx.obuf), s.pos())
-				s.progressColumn(ctx, progress)
-				return ErrInvalidToken(invalidTk)
+			opt = strings.TrimRightFunc(opt, func(r rune) bool {
+				return r == ' ' || r == '\t'
+			})
+			if len(opt) != 0 {
+				if err := s.validateDocumentHeaderOption(opt); err != nil {
+					invalidTk := token.Invalid(err.Error(), string(ctx.obuf), s.pos())
+					s.progressColumn(ctx, progress)
+					return ErrInvalidToken(invalidTk)
+				}
 			}
-			hasComment := len(opt) < orgOptLen
 			if s.column == 1 {
 				s.lastDelimColumn = 1
 			}
-			if header == '|' {
-				if hasComment {
-					commentLen := orgOptLen - len(opt)
-					headerPos := strings.Index(string(ctx.obuf), "|")
-					if len(ctx.obuf) < commentLen+headerPos {
-						invalidTk := token.Invalid("found invalid literal header option", string(ctx.obuf), s.pos())
-						s.progressColumn(ctx, progress)
-						return ErrInvalidToken(invalidTk)
-					}
-					litBuf := ctx.obuf[:len(ctx.obuf)-commentLen-headerPos]
-					commentBuf := ctx.obuf[len(litBuf):]
-					ctx.addToken(token.Literal("|"+opt, string(litBuf), s.pos()))
-					s.column += len(litBuf)
-					s.offset += len(litBuf)
-					commentHeader := strings.Index(value, "#")
-					ctx.addToken(token.Comment(string(value[commentHeader+1:]), string(commentBuf), s.pos()))
-				} else {
-					ctx.addToken(token.Literal("|"+opt, string(ctx.obuf), s.pos()))
-				}
+
+			commentIndex := strings.Index(string(ctx.obuf), "#")
+			headerBuf := string(ctx.obuf)
+			if commentIndex > 0 {
+				headerBuf = headerBuf[:commentIndex]
+			}
+			switch header {
+			case '|':
+				ctx.addToken(token.Literal("|"+opt, headerBuf, s.pos()))
 				ctx.isLiteral = true
-			} else if header == '>' {
-				if hasComment {
-					commentLen := orgOptLen - len(opt)
-					headerPos := strings.Index(string(ctx.obuf), ">")
-					if len(ctx.obuf) < commentLen+headerPos {
-						invalidTk := token.Invalid("found invalid folded header option", string(ctx.obuf), s.pos())
-						s.progressColumn(ctx, progress)
-						return ErrInvalidToken(invalidTk)
-					}
-					foldedBuf := ctx.obuf[:len(ctx.obuf)-commentLen-headerPos]
-					commentBuf := ctx.obuf[len(foldedBuf):]
-					ctx.addToken(token.Folded(">"+opt, string(foldedBuf), s.pos()))
-					s.column += len(foldedBuf)
-					s.offset += len(foldedBuf)
-					commentHeader := strings.Index(value, "#")
-					ctx.addToken(token.Comment(string(value[commentHeader+1:]), string(commentBuf), s.pos()))
-				} else {
-					ctx.addToken(token.Folded(">"+opt, string(ctx.obuf), s.pos()))
-				}
+			case '>':
+				ctx.addToken(token.Folded(">"+opt, headerBuf, s.pos()))
 				ctx.isFolded = true
+			}
+			if commentIndex > 0 {
+				comment := string(value[commentValueIndex+1:])
+				s.offset += len(headerBuf)
+				s.column += len(headerBuf)
+				ctx.addToken(token.Comment(comment, string(ctx.obuf[len(headerBuf):]), s.pos()))
 			}
 			s.indentState = IndentStateKeep
 			ctx.resetBuffer()

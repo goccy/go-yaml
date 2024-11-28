@@ -340,7 +340,7 @@ func (s *Scanner) scanDoubleQuote(ctx *Context) (*token.Token, error) {
 			isNewLine = true
 			s.progressLine(ctx)
 			continue
-		} else if c == ' ' && isFirstLineChar {
+		} else if isFirstLineChar && (c == ' ' || c == '\t') {
 			continue
 		} else if c == '\\' {
 			isFirstLineChar = false

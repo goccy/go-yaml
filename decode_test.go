@@ -2076,13 +2076,13 @@ type unmarshalContext struct {
 func (c *unmarshalContext) UnmarshalYAML(ctx context.Context, b []byte) error {
 	v, ok := ctx.Value("k").(int)
 	if !ok {
-		return fmt.Errorf("cannot get valid context")
+		return errors.New("cannot get valid context")
 	}
 	if v != 1 {
-		return fmt.Errorf("cannot get valid context")
+		return errors.New("cannot get valid context")
 	}
 	if string(b) != "1" {
-		return fmt.Errorf("cannot get valid bytes")
+		return errors.New("cannot get valid bytes")
 	}
 	c.v = v
 	return nil

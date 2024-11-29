@@ -1,7 +1,7 @@
 package scanner
 
 import (
-	"fmt"
+	"errors"
 	"strconv"
 	"strings"
 	"sync"
@@ -127,7 +127,7 @@ func (c *Context) validateDocumentLineIndentColumn() error {
 		return nil
 	}
 	if c.docFirstLineIndentColumn > c.docLineIndentColumn {
-		return fmt.Errorf("invalid number of indent is specified in the document header")
+		return errors.New("invalid number of indent is specified in the document header")
 	}
 	return nil
 }

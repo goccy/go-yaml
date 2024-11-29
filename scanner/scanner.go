@@ -454,10 +454,20 @@ func (s *Scanner) scanDoubleQuote(ctx *Context) (*token.Token, error) {
 				progress = 1
 				ctx.addOriginBuf(nextChar)
 				value = append(value, nextChar)
+			case '0':
+				progress = 1
+				ctx.addOriginBuf(nextChar)
+				value = append(value, '\x00')
 			case ' ':
 				// skip escape character.
 			default:
-				value = append(value, c)
+				s.progressColumn(ctx, 1)
+				return nil, ErrInvalidToken(
+					token.Invalid(
+						fmt.Sprintf("found unknown escape character %q", nextChar),
+						string(ctx.obuf), s.pos(),
+					),
+				)
 			}
 			idx += progress
 			s.progressColumn(ctx, progress)

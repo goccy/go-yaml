@@ -810,7 +810,7 @@ func TestDecoder(t *testing.T) {
 		},
 		{
 			"a: \"\\0\"\n",
-			map[string]string{"a": "\\0"},
+			map[string]string{"a": "\x00"},
 		},
 		{
 			"b: 2\na: 1\nd: 4\nc: 3\nsub:\n  e: 5\n",

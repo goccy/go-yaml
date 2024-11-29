@@ -1347,7 +1347,7 @@ t4: 2098-01-09T10:40:47Z
 					Type:          token.DoubleQuoteType,
 					CharacterType: token.CharacterTypeIndicator,
 					Indicator:     token.QuotedScalarIndicator,
-					Value:         "\\0",
+					Value:         "\x00",
 					Origin:        " \"\\0\"",
 				},
 			},

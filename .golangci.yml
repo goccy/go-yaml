@@ -18,6 +18,9 @@ linters-settings:
       - tests
   misspell:
     locale: US
+  revive:
+    rules:
+      - name: exported
   staticcheck:
     checks: ["all", "-ST1000", "-ST1005"]
 
@@ -31,6 +34,7 @@ linters:
     - govet
     - ineffassign
     - misspell
+    - revive
     - staticcheck
     - typecheck
     - unused

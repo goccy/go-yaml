@@ -410,7 +410,7 @@ func (e *Encoder) encodeByMarshaler(ctx context.Context, v reflect.Value, column
 			if err != nil {
 				return nil, err
 			}
-			doc, err := JSONToYAML(jsonBytes)
+			doc, err := FromJSON(jsonBytes)
 			if err != nil {
 				return nil, err
 			}

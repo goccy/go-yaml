@@ -220,8 +220,8 @@ func FormatError(e error, colored, inclSource bool) string {
 	return e.Error()
 }
 
-// YAMLToJSON convert YAML bytes to JSON.
-func YAMLToJSON(bytes []byte) ([]byte, error) {
+// ToJSON converts YAML bytes to JSON.
+func ToJSON(bytes []byte) ([]byte, error) {
 	var v interface{}
 	if err := UnmarshalWithOptions(bytes, &v, UseOrderedMap()); err != nil {
 		return nil, err
@@ -233,8 +233,8 @@ func YAMLToJSON(bytes []byte) ([]byte, error) {
 	return out, nil
 }
 
-// JSONToYAML convert JSON bytes to YAML.
-func JSONToYAML(bytes []byte) ([]byte, error) {
+// FromJSON converts JSON bytes to YAML.
+func FromJSON(bytes []byte) ([]byte, error) {
 	var v interface{}
 	if err := UnmarshalWithOptions(bytes, &v, UseOrderedMap()); err != nil {
 		return nil, err
@@ -244,6 +244,20 @@ func JSONToYAML(bytes []byte) ([]byte, error) {
 		return nil, err
 	}
 	return out, nil
+}
+
+// YAMLToJSON converts YAML bytes to JSON.
+//
+// Deprecated: Use ToJSON instead.
+func YAMLToJSON(bytes []byte) ([]byte, error) { //nolint:revive // exported
+	return ToJSON(bytes)
+}
+
+// JSONToYAML convert JSON bytes to YAML.
+//
+// Deprecated: Use FromJSON instead.
+func JSONToYAML(bytes []byte) ([]byte, error) {
+	return FromJSON(bytes)
 }
 
 var (

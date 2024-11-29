@@ -758,7 +758,7 @@ func (s *Scanner) scanNewLine(ctx *Context, c rune) {
 
 	if ctx.isEOS() {
 		s.addBufferedTokenIfExists(ctx)
-	} else if s.isAnchor || s.isAlias {
+	} else if s.isAnchor || s.isAlias || s.isDirective {
 		s.addBufferedTokenIfExists(ctx)
 	}
 	if ctx.existsBuffer() && s.isFirstCharAtLine {
@@ -922,6 +922,7 @@ func (s *Scanner) scanDocumentEnd(ctx *Context) bool {
 		return false
 	}
 
+	s.addBufferedTokenIfExists(ctx)
 	ctx.addToken(token.DocumentEnd(string(ctx.obuf)+"...", s.pos()))
 	s.progressColumn(ctx, 3)
 	ctx.clear()

@@ -51,7 +51,6 @@ var failureTestNames = []string{
 	"invalid-comment-after-comma",
 	"invalid-comment-after-end-of-flow-sequence",
 	"invalid-tag",
-	"key-with-anchor-after-missing-explicit-mapping-value",
 	"leading-tabs-in-double-quoted/02",
 	"leading-tabs-in-double-quoted/05",
 	"legal-tab-after-indentation",
@@ -62,8 +61,6 @@ var failureTestNames = []string{
 	"literal-modifers/03",
 	"literal-scalars",
 	"mapping-key-and-flow-sequence-item-anchors", // no json.
-	"mapping-starting-at-line",
-	"mapping-with-anchor-on-document-start-line",
 	"multiline-double-quoted-implicit-keys",
 	"multiline-plain-flow-mapping-key",
 	"multiline-plain-value-with-tabs-on-empty-lines",
@@ -88,7 +85,6 @@ var failureTestNames = []string{
 	"spec-example-8-18-implicit-block-mapping-entries", // no json.
 	"spec-example-8-19-compact-block-mappings",         // no json.
 	"spec-example-6-19-secondary-tag-handle",
-	"spec-example-6-21-local-tag-prefix",
 	"spec-example-6-24-verbatim-tags",
 	"spec-example-6-28-non-specific-tags",
 	"spec-example-6-4-line-prefixes",

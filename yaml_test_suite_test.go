@@ -48,11 +48,8 @@ var failureTestNames = []string{
 	"folded-block-scalar",
 	"folded-block-scalar-1-3",
 	"implicit-flow-mapping-key-on-one-line", // no json.
-	"invalid-anchor-in-zero-indented-sequence",
 	"invalid-comment-after-comma",
 	"invalid-comment-after-end-of-flow-sequence",
-	"invalid-document-end-marker-in-single-quoted-string",
-	"invalid-document-start-marker-in-doublequoted-tring",
 	"invalid-escape-in-double-quoted-string",
 	"invalid-tag",
 	"key-with-anchor-after-missing-explicit-mapping-value",

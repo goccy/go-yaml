@@ -14,12 +14,12 @@ import (
 )
 
 var failureTestNames = []string{
-	"anchors-on-empty-scalars",
-	"aliases-in-flow-objects",
-	"aliases-in-explicit-block-mapping",
+	"anchors-on-empty-scalars",          // no json.
+	"aliases-in-flow-objects",           // no json.
+	"aliases-in-explicit-block-mapping", // no json.
 	"aliases-in-implicit-block-mapping",
 	"bare-document-after-document-end-marker",
-	"block-mapping-with-missing-keys",
+	"block-mapping-with-missing-keys", // no json.
 	"block-mapping-with-missing-values",
 	"block-mapping-with-multiline-scalars",
 	"block-scalar-with-more-spaces-than-first-content-line",
@@ -36,10 +36,10 @@ var failureTestNames = []string{
 	"escaped-slash-in-double-quotes",
 	"explicit-key-and-value-seperated-by-comment", //nolint: misspell
 	"extra-words-on-yaml-directive",
-	"empty-implicit-key-in-single-pair-flow-sequences",
-	"empty-keys-in-block-and-flow-mapping",
-	"empty-lines-at-end-of-document",
-	"flow-mapping-separate-values",
+	"empty-implicit-key-in-single-pair-flow-sequences", // no json.
+	"empty-keys-in-block-and-flow-mapping",             // no json.
+	"empty-lines-at-end-of-document",                   // no json.
+	"flow-mapping-separate-values",                     // no json.
 	"flow-sequence-in-flow-mapping",
 	"flow-collections-over-many-lines/01",
 	"flow-mapping-colon-on-line-after-key/02",
@@ -47,15 +47,10 @@ var failureTestNames = []string{
 	"flow-sequence-with-invalid-comma-at-the-beginning",
 	"folded-block-scalar",
 	"folded-block-scalar-1-3",
-	"implicit-flow-mapping-key-on-one-line",
-	"invalid-anchor-in-zero-indented-sequence",
+	"implicit-flow-mapping-key-on-one-line", // no json.
 	"invalid-comment-after-comma",
 	"invalid-comment-after-end-of-flow-sequence",
-	"invalid-document-end-marker-in-single-quoted-string",
-	"invalid-document-start-marker-in-doublequoted-tring",
-	"invalid-escape-in-double-quoted-string",
 	"invalid-tag",
-	"key-with-anchor-after-missing-explicit-mapping-value",
 	"leading-tabs-in-double-quoted/02",
 	"leading-tabs-in-double-quoted/05",
 	"legal-tab-after-indentation",
@@ -65,9 +60,7 @@ var failureTestNames = []string{
 	"literal-modifers/02",
 	"literal-modifers/03",
 	"literal-scalars",
-	"mapping-key-and-flow-sequence-item-anchors",
-	"mapping-starting-at-line",
-	"mapping-with-anchor-on-document-start-line",
+	"mapping-key-and-flow-sequence-item-anchors", // no json.
 	"multiline-double-quoted-implicit-keys",
 	"multiline-plain-flow-mapping-key",
 	"multiline-plain-value-with-tabs-on-empty-lines",
@@ -75,24 +68,23 @@ var failureTestNames = []string{
 	"multiline-scalar-at-top-level-1-3",
 	"multiline-single-quoted-implicit-keys",
 	"multiline-unidented-double-quoted-block-key",
-	"nested-implicit-complex-keys",
+	"nested-implicit-complex-keys", // no json.
 	"node-anchor-not-indented",
 	"plain-dashes-in-flow-sequence",
 	"plain-url-in-flow-mapping",
-	"question-mark-edge-cases/00",
-	"question-mark-edge-cases/01",
+	"question-mark-edge-cases/00", // no json.
+	"question-mark-edge-cases/01", // no json.
 	"scalar-doc-with-in-content/01",
 	"scalar-value-with-two-anchors",
-	"single-character-streams/01",
-	"single-pair-implicit-entries",
-	"spec-example-2-11-mapping-between-sequences",
-	"spec-example-6-12-separation-spaces",
-	"spec-example-7-16-flow-mapping-entries",
-	"spec-example-7-3-completely-empty-flow-nodes",
-	"spec-example-8-18-implicit-block-mapping-entries",
-	"spec-example-8-19-compact-block-mappings",
+	"single-character-streams/01",                      // no json.
+	"single-pair-implicit-entries",                     // no json.
+	"spec-example-2-11-mapping-between-sequences",      // no json.
+	"spec-example-6-12-separation-spaces",              // no json.
+	"spec-example-7-16-flow-mapping-entries",           // no json.
+	"spec-example-7-3-completely-empty-flow-nodes",     // no json.
+	"spec-example-8-18-implicit-block-mapping-entries", // no json.
+	"spec-example-8-19-compact-block-mappings",         // no json.
 	"spec-example-6-19-secondary-tag-handle",
-	"spec-example-6-21-local-tag-prefix",
 	"spec-example-6-24-verbatim-tags",
 	"spec-example-6-28-non-specific-tags",
 	"spec-example-6-4-line-prefixes",
@@ -112,7 +104,7 @@ var failureTestNames = []string{
 	"spec-example-9-5-directives-documents",
 	"spec-example-9-6-stream",
 	"spec-example-9-6-stream-1-3",
-	"syntax-character-edge-cases/00",
+	"syntax-character-edge-cases/00", // no json.
 	"tab-at-beginning-of-line-followed-by-a-flow-mapping",
 	"tab-indented-top-flow",
 	"tabs-in-various-contexts/003",
@@ -126,14 +118,14 @@ var failureTestNames = []string{
 	"tabs-that-look-like-indentation/08",
 	"tag-shorthand-used-in-documents-but-only-defined-in-the-first",
 	"tags-for-block-objects",
-	"tags-on-empty-scalars",
+	"tags-on-empty-scalars",                            // no json.
 	"trailing-line-of-spaces/01",                       // last '\n' character is needed ?
-	"various-combinations-of-explicit-block-mappings",  // no json
-	"various-trailing-comments",                        // no json
-	"various-trailing-comments-1-3",                    // no json
+	"various-combinations-of-explicit-block-mappings",  // no json.
+	"various-trailing-comments",                        // no json.
+	"various-trailing-comments-1-3",                    // no json.
 	"wrong-indented-flow-sequence",                     // error ?
 	"wrong-indented-multiline-quoted-scalar",           // error ?
-	"zero-indented-sequences-in-explicit-mapping-keys", // no json
+	"zero-indented-sequences-in-explicit-mapping-keys", // no json.
 }
 
 var failureTestNameMap map[string]struct{}

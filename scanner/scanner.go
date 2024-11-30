@@ -255,6 +255,11 @@ func (s *Scanner) scanSingleQuote(ctx *Context) (*token.Token, error) {
 			isFirstLineChar = true
 			isNewLine = true
 			s.progressLine(ctx)
+			if idx+1 < size {
+				if err := s.validateDocumentSeparatorMarker(ctx, src[idx+1:]); err != nil {
+					return nil, err
+				}
+			}
 			continue
 		} else if isFirstLineChar && (c == ' ' || c == '\t') {
 			continue
@@ -262,8 +267,7 @@ func (s *Scanner) scanSingleQuote(ctx *Context) (*token.Token, error) {
 			value = append(value, c)
 			isFirstLineChar = false
 			continue
-		}
-		if idx+1 < len(ctx.src) && ctx.src[idx+1] == '\'' {
+		} else if idx+1 < len(ctx.src) && ctx.src[idx+1] == '\'' {
 			// '' handle as ' character
 			value = append(value, c)
 			ctx.addOriginBuf(c)
@@ -339,6 +343,11 @@ func (s *Scanner) scanDoubleQuote(ctx *Context) (*token.Token, error) {
 			isFirstLineChar = true
 			isNewLine = true
 			s.progressLine(ctx)
+			if idx+1 < size {
+				if err := s.validateDocumentSeparatorMarker(ctx, src[idx+1:]); err != nil {
+					return nil, err
+				}
+			}
 			continue
 		} else if isFirstLineChar && (c == ' ' || c == '\t') {
 			continue
@@ -445,10 +454,20 @@ func (s *Scanner) scanDoubleQuote(ctx *Context) (*token.Token, error) {
 				progress = 1
 				ctx.addOriginBuf(nextChar)
 				value = append(value, nextChar)
+			case '0':
+				progress = 1
+				ctx.addOriginBuf(nextChar)
+				value = append(value, '\x00')
 			case ' ':
 				// skip escape character.
 			default:
-				value = append(value, c)
+				s.progressColumn(ctx, 1)
+				return nil, ErrInvalidToken(
+					token.Invalid(
+						fmt.Sprintf("found unknown escape character %q", nextChar),
+						string(ctx.obuf), s.pos(),
+					),
+				)
 			}
 			idx += progress
 			s.progressColumn(ctx, progress)
@@ -493,6 +512,26 @@ func (s *Scanner) scanDoubleQuote(ctx *Context) (*token.Token, error) {
 			string(ctx.obuf), srcpos,
 		),
 	)
+}
+
+func (s *Scanner) validateDocumentSeparatorMarker(ctx *Context, src []rune) error {
+	if len(src) < 3 {
+		return nil
+	}
+	var marker string
+	if len(src) == 3 {
+		marker = string(src)
+	} else {
+		marker = strings.TrimRightFunc(string(src[:4]), func(r rune) bool {
+			return r == ' ' || r == '\t' || r == '\n' || r == '\r'
+		})
+	}
+	if marker == "---" || marker == "..." {
+		return ErrInvalidToken(
+			token.Invalid("found unexpected document separator", string(ctx.obuf), s.pos()),
+		)
+	}
+	return nil
 }
 
 func (s *Scanner) scanQuote(ctx *Context, ch rune) (bool, error) {
@@ -719,7 +758,7 @@ func (s *Scanner) scanNewLine(ctx *Context, c rune) {
 
 	if ctx.isEOS() {
 		s.addBufferedTokenIfExists(ctx)
-	} else if s.isAnchor || s.isAlias {
+	} else if s.isAnchor || s.isAlias || s.isDirective {
 		s.addBufferedTokenIfExists(ctx)
 	}
 	if ctx.existsBuffer() && s.isFirstCharAtLine {
@@ -883,6 +922,7 @@ func (s *Scanner) scanDocumentEnd(ctx *Context) bool {
 		return false
 	}
 
+	s.addBufferedTokenIfExists(ctx)
 	ctx.addToken(token.DocumentEnd(string(ctx.obuf)+"...", s.pos()))
 	s.progressColumn(ctx, 3)
 	ctx.clear()

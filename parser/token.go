@@ -573,6 +573,16 @@ func createDocumentTokens(tokens []*Token) ([]*Token, error) {
 					},
 				}), nil
 			}
+			if tokens[i].Line() == tokens[i+1].Line() {
+				switch tokens[i+1].GroupType() {
+				case TokenGroupMapKey, TokenGroupMapKeyValue:
+					return nil, errors.ErrSyntax("value cannot be placed after document separator", tokens[i+1].RawToken())
+				}
+				switch tokens[i+1].Type() {
+				case token.SequenceEntryType:
+					return nil, errors.ErrSyntax("value cannot be placed after document separator", tokens[i+1].RawToken())
+				}
+			}
 			tks, err := createDocumentTokens(tokens[i+1:])
 			if err != nil {
 				return nil, err

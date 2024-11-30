@@ -670,6 +670,15 @@ func (p *parser) parseMapValue(ctx *context, key ast.MapKeyNode, colonTk *Token)
 		return anchor, nil
 	}
 
+	if tk.Column() <= keyCol && tk.GroupType() == TokenGroupAnchorName {
+		// key: <value does not defined>
+		// &anchor
+		//
+		//  key: <value does not defined>
+		// &anchor
+		return nil, errors.ErrSyntax("anchor is not allowed in this context", tk.RawToken())
+	}
+
 	if tk.Column() < keyCol {
 		// in this case,
 		// ----

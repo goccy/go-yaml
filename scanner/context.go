@@ -352,8 +352,23 @@ func (c *Context) bufferedToken(pos *token.Position) *token.Token {
 	} else {
 		tk = token.New(string(source), string(c.obuf), pos)
 	}
+	c.setTokenTypeByPrevTag(tk)
 	c.resetBuffer()
 	return tk
+}
+
+func (c *Context) setTokenTypeByPrevTag(tk *token.Token) {
+	lastTk := c.lastToken()
+	if lastTk == nil {
+		return
+	}
+	if lastTk.Type != token.TagType {
+		return
+	}
+	tag := token.ReservedTagKeyword(lastTk.Value)
+	if _, exists := token.ReservedTagKeywordMap[tag]; !exists {
+		tk.Type = token.StringType
+	}
 }
 
 func (c *Context) lastToken() *token.Token {

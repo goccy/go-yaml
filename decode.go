@@ -405,7 +405,11 @@ func (d *Decoder) nodeToValue(node ast.Node) (any, error) {
 			}
 			return nil, errors.ErrSyntax(fmt.Sprintf("cannot convert %q to boolean", fmt.Sprint(v)), n.Value.GetToken())
 		case token.StringTag:
-			return d.nodeToValue(n.Value)
+			v, err := d.nodeToValue(n.Value)
+			if err != nil {
+				return nil, err
+			}
+			return fmt.Sprint(v), nil
 		case token.MappingTag:
 			return d.nodeToValue(n.Value)
 		default:

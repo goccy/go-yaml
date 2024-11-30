@@ -442,11 +442,18 @@ func (p *parser) parseMap(ctx *context) (*ast.MappingNode, error) {
 		tk = ctx.currentToken()
 	}
 	for tk.Column() == keyTk.Column() {
+		typ := tk.Type()
+		if ctx.isFlow && typ == token.SequenceEndType {
+			// [
+			// key: value
+			// ] <=
+			break
+		}
 		if !p.isMapToken(tk) {
 			return nil, errors.ErrSyntax("non-map value is specified", tk.RawToken())
 		}
 		cm := p.parseHeadComment(ctx)
-		if tk.Type() == token.MappingEndType {
+		if typ == token.MappingEndType {
 			// a: {
 			//  b: c
 			// } <=

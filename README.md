@@ -9,30 +9,52 @@
 
 ## This library has **NO** relation to the go-yaml/yaml library
 
-This library is developed from scratch to replace [`go-yaml/yaml`](https://github.com/go-yaml/yaml).
-If you're looking for a better YAML library, this one should be helpful.
+> [!IMPORTANT]
+> This library is developed from scratch to replace [`go-yaml/yaml`](https://github.com/go-yaml/yaml).
+> If you're looking for a better YAML library, this one should be helpful.
 
 # Why a new library?
 
-As of this writing, there already exists a de facto standard library for YAML processing for Go: [https://github.com/go-yaml/yaml](https://github.com/go-yaml/yaml). However we feel that some features are lacking, namely:
+As of this writing, there already exists a de facto standard library for YAML processing for Go: [https://github.com/go-yaml/yaml](https://github.com/go-yaml/yaml). However, we believe that a new YAML library is necessary for the following reasons:
 
-- Pretty format for error notifications
-- Direct manipulation of YAML abstract syntax tree
-- Support for `Anchor` and `Alias` when marshaling
-- Allow referencing elements declared in another file via anchors
+- Not actively maintained
+- `go-yaml/yaml` has ported the libyaml written in C to Go, so the source code is not written in Go style
+- There is a lot of content that cannot be parsed
+- YAML is often used for configuration, and it is common to include validation along with it. However, the errors in `go-yaml/yaml` are not intuitive, and it is difficult to provide meaningful validation errors
+- When creating tools that use YAML, there are cases where reversible transformation of YAML is required. However, to perform reversible transformations of content that includes Comments or Anchors/Aliases, manipulating the AST is the only option
+- Non-intuitive [Marshaler](https://pkg.go.dev/gopkg.in/yaml.v3#Marshaler) / [Unmarshaler](https://pkg.go.dev/gopkg.in/yaml.v3#Unmarshaler)
+
+By the way, libraries such as [ghodss/yaml](https://github.com/ghodss/yaml) and [sigs.k8s.io/yaml](https://github.com/kubernetes-sigs/yaml) also depend on go-yaml/yaml, so if you are using these libraries, the same issues apply: they cannot parse things that go-yaml/yaml cannot parse, and they inherit many of the problems that go-yaml/yaml has.
 
 # Features
 
+- No dependencies
+- A better parser than `go-yaml/yaml`. 
+  - [Support recursive processing](https://github.com/apple/device-management/blob/release/docs/schema.yaml)
+  - Higher coverage in the [YAML Test Suite](https://github.com/yaml/yaml-test-suite?tab=readme-ov-file)
+- Ease and sustainability of maintenance
+  - The main maintainer is [@goccy](https://github.com/goccy), but we are also building a system to develop as a team with trusted developers
+  - Since it is written from scratch, the code is easy to read for Gophers
+- An API structure that allows the use of not only `Encoder`/`Decoder` but also `Tokenizer` and `Parser` functionalities.
+  - [lexer.Tokenize](https://pkg.go.dev/github.com/goccy/go-yaml@v1.15.4/lexer#Tokenize)
+  - [parser.Parse](https://pkg.go.dev/github.com/goccy/go-yaml@v1.15.4/parser#Parse)
+- Filtering, replacing, and merging YAML content using YAML Path
+- Reversible transformation without using the AST for YAML that includes Anchors, Aliases, and Comments
+- Customize the Marshal/Unmarshal behavior for primitive types and third-party library types ([RegisterCustomMarshaler](https://pkg.go.dev/github.com/goccy/go-yaml#RegisterCustomMarshaler), [RegisterCustomUnmarshaler](https://pkg.go.dev/github.com/goccy/go-yaml#RegisterCustomUnmarshaler))
+- Respects `encoding/json` behavior
+  - Accept the `json` tag. Note that not all options from the `json` tag will have significance when parsing YAML documents. If both tags exist, `yaml` tag will take precedence.
+  - [json.Marshaler](https://pkg.go.dev/encoding/json#Marshaler) style [marshaler](https://pkg.go.dev/github.com/goccy/go-yaml#BytesMarshaler)
+  - [json.Unmarshaler](https://pkg.go.dev/encoding/json#Unmarshaler) style [unmarshaler](https://pkg.go.dev/github.com/goccy/go-yaml#BytesUnmarshaler)
+  - Options for using `MarshalJSON` and `UnmarshalJSON` ([UseJSONMarshaler](https://pkg.go.dev/github.com/goccy/go-yaml#UseJSONMarshaler), [UseJSONUnmarshaler](https://pkg.go.dev/github.com/goccy/go-yaml#UseJSONUnmarshaler))
 - Pretty format for error notifications
-- Supports `Scanner` or `Lexer` or `Parser` as public API
-- Supports `Anchor` and `Alias` to Marshaler
+- Smart validation processing combined with [go-playground/validator](https://github.com/go-playground/validator)
+  - [example test code is here](https://github.com/goccy/go-yaml/blob/45889c98b0a0967240eb595a1bd6896e2f575106/testdata/validate_test.go#L12)
 - Allow referencing elements declared in another file via anchors
-- Extract value or AST by YAMLPath ( YAMLPath is like a JSONPath )
 
 # Installation
 
 ```sh
-go get -u github.com/goccy/go-yaml
+go get github.com/goccy/go-yaml
 ```
 
 # Synopsis

@@ -17,9 +17,7 @@ var failureTestNames = []string{
 	"anchors-on-empty-scalars",          // no json.
 	"aliases-in-flow-objects",           // no json.
 	"aliases-in-explicit-block-mapping", // no json.
-	"aliases-in-implicit-block-mapping",
-	"bare-document-after-document-end-marker",
-	"block-mapping-with-missing-keys", // no json.
+	"block-mapping-with-missing-keys",   // no json.
 	"block-mapping-with-missing-values",
 	"block-mapping-with-multiline-scalars",
 	"block-scalar-with-more-spaces-than-first-content-line",
@@ -86,22 +84,14 @@ var failureTestNames = []string{
 	"spec-example-8-19-compact-block-mappings",         // no json.
 	"spec-example-6-19-secondary-tag-handle",
 	"spec-example-6-24-verbatim-tags",
-	"spec-example-6-28-non-specific-tags",
-	"spec-example-6-4-line-prefixes",
 	"spec-example-6-6-line-folding",
 	"spec-example-6-6-line-folding-1-3",
 	"spec-example-6-8-flow-folding",
-	"spec-example-7-12-plain-lines",
-	"spec-example-7-19-single-pair-flow-mappings",
-	"spec-example-7-20-single-pair-explicit-entry",
-	"spec-example-7-24-flow-nodes",
 	"spec-example-8-10-folded-lines-8-13-final-empty-lines",
-	"spec-example-8-15-block-sequence-entry-types",
 	"spec-example-8-17-explicit-block-mapping-entries",
 	"spec-example-8-2-block-indentation-indicator",
 	"spec-example-9-3-bare-documents",
 	"spec-example-9-4-explicit-documents",
-	"spec-example-9-5-directives-documents",
 	"spec-example-9-6-stream",
 	"spec-example-9-6-stream-1-3",
 	"syntax-character-edge-cases/00", // no json.

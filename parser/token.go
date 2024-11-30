@@ -630,6 +630,10 @@ func createDocumentTokens(tokens []*Token) ([]*Token, error) {
 }
 
 func isScalarType(tk *Token) bool {
+	switch tk.GroupType() {
+	case TokenGroupMapKey, TokenGroupMapKeyValue:
+		return false
+	}
 	typ := tk.Type()
 	return typ == token.AnchorType ||
 		typ == token.AliasType ||

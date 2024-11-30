@@ -442,11 +442,18 @@ func (p *parser) parseMap(ctx *context) (*ast.MappingNode, error) {
 		tk = ctx.currentToken()
 	}
 	for tk.Column() == keyTk.Column() {
+		typ := tk.Type()
+		if ctx.isFlow && typ == token.SequenceEndType {
+			// [
+			// key: value
+			// ] <=
+			break
+		}
 		if !p.isMapToken(tk) {
 			return nil, errors.ErrSyntax("non-map value is specified", tk.RawToken())
 		}
 		cm := p.parseHeadComment(ctx)
-		if tk.Type() == token.MappingEndType {
+		if typ == token.MappingEndType {
 			// a: {
 			//  b: c
 			// } <=
@@ -644,6 +651,15 @@ func (p *parser) parseMapValue(ctx *context, key ast.MapKeyNode, colonTk *Token)
 	keyCol := key.GetToken().Position.Column
 	keyLine := key.GetToken().Position.Line
 
+	if tk.Column() != keyCol && tk.Line() == keyLine && (tk.GroupType() == TokenGroupMapKey || tk.GroupType() == TokenGroupMapKeyValue) {
+		// a: b:
+		//    ^
+		//
+		// a: b: c
+		//    ^
+		return nil, errors.ErrSyntax("mapping value is not allowed in this context", tk.RawToken())
+	}
+
 	if tk.Column() == keyCol && p.isMapToken(tk) {
 		// in this case,
 		// ----
@@ -672,9 +688,6 @@ func (p *parser) parseMapValue(ctx *context, key ast.MapKeyNode, colonTk *Token)
 
 	if tk.Column() <= keyCol && tk.GroupType() == TokenGroupAnchorName {
 		// key: <value does not defined>
-		// &anchor
-		//
-		//  key: <value does not defined>
 		// &anchor
 		return nil, errors.ErrSyntax("anchor is not allowed in this context", tk.RawToken())
 	}
@@ -932,17 +945,7 @@ func (p *parser) parseSequence(ctx *context) (*ast.SequenceNode, error) {
 		comment := p.parseHeadComment(ctx)
 		ctx.goNext() // skip sequence entry token
 
-		valueTk := ctx.currentToken()
-		if valueTk == nil {
-			node, err := newNullNode(ctx, ctx.createNullToken(seqTk))
-			if err != nil {
-				return nil, err
-			}
-			seqNode.Values = append(seqNode.Values, node)
-			break
-		}
-
-		value, err := p.parseToken(ctx.withIndex(uint(len(seqNode.Values))), valueTk)
+		value, err := p.parseSequenceValue(ctx.withIndex(uint(len(seqNode.Values))), seqTk)
 		if err != nil {
 			return nil, err
 		}
@@ -966,6 +969,83 @@ func (p *parser) parseSequence(ctx *context) (*ast.SequenceNode, error) {
 		}
 	}
 	return seqNode, nil
+}
+
+func (p *parser) parseSequenceValue(ctx *context, seqTk *Token) (ast.Node, error) {
+	tk := ctx.currentToken()
+	if tk == nil {
+		return newNullNode(ctx, ctx.insertNullToken(seqTk))
+	}
+
+	if ctx.isComment() {
+		tk = ctx.nextNotCommentToken()
+	}
+	seqCol := seqTk.Column()
+	seqLine := seqTk.Line()
+
+	if tk.Column() == seqCol && tk.Type() == token.SequenceEntryType {
+		// in this case,
+		// ----
+		// - <value does not defined>
+		// -
+		return newNullNode(ctx, ctx.insertNullToken(seqTk))
+	}
+
+	if tk.Line() == seqLine && tk.GroupType() == TokenGroupAnchorName &&
+		ctx.nextToken().Column() == seqCol && ctx.nextToken().Type() == token.SequenceEntryType {
+		// in this case,
+		// ----
+		// - &anchor
+		// -
+		group := &TokenGroup{
+			Type:   TokenGroupAnchor,
+			Tokens: []*Token{tk, ctx.createNullToken(tk)},
+		}
+		anchor, err := p.parseAnchor(ctx.withGroup(group), group)
+		if err != nil {
+			return nil, err
+		}
+		ctx.goNext()
+		return anchor, nil
+	}
+
+	if tk.Column() <= seqCol && tk.GroupType() == TokenGroupAnchorName {
+		// - <value does not defined>
+		// &anchor
+		return nil, errors.ErrSyntax("anchor is not allowed in this sequence context", tk.RawToken())
+	}
+
+	if tk.Column() < seqCol {
+		// in this case,
+		// ----
+		//   - <value does not defined>
+		// next
+		return newNullNode(ctx, ctx.insertNullToken(seqTk))
+	}
+
+	if tk.Line() == seqLine && tk.GroupType() == TokenGroupAnchorName &&
+		ctx.nextToken().Column() < seqCol {
+		// in this case,
+		// ----
+		//   - &anchor
+		// next
+		group := &TokenGroup{
+			Type:   TokenGroupAnchor,
+			Tokens: []*Token{tk, ctx.createNullToken(tk)},
+		}
+		anchor, err := p.parseAnchor(ctx.withGroup(group), group)
+		if err != nil {
+			return nil, err
+		}
+		ctx.goNext()
+		return anchor, nil
+	}
+
+	value, err := p.parseToken(ctx, ctx.currentToken())
+	if err != nil {
+		return nil, err
+	}
+	return value, nil
 }
 
 func (p *parser) parseDirective(ctx *context, g *TokenGroup) (*ast.DirectiveNode, error) {

@@ -101,7 +101,6 @@ var failureTestNames = []string{
 	"spec-example-8-2-block-indentation-indicator",
 	"spec-example-9-3-bare-documents",
 	"spec-example-9-4-explicit-documents",
-	"spec-example-9-5-directives-documents",
 	"spec-example-9-6-stream",
 	"spec-example-9-6-stream-1-3",
 	"syntax-character-edge-cases/00", // no json.

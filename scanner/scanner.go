@@ -515,8 +515,17 @@ func (s *Scanner) scanDoubleQuote(ctx *Context) (*token.Token, error) {
 }
 
 func (s *Scanner) validateDocumentSeparatorMarker(ctx *Context, src []rune) error {
+	if s.foundDocumentSeparatorMarker(src) {
+		return ErrInvalidToken(
+			token.Invalid("found unexpected document separator", string(ctx.obuf), s.pos()),
+		)
+	}
+	return nil
+}
+
+func (s *Scanner) foundDocumentSeparatorMarker(src []rune) bool {
 	if len(src) < 3 {
-		return nil
+		return false
 	}
 	var marker string
 	if len(src) == 3 {
@@ -526,12 +535,7 @@ func (s *Scanner) validateDocumentSeparatorMarker(ctx *Context, src []rune) erro
 			return r == ' ' || r == '\t' || r == '\n' || r == '\r'
 		})
 	}
-	if marker == "---" || marker == "..." {
-		return ErrInvalidToken(
-			token.Invalid("found unexpected document separator", string(ctx.obuf), s.pos()),
-		)
-	}
-	return nil
+	return marker == "---" || marker == "..."
 }
 
 func (s *Scanner) scanQuote(ctx *Context, ch rune) (bool, error) {
@@ -701,6 +705,14 @@ func (s *Scanner) scanDocument(ctx *Context, c rune) error {
 		ctx.addBuf(c)
 		ctx.updateDocumentNewLineState()
 		s.progressLine(ctx)
+		if ctx.next() {
+			if s.foundDocumentSeparatorMarker(ctx.src[ctx.idx:]) {
+				value := ctx.bufferedSrc()
+				ctx.addToken(token.String(string(value), string(ctx.obuf), s.pos()))
+				ctx.clear()
+				s.breakDocument(ctx)
+			}
+		}
 	} else if s.isFirstCharAtLine && c == ' ' {
 		ctx.addDocumentIndent(s.column)
 		s.progressColumn(ctx, 1)

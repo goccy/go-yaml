@@ -409,6 +409,9 @@ func (d *Decoder) nodeToValue(node ast.Node) (any, error) {
 			if err != nil {
 				return nil, err
 			}
+			if v == nil {
+				return "", nil
+			}
 			return fmt.Sprint(v), nil
 		case token.MappingTag:
 			return d.nodeToValue(n.Value)

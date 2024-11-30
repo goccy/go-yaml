@@ -1331,6 +1331,13 @@ func (s *Scanner) scan(ctx *Context) error {
 				return err
 			}
 		case '\t':
+			if ctx.existsBuffer() && s.lastDelimColumn == 0 {
+				// tab indent for plain text (yaml-test-suite's spec-example-7-12-plain-lines).
+				s.indentNum++
+				ctx.addOriginBuf(c)
+				s.progressColumn(ctx, 1)
+				continue
+			}
 			if err := s.scanTab(ctx, c); err != nil {
 				return err
 			}

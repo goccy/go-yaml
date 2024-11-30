@@ -651,6 +651,15 @@ func (p *parser) parseMapValue(ctx *context, key ast.MapKeyNode, colonTk *Token)
 	keyCol := key.GetToken().Position.Column
 	keyLine := key.GetToken().Position.Line
 
+	if tk.Column() != keyCol && tk.Line() == keyLine && (tk.GroupType() == TokenGroupMapKey || tk.GroupType() == TokenGroupMapKeyValue) {
+		// a: b:
+		//    ^
+		//
+		// a: b: c
+		//    ^
+		return nil, errors.ErrSyntax("mapping value is not allowed in this context", tk.RawToken())
+	}
+
 	if tk.Column() == keyCol && p.isMapToken(tk) {
 		// in this case,
 		// ----

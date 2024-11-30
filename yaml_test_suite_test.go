@@ -17,8 +17,7 @@ var failureTestNames = []string{
 	"anchors-on-empty-scalars",          // no json.
 	"aliases-in-flow-objects",           // no json.
 	"aliases-in-explicit-block-mapping", // no json.
-	"bare-document-after-document-end-marker",
-	"block-mapping-with-missing-keys", // no json.
+	"block-mapping-with-missing-keys",   // no json.
 	"block-mapping-with-missing-values",
 	"block-mapping-with-multiline-scalars",
 	"block-scalar-with-more-spaces-than-first-content-line",

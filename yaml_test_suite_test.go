@@ -86,7 +86,6 @@ var failureTestNames = []string{
 	"spec-example-8-19-compact-block-mappings",         // no json.
 	"spec-example-6-19-secondary-tag-handle",
 	"spec-example-6-24-verbatim-tags",
-	"spec-example-6-4-line-prefixes",
 	"spec-example-6-6-line-folding",
 	"spec-example-6-6-line-folding-1-3",
 	"spec-example-6-8-flow-folding",

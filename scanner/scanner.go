@@ -360,54 +360,74 @@ func (s *Scanner) scanDoubleQuote(ctx *Context) (*token.Token, error) {
 			nextChar := src[idx+1]
 			progress := 0
 			switch nextChar {
+			case '0':
+				progress = 1
+				ctx.addOriginBuf(nextChar)
+				value = append(value, 0x00)
+			case 'a':
+				progress = 1
+				ctx.addOriginBuf(nextChar)
+				value = append(value, 0x07)
 			case 'b':
 				progress = 1
 				ctx.addOriginBuf(nextChar)
-				value = append(value, '\b')
-			case 'e':
-				progress = 1
-				ctx.addOriginBuf(nextChar)
-				value = append(value, '\x1B')
-			case 'f':
-				progress = 1
-				ctx.addOriginBuf(nextChar)
-				value = append(value, '\f')
-			case 'n':
-				progress = 1
-				ctx.addOriginBuf(nextChar)
-				value = append(value, '\n')
-			case 'r':
-				progress = 1
-				ctx.addOriginBuf(nextChar)
-				value = append(value, '\r')
+				value = append(value, 0x08)
 			case 't':
 				progress = 1
 				ctx.addOriginBuf(nextChar)
-				value = append(value, '\t')
+				value = append(value, 0x09)
+			case 'n':
+				progress = 1
+				ctx.addOriginBuf(nextChar)
+				value = append(value, 0x0A)
 			case 'v':
 				progress = 1
 				ctx.addOriginBuf(nextChar)
-				value = append(value, '\v')
-			case 'L': // LS (#x2028)
+				value = append(value, 0x0B)
+			case 'f':
 				progress = 1
 				ctx.addOriginBuf(nextChar)
-				value = append(value, []rune{'\xE2', '\x80', '\xA8'}...)
-			case 'N': // NEL (#x85)
+				value = append(value, 0x0C)
+			case 'r':
 				progress = 1
 				ctx.addOriginBuf(nextChar)
-				value = append(value, []rune{'\xC2', '\x85'}...)
-			case 'P': // PS (#x2029)
+				value = append(value, 0x0D)
+			case 'e':
 				progress = 1
 				ctx.addOriginBuf(nextChar)
-				value = append(value, []rune{'\xE2', '\x80', '\xA9'}...)
-			case '_': // #xA0
+				value = append(value, 0x1B)
+			case ' ':
 				progress = 1
 				ctx.addOriginBuf(nextChar)
-				value = append(value, []rune{'\xC2', '\xA0'}...)
+				value = append(value, 0x20)
 			case '"':
 				progress = 1
 				ctx.addOriginBuf(nextChar)
-				value = append(value, nextChar)
+				value = append(value, 0x22)
+			case '/':
+				progress = 1
+				ctx.addOriginBuf(nextChar)
+				value = append(value, 0x2F)
+			case '\\':
+				progress = 1
+				ctx.addOriginBuf(nextChar)
+				value = append(value, 0x5C)
+			case 'N':
+				progress = 1
+				ctx.addOriginBuf(nextChar)
+				value = append(value, 0x85)
+			case '_':
+				progress = 1
+				ctx.addOriginBuf(nextChar)
+				value = append(value, 0xA0)
+			case 'L':
+				progress = 1
+				ctx.addOriginBuf(nextChar)
+				value = append(value, 0x2028)
+			case 'P':
+				progress = 1
+				ctx.addOriginBuf(nextChar)
+				value = append(value, 0x2029)
 			case 'x':
 				if idx+3 >= size {
 					progress = 1
@@ -438,10 +458,6 @@ func (s *Scanner) scanDoubleQuote(ctx *Context) (*token.Token, error) {
 					codeNum := hexRunesToInt(src[idx+2 : idx+progress+1])
 					value = append(value, rune(codeNum))
 				}
-			case '\\':
-				progress = 1
-				ctx.addOriginBuf(nextChar)
-				value = append(value, c)
 			case '\n':
 				isFirstLineChar = true
 				isNewLine = true
@@ -454,12 +470,6 @@ func (s *Scanner) scanDoubleQuote(ctx *Context) (*token.Token, error) {
 				progress = 1
 				ctx.addOriginBuf(nextChar)
 				value = append(value, nextChar)
-			case '0':
-				progress = 1
-				ctx.addOriginBuf(nextChar)
-				value = append(value, '\x00')
-			case ' ':
-				// skip escape character.
 			default:
 				s.progressColumn(ctx, 1)
 				return nil, ErrInvalidToken(

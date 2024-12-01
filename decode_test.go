@@ -1107,6 +1107,16 @@ c:
 			"v: あいうえお\nv2: かきくけこ",
 			map[string]string{"v": "あいうえお", "v2": "かきくけこ"},
 		},
+		{
+			`
+- "Fun with \\"
+- "\" \a \b \e \f"
+- "\n \r \t \v \0"
+- "\  \_ \N \L \P \
+  \x41 \u0041 \U00000041"
+`,
+			[]string{"Fun with \\", "\" \u0007 \b \u001b \f", "\n \r \t \u000b \u0000", "\u0020 \u00a0 \u0085 \u2028 \u2029 A A A"},
+		},
 	}
 	for _, test := range tests {
 		t.Run(test.source, func(t *testing.T) {

@@ -1063,12 +1063,10 @@ func (p *parser) parseDirective(ctx *context, g *TokenGroup) (*ast.DirectiveNode
 
 func (p *parser) parseComment(ctx *context) (ast.Node, error) {
 	cm := p.parseHeadComment(ctx)
-	tk := ctx.currentToken()
-	if tk == nil {
+	if ctx.isTokenNotFound() {
 		return cm, nil
 	}
-
-	node, err := p.parseToken(ctx, tk)
+	node, err := p.parseToken(ctx, ctx.currentToken())
 	if err != nil {
 		return nil, err
 	}

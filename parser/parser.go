@@ -152,6 +152,10 @@ func (p *parser) parseDocumentBody(ctx *context) (ast.Node, error) {
 }
 
 func (p *parser) parseToken(ctx *context, tk *Token) (ast.Node, error) {
+	if tk == nil {
+		return nil, nil
+	}
+
 	switch tk.GroupType() {
 	case TokenGroupMapKey, TokenGroupMapKeyValue:
 		return p.parseMap(ctx)
@@ -1063,7 +1067,12 @@ func (p *parser) parseDirective(ctx *context, g *TokenGroup) (*ast.DirectiveNode
 
 func (p *parser) parseComment(ctx *context) (ast.Node, error) {
 	cm := p.parseHeadComment(ctx)
-	node, err := p.parseToken(ctx, ctx.currentToken())
+	nextTok := ctx.currentToken()
+	if nextTok == nil {
+		return cm, nil
+	}
+
+	node, err := p.parseToken(ctx, nextTok)
 	if err != nil {
 		return nil, err
 	}

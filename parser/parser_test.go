@@ -1473,6 +1473,14 @@ foo: > # comment
   x: 42
 `,
 		},
+		{
+			name: "unattached comment",
+			yaml: `
+# This comment is in its own document
+---
+a: b
+`,
+		},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {

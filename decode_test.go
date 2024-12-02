@@ -1117,6 +1117,18 @@ c:
 `,
 			[]string{"Fun with \\", "\" \u0007 \b \u001b \f", "\n \r \t \u000b \u0000", "\u0020 \u00a0 \u0085 \u2028 \u2029 A A A"},
 		},
+		{
+			`"\ud83e\udd23"`,
+			"🤣",
+		},
+		{
+			`"\uD83D\uDE00\uD83D\uDE01"`,
+			"😀😁",
+		},
+		{
+			`"\uD83D\uDE00a\uD83D\uDE01"`,
+			"😀a😁",
+		},
 	}
 	for _, test := range tests {
 		t.Run(test.source, func(t *testing.T) {

@@ -3233,6 +3233,26 @@ a: |
 	c
 `,
 		},
+		{
+			name: "invalid UTF-16 character",
+			src:  `"\u00"`,
+		},
+		{
+			name: "invalid UTF-16 surrogate pair length",
+			src:  `"\ud800"`,
+		},
+		{
+			name: "invalid UTF-16 low surrogate prefix",
+			src:  `"\ud800\v"`,
+		},
+		{
+			name: "invalid UTF-16 low surrogate",
+			src:  `"\ud800\u0000"`,
+		},
+		{
+			name: "invalid UTF-32 character",
+			src:  `"\U0000"`,
+		},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {

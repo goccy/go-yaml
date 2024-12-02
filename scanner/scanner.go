@@ -439,25 +439,67 @@ func (s *Scanner) scanDoubleQuote(ctx *Context) (*token.Token, error) {
 					value = append(value, rune(codeNum))
 				}
 			case 'u':
+				// \u0000 style must have 5 characters at least.
 				if idx+5 >= size {
-					progress = 1
-					ctx.addOriginBuf(nextChar)
-					value = append(value, nextChar)
-				} else {
-					progress = 5
-					codeNum := hexRunesToInt(src[idx+2 : idx+progress+1])
-					value = append(value, rune(codeNum))
+					return nil, ErrInvalidToken(
+						token.Invalid(
+							"not enough length for escaped UTF-16 character",
+							string(ctx.obuf), s.pos(),
+						),
+					)
 				}
+				progress = 5
+				codeNum := hexRunesToInt(src[idx+2 : idx+6])
+
+				// handle surrogate pairs.
+				if codeNum >= 0xD800 && codeNum <= 0xDBFF {
+					high := codeNum
+
+					// \u0000\u0000 style must have 11 characters at least.
+					if idx+11 >= size {
+						return nil, ErrInvalidToken(
+							token.Invalid(
+								"not enough length for escaped UTF-16 surrogate pair",
+								string(ctx.obuf), s.pos(),
+							),
+						)
+					}
+
+					if src[idx+6] != '\\' || src[idx+7] != 'u' {
+						return nil, ErrInvalidToken(
+							token.Invalid(
+								"found unexpected character after high surrogate for UTF-16 surrogate pair",
+								string(ctx.obuf), s.pos(),
+							),
+						)
+					}
+
+					low := hexRunesToInt(src[idx+8 : idx+12])
+					if low < 0xDC00 || low > 0xDFFF {
+						return nil, ErrInvalidToken(
+							token.Invalid(
+								"found unexpected low surrogate after high surrogate",
+								string(ctx.obuf), s.pos(),
+							),
+						)
+					}
+					codeNum = ((high - 0xD800) * 0x400) + (low - 0xDC00) + 0x10000
+					progress += 6
+				}
+				value = append(value, rune(codeNum))
 			case 'U':
+				// \U00000000 style must have 9 characters at least.
 				if idx+9 >= size {
-					progress = 1
-					ctx.addOriginBuf(nextChar)
-					value = append(value, nextChar)
-				} else {
-					progress = 9
-					codeNum := hexRunesToInt(src[idx+2 : idx+progress+1])
-					value = append(value, rune(codeNum))
+					return nil, ErrInvalidToken(
+						token.Invalid(
+							"not enough length for escaped UTF-32 character",
+							string(ctx.obuf), s.pos(),
+						),
+					)
 				}
+				progress = 9
+				codeNum := hexRunesToInt(src[idx+2 : idx+10])
+				value = append(value, rune(codeNum))
 			case '\n':
 				isFirstLineChar = true
 				isNewLine = true

@@ -1475,6 +1475,11 @@ func (n *SequenceNode) Merge(target *SequenceNode) {
 	column := n.Start.Position.Column - target.Start.Position.Column
 	target.AddColumn(column)
 	n.Values = append(n.Values, target.Values...)
+	if len(target.ValueHeadComments) == 0 {
+		n.ValueHeadComments = append(n.ValueHeadComments, make([]*CommentGroupNode, len(target.Values))...)
+		return
+	}
+	n.ValueHeadComments = append(n.ValueHeadComments, target.ValueHeadComments...)
 }
 
 // SetIsFlowStyle set value to IsFlowStyle field recursively.

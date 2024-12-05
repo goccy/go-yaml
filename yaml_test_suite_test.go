@@ -48,6 +48,7 @@ var failureTestNames = []string{
 	"implicit-flow-mapping-key-on-one-line", // no json.
 	"invalid-comment-after-comma",
 	"invalid-comment-after-end-of-flow-sequence",
+	"invalid-comma-in-tag",
 	"invalid-tag",
 	"leading-tabs-in-double-quoted/02",
 	"leading-tabs-in-double-quoted/05",

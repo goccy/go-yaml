@@ -880,9 +880,6 @@ func (p *parser) parseTagValue(ctx *context, tagRawTk *token.Token, tk *Token) (
 		}
 		return p.parseSequence(ctx)
 	}
-	if strings.HasPrefix(tagRawTk.Value, "!!") {
-		return nil, errors.ErrSyntax(fmt.Sprintf("unknown secondary tag name %q specified", tagRawTk.Value), tagRawTk)
-	}
 	return p.parseToken(ctx, tk)
 }
 

@@ -1,7 +1,7 @@
 package scanner
 
 import (
-	"fmt"
+	"errors"
 	"strconv"
 	"strings"
 	"sync"
@@ -26,6 +26,7 @@ type Context struct {
 	docFirstLineIndentColumn int
 	docPrevLineIndentColumn  int
 	docLineIndentColumn      int
+	docSpaceOnlyIndentColumn int
 	docFoldedNewLine         bool
 }
 
@@ -63,6 +64,7 @@ func (c *Context) clear() {
 	c.docFirstLineIndentColumn = 0
 	c.docLineIndentColumn = 0
 	c.docPrevLineIndentColumn = 0
+	c.docSpaceOnlyIndentColumn = 0
 	c.docFoldedNewLine = false
 }
 
@@ -93,6 +95,7 @@ func (c *Context) breakDocument() {
 	c.docFirstLineIndentColumn = 0
 	c.docLineIndentColumn = 0
 	c.docPrevLineIndentColumn = 0
+	c.docSpaceOnlyIndentColumn = 0
 	c.docFoldedNewLine = false
 }
 
@@ -122,12 +125,29 @@ func (c *Context) updateDocumentLineIndentColumn(column int) {
 	}
 }
 
+func (c *Context) updateSpaceOnlyIndentColumn(column int) {
+	if c.docFirstLineIndentColumn != 0 {
+		return
+	}
+	c.docSpaceOnlyIndentColumn = column
+}
+
+func (c *Context) validateDocumentLineIndentAfterSpaceOnly(column int) error {
+	if c.docFirstLineIndentColumn != 0 {
+		return nil
+	}
+	if c.docSpaceOnlyIndentColumn > column {
+		return errors.New("invalid number of indent is specified after space only")
+	}
+	return nil
+}
+
 func (c *Context) validateDocumentLineIndentColumn() error {
 	if c.docFirstLineIndentColumnByDocOpt() == 0 {
 		return nil
 	}
 	if c.docFirstLineIndentColumn > c.docLineIndentColumn {
-		return fmt.Errorf("invalid number of indent is specified in the document header")
+		return errors.New("invalid number of indent is specified in the document header")
 	}
 	return nil
 }

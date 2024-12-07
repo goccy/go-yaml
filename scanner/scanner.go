@@ -755,6 +755,7 @@ func (s *Scanner) scanDocument(ctx *Context, c rune) error {
 		s.progressColumn(ctx, 1)
 	} else if s.isNewLineChar(c) {
 		ctx.addBuf(c)
+		ctx.updateSpaceOnlyIndentColumn(s.column - 1)
 		ctx.updateDocumentNewLineState()
 		s.progressLine(ctx)
 		if ctx.next() {
@@ -778,6 +779,11 @@ func (s *Scanner) scanDocument(ctx *Context, c rune) error {
 		s.progressColumn(ctx, 1)
 		return err
 	} else {
+		if err := ctx.validateDocumentLineIndentAfterSpaceOnly(s.column); err != nil {
+			invalidTk := token.Invalid(err.Error(), string(ctx.obuf), s.pos())
+			s.progressColumn(ctx, 1)
+			return ErrInvalidToken(invalidTk)
+		}
 		ctx.updateDocumentLineIndentColumn(s.column)
 		if ctx.docFirstLineIndentColumn > 0 {
 			s.lastDelimColumn = ctx.docFirstLineIndentColumn - 1

@@ -18,22 +18,19 @@ var failureTestNames = []string{
 	"aliases-in-flow-objects",           // no json.
 	"aliases-in-explicit-block-mapping", // no json.
 	"block-mapping-with-missing-keys",   // no json.
-	"block-mapping-with-missing-values",
-	"block-mapping-with-multiline-scalars",
 	"block-scalar-with-more-spaces-than-first-content-line",
-	"block-scalar-with-wrong-indented-line-after-spaces-only",
 	"colon-at-the-beginning-of-adjacent-flow-scalar",
-	"comment-in-flow-sequence-before-comma",
+	"comment-in-flow-sequence-before-comma", // pass yamlv3.
 	"comment-without-whitespace-after-doublequoted-scalar",
 	"construct-binary",
 	"dash-in-flow-sequence",
 	"directive-variants/00",
-	"directive-variants/01",
+	"directive-variants/01", // pass yamlv3.
 	"double-quoted-scalar-with-escaped-single-quote",
-	"duplicate-yaml-directive",
+	"duplicate-yaml-directive", // pass yamlv3.
 	"escaped-slash-in-double-quotes",
-	"explicit-key-and-value-seperated-by-comment", //nolint: misspell
-	"extra-words-on-yaml-directive",
+	"explicit-key-and-value-seperated-by-comment",      //nolint: misspell // pass yamlv3.
+	"extra-words-on-yaml-directive",                    // pass yamlv3.
 	"empty-implicit-key-in-single-pair-flow-sequences", // no json.
 	"empty-keys-in-block-and-flow-mapping",             // no json.
 	"empty-lines-at-end-of-document",                   // no json.
@@ -42,54 +39,54 @@ var failureTestNames = []string{
 	"flow-collections-over-many-lines/01",
 	"flow-mapping-colon-on-line-after-key/02",
 	"flow-mapping-edge-cases",
-	"flow-sequence-with-invalid-comma-at-the-beginning",
-	"folded-block-scalar",
-	"folded-block-scalar-1-3",
-	"implicit-flow-mapping-key-on-one-line", // no json.
+	"flow-sequence-with-invalid-comma-at-the-beginning", // pass yamlv3.
+	"folded-block-scalar",                               // pass yamlv3.
+	"folded-block-scalar-1-3",                           // pass yamlv3.
+	"implicit-flow-mapping-key-on-one-line",             // no json.
 	"invalid-comment-after-comma",
 	"invalid-comment-after-end-of-flow-sequence",
 	"invalid-comma-in-tag",
-	"invalid-tag",
-	"leading-tabs-in-double-quoted/02",
-	"leading-tabs-in-double-quoted/05",
-	"legal-tab-after-indentation",
-	"literal-block-scalar-with-more-spaces-in-first-line",
-	"literal-modifers/00",
-	"literal-modifers/01",
-	"literal-modifers/02",
-	"literal-modifers/03",
-	"literal-scalars",
-	"mapping-key-and-flow-sequence-item-anchors", // no json.
-	"multiline-double-quoted-implicit-keys",
+	"invalid-tag",                                         // pass yamlv3.
+	"leading-tabs-in-double-quoted/02",                    // pass yamlv3.
+	"leading-tabs-in-double-quoted/05",                    // pass yamlv3.
+	"legal-tab-after-indentation",                         // pass yamlv3.
+	"literal-block-scalar-with-more-spaces-in-first-line", // pass yamlv3.
+	"literal-modifers/00",                                 // pass yamlv3.
+	"literal-modifers/01",                                 // pass yamlv3.
+	"literal-modifers/02",                                 // pass yamlv3.
+	"literal-modifers/03",                                 // pass yamlv3.
+	"literal-scalars",                                     // pass yamlv3.
+	"mapping-key-and-flow-sequence-item-anchors",          // no json.
+	"multiline-double-quoted-implicit-keys",               // pass yamlv3.
 	"multiline-plain-flow-mapping-key",
-	"multiline-plain-value-with-tabs-on-empty-lines",
-	"multiline-scalar-at-top-level",
-	"multiline-scalar-at-top-level-1-3",
-	"multiline-single-quoted-implicit-keys",
-	"multiline-unidented-double-quoted-block-key",
-	"nested-implicit-complex-keys", // no json.
-	"node-anchor-not-indented",
+	"multiline-plain-value-with-tabs-on-empty-lines", // pass yamlv3.
+	"multiline-scalar-at-top-level",                  // pass yamlv3.
+	"multiline-scalar-at-top-level-1-3",              // pass yamlv3.
+	"multiline-single-quoted-implicit-keys",          // pass yamlv3.
+	"multiline-unidented-double-quoted-block-key",    // pass yamlv3.
+	"nested-implicit-complex-keys",                   // no json.
+	"node-anchor-not-indented",                       // pass yamlv3.
 	"plain-dashes-in-flow-sequence",
-	"plain-url-in-flow-mapping",
-	"question-mark-edge-cases/00", // no json.
-	"question-mark-edge-cases/01", // no json.
-	"scalar-doc-with-in-content/01",
-	"scalar-value-with-two-anchors",
-	"single-character-streams/01",                      // no json.
-	"single-pair-implicit-entries",                     // no json.
-	"spec-example-2-11-mapping-between-sequences",      // no json.
-	"spec-example-6-12-separation-spaces",              // no json.
-	"spec-example-7-16-flow-mapping-entries",           // no json.
-	"spec-example-7-3-completely-empty-flow-nodes",     // no json.
-	"spec-example-8-18-implicit-block-mapping-entries", // no json.
-	"spec-example-8-19-compact-block-mappings",         // no json.
-	"spec-example-6-19-secondary-tag-handle",
-	"spec-example-6-24-verbatim-tags",
-	"spec-example-6-6-line-folding",
-	"spec-example-6-6-line-folding-1-3",
-	"spec-example-6-8-flow-folding",
-	"spec-example-8-10-folded-lines-8-13-final-empty-lines",
-	"spec-example-8-17-explicit-block-mapping-entries",
+	"plain-url-in-flow-mapping",                             // pass yamlv3.
+	"question-mark-edge-cases/00",                           // no json.
+	"question-mark-edge-cases/01",                           // no json.
+	"scalar-doc-with-in-content/01",                         // pass yamlv3.
+	"scalar-value-with-two-anchors",                         // pass yamlv3.
+	"single-character-streams/01",                           // no json.
+	"single-pair-implicit-entries",                          // no json.
+	"spec-example-2-11-mapping-between-sequences",           // no json.
+	"spec-example-6-12-separation-spaces",                   // no json.
+	"spec-example-7-16-flow-mapping-entries",                // no json.
+	"spec-example-7-3-completely-empty-flow-nodes",          // no json.
+	"spec-example-8-18-implicit-block-mapping-entries",      // no json.
+	"spec-example-8-19-compact-block-mappings",              // no json.
+	"spec-example-6-19-secondary-tag-handle",                // pass yamlv3.
+	"spec-example-6-24-verbatim-tags",                       // pass yamlv3.
+	"spec-example-6-6-line-folding",                         // pass yamlv3.
+	"spec-example-6-6-line-folding-1-3",                     // pass yamlv3.
+	"spec-example-6-8-flow-folding",                         // pass yamlv3.
+	"spec-example-8-10-folded-lines-8-13-final-empty-lines", // pass yamlv3.
+	"spec-example-8-17-explicit-block-mapping-entries",      // pass yamlv3.
 	"spec-example-8-2-block-indentation-indicator",
 	"spec-example-9-3-bare-documents",
 	"spec-example-9-4-explicit-documents",
@@ -101,14 +98,14 @@ var failureTestNames = []string{
 	"tabs-in-various-contexts/003",
 	"tabs-that-look-like-indentation/00",
 	"tabs-that-look-like-indentation/01",
-	"tabs-that-look-like-indentation/02",
+	"tabs-that-look-like-indentation/02", // pass yamlv3.
 	"tabs-that-look-like-indentation/03",
 	"tabs-that-look-like-indentation/04",
-	"tabs-that-look-like-indentation/05",
+	"tabs-that-look-like-indentation/05", // pass yamlv3.
 	"tabs-that-look-like-indentation/07",
-	"tabs-that-look-like-indentation/08",
+	"tabs-that-look-like-indentation/08", // pass yamlv3.
 	"tag-shorthand-used-in-documents-but-only-defined-in-the-first",
-	"tags-for-block-objects",
+	"tags-for-block-objects",                           // pass yamlv3.
 	"tags-on-empty-scalars",                            // no json.
 	"trailing-line-of-spaces/01",                       // last '\n' character is needed ?
 	"various-combinations-of-explicit-block-mappings",  // no json.

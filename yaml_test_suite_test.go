@@ -20,7 +20,6 @@ var failureTestNames = []string{
 	"block-mapping-with-missing-keys",   // no json.
 	"block-scalar-with-more-spaces-than-first-content-line",
 	"colon-at-the-beginning-of-adjacent-flow-scalar",
-	"comment-in-flow-sequence-before-comma", // pass yamlv3.
 	"comment-without-whitespace-after-doublequoted-scalar",
 	"construct-binary",
 	"dash-in-flow-sequence",

@@ -701,8 +701,11 @@ func (s *Scanner) scanTag(ctx *Context) bool {
 }
 
 func (s *Scanner) scanComment(ctx *Context) bool {
-	if ctx.existsBuffer() && (ctx.previousChar() != ' ' && ctx.previousChar() != '\t') {
-		return false
+	if ctx.existsBuffer() {
+		c := ctx.previousChar()
+		if c != ' ' && c != '\t' && !s.isNewLineChar(c) {
+			return false
+		}
 	}
 
 	s.addBufferedTokenIfExists(ctx)
@@ -711,19 +714,19 @@ func (s *Scanner) scanComment(ctx *Context) bool {
 
 	for idx, c := range ctx.src[ctx.idx:] {
 		ctx.addOriginBuf(c)
-		switch c {
-		case '\n', '\r':
-			if ctx.previousChar() == '\\' {
-				continue
-			}
-			value := ctx.source(ctx.idx, ctx.idx+idx)
-			progress := len([]rune(value))
-			ctx.addToken(token.Comment(value, string(ctx.obuf), s.pos()))
-			s.progressColumn(ctx, progress)
-			s.progressLine(ctx)
-			ctx.clear()
-			return true
+		if !s.isNewLineChar(c) {
+			continue
 		}
+		if ctx.previousChar() == '\\' {
+			continue
+		}
+		value := ctx.source(ctx.idx, ctx.idx+idx)
+		progress := len([]rune(value))
+		ctx.addToken(token.Comment(value, string(ctx.obuf), s.pos()))
+		s.progressColumn(ctx, progress)
+		s.progressLine(ctx)
+		ctx.clear()
+		return true
 	}
 	// document ends with comment.
 	value := string(ctx.src[ctx.idx:])

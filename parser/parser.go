@@ -211,6 +211,9 @@ func (p *parser) parseToken(ctx *context, tk *Token) (ast.Node, error) {
 		if err != nil {
 			return nil, err
 		}
+		if _, ok := value.(*ast.AnchorNode); ok {
+			return nil, errors.ErrSyntax("anchors cannot be used consecutively", value.GetToken())
+		}
 		anchor.Value = value
 		return anchor, nil
 	case TokenGroupAlias:
@@ -282,6 +285,9 @@ func (p *parser) parseScalarValue(ctx *context, tk *Token) (ast.ScalarNode, erro
 			value, err := p.parseToken(ctx, ctx.currentToken())
 			if err != nil {
 				return nil, err
+			}
+			if _, ok := value.(*ast.AnchorNode); ok {
+				return nil, errors.ErrSyntax("anchors cannot be used consecutively", value.GetToken())
 			}
 			anchor.Value = value
 			return anchor, nil
@@ -796,6 +802,9 @@ func (p *parser) parseAnchor(ctx *context, g *TokenGroup) (*ast.AnchorNode, erro
 	value, err := p.parseToken(ctx, ctx.currentToken())
 	if err != nil {
 		return nil, err
+	}
+	if _, ok := value.(*ast.AnchorNode); ok {
+		return nil, errors.ErrSyntax("anchors cannot be used consecutively", value.GetToken())
 	}
 	anchor.Value = value
 	return anchor, nil

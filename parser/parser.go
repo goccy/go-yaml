@@ -668,7 +668,7 @@ func (p *parser) newLineCharacterNum(src string) int {
 	for i := 0; i < len(src); i++ {
 		switch src[i] {
 		case '\r':
-			if src[i+1] == '\n' {
+			if len(src) > i+1 && src[i+1] == '\n' {
 				i++
 			}
 			num++

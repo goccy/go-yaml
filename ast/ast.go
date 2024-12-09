@@ -1726,8 +1726,11 @@ func (n *AliasNode) MarshalYAML() ([]byte, error) {
 // DirectiveNode type of directive node
 type DirectiveNode struct {
 	*BaseNode
-	Start  *token.Token
-	Name   Node
+	// Start is '%' token.
+	Start *token.Token
+	// Name is directive name e.g.) "YAML" or "TAG".
+	Name Node
+	// Values is directive values e.g.) "1.2" or "!!" and "tag:clarkevans.com,2002:app/".
 	Values []Node
 }
 

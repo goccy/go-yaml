@@ -51,7 +51,6 @@ var failureTestNames = []string{
 	"nested-implicit-complex-keys",                   // no json.
 	"node-anchor-not-indented",                       // pass yamlv3.
 	"plain-dashes-in-flow-sequence",
-	"plain-url-in-flow-mapping",                             // pass yamlv3.
 	"question-mark-edge-cases/00",                           // no json.
 	"question-mark-edge-cases/01",                           // no json.
 	"scalar-value-with-two-anchors",                         // pass yamlv3.

@@ -940,6 +940,10 @@ func (s *Scanner) scanMapDelim(ctx *Context) (bool, error) {
 	if s.startedFlowMapNum <= 0 && nc != ' ' && nc != '\t' && !s.isNewLineChar(nc) && !ctx.isNextEOS() {
 		return false, nil
 	}
+	if s.startedFlowMapNum > 0 && nc == '/' {
+		// like http://
+		return false, nil
+	}
 
 	if strings.HasPrefix(strings.TrimPrefix(string(ctx.obuf), " "), "\t") && !strings.HasPrefix(string(ctx.buf), "\t") {
 		invalidTk := token.Invalid("tab character cannot use as a map key directly", string(ctx.obuf), s.pos())

@@ -693,13 +693,13 @@ func (d *Decoder) convertValue(v reflect.Value, typ reflect.Type, src ast.Node) 
 	// cast value to string
 	switch v.Type().Kind() {
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-		return reflect.ValueOf(fmt.Sprint(v.Int())), nil
+		return reflect.ValueOf(strconv.FormatInt(v.Int(), 10)), nil
 	case reflect.Float32, reflect.Float64:
 		return reflect.ValueOf(fmt.Sprint(v.Float())), nil
 	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr:
-		return reflect.ValueOf(fmt.Sprint(v.Uint())), nil
+		return reflect.ValueOf(strconv.FormatUint(v.Uint(), 10)), nil
 	case reflect.Bool:
-		return reflect.ValueOf(fmt.Sprint(v.Bool())), nil
+		return reflect.ValueOf(strconv.FormatBool(v.Bool())), nil
 	}
 	if !v.Type().ConvertibleTo(typ) {
 		return reflect.Zero(typ), errors.ErrTypeMismatch(typ, v.Type(), src.GetToken())
@@ -953,7 +953,7 @@ func (d *Decoder) decodeByUnmarshaler(ctx context.Context, dst reflect.Value, sr
 		}
 	}
 
-	return fmt.Errorf("does not implemented Unmarshaler")
+	return errors.New("does not implemented Unmarshaler")
 }
 
 var (

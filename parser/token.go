@@ -3,6 +3,7 @@ package parser
 import (
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/goccy/go-yaml/internal/errors"
 	"github.com/goccy/go-yaml/token"
@@ -356,8 +357,37 @@ func createScalarTagTokenGroups(tokens []*Token) []*Token {
 			continue
 		}
 		tag := tk.RawToken()
-		switch token.ReservedTagKeyword(tag.Value) {
-		case token.IntegerTag, token.FloatTag, token.StringTag, token.BinaryTag, token.TimestampTag, token.BooleanTag, token.NullTag:
+		if strings.HasPrefix(tag.Value, "!!") {
+			// secondary tag.
+			switch token.ReservedTagKeyword(tag.Value) {
+			case token.IntegerTag, token.FloatTag, token.StringTag, token.BinaryTag, token.TimestampTag, token.BooleanTag, token.NullTag:
+				if len(tokens) <= i+1 {
+					ret = append(ret, tk)
+					continue
+				}
+				if tk.Line() != tokens[i+1].Line() {
+					ret = append(ret, tk)
+					continue
+				}
+				if tokens[i+1].GroupType() == TokenGroupAnchorName {
+					ret = append(ret, tk)
+					continue
+				}
+				if isScalarType(tokens[i+1]) {
+					ret = append(ret, &Token{
+						Group: &TokenGroup{
+							Type:   TokenGroupScalarTag,
+							Tokens: []*Token{tk, tokens[i+1]},
+						},
+					})
+					i++
+				} else {
+					ret = append(ret, tk)
+				}
+			default:
+				ret = append(ret, tk)
+			}
+		} else {
 			if len(tokens) <= i+1 {
 				ret = append(ret, tk)
 				continue
@@ -370,19 +400,13 @@ func createScalarTagTokenGroups(tokens []*Token) []*Token {
 				ret = append(ret, tk)
 				continue
 			}
-			if isScalarType(tokens[i+1]) {
-				ret = append(ret, &Token{
-					Group: &TokenGroup{
-						Type:   TokenGroupScalarTag,
-						Tokens: []*Token{tk, tokens[i+1]},
-					},
-				})
-				i++
-			} else {
-				ret = append(ret, tk)
-			}
-		default:
-			ret = append(ret, tk)
+			ret = append(ret, &Token{
+				Group: &TokenGroup{
+					Type:   TokenGroupScalarTag,
+					Tokens: []*Token{tk, tokens[i+1]},
+				},
+			})
+			i++
 		}
 	}
 	return ret

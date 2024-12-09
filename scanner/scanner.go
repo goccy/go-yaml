@@ -662,7 +662,7 @@ func (s *Scanner) isMergeKey(ctx *Context) bool {
 }
 
 func (s *Scanner) scanTag(ctx *Context) bool {
-	if ctx.existsBuffer() {
+	if ctx.existsBuffer() || s.isDirective {
 		return false
 	}
 

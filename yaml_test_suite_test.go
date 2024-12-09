@@ -75,7 +75,6 @@ var failureTestNames = []string{
 	"spec-example-7-3-completely-empty-flow-nodes",          // no json.
 	"spec-example-8-18-implicit-block-mapping-entries",      // no json.
 	"spec-example-8-19-compact-block-mappings",              // no json.
-	"spec-example-6-24-verbatim-tags",                       // pass yamlv3.
 	"spec-example-6-6-line-folding",                         // pass yamlv3.
 	"spec-example-6-6-line-folding-1-3",                     // pass yamlv3.
 	"spec-example-6-8-flow-folding",                         // pass yamlv3.
@@ -99,7 +98,6 @@ var failureTestNames = []string{
 	"tabs-that-look-like-indentation/07",
 	"tabs-that-look-like-indentation/08", // pass yamlv3.
 	"tag-shorthand-used-in-documents-but-only-defined-in-the-first",
-	"tags-for-block-objects",                           // pass yamlv3.
 	"tags-on-empty-scalars",                            // no json.
 	"trailing-line-of-spaces/01",                       // last '\n' character is needed ?
 	"various-combinations-of-explicit-block-mappings",  // no json.

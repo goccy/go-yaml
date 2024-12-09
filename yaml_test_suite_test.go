@@ -48,8 +48,6 @@ var failureTestNames = []string{
 	"multiline-plain-value-with-tabs-on-empty-lines", // pass yamlv3.
 	"multiline-scalar-at-top-level",                  // pass yamlv3.
 	"multiline-scalar-at-top-level-1-3",              // pass yamlv3.
-	"multiline-single-quoted-implicit-keys",          // pass yamlv3.
-	"multiline-unidented-double-quoted-block-key",    // pass yamlv3.
 	"nested-implicit-complex-keys",                   // no json.
 	"node-anchor-not-indented",                       // pass yamlv3.
 	"plain-dashes-in-flow-sequence",

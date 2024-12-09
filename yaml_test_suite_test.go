@@ -53,7 +53,6 @@ var failureTestNames = []string{
 	"plain-dashes-in-flow-sequence",
 	"question-mark-edge-cases/00",                           // no json.
 	"question-mark-edge-cases/01",                           // no json.
-	"scalar-value-with-two-anchors",                         // pass yamlv3.
 	"single-character-streams/01",                           // no json.
 	"single-pair-implicit-entries",                          // no json.
 	"spec-example-2-11-mapping-between-sequences",           // no json.

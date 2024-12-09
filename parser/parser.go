@@ -57,10 +57,28 @@ func ParseFile(filename string, mode Mode, opts ...Option) (*ast.File, error) {
 	return f, nil
 }
 
+type YAMLVersion string
+
+const (
+	YAML10 YAMLVersion = "1.0"
+	YAML11 YAMLVersion = "1.1"
+	YAML12 YAMLVersion = "1.2"
+	YAML13 YAMLVersion = "1.3"
+)
+
+var yamlVersionMap = map[string]YAMLVersion{
+	"1.0": YAML10,
+	"1.1": YAML11,
+	"1.2": YAML12,
+	"1.3": YAML13,
+}
+
 type parser struct {
-	tokens               []*Token
-	pathMap              map[string]ast.Node
-	allowDuplicateMapKey bool
+	tokens                []*Token
+	pathMap               map[string]ast.Node
+	yamlVersion           YAMLVersion
+	allowDuplicateMapKey  bool
+	secondaryTagDirective *ast.DirectiveNode
 }
 
 func newParser(tokens token.Tokens, mode Mode, opts []Option) (*parser, error) {
@@ -122,6 +140,10 @@ func (p *parser) parseDocument(ctx *context, docGroup *TokenGroup) (*ast.Documen
 	if docGroup.Last().Type() == token.DocumentEndType {
 		end = docGroup.Last().RawToken()
 		tokens = tokens[:len(tokens)-1]
+		defer func() {
+			// clear yaml version value if DocumentEnd token (...) is specified.
+			p.yamlVersion = ""
+		}()
 	}
 
 	if len(tokens) == 0 {
@@ -157,6 +179,13 @@ func (p *parser) parseToken(ctx *context, tk *Token) (ast.Node, error) {
 		return p.parseMap(ctx)
 	case TokenGroupDirective:
 		node, err := p.parseDirective(ctx.withGroup(tk.Group), tk.Group)
+		if err != nil {
+			return nil, err
+		}
+		ctx.goNext()
+		return node, nil
+	case TokenGroupDirectiveName:
+		node, err := p.parseDirectiveName(ctx.withGroup(tk.Group))
 		if err != nil {
 			return nil, err
 		}
@@ -838,14 +867,26 @@ func (p *parser) parseTag(ctx *context) (*ast.TagNode, error) {
 	ctx.goNext()
 
 	comment := p.parseHeadComment(ctx)
-	value, err := p.parseTagValue(ctx, tagRawTk, ctx.currentToken())
-	if err != nil {
+
+	var tagValue ast.Node
+	if p.secondaryTagDirective != nil {
+		value, err := newStringNode(ctx, ctx.currentToken())
+		if err != nil {
+			return nil, err
+		}
+		tagValue = value
+		node.Directive = p.secondaryTagDirective
+	} else {
+		value, err := p.parseTagValue(ctx, tagRawTk, ctx.currentToken())
+		if err != nil {
+			return nil, err
+		}
+		tagValue = value
+	}
+	if err := setHeadComment(comment, tagValue); err != nil {
 		return nil, err
 	}
-	if err := setHeadComment(comment, value); err != nil {
-		return nil, err
-	}
-	node.Value = value
+	node.Value = tagValue
 	return node, nil
 }
 
@@ -1046,16 +1087,82 @@ func (p *parser) parseSequenceValue(ctx *context, seqTk *Token) (ast.Node, error
 }
 
 func (p *parser) parseDirective(ctx *context, g *TokenGroup) (*ast.DirectiveNode, error) {
-	node, err := newDirectiveNode(ctx, g.First())
+	directiveNameGroup := g.First().Group
+	directive, err := p.parseDirectiveName(ctx.withGroup(directiveNameGroup))
 	if err != nil {
 		return nil, err
 	}
-	value, err := p.parseToken(ctx, g.Last())
+
+	switch directive.Name.String() {
+	case "YAML":
+		if len(g.Tokens) != 2 {
+			return nil, errors.ErrSyntax("unexpected format YAML directive", g.First().RawToken())
+		}
+		valueTk := g.Tokens[1]
+		valueRawTk := valueTk.RawToken()
+		value := valueRawTk.Value
+		ver, exists := yamlVersionMap[value]
+		if !exists {
+			return nil, errors.ErrSyntax(fmt.Sprintf("unknown YAML version %q", value), valueRawTk)
+		}
+		if p.yamlVersion != "" {
+			return nil, errors.ErrSyntax("YAML version has already been specified", valueRawTk)
+		}
+		p.yamlVersion = ver
+		versionNode, err := newStringNode(ctx, valueTk)
+		if err != nil {
+			return nil, err
+		}
+		directive.Values = append(directive.Values, versionNode)
+	case "TAG":
+		if len(g.Tokens) != 3 {
+			return nil, errors.ErrSyntax("unexpected format TAG directive", g.First().RawToken())
+		}
+		tagKey, err := newStringNode(ctx, g.Tokens[1])
+		if err != nil {
+			return nil, err
+		}
+		if tagKey.Value == "!!" {
+			p.secondaryTagDirective = directive
+		}
+		tagValue, err := newStringNode(ctx, g.Tokens[2])
+		if err != nil {
+			return nil, err
+		}
+		directive.Values = append(directive.Values, tagKey, tagValue)
+	default:
+		if len(g.Tokens) > 1 {
+			for _, tk := range g.Tokens[1:] {
+				value, err := newStringNode(ctx, tk)
+				if err != nil {
+					return nil, err
+				}
+				directive.Values = append(directive.Values, value)
+			}
+		}
+	}
+	return directive, nil
+}
+
+func (p *parser) parseDirectiveName(ctx *context) (*ast.DirectiveNode, error) {
+	directive, err := newDirectiveNode(ctx, ctx.currentToken())
 	if err != nil {
 		return nil, err
 	}
-	node.Value = value
-	return node, nil
+	ctx.goNext()
+	if ctx.isTokenNotFound() {
+		return nil, errors.ErrSyntax("could not find directive value", directive.GetToken())
+	}
+
+	directiveName, err := p.parseScalarValue(ctx, ctx.currentToken())
+	if err != nil {
+		return nil, err
+	}
+	if directiveName == nil {
+		return nil, errors.ErrSyntax("unexpected directive. directive name is not scalar value", ctx.currentToken().RawToken())
+	}
+	directive.Name = directiveName
+	return directive, nil
 }
 
 func (p *parser) parseComment(ctx *context) (ast.Node, error) {

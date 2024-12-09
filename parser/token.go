@@ -3,6 +3,7 @@ package parser
 import (
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/goccy/go-yaml/internal/errors"
 	"github.com/goccy/go-yaml/token"
@@ -13,6 +14,7 @@ type TokenGroupType int
 const (
 	TokenGroupNone TokenGroupType = iota
 	TokenGroupDirective
+	TokenGroupDirectiveName
 	TokenGroupDocument
 	TokenGroupDocumentBody
 	TokenGroupAnchor
@@ -31,6 +33,8 @@ func (t TokenGroupType) String() string {
 		return "none"
 	case TokenGroupDirective:
 		return "directive"
+	case TokenGroupDirectiveName:
+		return "directive_name"
 	case TokenGroupDocument:
 		return "document"
 	case TokenGroupDocumentBody:
@@ -353,8 +357,37 @@ func createScalarTagTokenGroups(tokens []*Token) []*Token {
 			continue
 		}
 		tag := tk.RawToken()
-		switch token.ReservedTagKeyword(tag.Value) {
-		case token.IntegerTag, token.FloatTag, token.StringTag, token.BinaryTag, token.TimestampTag, token.BooleanTag, token.NullTag:
+		if strings.HasPrefix(tag.Value, "!!") {
+			// secondary tag.
+			switch token.ReservedTagKeyword(tag.Value) {
+			case token.IntegerTag, token.FloatTag, token.StringTag, token.BinaryTag, token.TimestampTag, token.BooleanTag, token.NullTag:
+				if len(tokens) <= i+1 {
+					ret = append(ret, tk)
+					continue
+				}
+				if tk.Line() != tokens[i+1].Line() {
+					ret = append(ret, tk)
+					continue
+				}
+				if tokens[i+1].GroupType() == TokenGroupAnchorName {
+					ret = append(ret, tk)
+					continue
+				}
+				if isScalarType(tokens[i+1]) {
+					ret = append(ret, &Token{
+						Group: &TokenGroup{
+							Type:   TokenGroupScalarTag,
+							Tokens: []*Token{tk, tokens[i+1]},
+						},
+					})
+					i++
+				} else {
+					ret = append(ret, tk)
+				}
+			default:
+				ret = append(ret, tk)
+			}
+		} else {
 			if len(tokens) <= i+1 {
 				ret = append(ret, tk)
 				continue
@@ -367,19 +400,13 @@ func createScalarTagTokenGroups(tokens []*Token) []*Token {
 				ret = append(ret, tk)
 				continue
 			}
-			if isScalarType(tokens[i+1]) {
-				ret = append(ret, &Token{
-					Group: &TokenGroup{
-						Type:   TokenGroupScalarTag,
-						Tokens: []*Token{tk, tokens[i+1]},
-					},
-				})
-				i++
-			} else {
-				ret = append(ret, tk)
-			}
-		default:
-			ret = append(ret, tk)
+			ret = append(ret, &Token{
+				Group: &TokenGroup{
+					Type:   TokenGroupScalarTag,
+					Tokens: []*Token{tk, tokens[i+1]},
+				},
+			})
+			i++
 		}
 	}
 	return ret
@@ -522,22 +549,34 @@ func createDirectiveTokenGroups(tokens []*Token) ([]*Token, error) {
 			if i+1 >= len(tokens) {
 				return nil, errors.ErrSyntax("undefined directive value", tk.RawToken())
 			}
-			if i+2 >= len(tokens) {
-				return nil, errors.ErrSyntax("unexpected directive value. document not started", tk.RawToken())
-			}
-			if tokens[i+2].Type() != token.DocumentHeaderType {
-				return nil, errors.ErrSyntax("unexpected directive value. document not started", tk.RawToken())
-			}
-			if tk.Line() != tokens[i+1].Line() {
-				return nil, errors.ErrSyntax("undefined directive value", tk.RawToken())
-			}
-			ret = append(ret, &Token{
+			directiveName := &Token{
 				Group: &TokenGroup{
-					Type:   TokenGroupDirective,
+					Type:   TokenGroupDirectiveName,
 					Tokens: []*Token{tk, tokens[i+1]},
 				},
-			})
+			}
 			i++
+			var valueTks []*Token
+			for j := i + 1; j < len(tokens); j++ {
+				if tokens[j].Line() != tk.Line() {
+					break
+				}
+				valueTks = append(valueTks, tokens[j])
+				i++
+			}
+			if i+1 >= len(tokens) || tokens[i+1].Type() != token.DocumentHeaderType {
+				return nil, errors.ErrSyntax("unexpected directive value. document not started", tk.RawToken())
+			}
+			if len(valueTks) != 0 {
+				ret = append(ret, &Token{
+					Group: &TokenGroup{
+						Type:   TokenGroupDirective,
+						Tokens: append([]*Token{directiveName}, valueTks...),
+					},
+				})
+			} else {
+				ret = append(ret, directiveName)
+			}
 		default:
 			ret = append(ret, tk)
 		}

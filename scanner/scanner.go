@@ -1083,6 +1083,7 @@ func (s *Scanner) validateDocumentHeaderOption(opt string) error {
 	if len(opt) == 0 {
 		return nil
 	}
+	orgOpt := opt
 	opt = strings.TrimPrefix(opt, "-")
 	opt = strings.TrimPrefix(opt, "+")
 	opt = strings.TrimSuffix(opt, "-")
@@ -1090,8 +1091,15 @@ func (s *Scanner) validateDocumentHeaderOption(opt string) error {
 	if len(opt) == 0 {
 		return nil
 	}
-	if _, err := strconv.ParseInt(opt, 10, 64); err != nil {
-		return fmt.Errorf("invalid header option: %q", opt)
+	if opt == "0" {
+		return fmt.Errorf("invalid header option: %q", orgOpt)
+	}
+	i, err := strconv.ParseInt(opt, 10, 64)
+	if err != nil {
+		return fmt.Errorf("invalid header option: %q", orgOpt)
+	}
+	if i > 9 {
+		return fmt.Errorf("invalid header option: %q", orgOpt)
 	}
 	return nil
 }
@@ -1100,64 +1108,59 @@ func (s *Scanner) scanDocumentHeaderOption(ctx *Context) error {
 	header := ctx.currentChar()
 	ctx.addOriginBuf(header)
 	s.progress(ctx, 1) // skip '|' or '>' character
-	for idx, c := range ctx.src[ctx.idx:] {
-		progress := idx
-		ctx.addOriginBuf(c)
-		switch c {
-		case '\n', '\r':
-			value := strings.TrimRight(ctx.source(ctx.idx, ctx.idx+idx), " ")
-			commentValueIndex := strings.Index(value, "#")
-			opt := value
-			if commentValueIndex > 0 {
-				opt = value[:commentValueIndex]
-			}
-			opt = strings.TrimRightFunc(opt, func(r rune) bool {
-				return r == ' ' || r == '\t'
-			})
-			if len(opt) != 0 {
-				if err := s.validateDocumentHeaderOption(opt); err != nil {
-					invalidTk := token.Invalid(err.Error(), string(ctx.obuf), s.pos())
-					s.progressColumn(ctx, progress)
-					return ErrInvalidToken(invalidTk)
-				}
-			}
-			if s.column == 1 {
-				s.lastDelimColumn = 1
-			}
 
-			commentIndex := strings.Index(string(ctx.obuf), "#")
-			headerBuf := string(ctx.obuf)
-			if commentIndex > 0 {
-				headerBuf = headerBuf[:commentIndex]
-			}
-			switch header {
-			case '|':
-				ctx.addToken(token.Literal("|"+opt, headerBuf, s.pos()))
-				ctx.isLiteral = true
-			case '>':
-				ctx.addToken(token.Folded(">"+opt, headerBuf, s.pos()))
-				ctx.isFolded = true
-			}
-			if commentIndex > 0 {
-				comment := string(value[commentValueIndex+1:])
-				s.offset += len(headerBuf)
-				s.column += len(headerBuf)
-				ctx.addToken(token.Comment(comment, string(ctx.obuf[len(headerBuf):]), s.pos()))
-			}
-			s.indentState = IndentStateKeep
-			ctx.resetBuffer()
-			ctx.docOpt = opt
-			s.progressColumn(ctx, progress)
-			return nil
+	var progress int
+	for idx, c := range ctx.src[ctx.idx:] {
+		progress = idx
+		ctx.addOriginBuf(c)
+		if s.isNewLineChar(c) {
+			break
 		}
 	}
-	text := string(ctx.src[ctx.idx:])
-	invalidTk := token.Invalid(
-		fmt.Sprintf("invalid document header: %q", text),
-		string(ctx.obuf), s.pos(),
-	)
-	s.progressColumn(ctx, len(text))
-	return ErrInvalidToken(invalidTk)
+	value := strings.TrimRight(ctx.source(ctx.idx, ctx.idx+progress), " ")
+	commentValueIndex := strings.Index(value, "#")
+	opt := value
+	if commentValueIndex > 0 {
+		opt = value[:commentValueIndex]
+	}
+	opt = strings.TrimRightFunc(opt, func(r rune) bool {
+		return r == ' ' || r == '\t'
+	})
+	if len(opt) != 0 {
+		if err := s.validateDocumentHeaderOption(opt); err != nil {
+			invalidTk := token.Invalid(err.Error(), string(ctx.obuf), s.pos())
+			s.progressColumn(ctx, progress)
+			return ErrInvalidToken(invalidTk)
+		}
+	}
+	if s.column == 1 {
+		s.lastDelimColumn = 1
+	}
+
+	commentIndex := strings.Index(string(ctx.obuf), "#")
+	headerBuf := string(ctx.obuf)
+	if commentIndex > 0 {
+		headerBuf = headerBuf[:commentIndex]
+	}
+	switch header {
+	case '|':
+		ctx.addToken(token.Literal("|"+opt, headerBuf, s.pos()))
+		ctx.isLiteral = true
+	case '>':
+		ctx.addToken(token.Folded(">"+opt, headerBuf, s.pos()))
+		ctx.isFolded = true
+	}
+	if commentIndex > 0 {
+		comment := string(value[commentValueIndex+1:])
+		s.offset += len(headerBuf)
+		s.column += len(headerBuf)
+		ctx.addToken(token.Comment(comment, string(ctx.obuf[len(headerBuf):]), s.pos()))
+	}
+	s.indentState = IndentStateKeep
+	ctx.resetBuffer()
+	ctx.docOpt = opt
+	s.progressColumn(ctx, progress)
+	return nil
 }
 
 func (s *Scanner) scanMapKey(ctx *Context) bool {

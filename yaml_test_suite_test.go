@@ -39,10 +39,6 @@ var failureTestNames = []string{
 	"invalid-comma-in-tag",
 	"invalid-tag",                                    // pass yamlv3.
 	"legal-tab-after-indentation",                    // pass yamlv3.
-	"literal-modifers/00",                            // pass yamlv3.
-	"literal-modifers/01",                            // pass yamlv3.
-	"literal-modifers/02",                            // pass yamlv3.
-	"literal-modifers/03",                            // pass yamlv3.
 	"literal-scalars",                                // pass yamlv3.
 	"mapping-key-and-flow-sequence-item-anchors",     // no json.
 	"multiline-plain-value-with-tabs-on-empty-lines", // pass yamlv3.

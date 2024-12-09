@@ -23,13 +23,9 @@ var failureTestNames = []string{
 	"comment-without-whitespace-after-doublequoted-scalar",
 	"construct-binary",
 	"dash-in-flow-sequence",
-	"directive-variants/00",
-	"directive-variants/01", // pass yamlv3.
 	"double-quoted-scalar-with-escaped-single-quote",
-	"duplicate-yaml-directive", // pass yamlv3.
 	"escaped-slash-in-double-quotes",
 	"explicit-key-and-value-seperated-by-comment",      //nolint: misspell // pass yamlv3.
-	"extra-words-on-yaml-directive",                    // pass yamlv3.
 	"empty-implicit-key-in-single-pair-flow-sequences", // no json.
 	"empty-keys-in-block-and-flow-mapping",             // no json.
 	"empty-lines-at-end-of-document",                   // no json.
@@ -79,7 +75,6 @@ var failureTestNames = []string{
 	"spec-example-7-3-completely-empty-flow-nodes",          // no json.
 	"spec-example-8-18-implicit-block-mapping-entries",      // no json.
 	"spec-example-8-19-compact-block-mappings",              // no json.
-	"spec-example-6-19-secondary-tag-handle",                // pass yamlv3.
 	"spec-example-6-24-verbatim-tags",                       // pass yamlv3.
 	"spec-example-6-6-line-folding",                         // pass yamlv3.
 	"spec-example-6-6-line-folding-1-3",                     // pass yamlv3.

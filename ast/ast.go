@@ -1726,8 +1726,9 @@ func (n *AliasNode) MarshalYAML() ([]byte, error) {
 // DirectiveNode type of directive node
 type DirectiveNode struct {
 	*BaseNode
-	Start *token.Token
-	Value Node
+	Start  *token.Token
+	Name   Node
+	Values []Node
 }
 
 // Read implements (io.Reader).Read
@@ -1745,14 +1746,21 @@ func (n *DirectiveNode) GetToken() *token.Token {
 
 // AddColumn add column number to child nodes recursively
 func (n *DirectiveNode) AddColumn(col int) {
-	if n.Value != nil {
-		n.Value.AddColumn(col)
+	if n.Name != nil {
+		n.Name.AddColumn(col)
+	}
+	for _, value := range n.Values {
+		value.AddColumn(col)
 	}
 }
 
 // String directive to text
 func (n *DirectiveNode) String() string {
-	return fmt.Sprintf("%s%s", n.Start.Value, n.Value.String())
+	values := make([]string, 0, len(n.Values))
+	for _, val := range n.Values {
+		values = append(values, val.String())
+	}
+	return strings.Join(append([]string{"%" + n.Name.String()}, values...), " ")
 }
 
 // MarshalYAML encodes to a YAML text
@@ -1763,8 +1771,9 @@ func (n *DirectiveNode) MarshalYAML() ([]byte, error) {
 // TagNode type of tag node
 type TagNode struct {
 	*BaseNode
-	Start *token.Token
-	Value Node
+	Directive *DirectiveNode
+	Start     *token.Token
+	Value     Node
 }
 
 func (n *TagNode) GetValue() any {
@@ -1940,7 +1949,10 @@ func Walk(v Visitor, node Node) {
 		Walk(v, n.Value)
 	case *DirectiveNode:
 		walkComment(v, n.BaseNode)
-		Walk(v, n.Value)
+		Walk(v, n.Name)
+		for _, value := range n.Values {
+			Walk(v, value)
+		}
 	case *TagNode:
 		walkComment(v, n.BaseNode)
 		Walk(v, n.Value)
@@ -2026,7 +2038,14 @@ func (f *parentFinder) walk(parent, node Node) Node {
 	case *LiteralNode:
 		return f.walk(node, n.Value)
 	case *DirectiveNode:
-		return f.walk(node, n.Value)
+		if found := f.walk(node, n.Name); found != nil {
+			return found
+		}
+		for _, value := range n.Values {
+			if found := f.walk(node, value); found != nil {
+				return found
+			}
+		}
 	case *TagNode:
 		return f.walk(node, n.Value)
 	case *DocumentNode:

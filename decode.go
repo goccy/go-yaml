@@ -354,6 +354,16 @@ func (d *Decoder) nodeToValue(node ast.Node) (any, error) {
 	case *ast.NanNode:
 		return n.GetValue(), nil
 	case *ast.TagNode:
+		if n.Directive != nil {
+			v, err := d.nodeToValue(n.Value)
+			if err != nil {
+				return nil, err
+			}
+			if v == nil {
+				return "", nil
+			}
+			return fmt.Sprint(v), nil
+		}
 		switch token.ReservedTagKeyword(n.Start.Value) {
 		case token.TimestampTag:
 			t, _ := d.castToTime(n.Value)

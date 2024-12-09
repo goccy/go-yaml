@@ -18,14 +18,10 @@ var failureTestNames = []string{
 	"aliases-in-flow-objects",           // no json.
 	"aliases-in-explicit-block-mapping", // no json.
 	"block-mapping-with-missing-keys",   // no json.
-	"block-scalar-with-more-spaces-than-first-content-line",
 	"colon-at-the-beginning-of-adjacent-flow-scalar",
 	"comment-without-whitespace-after-doublequoted-scalar",
 	"construct-binary",
 	"dash-in-flow-sequence",
-	"double-quoted-scalar-with-escaped-single-quote",
-	"escaped-slash-in-double-quotes",
-	"explicit-key-and-value-seperated-by-comment",      //nolint: misspell // pass yamlv3.
 	"empty-implicit-key-in-single-pair-flow-sequences", // no json.
 	"empty-keys-in-block-and-flow-mapping",             // no json.
 	"empty-lines-at-end-of-document",                   // no json.
@@ -41,18 +37,15 @@ var failureTestNames = []string{
 	"invalid-comment-after-comma",
 	"invalid-comment-after-end-of-flow-sequence",
 	"invalid-comma-in-tag",
-	"invalid-tag",                                         // pass yamlv3.
-	"leading-tabs-in-double-quoted/02",                    // pass yamlv3.
-	"leading-tabs-in-double-quoted/05",                    // pass yamlv3.
-	"legal-tab-after-indentation",                         // pass yamlv3.
-	"literal-block-scalar-with-more-spaces-in-first-line", // pass yamlv3.
-	"literal-modifers/00",                                 // pass yamlv3.
-	"literal-modifers/01",                                 // pass yamlv3.
-	"literal-modifers/02",                                 // pass yamlv3.
-	"literal-modifers/03",                                 // pass yamlv3.
-	"literal-scalars",                                     // pass yamlv3.
-	"mapping-key-and-flow-sequence-item-anchors",          // no json.
-	"multiline-double-quoted-implicit-keys",               // pass yamlv3.
+	"invalid-tag",                                // pass yamlv3.
+	"legal-tab-after-indentation",                // pass yamlv3.
+	"literal-modifers/00",                        // pass yamlv3.
+	"literal-modifers/01",                        // pass yamlv3.
+	"literal-modifers/02",                        // pass yamlv3.
+	"literal-modifers/03",                        // pass yamlv3.
+	"literal-scalars",                            // pass yamlv3.
+	"mapping-key-and-flow-sequence-item-anchors", // no json.
+	"multiline-double-quoted-implicit-keys",      // pass yamlv3.
 	"multiline-plain-flow-mapping-key",
 	"multiline-plain-value-with-tabs-on-empty-lines", // pass yamlv3.
 	"multiline-scalar-at-top-level",                  // pass yamlv3.
@@ -65,7 +58,6 @@ var failureTestNames = []string{
 	"plain-url-in-flow-mapping",                             // pass yamlv3.
 	"question-mark-edge-cases/00",                           // no json.
 	"question-mark-edge-cases/01",                           // no json.
-	"scalar-doc-with-in-content/01",                         // pass yamlv3.
 	"scalar-value-with-two-anchors",                         // pass yamlv3.
 	"single-character-streams/01",                           // no json.
 	"single-pair-implicit-entries",                          // no json.
@@ -77,9 +69,7 @@ var failureTestNames = []string{
 	"spec-example-8-19-compact-block-mappings",              // no json.
 	"spec-example-6-6-line-folding",                         // pass yamlv3.
 	"spec-example-6-6-line-folding-1-3",                     // pass yamlv3.
-	"spec-example-6-8-flow-folding",                         // pass yamlv3.
 	"spec-example-8-10-folded-lines-8-13-final-empty-lines", // pass yamlv3.
-	"spec-example-8-17-explicit-block-mapping-entries",      // pass yamlv3.
 	"spec-example-8-2-block-indentation-indicator",
 	"spec-example-9-3-bare-documents",
 	"spec-example-9-4-explicit-documents",
@@ -91,12 +81,10 @@ var failureTestNames = []string{
 	"tabs-in-various-contexts/003",
 	"tabs-that-look-like-indentation/00",
 	"tabs-that-look-like-indentation/01",
-	"tabs-that-look-like-indentation/02", // pass yamlv3.
 	"tabs-that-look-like-indentation/03",
 	"tabs-that-look-like-indentation/04",
 	"tabs-that-look-like-indentation/05", // pass yamlv3.
 	"tabs-that-look-like-indentation/07",
-	"tabs-that-look-like-indentation/08", // pass yamlv3.
 	"tag-shorthand-used-in-documents-but-only-defined-in-the-first",
 	"tags-on-empty-scalars",                            // no json.
 	"trailing-line-of-spaces/01",                       // last '\n' character is needed ?

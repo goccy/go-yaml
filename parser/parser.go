@@ -754,6 +754,11 @@ func (p *parser) parseMapValue(ctx *context, key ast.MapKeyNode, colonTk *Token)
 		// &anchor
 		return nil, errors.ErrSyntax("anchor is not allowed in this context", tk.RawToken())
 	}
+	if tk.Column() <= keyCol && tk.Type() == token.TagType {
+		// key: <value does not defined>
+		// !!tag
+		return nil, errors.ErrSyntax("tag is not allowed in this context", tk.RawToken())
+	}
 
 	if tk.Column() < keyCol {
 		// in this case,
@@ -785,7 +790,41 @@ func (p *parser) parseMapValue(ctx *context, key ast.MapKeyNode, colonTk *Token)
 	if err != nil {
 		return nil, err
 	}
+	if err := p.validateAnchorValueInMapOrSeq(value, keyCol); err != nil {
+		return nil, err
+	}
 	return value, nil
+}
+
+func (p *parser) validateAnchorValueInMapOrSeq(value ast.Node, col int) error {
+	anchor, ok := value.(*ast.AnchorNode)
+	if !ok {
+		return nil
+	}
+	tag, ok := anchor.Value.(*ast.TagNode)
+	if !ok {
+		return nil
+	}
+	anchorTk := anchor.GetToken()
+	tagTk := tag.GetToken()
+
+	if anchorTk.Position.Line == tagTk.Position.Line {
+		// key:
+		//   &anchor !!tag
+		//
+		// - &anchor !!tag
+		return nil
+	}
+
+	if tagTk.Position.Column <= col {
+		// key: &anchor
+		// !!tag
+		//
+		// - &anchor
+		// !!tag
+		return errors.ErrSyntax("tag is not allowed in this context", tagTk)
+	}
+	return nil
 }
 
 func (p *parser) parseAnchor(ctx *context, g *TokenGroup) (*ast.AnchorNode, error) {
@@ -1089,6 +1128,11 @@ func (p *parser) parseSequenceValue(ctx *context, seqTk *Token) (ast.Node, error
 		// &anchor
 		return nil, errors.ErrSyntax("anchor is not allowed in this sequence context", tk.RawToken())
 	}
+	if tk.Column() <= seqCol && tk.Type() == token.TagType {
+		// - <value does not defined>
+		// !!tag
+		return nil, errors.ErrSyntax("tag is not allowed in this sequence context", tk.RawToken())
+	}
 
 	if tk.Column() < seqCol {
 		// in this case,
@@ -1118,6 +1162,9 @@ func (p *parser) parseSequenceValue(ctx *context, seqTk *Token) (ast.Node, error
 
 	value, err := p.parseToken(ctx, ctx.currentToken())
 	if err != nil {
+		return nil, err
+	}
+	if err := p.validateAnchorValueInMapOrSeq(value, seqCol); err != nil {
 		return nil, err
 	}
 	return value, nil

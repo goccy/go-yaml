@@ -217,7 +217,7 @@ func (c CharacterType) String() string {
 	case CharacterTypeIndicator:
 		return "Indicator"
 	case CharacterTypeWhiteSpace:
-		return "WhiteSpcae"
+		return "WhiteSpace"
 	case CharacterTypeMiscellaneous:
 		return "Miscellaneous"
 	case CharacterTypeEscaped:

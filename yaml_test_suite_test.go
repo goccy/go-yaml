@@ -45,7 +45,6 @@ var failureTestNames = []string{
 	"multiline-scalar-at-top-level",                  // pass yamlv3.
 	"multiline-scalar-at-top-level-1-3",              // pass yamlv3.
 	"nested-implicit-complex-keys",                   // no json.
-	"node-anchor-not-indented",                       // pass yamlv3.
 	"plain-dashes-in-flow-sequence",
 	"question-mark-edge-cases/00",                           // no json.
 	"question-mark-edge-cases/01",                           // no json.

@@ -790,13 +790,13 @@ func (p *parser) parseMapValue(ctx *context, key ast.MapKeyNode, colonTk *Token)
 	if err != nil {
 		return nil, err
 	}
-	if err := p.validateAnchorValueInMap(value, keyCol); err != nil {
+	if err := p.validateAnchorValueInMapOrSeq(value, keyCol); err != nil {
 		return nil, err
 	}
 	return value, nil
 }
 
-func (p *parser) validateAnchorValueInMap(value ast.Node, keyCol int) error {
+func (p *parser) validateAnchorValueInMapOrSeq(value ast.Node, col int) error {
 	anchor, ok := value.(*ast.AnchorNode)
 	if !ok {
 		return nil
@@ -811,11 +811,16 @@ func (p *parser) validateAnchorValueInMap(value ast.Node, keyCol int) error {
 	if anchorTk.Position.Line == tagTk.Position.Line {
 		// key:
 		//   &anchor !!tag
+		//
+		// - &anchor !!tag
 		return nil
 	}
 
-	if tagTk.Position.Column <= keyCol {
+	if tagTk.Position.Column <= col {
 		// key: &anchor
+		// !!tag
+		//
+		// - &anchor
 		// !!tag
 		return errors.ErrSyntax("tag is not allowed in this context", tagTk)
 	}
@@ -1157,6 +1162,9 @@ func (p *parser) parseSequenceValue(ctx *context, seqTk *Token) (ast.Node, error
 
 	value, err := p.parseToken(ctx, ctx.currentToken())
 	if err != nil {
+		return nil, err
+	}
+	if err := p.validateAnchorValueInMapOrSeq(value, seqCol); err != nil {
 		return nil, err
 	}
 	return value, nil

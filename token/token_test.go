@@ -82,6 +82,10 @@ func TestIsNeedQuoted(t *testing.T) {
 		"true",
 		"1.234",
 		"1:1",
+		"2001-12-15T02:59:43.1Z",
+		"2001-12-14t21:59:43.10-05:00",
+		"2001-12-15 2:59:43.10",
+		"2002-12-14",
 		"hoge # comment",
 		"\\0",
 		"#a b",
@@ -128,15 +132,18 @@ func TestIsNeedQuoted(t *testing.T) {
 	}
 	for i, test := range needQuotedTests {
 		if !token.IsNeedQuoted(test) {
-			t.Fatalf("%d: failed to quoted judge for %s", i, test)
+			t.Errorf("%d: failed to quoted judge for %s", i, test)
 		}
 	}
 	notNeedQuotedTests := []string{
 		"Hello World",
+		// time.Parse cannot handle: "2001-12-14 21:59:43.10 -5" from the examples.
+		// https://yaml.org/type/timestamp.html
+		"2001-12-14 21:59:43.10 -5",
 	}
 	for i, test := range notNeedQuotedTests {
 		if token.IsNeedQuoted(test) {
-			t.Fatalf("%d: failed to quoted judge for %s", i, test)
+			t.Errorf("%d: failed to quoted judge for %s", i, test)
 		}
 	}
 }

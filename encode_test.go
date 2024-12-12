@@ -3,6 +3,7 @@ package yaml_test
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"math"
 	"reflect"
@@ -1400,10 +1401,10 @@ type marshalContext struct{}
 func (c *marshalContext) MarshalYAML(ctx context.Context) ([]byte, error) {
 	v, ok := ctx.Value("k").(int)
 	if !ok {
-		return nil, fmt.Errorf("cannot get valid context")
+		return nil, errors.New("cannot get valid context")
 	}
 	if v != 1 {
-		return nil, fmt.Errorf("cannot get valid context")
+		return nil, errors.New("cannot get valid context")
 	}
 	return []byte("1"), nil
 }

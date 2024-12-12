@@ -500,12 +500,12 @@ func (e *Encoder) encodeNil() *ast.NullNode {
 }
 
 func (e *Encoder) encodeInt(v int64) *ast.IntegerNode {
-	value := fmt.Sprint(v)
+	value := strconv.FormatInt(v, 10)
 	return ast.Integer(token.New(value, value, e.pos(e.column)))
 }
 
 func (e *Encoder) encodeUint(v uint64) *ast.IntegerNode {
-	value := fmt.Sprint(v)
+	value := strconv.FormatUint(v, 10)
 	return ast.Integer(token.New(value, value, e.pos(e.column)))
 }
 
@@ -556,7 +556,7 @@ func (e *Encoder) encodeString(v string, column int) *ast.StringNode {
 }
 
 func (e *Encoder) encodeBool(v bool) *ast.BoolNode {
-	value := fmt.Sprint(v)
+	value := strconv.FormatBool(v)
 	return ast.Bool(token.New(value, value, e.pos(e.column)))
 }
 

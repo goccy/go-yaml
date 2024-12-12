@@ -1289,7 +1289,7 @@ func TestEncoder_MultipleDocuments(t *testing.T) {
 	}
 }
 
-func Example_Marshal_Node() {
+func ExampleMarshal_node() {
 	type T struct {
 		Text ast.Node `yaml:"text"`
 	}
@@ -1306,7 +1306,7 @@ func Example_Marshal_Node() {
 	// text: node example
 }
 
-func Example_Marshal_ExplicitAnchorAlias() {
+func ExampleMarshal_explicitAnchorAlias() {
 	type T struct {
 		A int
 		B string
@@ -1329,7 +1329,7 @@ func Example_Marshal_ExplicitAnchorAlias() {
 	// d: *x
 }
 
-func Example_Marshal_ImplicitAnchorAlias() {
+func ExampleMarshal_implicitAnchorAlias() {
 	type T struct {
 		I int
 		S string
@@ -1454,7 +1454,7 @@ func (t TextMarshaler) MarshalText() ([]byte, error) {
 	return []byte(strconv.FormatInt(int64(t), 8)), nil
 }
 
-func Example_MarshalYAML() {
+func ExampleMarshal() {
 	var slow SlowMarshaler
 	slow.A = "Hello slow poke"
 	slow.B = 100

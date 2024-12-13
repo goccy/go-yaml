@@ -327,10 +327,7 @@ func (p *parser) parseScalarValue(ctx *context, tk *Token) (ast.ScalarNode, erro
 }
 
 func (p *parser) parseFlowMap(ctx *context) (*ast.MappingNode, error) {
-	node, err := newMappingNode(ctx, ctx.currentToken(), true)
-	if err != nil {
-		return nil, err
-	}
+	node := newMappingNode(ctx, ctx.currentToken(), true)
 	ctx.goNext() // skip MappingStart token
 
 	isFirst := true
@@ -466,10 +463,7 @@ func (p *parser) parseMap(ctx *context) (*ast.MappingNode, error) {
 		}
 		keyValueNode = node
 	}
-	mapNode, err := newMappingNode(ctx, &Token{Token: keyValueNode.GetToken()}, false, keyValueNode)
-	if err != nil {
-		return nil, err
-	}
+	mapNode := newMappingNode(ctx, &Token{Token: keyValueNode.GetToken()}, false, keyValueNode)
 	var tk *Token
 	if ctx.isComment() {
 		tk = ctx.nextNotCommentToken()

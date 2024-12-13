@@ -205,10 +205,7 @@ func createGroupedTokens(tokens token.Tokens) ([]*Token, error) {
 	var err error
 	tks := newTokens(tokens)
 	tks = createLineCommentTokenGroups(tks)
-	tks, err = createLiteralAndFoldedTokenGroups(tks)
-	if err != nil {
-		return nil, err
-	}
+	tks = createLiteralAndFoldedTokenGroups(tks)
 	tks, err = createAnchorAndAliasTokenGroups(tks)
 	if err != nil {
 		return nil, err
@@ -260,7 +257,7 @@ func createLineCommentTokenGroups(tokens []*Token) []*Token {
 	return ret
 }
 
-func createLiteralAndFoldedTokenGroups(tokens []*Token) ([]*Token, error) {
+func createLiteralAndFoldedTokenGroups(tokens []*Token) []*Token {
 	ret := make([]*Token, 0, len(tokens))
 	for i := 0; i < len(tokens); i++ {
 		tk := tokens[i]
@@ -293,7 +290,7 @@ func createLiteralAndFoldedTokenGroups(tokens []*Token) ([]*Token, error) {
 			ret = append(ret, tk)
 		}
 	}
-	return ret, nil
+	return ret
 }
 
 func createAnchorAndAliasTokenGroups(tokens []*Token) ([]*Token, error) {

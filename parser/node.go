@@ -8,10 +8,10 @@ import (
 	"github.com/goccy/go-yaml/token"
 )
 
-func newMappingNode(ctx *context, tk *Token, isFlow bool, values ...*ast.MappingValueNode) (*ast.MappingNode, error) {
+func newMappingNode(ctx *context, tk *Token, isFlow bool, values ...*ast.MappingValueNode) *ast.MappingNode {
 	node := ast.Mapping(tk.RawToken(), isFlow, values...)
 	node.SetPath(ctx.path)
-	return node, nil
+	return node
 }
 
 func newMappingValueNode(ctx *context, tk *Token, key ast.MapKeyNode, value ast.Node) (*ast.MappingValueNode, error) {

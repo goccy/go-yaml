@@ -1016,6 +1016,9 @@ func (p *parser) parseFlowSequence(ctx *context) (*ast.SequenceNode, error) {
 		}
 
 		if tk.Type() == token.CollectEntryType {
+			if isFirst {
+				return nil, errors.ErrSyntax("expected sequence element, but found ','", tk.RawToken())
+			}
 			ctx.goNext()
 		} else if !isFirst {
 			return nil, errors.ErrSyntax("',' or ']' must be specified", tk.RawToken())

@@ -1999,7 +1999,7 @@ w: w_value
 	}
 }
 
-func Example_YAMLTags() {
+func ExampleUnmarshal_yAMLTags() {
 	yml := `---
 foo: 1
 bar: c
@@ -2179,7 +2179,7 @@ map: &map
 	})
 }
 
-func Example_JSONTags() {
+func ExampleUnmarshal_jSONTags() {
 	yml := `---
 foo: 1
 bar: c
@@ -2198,7 +2198,7 @@ bar: c
 	// c
 }
 
-func Example_DisallowUnknownField() {
+func ExampleDecoder_Decode_disallowUnknownField() {
 	var v struct {
 		A string `yaml:"simple"`
 		C string `yaml:"complicated"`
@@ -2219,7 +2219,7 @@ unknown: string
 	//        ^
 }
 
-func Example_Unmarshal_Node() {
+func ExampleNodeToValue() {
 	f, err := parser.ParseBytes([]byte("text: node example"), 0)
 	if err != nil {
 		panic(err)

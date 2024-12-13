@@ -634,7 +634,7 @@ b: "hello"
 	//    3 | b: "hello"
 }
 
-func ExamplePath_AnnotateSourceWithComment() {
+func ExamplePath_AnnotateSource_withComment() {
 	yml := `
 # This is my document
 doc:
@@ -664,7 +664,7 @@ doc:
 	//    9 |   other: value3
 }
 
-func ExamplePath_PathString() {
+func ExamplePathString() {
 	yml := `
 store:
   book:

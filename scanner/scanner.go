@@ -798,13 +798,13 @@ func (s *Scanner) scanMultiLine(ctx *Context, c rune) error {
 			return ErrInvalidToken(invalidTk)
 		}
 		state.updateIndentColumn(s.column)
-		if state.firstLineIndentColumn > 0 {
-			s.lastDelimColumn = state.firstLineIndentColumn - 1
-		}
 		if err := state.validateIndentColumn(); err != nil {
 			invalidTk := token.Invalid(err.Error(), string(ctx.obuf), s.pos())
 			s.progressColumn(ctx, 1)
 			return ErrInvalidToken(invalidTk)
+		}
+		if col := state.lastDelimColumn(); col > 0 {
+			s.lastDelimColumn = col
 		}
 		state.updateNewLineInFolded(ctx, s.column)
 		ctx.addBufWithTab(c)

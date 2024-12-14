@@ -130,6 +130,13 @@ func firstLineIndentColumnByOpt(opt string) int {
 	return int(i)
 }
 
+func (s *MultiLineState) lastDelimColumn() int {
+	if s.firstLineIndentColumn == 0 {
+		return 0
+	}
+	return s.firstLineIndentColumn - 1
+}
+
 func (s *MultiLineState) updateIndentColumn(column int) {
 	if s.firstLineIndentColumn == 0 {
 		s.firstLineIndentColumn = column
@@ -224,11 +231,21 @@ func (s *MultiLineState) updateNewLineInFolded(ctx *Context, column int) {
 		prevLastChar = ctx.buf[len(ctx.buf)-2]
 	}
 	if s.lineIndentColumn == s.prevLineIndentColumn {
+		// ---
+		// >
+		//  a
+		//  b
 		if lastChar == '\n' {
 			ctx.buf[len(ctx.buf)-1] = ' '
 		}
 	} else if s.prevLineIndentColumn == 0 && s.lastNotSpaceOnlyLineIndentColumn == column {
 		// if previous line is indent-space and new-line-char only, prevLineIndentColumn is zero.
+		// In this case, last new-line-char is removed.
+		// ---
+		// >
+		//  a
+		//
+		//  b
 		if lastChar == '\n' && prevLastChar == '\n' {
 			ctx.buf = ctx.buf[:len(ctx.buf)-1]
 			ctx.notSpaceCharPos = len(ctx.buf)

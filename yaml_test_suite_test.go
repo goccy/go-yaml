@@ -42,10 +42,6 @@ var failureTestNames = []string{
 	"various-trailing-comments-1-3",                    // no json.
 	"zero-indented-sequences-in-explicit-mapping-keys", // no json.
 
-	"legal-tab-after-indentation",                    // pass yamlv3.
-	"multiline-plain-value-with-tabs-on-empty-lines", // pass yamlv3.
-	"tabs-that-look-like-indentation/05",             // pass yamlv3.
-
 	"colon-at-the-beginning-of-adjacent-flow-scalar",
 	"comment-without-whitespace-after-doublequoted-scalar",
 	"construct-binary",
@@ -61,14 +57,8 @@ var failureTestNames = []string{
 	"spec-example-9-3-bare-documents",
 	"spec-example-9-6-stream",
 	"spec-example-9-6-stream-1-3",
-	"tab-at-beginning-of-line-followed-by-a-flow-mapping",
-	"tab-indented-top-flow",
 	"tabs-in-various-contexts/003",
-	"tabs-that-look-like-indentation/00",
-	"tabs-that-look-like-indentation/01",
-	"tabs-that-look-like-indentation/03",
 	"tabs-that-look-like-indentation/04",
-	"tabs-that-look-like-indentation/07",
 	"tag-shorthand-used-in-documents-but-only-defined-in-the-first",
 	"trailing-line-of-spaces/01",             // last '\n' character is needed ?
 	"wrong-indented-flow-sequence",           // error ?

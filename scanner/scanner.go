@@ -250,7 +250,17 @@ func (s *Scanner) scanSingleQuote(ctx *Context) (*token.Token, error) {
 				}
 			}
 			continue
-		} else if isFirstLineChar && (c == ' ' || c == '\t') {
+		} else if isFirstLineChar && c == ' ' {
+			continue
+		} else if isFirstLineChar && c == '\t' {
+			if s.lastDelimColumn >= s.column {
+				return nil, ErrInvalidToken(
+					token.Invalid(
+						"tab character cannot be used for indentation in single-quoted text",
+						string(ctx.obuf), s.pos(),
+					),
+				)
+			}
 			continue
 		} else if c != '\'' {
 			value = append(value, c)
@@ -338,7 +348,17 @@ func (s *Scanner) scanDoubleQuote(ctx *Context) (*token.Token, error) {
 				}
 			}
 			continue
-		} else if isFirstLineChar && (c == ' ' || c == '\t') {
+		} else if isFirstLineChar && c == ' ' {
+			continue
+		} else if isFirstLineChar && c == '\t' {
+			if s.lastDelimColumn >= s.column {
+				return nil, ErrInvalidToken(
+					token.Invalid(
+						"tab character cannot be used for indentation in double-quoted text",
+						string(ctx.obuf), s.pos(),
+					),
+				)
+			}
 			continue
 		} else if c == '\\' {
 			isFirstLineChar = false
@@ -1408,6 +1428,12 @@ func (s *Scanner) scan(ctx *Context) error {
 		case '\t':
 			if ctx.existsBuffer() && s.lastDelimColumn == 0 {
 				// tab indent for plain text (yaml-test-suite's spec-example-7-12-plain-lines).
+				s.indentNum++
+				ctx.addOriginBuf(c)
+				s.progressColumn(ctx, 1)
+				continue
+			}
+			if s.lastDelimColumn < s.column {
 				s.indentNum++
 				ctx.addOriginBuf(c)
 				s.progressColumn(ctx, 1)

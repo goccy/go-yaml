@@ -650,9 +650,9 @@ func (s *Scanner) isMergeKey(ctx *Context) bool {
 	return false
 }
 
-func (s *Scanner) scanTag(ctx *Context) bool {
+func (s *Scanner) scanTag(ctx *Context) (bool, error) {
 	if ctx.existsBuffer() || s.isDirective {
-		return false
+		return false, nil
 	}
 
 	ctx.addOriginBuf('!')
@@ -668,14 +668,14 @@ func (s *Scanner) scanTag(ctx *Context) bool {
 			ctx.addToken(token.Tag(value, string(ctx.obuf), s.pos()))
 			s.progressColumn(ctx, len([]rune(value)))
 			ctx.clear()
-			return true
+			return true, nil
 		case ',':
 			if s.startedFlowSequenceNum > 0 || s.startedFlowMapNum > 0 {
 				value := ctx.source(ctx.idx-1, ctx.idx+idx)
 				ctx.addToken(token.Tag(value, string(ctx.obuf), s.pos()))
 				s.progressColumn(ctx, len([]rune(value))-1) // progress column before collect-entry for scanning it at scanFlowEntry function.
 				ctx.clear()
-				return true
+				return true, nil
 			} else {
 				ctx.addOriginBuf(c)
 			}
@@ -685,14 +685,19 @@ func (s *Scanner) scanTag(ctx *Context) bool {
 			ctx.addToken(token.Tag(value, string(ctx.obuf), s.pos()))
 			s.progressColumn(ctx, len([]rune(value))-1) // progress column before new-line-char for scanning new-line-char at scanNewLine function.
 			ctx.clear()
-			return true
+			return true, nil
+		case '{', '}':
+			ctx.addOriginBuf(c)
+			s.progressColumn(ctx, progress)
+			invalidTk := token.Invalid(fmt.Sprintf("found invalid tag character %q", c), string(ctx.obuf), s.pos())
+			return false, ErrInvalidToken(invalidTk)
 		default:
 			ctx.addOriginBuf(c)
 		}
 	}
 	s.progressColumn(ctx, progress)
 	ctx.clear()
-	return true
+	return true, nil
 }
 
 func (s *Scanner) scanComment(ctx *Context) bool {
@@ -1354,7 +1359,11 @@ func (s *Scanner) scan(ctx *Context) error {
 				continue
 			}
 		case '!':
-			if s.scanTag(ctx) {
+			scanned, err := s.scanTag(ctx)
+			if err != nil {
+				return err
+			}
+			if scanned {
 				continue
 			}
 		case '%':

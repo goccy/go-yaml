@@ -338,7 +338,17 @@ func (s *Scanner) scanDoubleQuote(ctx *Context) (*token.Token, error) {
 				}
 			}
 			continue
-		} else if isFirstLineChar && (c == ' ' || c == '\t') {
+		} else if isFirstLineChar && c == ' ' {
+			continue
+		} else if isFirstLineChar && c == '\t' {
+			if s.lastDelimColumn >= s.column {
+				return nil, ErrInvalidToken(
+					token.Invalid(
+						"tab character cannot be used for indentation in double-quoted text",
+						string(ctx.obuf), s.pos(),
+					),
+				)
+			}
 			continue
 		} else if c == '\\' {
 			isFirstLineChar = false

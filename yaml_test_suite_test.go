@@ -58,7 +58,6 @@ var failureTestNames = []string{
 	"spec-example-9-6-stream",
 	"spec-example-9-6-stream-1-3",
 	"tabs-in-various-contexts/003",
-	"tabs-that-look-like-indentation/01",
 	"tabs-that-look-like-indentation/04",
 	"tag-shorthand-used-in-documents-but-only-defined-in-the-first",
 	"trailing-line-of-spaces/01",             // last '\n' character is needed ?

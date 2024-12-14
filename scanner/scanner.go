@@ -1413,6 +1413,12 @@ func (s *Scanner) scan(ctx *Context) error {
 				s.progressColumn(ctx, 1)
 				continue
 			}
+			if s.lastDelimColumn < s.column {
+				s.indentNum++
+				ctx.addOriginBuf(c)
+				s.progressColumn(ctx, 1)
+				continue
+			}
 			if err := s.scanTab(ctx, c); err != nil {
 				return err
 			}

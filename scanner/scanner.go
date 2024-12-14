@@ -155,27 +155,16 @@ func (s *Scanner) updateIndentLevel() {
 }
 
 func (s *Scanner) updateIndentState(ctx *Context) {
-	if s.lastDelimColumn > 0 {
-		if s.lastDelimColumn < s.column {
-			s.indentState = IndentStateUp
-		} else {
-			// If lastDelimColumn and s.column are the same,
-			// treat as Down state since it is the same column as delimiter.
-			s.indentState = IndentStateDown
-		}
-	} else {
-		s.indentState = s.indentStateFromIndentNumDifference()
+	if s.lastDelimColumn == 0 {
+		return
 	}
-}
 
-func (s *Scanner) indentStateFromIndentNumDifference() IndentState {
-	switch {
-	case s.prevLineIndentNum < s.indentNum:
-		return IndentStateUp
-	case s.prevLineIndentNum == s.indentNum:
-		return IndentStateEqual
-	default:
-		return IndentStateDown
+	if s.lastDelimColumn < s.column {
+		s.indentState = IndentStateUp
+	} else {
+		// If lastDelimColumn and s.column are the same,
+		// treat as Down state since it is the same column as delimiter.
+		s.indentState = IndentStateDown
 	}
 }
 

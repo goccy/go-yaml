@@ -1236,7 +1236,7 @@ b: - 2
 		{
 			">\n>",
 			`
-[2:1] could not find document
+[2:1] could not find multi line content
    1 | >
 >  2 | >
        ^
@@ -1245,7 +1245,7 @@ b: - 2
 		{
 			">\n1",
 			`
-[2:1] could not find document
+[2:1] could not find multi line content
    1 | >
 >  2 | 1
        ^
@@ -1254,7 +1254,7 @@ b: - 2
 		{
 			"|\n1",
 			`
-[2:1] could not find document
+[2:1] could not find multi line content
    1 | |
 >  2 | 1
        ^
@@ -1263,7 +1263,7 @@ b: - 2
 		{
 			"a: >3\n  1",
 			`
-[2:3] invalid number of indent is specified in the document header
+[2:3] invalid number of indent is specified in the multi line header
    1 | a: >3
 >  2 |   1
          ^

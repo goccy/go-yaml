@@ -30,35 +30,26 @@ var failureTestNames = []string{
 	"flow-collections-over-many-lines/01",
 	"flow-mapping-colon-on-line-after-key/02",
 	"flow-mapping-edge-cases",
-	"flow-sequence-with-invalid-comma-at-the-beginning", // pass yamlv3.
-	"folded-block-scalar",                               // pass yamlv3.
-	"folded-block-scalar-1-3",                           // pass yamlv3.
-	"implicit-flow-mapping-key-on-one-line",             // no json.
+	"implicit-flow-mapping-key-on-one-line", // no json.
 	"invalid-comment-after-comma",
 	"invalid-comment-after-end-of-flow-sequence",
 	"invalid-comma-in-tag",
 	"invalid-tag",                                    // pass yamlv3.
 	"legal-tab-after-indentation",                    // pass yamlv3.
-	"literal-scalars",                                // pass yamlv3.
 	"mapping-key-and-flow-sequence-item-anchors",     // no json.
 	"multiline-plain-value-with-tabs-on-empty-lines", // pass yamlv3.
-	"multiline-scalar-at-top-level",                  // pass yamlv3.
-	"multiline-scalar-at-top-level-1-3",              // pass yamlv3.
 	"nested-implicit-complex-keys",                   // no json.
 	"plain-dashes-in-flow-sequence",
-	"question-mark-edge-cases/00",                           // no json.
-	"question-mark-edge-cases/01",                           // no json.
-	"single-character-streams/01",                           // no json.
-	"single-pair-implicit-entries",                          // no json.
-	"spec-example-2-11-mapping-between-sequences",           // no json.
-	"spec-example-6-12-separation-spaces",                   // no json.
-	"spec-example-7-16-flow-mapping-entries",                // no json.
-	"spec-example-7-3-completely-empty-flow-nodes",          // no json.
-	"spec-example-8-18-implicit-block-mapping-entries",      // no json.
-	"spec-example-8-19-compact-block-mappings",              // no json.
-	"spec-example-6-6-line-folding",                         // pass yamlv3.
-	"spec-example-6-6-line-folding-1-3",                     // pass yamlv3.
-	"spec-example-8-10-folded-lines-8-13-final-empty-lines", // pass yamlv3.
+	"question-mark-edge-cases/00",                      // no json.
+	"question-mark-edge-cases/01",                      // no json.
+	"single-character-streams/01",                      // no json.
+	"single-pair-implicit-entries",                     // no json.
+	"spec-example-2-11-mapping-between-sequences",      // no json.
+	"spec-example-6-12-separation-spaces",              // no json.
+	"spec-example-7-16-flow-mapping-entries",           // no json.
+	"spec-example-7-3-completely-empty-flow-nodes",     // no json.
+	"spec-example-8-18-implicit-block-mapping-entries", // no json.
+	"spec-example-8-19-compact-block-mappings",         // no json.
 	"spec-example-8-2-block-indentation-indicator",
 	"spec-example-9-3-bare-documents",
 	"spec-example-9-4-explicit-documents",

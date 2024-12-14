@@ -190,7 +190,7 @@ func (c *Context) addDocumentIndent(column int) {
 
 // updateDocumentNewLineInFolded if Folded or RawFolded context and the content on the current line starts at the same column as the previous line,
 // treat the new-line-char as a space.
-func (c *Context) updateDocumentNewLineInFolded(column int, r rune) {
+func (c *Context) updateDocumentNewLineInFolded(column int) {
 	if c.isLiteral {
 		return
 	}

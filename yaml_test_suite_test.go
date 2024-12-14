@@ -38,7 +38,6 @@ var failureTestNames = []string{
 	"legal-tab-after-indentation",                    // pass yamlv3.
 	"mapping-key-and-flow-sequence-item-anchors",     // no json.
 	"multiline-plain-value-with-tabs-on-empty-lines", // pass yamlv3.
-	"multiline-scalar-at-top-level-1-3",              // pass yamlv3.
 	"nested-implicit-complex-keys",                   // no json.
 	"plain-dashes-in-flow-sequence",
 	"question-mark-edge-cases/00",                      // no json.

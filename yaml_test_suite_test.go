@@ -30,8 +30,6 @@ var failureTestNames = []string{
 	"flow-collections-over-many-lines/01",
 	"flow-mapping-colon-on-line-after-key/02",
 	"flow-mapping-edge-cases",
-	"folded-block-scalar",                   // pass yamlv3.
-	"folded-block-scalar-1-3",               // pass yamlv3.
 	"implicit-flow-mapping-key-on-one-line", // no json.
 	"invalid-comment-after-comma",
 	"invalid-comment-after-end-of-flow-sequence",

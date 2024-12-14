@@ -787,6 +787,9 @@ func (s *Scanner) scanDocument(ctx *Context, c rune) error {
 		)
 		s.progressColumn(ctx, 1)
 		return err
+	} else if c == '\t' && !ctx.isIndentColumn(s.column) {
+		ctx.addBufWithTab(c)
+		s.progressColumn(ctx, 1)
 	} else {
 		if err := ctx.validateDocumentLineIndentAfterSpaceOnly(s.column); err != nil {
 			invalidTk := token.Invalid(err.Error(), string(ctx.obuf), s.pos())
@@ -802,7 +805,7 @@ func (s *Scanner) scanDocument(ctx *Context, c rune) error {
 			s.progressColumn(ctx, 1)
 			return ErrInvalidToken(invalidTk)
 		}
-		ctx.updateDocumentNewLineInFolded(s.column)
+		ctx.updateDocumentNewLineInFolded(s.column, c)
 		ctx.addBufWithTab(c)
 		s.progressColumn(ctx, 1)
 	}

@@ -11,23 +11,24 @@ import (
 
 // Context context at scanning
 type Context struct {
-	idx                      int
-	size                     int
-	notSpaceCharPos          int
-	notSpaceOrgCharPos       int
-	src                      []rune
-	buf                      []rune
-	obuf                     []rune
-	tokens                   token.Tokens
-	isRawFolded              bool
-	isLiteral                bool
-	isFolded                 bool
-	docOpt                   string
-	docFirstLineIndentColumn int
-	docPrevLineIndentColumn  int
-	docLineIndentColumn      int
-	docSpaceOnlyIndentColumn int
-	docFoldedNewLine         bool
+	idx                                 int
+	size                                int
+	notSpaceCharPos                     int
+	notSpaceOrgCharPos                  int
+	src                                 []rune
+	buf                                 []rune
+	obuf                                []rune
+	tokens                              token.Tokens
+	isRawFolded                         bool
+	isLiteral                           bool
+	isFolded                            bool
+	docOpt                              string
+	docFirstLineIndentColumn            int
+	docPrevLineIndentColumn             int
+	docLineIndentColumn                 int
+	docLastNotSpaceOnlyLineIndentColumn int
+	docSpaceOnlyIndentColumn            int
+	docFoldedNewLine                    bool
 }
 
 var (
@@ -64,6 +65,7 @@ func (c *Context) clear() {
 	c.docFirstLineIndentColumn = 0
 	c.docLineIndentColumn = 0
 	c.docPrevLineIndentColumn = 0
+	c.docLastNotSpaceOnlyLineIndentColumn = 0
 	c.docSpaceOnlyIndentColumn = 0
 	c.docFoldedNewLine = false
 }
@@ -95,6 +97,7 @@ func (c *Context) breakDocument() {
 	c.docFirstLineIndentColumn = 0
 	c.docLineIndentColumn = 0
 	c.docPrevLineIndentColumn = 0
+	c.docLastNotSpaceOnlyLineIndentColumn = 0
 	c.docSpaceOnlyIndentColumn = 0
 	c.docFoldedNewLine = false
 }
@@ -154,6 +157,9 @@ func (c *Context) validateDocumentLineIndentColumn() error {
 
 func (c *Context) updateDocumentNewLineState() {
 	c.docPrevLineIndentColumn = c.docLineIndentColumn
+	if c.docLineIndentColumn != 0 {
+		c.docLastNotSpaceOnlyLineIndentColumn = c.docLineIndentColumn
+	}
 	c.docFoldedNewLine = true
 	c.docLineIndentColumn = 0
 }
@@ -184,7 +190,7 @@ func (c *Context) addDocumentIndent(column int) {
 
 // updateDocumentNewLineInFolded if Folded or RawFolded context and the content on the current line starts at the same column as the previous line,
 // treat the new-line-char as a space.
-func (c *Context) updateDocumentNewLineInFolded(column int) {
+func (c *Context) updateDocumentNewLineInFolded(column int, r rune) {
 	if c.isLiteral {
 		return
 	}
@@ -197,6 +203,12 @@ func (c *Context) updateDocumentNewLineInFolded(column int) {
 	if c.docLineIndentColumn == c.docPrevLineIndentColumn {
 		if len(c.buf) != 0 && c.buf[len(c.buf)-1] == '\n' {
 			c.buf[len(c.buf)-1] = ' '
+		}
+	} else if c.docPrevLineIndentColumn == 0 && c.docLastNotSpaceOnlyLineIndentColumn == column {
+		// if previous line is indent-space and new-line-char only, docPrevLineIndentColumn is zero.
+		if len(c.buf) > 1 && c.buf[len(c.buf)-1] == '\n' && c.buf[len(c.buf)-2] == '\n' {
+			c.buf = c.buf[:len(c.buf)-1]
+			c.notSpaceCharPos = len(c.buf)
 		}
 	}
 	c.docFoldedNewLine = false

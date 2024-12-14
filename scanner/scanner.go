@@ -1147,10 +1147,10 @@ func (s *Scanner) scanMultiLineHeaderOption(ctx *Context) error {
 	switch header {
 	case '|':
 		ctx.addToken(token.Literal("|"+opt, headerBuf, s.pos()))
-		ctx.setLiteral(opt)
+		ctx.setLiteral(s.lastDelimColumn, opt)
 	case '>':
 		ctx.addToken(token.Folded(">"+opt, headerBuf, s.pos()))
-		ctx.setFolded(opt)
+		ctx.setFolded(s.lastDelimColumn, opt)
 	}
 	if commentIndex > 0 {
 		comment := string(value[commentValueIndex+1:])

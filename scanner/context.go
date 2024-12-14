@@ -89,26 +89,26 @@ func (c *Context) getMultiLineState() *MultiLineState {
 	return c.mstate
 }
 
-func (c *Context) setLiteral(opt string) {
+func (c *Context) setLiteral(lastDelimColumn int, opt string) {
 	mstate := &MultiLineState{
 		isLiteral: true,
 		opt:       opt,
 	}
 	indent := firstLineIndentColumnByOpt(opt)
 	if indent > 0 {
-		mstate.firstLineIndentColumn = indent + 1
+		mstate.firstLineIndentColumn = lastDelimColumn + indent
 	}
 	c.mstate = mstate
 }
 
-func (c *Context) setFolded(opt string) {
+func (c *Context) setFolded(lastDelimColumn int, opt string) {
 	mstate := &MultiLineState{
 		isFolded: true,
 		opt:      opt,
 	}
 	indent := firstLineIndentColumnByOpt(opt)
 	if indent > 0 {
-		mstate.firstLineIndentColumn = indent + 1
+		mstate.firstLineIndentColumn = lastDelimColumn + indent
 	}
 	c.mstate = mstate
 }

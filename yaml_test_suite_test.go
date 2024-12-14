@@ -50,9 +50,7 @@ var failureTestNames = []string{
 	"spec-example-7-3-completely-empty-flow-nodes",     // no json.
 	"spec-example-8-18-implicit-block-mapping-entries", // no json.
 	"spec-example-8-19-compact-block-mappings",         // no json.
-	"spec-example-8-2-block-indentation-indicator",
 	"spec-example-9-3-bare-documents",
-	"spec-example-9-4-explicit-documents",
 	"spec-example-9-6-stream",
 	"spec-example-9-6-stream-1-3",
 	"syntax-character-edge-cases/00", // no json.

@@ -1282,7 +1282,7 @@ func (s *Scanner) scan(ctx *Context) error {
 					if tk.Position.Column == 1 {
 						return ErrInvalidToken(
 							token.Invalid(
-								"could not find multi line content",
+								"could not find multi-line content",
 								string(ctx.obuf), s.pos(),
 							),
 						)

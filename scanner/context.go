@@ -168,7 +168,7 @@ func (s *MultiLineState) validateIndentColumn() error {
 		return nil
 	}
 	if s.firstLineIndentColumn > s.lineIndentColumn {
-		return errors.New("invalid number of indent is specified in the multi line header")
+		return errors.New("invalid number of indent is specified in the multi-line header")
 	}
 	return nil
 }

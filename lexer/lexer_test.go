@@ -2528,7 +2528,7 @@ s: >-3
 					CharacterType: token.CharacterTypeIndicator,
 					Indicator:     token.BlockScalarIndicator,
 					Value:         "|",
-					Origin: "\n|  		  ", //nolint:gci,gofmt
+					Origin:        "\n|  		  ", //nolint:gci,gofmt
 				},
 				{
 					Type:          token.CommentType,

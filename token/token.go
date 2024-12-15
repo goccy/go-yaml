@@ -1,6 +1,7 @@
 package token
 
 import (
+	"errors"
 	"fmt"
 	"strconv"
 	"strings"
@@ -538,16 +539,16 @@ type NumberValue struct {
 	Text  string
 }
 
-func ToNumber(value string) *NumberValue {
+func ToNumber(value string) (*NumberValue, error) {
 	if len(value) == 0 {
-		return nil
+		return nil, nil
 	}
 	if strings.HasPrefix(value, "_") {
-		return nil
+		return nil, nil
 	}
 	dotCount := strings.Count(value, ".")
 	if dotCount > 1 {
-		return nil
+		return nil, nil
 	}
 
 	isNegative := strings.HasPrefix(value, "-")
@@ -589,19 +590,19 @@ func ToNumber(value string) *NumberValue {
 	if typ == NumberTypeFloat {
 		f, err := strconv.ParseFloat(text, 64)
 		if err != nil {
-			return nil
+			return nil, err
 		}
 		v = f
 	} else if isNegative {
 		i, err := strconv.ParseInt(text, base, 64)
 		if err != nil {
-			return nil
+			return nil, err
 		}
 		v = i
 	} else {
 		u, err := strconv.ParseUint(text, base, 64)
 		if err != nil {
-			return nil
+			return nil, err
 		}
 		v = u
 	}
@@ -610,7 +611,7 @@ func ToNumber(value string) *NumberValue {
 		Type:  typ,
 		Value: v,
 		Text:  text,
-	}
+	}, nil
 }
 
 // This is a subset of the formats permitted by the regular expression
@@ -635,7 +636,7 @@ func isTimestamp(value string) bool {
 	return false
 }
 
-// IsNeedQuoted whether need quote for passed string or not
+// IsNeedQuoted checks whether the value needs quote for passed string or not
 func IsNeedQuoted(value string) bool {
 	if value == "" {
 		return true
@@ -643,7 +644,15 @@ func IsNeedQuoted(value string) bool {
 	if _, exists := reservedEncKeywordMap[value]; exists {
 		return true
 	}
-	if num := ToNumber(value); num != nil {
+	num, err := ToNumber(value)
+	if err != nil {
+		// Need quotes even when the value is out of range
+		var numErr *strconv.NumError
+		if errors.As(err, &numErr) && errors.Is(numErr.Err, strconv.ErrRange) {
+			return true
+		}
+	}
+	if num != nil {
 		return true
 	}
 	first := value[0]
@@ -694,7 +703,7 @@ func New(value string, org string, pos *Position) *Token {
 	if fn != nil {
 		return fn(value, org, pos)
 	}
-	if num := ToNumber(value); num != nil {
+	if num, _ := ToNumber(value); num != nil {
 		tk := &Token{
 			Type:          IntegerType,
 			CharacterType: CharacterTypeMiscellaneous,

@@ -301,12 +301,12 @@ func checkLineBreak(t *token.Token) bool {
 			}
 			// Due to the way that comment parsing works its assumed that when a null value does not have new line in origin
 			// it was squashed therefore difference is ignored.
-			//foo:
+			// foo:
 			//  bar:
 			//  # comment
 			//  baz: 1
-			//becomes
-			//foo:
+			// becomes
+			// foo:
 			//  bar: null # comment
 			//
 			//  baz: 1
@@ -342,7 +342,7 @@ func Bool(tk *token.Token) *BoolNode {
 // Integer create node for integer value
 func Integer(tk *token.Token) *IntegerNode {
 	var v any
-	if num := token.ToNumber(tk.Value); num != nil {
+	if num, _ := token.ToNumber(tk.Value); num != nil {
 		v = num.Value
 	}
 	return &IntegerNode{
@@ -355,7 +355,7 @@ func Integer(tk *token.Token) *IntegerNode {
 // Float create node for float value
 func Float(tk *token.Token) *FloatNode {
 	var v float64
-	if num := token.ToNumber(tk.Value); num != nil && num.Type == token.NumberTypeFloat {
+	if num, _ := token.ToNumber(tk.Value); num != nil && num.Type == token.NumberTypeFloat {
 		value, ok := num.Value.(float64)
 		if ok {
 			v = value

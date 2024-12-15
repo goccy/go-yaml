@@ -53,6 +53,15 @@ By the way, libraries such as [ghodss/yaml](https://github.com/ghodss/yaml) and 
   - [example test code is here](https://github.com/goccy/go-yaml/blob/45889c98b0a0967240eb595a1bd6896e2f575106/testdata/validate_test.go#L12)
 - Allow referencing elements declared in another file via anchors
 
+# Users
+
+The repositories that use goccy/go-yaml are listed here.
+
+- https://github.com/goccy/go-yaml/wiki/Users
+
+The source data is [here](https://github.com/goccy/go-yaml/network/dependents). 
+It is already being used in many repositories. Now it's your turn 😄
+
 # Installation
 
 ```sh

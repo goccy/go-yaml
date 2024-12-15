@@ -32,6 +32,8 @@ By the way, libraries such as [ghodss/yaml](https://github.com/ghodss/yaml) and 
 - A better parser than `go-yaml/yaml`. 
   - [Support recursive processing](https://github.com/apple/device-management/blob/release/docs/schema.yaml)
   - Higher coverage in the [YAML Test Suite](https://github.com/yaml/yaml-test-suite?tab=readme-ov-file)
+    - YAML Test Suite consists of 402 cases in total, of which `gopkg.in/yaml.v3` passes `295`. In addition to passing all those test cases, `goccy/go-yaml` successfully passes nearly 60 additional test cases ( 2024/12/15 )
+    - The test code is [here](https://github.com/goccy/go-yaml/blob/master/yaml_test_suite_test.go#L77)
 - Ease and sustainability of maintenance
   - The main maintainer is [@goccy](https://github.com/goccy), but we are also building a system to develop as a team with trusted developers
   - Since it is written from scratch, the code is easy to read for Gophers

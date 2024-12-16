@@ -539,7 +539,27 @@ type NumberValue struct {
 	Text  string
 }
 
-func ToNumber(value string) (*NumberValue, error) {
+func ToNumber(value string) *NumberValue {
+	num, err := toNumber(value)
+	if err != nil {
+		return nil
+	}
+	return num
+}
+
+func isNumber(value string) bool {
+	num, err := toNumber(value)
+	if err != nil {
+		var numErr *strconv.NumError
+		if errors.As(err, &numErr) && errors.Is(numErr.Err, strconv.ErrRange) {
+			return true
+		}
+		return false
+	}
+	return num != nil
+}
+
+func toNumber(value string) (*NumberValue, error) {
 	if len(value) == 0 {
 		return nil, nil
 	}
@@ -644,15 +664,7 @@ func IsNeedQuoted(value string) bool {
 	if _, exists := reservedEncKeywordMap[value]; exists {
 		return true
 	}
-	num, err := ToNumber(value)
-	if err != nil {
-		// Need quotes even when the value is out of range
-		var numErr *strconv.NumError
-		if errors.As(err, &numErr) && errors.Is(numErr.Err, strconv.ErrRange) {
-			return true
-		}
-	}
-	if num != nil {
+	if isNumber(value) {
 		return true
 	}
 	first := value[0]
@@ -703,7 +715,7 @@ func New(value string, org string, pos *Position) *Token {
 	if fn != nil {
 		return fn(value, org, pos)
 	}
-	if num, _ := ToNumber(value); num != nil {
+	if num := ToNumber(value); num != nil {
 		tk := &Token{
 			Type:          IntegerType,
 			CharacterType: CharacterTypeMiscellaneous,

@@ -342,7 +342,7 @@ func Bool(tk *token.Token) *BoolNode {
 // Integer create node for integer value
 func Integer(tk *token.Token) *IntegerNode {
 	var v any
-	if num, _ := token.ToNumber(tk.Value); num != nil {
+	if num := token.ToNumber(tk.Value); num != nil {
 		v = num.Value
 	}
 	return &IntegerNode{
@@ -355,7 +355,7 @@ func Integer(tk *token.Token) *IntegerNode {
 // Float create node for float value
 func Float(tk *token.Token) *FloatNode {
 	var v float64
-	if num, _ := token.ToNumber(tk.Value); num != nil && num.Type == token.NumberTypeFloat {
+	if num := token.ToNumber(tk.Value); num != nil && num.Type == token.NumberTypeFloat {
 		value, ok := num.Value.(float64)
 		if ok {
 			v = value

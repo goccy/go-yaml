@@ -1,6 +1,7 @@
 package token
 
 import (
+	"errors"
 	"fmt"
 	"strconv"
 	"strings"
@@ -539,15 +540,35 @@ type NumberValue struct {
 }
 
 func ToNumber(value string) *NumberValue {
-	if len(value) == 0 {
+	num, err := toNumber(value)
+	if err != nil {
 		return nil
 	}
+	return num
+}
+
+func isNumber(value string) bool {
+	num, err := toNumber(value)
+	if err != nil {
+		var numErr *strconv.NumError
+		if errors.As(err, &numErr) && errors.Is(numErr.Err, strconv.ErrRange) {
+			return true
+		}
+		return false
+	}
+	return num != nil
+}
+
+func toNumber(value string) (*NumberValue, error) {
+	if len(value) == 0 {
+		return nil, nil
+	}
 	if strings.HasPrefix(value, "_") {
-		return nil
+		return nil, nil
 	}
 	dotCount := strings.Count(value, ".")
 	if dotCount > 1 {
-		return nil
+		return nil, nil
 	}
 
 	isNegative := strings.HasPrefix(value, "-")
@@ -589,19 +610,19 @@ func ToNumber(value string) *NumberValue {
 	if typ == NumberTypeFloat {
 		f, err := strconv.ParseFloat(text, 64)
 		if err != nil {
-			return nil
+			return nil, err
 		}
 		v = f
 	} else if isNegative {
 		i, err := strconv.ParseInt(text, base, 64)
 		if err != nil {
-			return nil
+			return nil, err
 		}
 		v = i
 	} else {
 		u, err := strconv.ParseUint(text, base, 64)
 		if err != nil {
-			return nil
+			return nil, err
 		}
 		v = u
 	}
@@ -610,7 +631,7 @@ func ToNumber(value string) *NumberValue {
 		Type:  typ,
 		Value: v,
 		Text:  text,
-	}
+	}, nil
 }
 
 // This is a subset of the formats permitted by the regular expression
@@ -635,7 +656,7 @@ func isTimestamp(value string) bool {
 	return false
 }
 
-// IsNeedQuoted whether need quote for passed string or not
+// IsNeedQuoted checks whether the value needs quote for passed string or not
 func IsNeedQuoted(value string) bool {
 	if value == "" {
 		return true
@@ -643,7 +664,7 @@ func IsNeedQuoted(value string) bool {
 	if _, exists := reservedEncKeywordMap[value]; exists {
 		return true
 	}
-	if num := ToNumber(value); num != nil {
+	if isNumber(value) {
 		return true
 	}
 	first := value[0]

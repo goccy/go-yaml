@@ -301,12 +301,12 @@ func checkLineBreak(t *token.Token) bool {
 			}
 			// Due to the way that comment parsing works its assumed that when a null value does not have new line in origin
 			// it was squashed therefore difference is ignored.
-			//foo:
+			// foo:
 			//  bar:
 			//  # comment
 			//  baz: 1
-			//becomes
-			//foo:
+			// becomes
+			// foo:
 			//  bar: null # comment
 			//
 			//  baz: 1

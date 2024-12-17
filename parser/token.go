@@ -213,7 +213,10 @@ func createGroupedTokens(tokens token.Tokens) ([]*Token, error) {
 	if err != nil {
 		return nil, err
 	}
-	tks = createScalarTagTokenGroups(tks)
+	tks, err = createScalarTagTokenGroups(tks)
+	if err != nil {
+		return nil, err
+	}
 	tks, err = createAnchorWithScalarTagTokenGroups(tks)
 	if err != nil {
 		return nil, err
@@ -348,7 +351,7 @@ func createAnchorAndAliasTokenGroups(tokens []*Token) ([]*Token, error) {
 	return ret, nil
 }
 
-func createScalarTagTokenGroups(tokens []*Token) []*Token {
+func createScalarTagTokenGroups(tokens []*Token) ([]*Token, error) {
 	ret := make([]*Token, 0, len(tokens))
 	for i := 0; i < len(tokens); i++ {
 		tk := tokens[i]
@@ -384,6 +387,29 @@ func createScalarTagTokenGroups(tokens []*Token) []*Token {
 				} else {
 					ret = append(ret, tk)
 				}
+			case token.MergeTag:
+				if len(tokens) <= i+1 {
+					ret = append(ret, tk)
+					continue
+				}
+				if tk.Line() != tokens[i+1].Line() {
+					ret = append(ret, tk)
+					continue
+				}
+				if tokens[i+1].GroupType() == TokenGroupAnchorName {
+					ret = append(ret, tk)
+					continue
+				}
+				if tokens[i+1].Type() != token.MergeKeyType {
+					return nil, errors.ErrSyntax("could not find merge key", tokens[i+1].RawToken())
+				}
+				ret = append(ret, &Token{
+					Group: &TokenGroup{
+						Type:   TokenGroupScalarTag,
+						Tokens: []*Token{tk, tokens[i+1]},
+					},
+				})
+				i++
 			default:
 				ret = append(ret, tk)
 			}
@@ -409,7 +435,7 @@ func createScalarTagTokenGroups(tokens []*Token) []*Token {
 			i++
 		}
 	}
-	return ret
+	return ret, nil
 }
 
 func createAnchorWithScalarTagTokenGroups(tokens []*Token) ([]*Token, error) {

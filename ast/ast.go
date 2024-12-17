@@ -196,6 +196,7 @@ type Node interface {
 // MapKeyNode type for map key node
 type MapKeyNode interface {
 	Node
+	IsMergeKey() bool
 	// String node to text without comment
 	stringWithoutComment() string
 }
@@ -633,6 +634,11 @@ func (n *NullNode) MarshalYAML() ([]byte, error) {
 	return []byte(n.String()), nil
 }
 
+// IsMergeKey returns whether it is a MergeKey node.
+func (n *NullNode) IsMergeKey() bool {
+	return false
+}
+
 // IntegerNode type of integer node
 type IntegerNode struct {
 	*BaseNode
@@ -678,6 +684,11 @@ func (n *IntegerNode) stringWithoutComment() string {
 // MarshalYAML encodes to a YAML text
 func (n *IntegerNode) MarshalYAML() ([]byte, error) {
 	return []byte(n.String()), nil
+}
+
+// IsMergeKey returns whether it is a MergeKey node.
+func (n *IntegerNode) IsMergeKey() bool {
+	return false
 }
 
 // FloatNode type of float node
@@ -728,6 +739,11 @@ func (n *FloatNode) MarshalYAML() ([]byte, error) {
 	return []byte(n.String()), nil
 }
 
+// IsMergeKey returns whether it is a MergeKey node.
+func (n *FloatNode) IsMergeKey() bool {
+	return false
+}
+
 // StringNode type of string node
 type StringNode struct {
 	*BaseNode
@@ -756,6 +772,11 @@ func (n *StringNode) AddColumn(col int) {
 // GetValue returns string value
 func (n *StringNode) GetValue() interface{} {
 	return n.Value
+}
+
+// IsMergeKey returns whether it is a MergeKey node.
+func (n *StringNode) IsMergeKey() bool {
+	return false
 }
 
 // escapeSingleQuote escapes s to a single quoted scalar.
@@ -895,6 +916,11 @@ func (n *LiteralNode) MarshalYAML() ([]byte, error) {
 	return []byte(n.String()), nil
 }
 
+// IsMergeKey returns whether it is a MergeKey node.
+func (n *LiteralNode) IsMergeKey() bool {
+	return false
+}
+
 // MergeKeyNode type of merge key node
 type MergeKeyNode struct {
 	*BaseNode
@@ -936,6 +962,11 @@ func (n *MergeKeyNode) AddColumn(col int) {
 // MarshalYAML encodes to a YAML text
 func (n *MergeKeyNode) MarshalYAML() ([]byte, error) {
 	return []byte(n.String()), nil
+}
+
+// IsMergeKey returns whether it is a MergeKey node.
+func (n *MergeKeyNode) IsMergeKey() bool {
+	return true
 }
 
 // BoolNode type of boolean node
@@ -985,6 +1016,11 @@ func (n *BoolNode) MarshalYAML() ([]byte, error) {
 	return []byte(n.String()), nil
 }
 
+// IsMergeKey returns whether it is a MergeKey node.
+func (n *BoolNode) IsMergeKey() bool {
+	return false
+}
+
 // InfinityNode type of infinity node
 type InfinityNode struct {
 	*BaseNode
@@ -1032,6 +1068,11 @@ func (n *InfinityNode) MarshalYAML() ([]byte, error) {
 	return []byte(n.String()), nil
 }
 
+// IsMergeKey returns whether it is a MergeKey node.
+func (n *InfinityNode) IsMergeKey() bool {
+	return false
+}
+
 // NanNode type of nan node
 type NanNode struct {
 	*BaseNode
@@ -1076,6 +1117,11 @@ func (n *NanNode) stringWithoutComment() string {
 // MarshalYAML encodes to a YAML text
 func (n *NanNode) MarshalYAML() ([]byte, error) {
 	return []byte(n.String()), nil
+}
+
+// IsMergeKey returns whether it is a MergeKey node.
+func (n *NanNode) IsMergeKey() bool {
+	return false
 }
 
 // MapNode interface of MappingValueNode / MappingNode
@@ -1279,6 +1325,18 @@ func (n *MappingKeyNode) stringWithoutComment() string {
 // MarshalYAML encodes to a YAML text
 func (n *MappingKeyNode) MarshalYAML() ([]byte, error) {
 	return []byte(n.String()), nil
+}
+
+// IsMergeKey returns whether it is a MergeKey node.
+func (n *MappingKeyNode) IsMergeKey() bool {
+	if n.Value == nil {
+		return false
+	}
+	key, ok := n.Value.(MapKeyNode)
+	if !ok {
+		return false
+	}
+	return key.IsMergeKey()
 }
 
 // MappingValueNode type of mapping value
@@ -1665,6 +1723,18 @@ func (n *AnchorNode) MarshalYAML() ([]byte, error) {
 	return []byte(n.String()), nil
 }
 
+// IsMergeKey returns whether it is a MergeKey node.
+func (n *AnchorNode) IsMergeKey() bool {
+	if n.Value == nil {
+		return false
+	}
+	key, ok := n.Value.(MapKeyNode)
+	if !ok {
+		return false
+	}
+	return key.IsMergeKey()
+}
+
 // AliasNode type of alias node
 type AliasNode struct {
 	*BaseNode
@@ -1721,6 +1791,11 @@ func (n *AliasNode) String() string {
 // MarshalYAML encodes to a YAML text
 func (n *AliasNode) MarshalYAML() ([]byte, error) {
 	return []byte(n.String()), nil
+}
+
+// IsMergeKey returns whether it is a MergeKey node.
+func (n *AliasNode) IsMergeKey() bool {
+	return false
 }
 
 // DirectiveNode type of directive node
@@ -1820,6 +1895,18 @@ func (n *TagNode) String() string {
 // MarshalYAML encodes to a YAML text
 func (n *TagNode) MarshalYAML() ([]byte, error) {
 	return []byte(n.String()), nil
+}
+
+// IsMergeKey returns whether it is a MergeKey node.
+func (n *TagNode) IsMergeKey() bool {
+	if n.Value == nil {
+		return false
+	}
+	key, ok := n.Value.(MapKeyNode)
+	if !ok {
+		return false
+	}
+	return key.IsMergeKey()
 }
 
 // CommentNode type of comment node

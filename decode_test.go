@@ -590,6 +590,13 @@ func TestDecoder(t *testing.T) {
 			"v: !!bool False",
 			map[string]bool{"v": false},
 		},
+		{
+			`
+!!merge <<: { a: 1, b: 2 }
+c: 3
+`,
+			map[string]any{"a": 1, "b": 2, "c": 3},
+		},
 
 		// Flow sequence
 		{

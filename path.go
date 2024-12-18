@@ -83,6 +83,9 @@ end:
 }
 
 func parsePathDot(b *PathBuilder, buf []rune, cursor int) (*PathBuilder, []rune, int, error) {
+	if b.root == nil || b.node == nil {
+		return nil, nil, 0, fmt.Errorf("required '$' character at first: %w", ErrInvalidPathString)
+	}
 	length := len(buf)
 	if cursor+1 < length && buf[cursor+1] == '.' {
 		b, buf, c, err := parsePathRecursive(b, buf, cursor)
@@ -119,6 +122,10 @@ end:
 }
 
 func parseQuotedKey(b *PathBuilder, buf []rune, cursor int) (*PathBuilder, []rune, int, error) {
+	if b.root == nil || b.node == nil {
+		return nil, nil, 0, fmt.Errorf("required '$' character at first: %w", ErrInvalidPathString)
+	}
+
 	cursor++ // skip single quote
 	start := cursor
 	length := len(buf)
@@ -156,6 +163,10 @@ end:
 }
 
 func parsePathIndex(b *PathBuilder, buf []rune, cursor int) (*PathBuilder, []rune, int, error) {
+	if b.root == nil || b.node == nil {
+		return nil, nil, 0, fmt.Errorf("required '$' character at first: %w", ErrInvalidPathString)
+	}
+
 	length := len(buf)
 	cursor++ // skip '[' character
 	if length <= cursor {

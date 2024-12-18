@@ -405,6 +405,8 @@ const (
 	TimestampTag ReservedTagKeyword = "!!timestamp"
 	// BooleanTag `!!bool` tag
 	BooleanTag ReservedTagKeyword = "!!bool"
+	// MergeTag `!!merge` tag
+	MergeTag ReservedTagKeyword = "!!merge"
 )
 
 var (
@@ -511,6 +513,16 @@ var (
 			}
 		},
 		BooleanTag: func(value, org string, pos *Position) *Token {
+			return &Token{
+				Type:          TagType,
+				CharacterType: CharacterTypeIndicator,
+				Indicator:     NodePropertyIndicator,
+				Value:         value,
+				Origin:        org,
+				Position:      pos,
+			}
+		},
+		MergeTag: func(value, org string, pos *Position) *Token {
 			return &Token{
 				Type:          TagType,
 				CharacterType: CharacterTypeIndicator,

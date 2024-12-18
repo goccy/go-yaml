@@ -147,7 +147,7 @@ func (d *Decoder) setToMapValue(node ast.Node, m map[string]interface{}) error {
 	d.setPathToCommentMap(node)
 	switch n := node.(type) {
 	case *ast.MappingValueNode:
-		if n.Key.Type() == ast.MergeKeyType {
+		if n.Key.IsMergeKey() {
 			if err := d.setToMapValue(d.mergeValueNode(n.Value), m); err != nil {
 				return err
 			}
@@ -185,7 +185,7 @@ func (d *Decoder) setToOrderedMapValue(node ast.Node, m *MapSlice) error {
 	d.setPathToCommentMap(node)
 	switch n := node.(type) {
 	case *ast.MappingValueNode:
-		if n.Key.Type() == ast.MergeKeyType {
+		if n.Key.IsMergeKey() {
 			if err := d.setToOrderedMapValue(d.mergeValueNode(n.Value), m); err != nil {
 				return err
 			}
@@ -464,7 +464,7 @@ func (d *Decoder) nodeToValue(node ast.Node) (any, error) {
 	case *ast.MappingKeyNode:
 		return d.nodeToValue(n.Value)
 	case *ast.MappingValueNode:
-		if n.Key.Type() == ast.MergeKeyType {
+		if n.Key.IsMergeKey() {
 			value := d.mergeValueNode(n.Value)
 			if d.useOrderedMap {
 				m := MapSlice{}
@@ -555,7 +555,7 @@ func (d *Decoder) resolveAlias(node ast.Node) (ast.Node, error) {
 		}
 		n.Value = value
 	case *ast.MappingValueNode:
-		if n.Key.Type() == ast.MergeKeyType && n.Value.Type() == ast.AliasType {
+		if n.Key.IsMergeKey() && n.Value.Type() == ast.AliasType {
 			value, err := d.resolveAlias(n.Value)
 			if err != nil {
 				return nil, err
@@ -1186,7 +1186,7 @@ func (d *Decoder) keyToNodeMap(node ast.Node, ignoreMergeKey bool, getKeyOrValue
 	mapIter := mapNode.MapRange()
 	for mapIter.Next() {
 		keyNode := mapIter.Key()
-		if keyNode.Type() == ast.MergeKeyType {
+		if keyNode.IsMergeKey() {
 			if ignoreMergeKey {
 				continue
 			}
@@ -1349,7 +1349,7 @@ func (d *Decoder) getMergeAliasName(src ast.Node) string {
 	for mapIter.Next() {
 		key := mapIter.Key()
 		value := mapIter.Value()
-		if key.Type() == ast.MergeKeyType && value.Type() == ast.AliasType {
+		if key.IsMergeKey() && value.Type() == ast.AliasType {
 			return value.(*ast.AliasNode).Value.GetToken().Value
 		}
 	}
@@ -1639,7 +1639,7 @@ func (d *Decoder) decodeMapItem(ctx context.Context, dst *MapItem, src ast.Node)
 	}
 	key := mapIter.Key()
 	value := mapIter.Value()
-	if key.Type() == ast.MergeKeyType {
+	if key.IsMergeKey() {
 		if err := d.decodeMapItem(ctx, dst, value); err != nil {
 			return err
 		}
@@ -1691,7 +1691,7 @@ func (d *Decoder) decodeMapSlice(ctx context.Context, dst *MapSlice, src ast.Nod
 	for mapIter.Next() {
 		key := mapIter.Key()
 		value := mapIter.Value()
-		if key.Type() == ast.MergeKeyType {
+		if key.IsMergeKey() {
 			var m MapSlice
 			if err := d.decodeMapSlice(ctx, &m, value); err != nil {
 				return err
@@ -1745,7 +1745,7 @@ func (d *Decoder) decodeMap(ctx context.Context, dst reflect.Value, src ast.Node
 	for mapIter.Next() {
 		key := mapIter.Key()
 		value := mapIter.Value()
-		if key.Type() == ast.MergeKeyType {
+		if key.IsMergeKey() {
 			if err := d.decodeMap(ctx, dst, value); err != nil {
 				return err
 			}

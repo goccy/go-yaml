@@ -271,6 +271,9 @@ func (p *Path) FilterFile(f *ast.File) (ast.Node, error) {
 
 // FilterNode filter from node by YAMLPath.
 func (p *Path) FilterNode(node ast.Node) (ast.Node, error) {
+	if node == nil {
+		return nil, nil
+	}
 	n, err := p.node.filter(node)
 	if err != nil {
 		return nil, err

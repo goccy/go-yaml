@@ -211,6 +211,9 @@ func (d *Decoder) setToOrderedMapValue(node ast.Node, m *MapSlice) error {
 }
 
 func (d *Decoder) setPathToCommentMap(node ast.Node) {
+	if node == nil {
+		return
+	}
 	if d.toCommentMap == nil {
 		return
 	}

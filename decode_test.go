@@ -2739,6 +2739,31 @@ func (u *unmarshalList) UnmarshalYAML(b []byte) error {
 	return nil
 }
 
+func TestDecoder_DecodeWithAnchorAnyValue(t *testing.T) {
+	type Config struct {
+		Env []string `json:"env"`
+	}
+
+	type Schema struct {
+		Def    map[string]any `json:"def"`
+		Config Config         `json:"config"`
+	}
+
+	data := `
+def:
+  myenv: &my_env
+    - VAR1=1
+    - VAR2=2
+config:
+  env: *my_env
+`
+
+	var cfg Schema
+	if err := yaml.NewDecoder(strings.NewReader(data)).Decode(&cfg); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestDecoder_UnmarshalBytesWithSeparatedList(t *testing.T) {
 	yml := `
 a:

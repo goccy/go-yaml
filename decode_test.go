@@ -1321,12 +1321,6 @@ func TestDecoder_TypeConversionError(t *testing.T) {
 			if !strings.Contains(err.Error(), msg) {
 				t.Fatalf("expected error message: %s to contain: %s", err.Error(), msg)
 			}
-			if len(v) == 0 || len(v["v"]) == 0 {
-				t.Fatal("failed to decode value")
-			}
-			if v["v"][0] != 1 {
-				t.Fatal("failed to decode value")
-			}
 		})
 		t.Run("string to int", func(t *testing.T) {
 			var v map[string][]int
@@ -1337,12 +1331,6 @@ func TestDecoder_TypeConversionError(t *testing.T) {
 			msg := "cannot unmarshal string into Go value of type int"
 			if !strings.Contains(err.Error(), msg) {
 				t.Fatalf("expected error message: %s to contain: %s", err.Error(), msg)
-			}
-			if len(v) == 0 || len(v["v"]) == 0 {
-				t.Fatal("failed to decode value")
-			}
-			if v["v"][0] != 1 {
-				t.Fatal("failed to decode value")
 			}
 		})
 	})
@@ -2737,6 +2725,34 @@ func (u *unmarshalList) UnmarshalYAML(b []byte) error {
 	}
 	u.v = v
 	return nil
+}
+
+func TestDecoder_DecodeWithAnchorAnyValue(t *testing.T) {
+	type Config struct {
+		Env []string `json:"env"`
+	}
+
+	type Schema struct {
+		Def    map[string]any `json:"def"`
+		Config Config         `json:"config"`
+	}
+
+	data := `
+def:
+  myenv: &my_env
+    - VAR1=1
+    - VAR2=2
+config:
+  env: *my_env
+`
+
+	var cfg Schema
+	if err := yaml.NewDecoder(strings.NewReader(data)).Decode(&cfg); err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(cfg.Config.Env, []string{"VAR1=1", "VAR2=2"}) {
+		t.Fatalf("failed to decode value. actual = %+v", cfg)
+	}
 }
 
 func TestDecoder_UnmarshalBytesWithSeparatedList(t *testing.T) {

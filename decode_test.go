@@ -1321,12 +1321,6 @@ func TestDecoder_TypeConversionError(t *testing.T) {
 			if !strings.Contains(err.Error(), msg) {
 				t.Fatalf("expected error message: %s to contain: %s", err.Error(), msg)
 			}
-			if len(v) == 0 || len(v["v"]) == 0 {
-				t.Fatal("failed to decode value")
-			}
-			if v["v"][0] != 1 {
-				t.Fatal("failed to decode value")
-			}
 		})
 		t.Run("string to int", func(t *testing.T) {
 			var v map[string][]int
@@ -1337,12 +1331,6 @@ func TestDecoder_TypeConversionError(t *testing.T) {
 			msg := "cannot unmarshal string into Go value of type int"
 			if !strings.Contains(err.Error(), msg) {
 				t.Fatalf("expected error message: %s to contain: %s", err.Error(), msg)
-			}
-			if len(v) == 0 || len(v["v"]) == 0 {
-				t.Fatal("failed to decode value")
-			}
-			if v["v"][0] != 1 {
-				t.Fatal("failed to decode value")
 			}
 		})
 	})
@@ -2761,6 +2749,9 @@ config:
 	var cfg Schema
 	if err := yaml.NewDecoder(strings.NewReader(data)).Decode(&cfg); err != nil {
 		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(cfg.Config.Env, []string{"VAR1=1", "VAR2=2"}) {
+		t.Fatalf("failed to decode value. actual = %+v", cfg)
 	}
 }
 

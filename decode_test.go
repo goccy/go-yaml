@@ -598,6 +598,38 @@ c: 3
 			map[string]any{"a": 1, "b": 2, "c": 3},
 		},
 
+		// merge
+		{
+			`
+a: &a
+ foo: 1
+b: &b
+ bar: 2
+merge:
+ <<: [*a, *b]
+`,
+			map[string]map[string]any{
+				"a":     {"foo": 1},
+				"b":     {"bar": 2},
+				"merge": {"foo": 1, "bar": 2},
+			},
+		},
+		{
+			`
+a: &a
+ foo: 1
+b: &b
+ bar: 2
+merge:
+ <<: [*a, *b]
+`,
+			map[string]yaml.MapSlice{
+				"a":     {{Key: "foo", Value: 1}},
+				"b":     {{Key: "bar", Value: 2}},
+				"merge": {{Key: "foo", Value: 1}, {Key: "bar", Value: 2}},
+			},
+		},
+
 		// Flow sequence
 		{
 			"v: [A,B]",

@@ -705,7 +705,7 @@ func (p *parser) mapKeyText(n ast.Node) string {
 func (p *parser) parseMapValue(ctx *context, key ast.MapKeyNode, colonTk *Token) (ast.Node, error) {
 	tk := ctx.currentToken()
 	if tk == nil {
-		return newNullNode(ctx, ctx.insertNullToken(colonTk))
+		return newNullNode(ctx, ctx.addNullValueToken(colonTk))
 	}
 
 	if ctx.isComment() {
@@ -1091,7 +1091,7 @@ func (p *parser) parseSequence(ctx *context) (*ast.SequenceNode, error) {
 func (p *parser) parseSequenceValue(ctx *context, seqTk *Token) (ast.Node, error) {
 	tk := ctx.currentToken()
 	if tk == nil {
-		return newNullNode(ctx, ctx.insertNullToken(seqTk))
+		return newNullNode(ctx, ctx.addNullValueToken(seqTk))
 	}
 
 	if ctx.isComment() {

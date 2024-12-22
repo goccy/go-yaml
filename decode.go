@@ -114,15 +114,6 @@ func (d *Decoder) castToFloat(v interface{}) interface{} {
 	return 0
 }
 
-func (d *Decoder) mergeValueNode(value ast.Node) ast.Node {
-	if value.Type() == ast.AliasType {
-		aliasNode, _ := value.(*ast.AliasNode)
-		aliasName := aliasNode.Value.GetToken().Value
-		return d.anchorNodeMap[aliasName]
-	}
-	return value
-}
-
 func (d *Decoder) mapKeyNodeToString(node ast.MapKeyNode) (string, error) {
 	key, err := d.nodeToValue(node)
 	if err != nil {
@@ -148,8 +139,15 @@ func (d *Decoder) setToMapValue(node ast.Node, m map[string]interface{}) error {
 	switch n := node.(type) {
 	case *ast.MappingValueNode:
 		if n.Key.IsMergeKey() {
-			if err := d.setToMapValue(d.mergeValueNode(n.Value), m); err != nil {
+			value, err := d.getMapNode(n.Value, true)
+			if err != nil {
 				return err
+			}
+			iter := value.MapRange()
+			for iter.Next() {
+				if err := d.setToMapValue(iter.KeyValue(), m); err != nil {
+					return err
+				}
 			}
 		} else {
 			key, err := d.mapKeyNodeToString(n.Key)
@@ -186,8 +184,15 @@ func (d *Decoder) setToOrderedMapValue(node ast.Node, m *MapSlice) error {
 	switch n := node.(type) {
 	case *ast.MappingValueNode:
 		if n.Key.IsMergeKey() {
-			if err := d.setToOrderedMapValue(d.mergeValueNode(n.Value), m); err != nil {
+			value, err := d.getMapNode(n.Value, true)
+			if err != nil {
 				return err
+			}
+			iter := value.MapRange()
+			for iter.Next() {
+				if err := d.setToOrderedMapValue(iter.KeyValue(), m); err != nil {
+					return err
+				}
 			}
 		} else {
 			key, err := d.mapKeyNodeToString(n.Key)
@@ -468,17 +473,25 @@ func (d *Decoder) nodeToValue(node ast.Node) (any, error) {
 		return d.nodeToValue(n.Value)
 	case *ast.MappingValueNode:
 		if n.Key.IsMergeKey() {
-			value := d.mergeValueNode(n.Value)
+			value, err := d.getMapNode(n.Value, true)
+			if err != nil {
+				return nil, err
+			}
+			iter := value.MapRange()
 			if d.useOrderedMap {
 				m := MapSlice{}
-				if err := d.setToOrderedMapValue(value, &m); err != nil {
-					return nil, err
+				for iter.Next() {
+					if err := d.setToOrderedMapValue(iter.KeyValue(), &m); err != nil {
+						return nil, err
+					}
 				}
 				return m, nil
 			}
-			m := map[string]interface{}{}
-			if err := d.setToMapValue(value, m); err != nil {
-				return nil, err
+			m := make(map[string]any)
+			for iter.Next() {
+				if err := d.setToMapValue(iter.KeyValue(), m); err != nil {
+					return nil, err
+				}
 			}
 			return m, nil
 		}
@@ -598,40 +611,42 @@ func (d *Decoder) resolveAlias(node ast.Node) (ast.Node, error) {
 	return node, nil
 }
 
-func (d *Decoder) getMapNode(node ast.Node) (ast.MapNode, error) {
+func (d *Decoder) getMapNode(node ast.Node, isMerge bool) (ast.MapNode, error) {
 	d.stepIn()
 	defer d.stepOut()
 	if d.isExceededMaxDepth() {
 		return nil, ErrExceededMaxDepth
 	}
 
-	if _, ok := node.(*ast.NullNode); ok {
-		return nil, nil
-	}
-	if anchor, ok := node.(*ast.AnchorNode); ok {
-		mapNode, ok := anchor.Value.(ast.MapNode)
-		if ok {
-			return mapNode, nil
-		}
-		return nil, errors.ErrUnexpectedNodeType(anchor.Value.Type(), ast.MappingType, node.GetToken())
-	}
-	if alias, ok := node.(*ast.AliasNode); ok {
-		aliasName := alias.Value.GetToken().Value
+	switch n := node.(type) {
+	case ast.MapNode:
+		return n, nil
+	case *ast.AnchorNode:
+		anchorName := n.Name.GetToken().Value
+		d.anchorNodeMap[anchorName] = n.Value
+		return d.getMapNode(n.Value, isMerge)
+	case *ast.AliasNode:
+		aliasName := n.Value.GetToken().Value
 		node := d.anchorNodeMap[aliasName]
 		if node == nil {
 			return nil, fmt.Errorf("cannot find anchor by alias name %s", aliasName)
 		}
-		mapNode, ok := node.(ast.MapNode)
-		if ok {
-			return mapNode, nil
+		return d.getMapNode(node, isMerge)
+	case *ast.SequenceNode:
+		if !isMerge {
+			return nil, errors.ErrUnexpectedNodeType(node.Type(), ast.MappingType, node.GetToken())
 		}
-		return nil, errors.ErrUnexpectedNodeType(node.Type(), ast.MappingType, node.GetToken())
+		var mapNodes []ast.MapNode
+		for _, value := range n.Values {
+			mapNode, err := d.getMapNode(value, false)
+			if err != nil {
+				return nil, err
+			}
+			mapNodes = append(mapNodes, mapNode)
+		}
+		return ast.SequenceMergeValue(mapNodes...), nil
 	}
-	mapNode, ok := node.(ast.MapNode)
-	if !ok {
-		return nil, errors.ErrUnexpectedNodeType(node.Type(), ast.MappingType, node.GetToken())
-	}
-	return mapNode, nil
+	return nil, errors.ErrUnexpectedNodeType(node.Type(), ast.MappingType, node.GetToken())
 }
 
 func (d *Decoder) getArrayNode(node ast.Node) (ast.ArrayNode, error) {
@@ -1191,15 +1206,12 @@ func (d *Decoder) keyToNodeMap(node ast.Node, ignoreMergeKey bool, getKeyOrValue
 		return nil, ErrExceededMaxDepth
 	}
 
-	mapNode, err := d.getMapNode(node)
+	mapNode, err := d.getMapNode(node, false)
 	if err != nil {
 		return nil, err
 	}
 	keyMap := map[string]struct{}{}
 	keyToNodeMap := map[string]ast.Node{}
-	if mapNode == nil {
-		return keyToNodeMap, nil
-	}
 	mapIter := mapNode.MapRange()
 	for mapIter.Next() {
 		keyNode := mapIter.Key()
@@ -1358,11 +1370,8 @@ func (d *Decoder) decodeDuration(ctx context.Context, dst reflect.Value, src ast
 
 // getMergeAliasName support single alias only
 func (d *Decoder) getMergeAliasName(src ast.Node) string {
-	mapNode, err := d.getMapNode(src)
+	mapNode, err := d.getMapNode(src, true)
 	if err != nil {
-		return ""
-	}
-	if mapNode == nil {
 		return ""
 	}
 	mapIter := mapNode.MapRange()
@@ -1649,12 +1658,9 @@ func (d *Decoder) decodeMapItem(ctx context.Context, dst *MapItem, src ast.Node)
 		return ErrExceededMaxDepth
 	}
 
-	mapNode, err := d.getMapNode(src)
+	mapNode, err := d.getMapNode(src, isMerge(ctx))
 	if err != nil {
 		return err
-	}
-	if mapNode == nil {
-		return nil
 	}
 	mapIter := mapNode.MapRange()
 	if !mapIter.Next() {
@@ -1663,7 +1669,7 @@ func (d *Decoder) decodeMapItem(ctx context.Context, dst *MapItem, src ast.Node)
 	key := mapIter.Key()
 	value := mapIter.Value()
 	if key.IsMergeKey() {
-		if err := d.decodeMapItem(ctx, dst, value); err != nil {
+		if err := d.decodeMapItem(withMerge(ctx), dst, value); err != nil {
 			return err
 		}
 		return nil
@@ -1701,12 +1707,9 @@ func (d *Decoder) decodeMapSlice(ctx context.Context, dst *MapSlice, src ast.Nod
 		return ErrExceededMaxDepth
 	}
 
-	mapNode, err := d.getMapNode(src)
+	mapNode, err := d.getMapNode(src, isMerge(ctx))
 	if err != nil {
 		return err
-	}
-	if mapNode == nil {
-		return nil
 	}
 	mapSlice := MapSlice{}
 	mapIter := mapNode.MapRange()
@@ -1716,7 +1719,7 @@ func (d *Decoder) decodeMapSlice(ctx context.Context, dst *MapSlice, src ast.Nod
 		value := mapIter.Value()
 		if key.IsMergeKey() {
 			var m MapSlice
-			if err := d.decodeMapSlice(ctx, &m, value); err != nil {
+			if err := d.decodeMapSlice(withMerge(ctx), &m, value); err != nil {
 				return err
 			}
 			for _, v := range m {
@@ -1751,12 +1754,9 @@ func (d *Decoder) decodeMap(ctx context.Context, dst reflect.Value, src ast.Node
 		return ErrExceededMaxDepth
 	}
 
-	mapNode, err := d.getMapNode(src)
+	mapNode, err := d.getMapNode(src, isMerge(ctx))
 	if err != nil {
 		return err
-	}
-	if mapNode == nil {
-		return nil
 	}
 	mapType := dst.Type()
 	mapValue := reflect.MakeMap(mapType)
@@ -1769,7 +1769,7 @@ func (d *Decoder) decodeMap(ctx context.Context, dst reflect.Value, src ast.Node
 		key := mapIter.Key()
 		value := mapIter.Value()
 		if key.IsMergeKey() {
-			if err := d.decodeMap(ctx, dst, value); err != nil {
+			if err := d.decodeMap(withMerge(ctx), dst, value); err != nil {
 				return err
 			}
 			iter := dst.MapRange()

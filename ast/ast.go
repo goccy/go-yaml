@@ -1157,6 +1157,11 @@ func (m *MapNodeIter) Value() Node {
 	return m.values[m.idx].Value
 }
 
+// KeyValue returns the MappingValueNode of the iterator's current map node entry.
+func (m *MapNodeIter) KeyValue() *MappingValueNode {
+	return m.values[m.idx]
+}
+
 // MappingNode type of mapping node
 type MappingNode struct {
 	*BaseNode
@@ -1651,6 +1656,28 @@ func (n *SequenceNode) ArrayRange() *ArrayNodeIter {
 // MarshalYAML encodes to a YAML text
 func (n *SequenceNode) MarshalYAML() ([]byte, error) {
 	return []byte(n.String()), nil
+}
+
+// SequenceMergeValue creates SequenceMergeValueNode instance.
+func SequenceMergeValue(values ...MapNode) *SequenceMergeValueNode {
+	return &SequenceMergeValueNode{
+		values: values,
+	}
+}
+
+// SequenceMergeValueNode is used to convert the Sequence node specified for the merge key into a MapNode format.
+type SequenceMergeValueNode struct {
+	values []MapNode
+}
+
+// MapRange returns MapNodeIter instance.
+func (n *SequenceMergeValueNode) MapRange() *MapNodeIter {
+	ret := &MapNodeIter{idx: startRangeIndex}
+	for _, value := range n.values {
+		iter := value.MapRange()
+		ret.values = append(ret.values, iter.values...)
+	}
+	return ret
 }
 
 // AnchorNode type of anchor node

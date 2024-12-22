@@ -538,6 +538,17 @@ func (e *Encoder) isNeedQuoted(v string) bool {
 	if e.isFlowStyle && strings.ContainsAny(v, `]},'"`) {
 		return true
 	}
+	if e.isFlowStyle {
+		for i := 0; i < len(v); i++ {
+			if v[i] != ':' {
+				continue
+			}
+			if i+1 < len(v) && v[i+1] == '/' {
+				continue
+			}
+			return true
+		}
+	}
 	if token.IsNeedQuoted(v) {
 		return true
 	}

@@ -8,6 +8,7 @@ import (
 	"math"
 	"reflect"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 
@@ -1652,5 +1653,25 @@ b:
 	got := "\n" + string(b)
 	if expected != got {
 		t.Fatalf("failed to encode. expected %s but got %s", expected, got)
+	}
+}
+
+type Issue174 struct {
+	K string
+	V []int
+}
+
+func (v Issue174) MarshalYAML() ([]byte, error) {
+	return yaml.MarshalWithOptions(map[string][]int{v.K: v.V}, yaml.Flow(true))
+}
+
+func TestIssue174(t *testing.T) {
+	b, err := yaml.Marshal(Issue174{"00:00:00-23:59:59", []int{1, 2, 3}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := strings.TrimSuffix(string(b), "\n")
+	if got != `{"00:00:00-23:59:59": [1, 2, 3]}` {
+		t.Fatalf("failed to encode: %q", got)
 	}
 }

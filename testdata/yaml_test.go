@@ -312,7 +312,7 @@ b: *a
 `
 	var v struct {
 		A *int `yaml:"a,anchor"`
-		B *int `yaml:"b,alias"`
+		B *int `yaml:"b"`
 	}
 	if err := yaml.Unmarshal([]byte(yml), &v); err != nil {
 		t.Fatal(err)

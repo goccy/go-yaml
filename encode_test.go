@@ -1675,3 +1675,45 @@ func TestIssue174(t *testing.T) {
 		t.Fatalf("failed to encode: %q", got)
 	}
 }
+
+func TestIssue259(t *testing.T) {
+	type AnchorValue struct {
+		Foo uint64
+		Bar string
+	}
+
+	type Value struct {
+		Baz   string       `yaml:"baz"`
+		Value *AnchorValue `yaml:"value,anchor"`
+	}
+
+	type Schema struct {
+		Values []*Value
+	}
+
+	schema := Schema{}
+	anchorValue := AnchorValue{Foo: 3, Bar: "bar"}
+	schema.Values = []*Value{
+		{Baz: "xxx", Value: &anchorValue},
+		{Baz: "yyy", Value: &anchorValue},
+		{Baz: "zzz", Value: &anchorValue},
+	}
+	b, err := yaml.Marshal(schema)
+	if err != nil {
+		t.Fatal(err)
+	}
+	expected := `
+values:
+- baz: xxx
+  value: &value
+    foo: 3
+    bar: bar
+- baz: yyy
+  value: *value
+- baz: zzz
+  value: *value
+`
+	if strings.TrimPrefix(expected, "\n") != string(b) {
+		t.Fatalf("failed to encode: got = %s", string(b))
+	}
+}

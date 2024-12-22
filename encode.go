@@ -787,12 +787,11 @@ func (e *Encoder) encodeStruct(ctx context.Context, value reflect.Value, column 
 		}
 		var key ast.MapKeyNode = e.encodeString(structField.RenderName, column)
 		switch {
-		case structField.AnchorName != "":
-			anchorNode, err := e.encodeAnchor(structField.AnchorName, value, fieldValue, column)
-			if err != nil {
-				return nil, err
+		case value.Type() == ast.AliasType:
+			if structField.IsInline {
+				// if both used alias and inline, output `<<: *alias`
+				key = ast.MergeKey(token.New("<<", "<<", e.pos(column)))
 			}
-			value = anchorNode
 		case structField.IsAutoAlias:
 			if fieldValue.Kind() != reflect.Ptr {
 				return nil, fmt.Errorf(
@@ -814,6 +813,12 @@ func (e *Encoder) encodeStruct(ctx context.Context, value reflect.Value, column 
 				// if both used alias and inline, output `<<: *alias`
 				key = ast.MergeKey(token.New("<<", "<<", e.pos(column)))
 			}
+		case structField.AnchorName != "":
+			anchorNode, err := e.encodeAnchor(structField.AnchorName, value, fieldValue, column)
+			if err != nil {
+				return nil, err
+			}
+			value = anchorNode
 		case structField.AliasName != "":
 			aliasName := structField.AliasName
 			alias := ast.Alias(token.New("*", "*", e.pos(column)))

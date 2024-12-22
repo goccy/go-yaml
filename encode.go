@@ -789,7 +789,10 @@ func (e *Encoder) encodeStruct(ctx context.Context, value reflect.Value, column 
 		switch {
 		case value.Type() == ast.AliasType:
 			if aliasName := structField.AliasName; aliasName != "" {
-				alias := value.(*ast.AliasNode)
+				alias, ok := value.(*ast.AliasNode)
+				if !ok {
+					return nil, errors.ErrUnexpectedNodeType(value.Type(), ast.AliasType, value.GetToken())
+				}
 				got := alias.Value.String()
 				if aliasName != got {
 					return nil, fmt.Errorf("expected alias name is %q but got %q", aliasName, got)

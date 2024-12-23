@@ -787,42 +787,27 @@ func (e *Encoder) encodeStruct(ctx context.Context, value reflect.Value, column 
 		}
 		var key ast.MapKeyNode = e.encodeString(structField.RenderName, column)
 		switch {
+		case value.Type() == ast.AliasType:
+			if aliasName := structField.AliasName; aliasName != "" {
+				alias, ok := value.(*ast.AliasNode)
+				if !ok {
+					return nil, errors.ErrUnexpectedNodeType(value.Type(), ast.AliasType, value.GetToken())
+				}
+				got := alias.Value.String()
+				if aliasName != got {
+					return nil, fmt.Errorf("expected alias name is %q but got %q", aliasName, got)
+				}
+			}
+			if structField.IsInline {
+				// if both used alias and inline, output `<<: *alias`
+				key = ast.MergeKey(token.New("<<", "<<", e.pos(column)))
+			}
 		case structField.AnchorName != "":
 			anchorNode, err := e.encodeAnchor(structField.AnchorName, value, fieldValue, column)
 			if err != nil {
 				return nil, err
 			}
 			value = anchorNode
-		case structField.IsAutoAlias:
-			if fieldValue.Kind() != reflect.Ptr {
-				return nil, fmt.Errorf(
-					"%s in struct is not pointer type. but required automatically alias detection",
-					structField.FieldName,
-				)
-			}
-			anchorName := e.anchorPtrToNameMap[fieldValue.Pointer()]
-			if anchorName == "" {
-				return nil, errors.New(
-					"cannot find anchor name from pointer address for automatically alias detection",
-				)
-			}
-			aliasName := anchorName
-			alias := ast.Alias(token.New("*", "*", e.pos(column)))
-			alias.Value = ast.String(token.New(aliasName, aliasName, e.pos(column)))
-			value = alias
-			if structField.IsInline {
-				// if both used alias and inline, output `<<: *alias`
-				key = ast.MergeKey(token.New("<<", "<<", e.pos(column)))
-			}
-		case structField.AliasName != "":
-			aliasName := structField.AliasName
-			alias := ast.Alias(token.New("*", "*", e.pos(column)))
-			alias.Value = ast.String(token.New(aliasName, aliasName, e.pos(column)))
-			value = alias
-			if structField.IsInline {
-				// if both used alias and inline, output `<<: *alias`
-				key = ast.MergeKey(token.New("<<", "<<", e.pos(column)))
-			}
 		case structField.IsInline:
 			isAutoAnchor := structField.IsAutoAnchor
 			if !hasInlineAnchorField {

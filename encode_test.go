@@ -804,8 +804,8 @@ func TestEncodeWithAutoAlias(t *testing.T) {
 	var v struct {
 		A *T `yaml:"a,anchor=a"`
 		B *T `yaml:"b,anchor=b"`
-		C *T `yaml:"c,alias"`
-		D *T `yaml:"d,alias"`
+		C *T `yaml:"c"`
+		D *T `yaml:"d"`
 	}
 	v.A = &T{I: 1, S: "hello"}
 	v.B = &T{I: 2, S: "world"}
@@ -838,8 +838,8 @@ func TestEncodeWithImplicitAnchorAndAlias(t *testing.T) {
 	var v struct {
 		A *T `yaml:"a,anchor"`
 		B *T `yaml:"b,anchor"`
-		C *T `yaml:"c,alias"`
-		D *T `yaml:"d,alias"`
+		C *T `yaml:"c"`
+		D *T `yaml:"d"`
 	}
 	v.A = &T{I: 1, S: "hello"}
 	v.B = &T{I: 2, S: "world"}
@@ -864,7 +864,7 @@ d: *b
 
 func TestEncodeWithMerge(t *testing.T) {
 	type Person struct {
-		*Person `yaml:",omitempty,inline,alias"`
+		*Person `yaml:",omitempty,inline"`
 		Name    string `yaml:",omitempty"`
 		Age     int    `yaml:",omitempty"`
 	}
@@ -1151,8 +1151,8 @@ func TestEncoder_MarshalAnchor(t *testing.T) {
 		Host *Host `yaml:",anchor"`
 	}
 	type Queue struct {
-		Name  string `yaml:","`
-		*Host `yaml:",alias"`
+		Name string `yaml:","`
+		*Host
 	}
 	var doc struct {
 		Hosts  []*HostDecl `yaml:"hosts"`
@@ -1338,8 +1338,8 @@ func ExampleMarshal_implicitAnchorAlias() {
 	var v struct {
 		A *T `yaml:"a,anchor"`
 		B *T `yaml:"b,anchor"`
-		C *T `yaml:"c,alias"`
-		D *T `yaml:"d,alias"`
+		C *T `yaml:"c"`
+		D *T `yaml:"d"`
 	}
 	v.A = &T{I: 1, S: "hello"}
 	v.B = &T{I: 2, S: "world"}
@@ -1673,5 +1673,47 @@ func TestIssue174(t *testing.T) {
 	got := strings.TrimSuffix(string(b), "\n")
 	if got != `{"00:00:00-23:59:59": [1, 2, 3]}` {
 		t.Fatalf("failed to encode: %q", got)
+	}
+}
+
+func TestIssue259(t *testing.T) {
+	type AnchorValue struct {
+		Foo uint64
+		Bar string
+	}
+
+	type Value struct {
+		Baz   string       `yaml:"baz"`
+		Value *AnchorValue `yaml:"value,anchor"`
+	}
+
+	type Schema struct {
+		Values []*Value
+	}
+
+	schema := Schema{}
+	anchorValue := AnchorValue{Foo: 3, Bar: "bar"}
+	schema.Values = []*Value{
+		{Baz: "xxx", Value: &anchorValue},
+		{Baz: "yyy", Value: &anchorValue},
+		{Baz: "zzz", Value: &anchorValue},
+	}
+	b, err := yaml.Marshal(schema)
+	if err != nil {
+		t.Fatal(err)
+	}
+	expected := `
+values:
+- baz: xxx
+  value: &value
+    foo: 3
+    bar: bar
+- baz: yyy
+  value: *value
+- baz: zzz
+  value: *value
+`
+	if strings.TrimPrefix(expected, "\n") != string(b) {
+		t.Fatalf("failed to encode: got = %s", string(b))
 	}
 }

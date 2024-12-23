@@ -455,6 +455,11 @@ func (d *Decoder) nodeToValue(node ast.Node) (any, error) {
 	case *ast.AliasNode:
 		text := n.Value.String()
 		if v, exists := d.aliasValueMap[text]; exists {
+			// In aliasValueMap, a different value is stored, even if the same anchor is referenced.
+			// Therefore, if a value exists in anchorValueMap, returning that value ensures the same value is always returned.
+			if v, exists := d.anchorValueMap[text]; exists {
+				return v.Interface(), nil
+			}
 			return v, nil
 		}
 		// To handle the case where alias is processed recursively, the result of alias can be set to nil in advance.

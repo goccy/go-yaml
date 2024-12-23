@@ -143,6 +143,13 @@ func Flow(isFlowStyle bool) EncodeOption {
 	}
 }
 
+func UseAutoAnchor() EncodeOption {
+	return func(e *Encoder) error {
+		e.useAutoAnchor = true
+		return nil
+	}
+}
+
 // UseLiteralStyleIfMultiline causes encoding multiline strings with a literal syntax,
 // no matter what characters they include
 func UseLiteralStyleIfMultiline(useLiteralStyleIfMultiline bool) EncodeOption {

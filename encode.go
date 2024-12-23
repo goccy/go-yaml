@@ -34,8 +34,10 @@ type Encoder struct {
 	isFlowStyle                bool
 	isJSONStyle                bool
 	useJSONMarshaler           bool
+	useAutoAnchor              bool
 	anchorCallback             func(*ast.AnchorNode, interface{}) error
 	anchorPtrToNameMap         map[uintptr]string
+	anchorNameRefMap           map[string]struct{}
 	customMarshalerMap         map[reflect.Type]func(interface{}) ([]byte, error)
 	useLiteralStyleIfMultiline bool
 	commentMap                 map[*Path][]*Comment
@@ -56,6 +58,7 @@ func NewEncoder(w io.Writer, opts ...EncodeOption) *Encoder {
 		opts:               opts,
 		indent:             DefaultIndentSpaces,
 		anchorPtrToNameMap: map[uintptr]string{},
+		anchorNameRefMap:   make(map[string]struct{}),
 		customMarshalerMap: map[reflect.Type]func(interface{}) ([]byte, error){},
 		line:               1,
 		column:             1,
@@ -110,6 +113,14 @@ func (e *Encoder) EncodeToNodeContext(ctx context.Context, v interface{}) (ast.N
 		if err := opt(e); err != nil {
 			return nil, err
 		}
+	}
+	e.anchorNameRefMap = make(map[string]struct{})
+	if e.useAutoAnchor {
+		// store referenced anchor names to e.anchorNameRefMap.
+		if _, err := e.encodeValue(ctx, reflect.ValueOf(v), 1); err != nil {
+			return nil, err
+		}
+		e.anchorPtrToNameMap = make(map[uintptr]string)
 	}
 	node, err := e.encodeValue(ctx, reflect.ValueOf(v), 1)
 	if err != nil {
@@ -446,12 +457,8 @@ func (e *Encoder) encodeValue(ctx context.Context, v reflect.Value, column int) 
 	case reflect.Float64:
 		return e.encodeFloat(v.Float(), 64), nil
 	case reflect.Ptr:
-		anchorName := e.anchorPtrToNameMap[v.Pointer()]
-		if anchorName != "" {
-			aliasName := anchorName
-			alias := ast.Alias(token.New("*", "*", e.pos(column)))
-			alias.Value = ast.String(token.New(aliasName, aliasName, e.pos(column)))
-			return alias, nil
+		if value := e.encodePtrAnchor(v, column); value != nil {
+			return value, nil
 		}
 		return e.encodeValue(ctx, v.Elem(), column)
 	case reflect.Interface:
@@ -463,6 +470,9 @@ func (e *Encoder) encodeValue(ctx context.Context, v reflect.Value, column int) 
 	case reflect.Slice:
 		if mapSlice, ok := v.Interface().(MapSlice); ok {
 			return e.encodeMapSlice(ctx, mapSlice, column)
+		}
+		if value := e.encodePtrAnchor(v, column); value != nil {
+			return value, nil
 		}
 		return e.encodeSlice(ctx, v)
 	case reflect.Array:
@@ -478,10 +488,25 @@ func (e *Encoder) encodeValue(ctx context.Context, v reflect.Value, column int) 
 		}
 		return e.encodeStruct(ctx, v, column)
 	case reflect.Map:
+		if value := e.encodePtrAnchor(v, column); value != nil {
+			return value, nil
+		}
 		return e.encodeMap(ctx, v, column), nil
 	default:
 		return nil, fmt.Errorf("unknown value type %s", v.Type().String())
 	}
+}
+
+func (e *Encoder) encodePtrAnchor(v reflect.Value, column int) ast.Node {
+	anchorName := e.anchorPtrToNameMap[v.Pointer()]
+	if anchorName == "" {
+		return nil
+	}
+	e.anchorNameRefMap[anchorName] = struct{}{}
+	aliasName := anchorName
+	alias := ast.Alias(token.New("*", "*", e.pos(column)))
+	alias.Value = ast.String(token.New(aliasName, aliasName, e.pos(column)))
+	return alias
 }
 
 func (e *Encoder) pos(column int) *token.Position {
@@ -662,11 +687,25 @@ func (e *Encoder) encodeMap(ctx context.Context, value reflect.Value, column int
 		if e.isMapNode(value) {
 			value.AddColumn(e.indent)
 		}
+		keyText := fmt.Sprint(key)
+		if _, exists := e.anchorNameRefMap[keyText]; exists && e.useAutoAnchor {
+			// auto anchor
+			anchorName := keyText
+			anchorNode := ast.Anchor(token.New("&", "&", e.pos(column)))
+			anchorNode.Name = ast.String(token.New(anchorName, anchorName, e.pos(column)))
+			anchorNode.Value = value
+			value = anchorNode
+		}
 		node.Values = append(node.Values, ast.MappingValue(
 			nil,
-			e.encodeString(fmt.Sprint(key), column),
+			e.encodeString(keyText, column),
 			value,
 		))
+		if e.useAutoAnchor {
+			if ptr := e.toPointer(v); ptr != 0 {
+				e.anchorPtrToNameMap[ptr] = keyText
+			}
+		}
 	}
 	return node
 }
@@ -867,4 +906,24 @@ func (e *Encoder) encodeStruct(ctx context.Context, value reflect.Value, column 
 		return anchorNode, nil
 	}
 	return node, nil
+}
+
+func (e *Encoder) toPointer(v reflect.Value) uintptr {
+	if e.isInvalidValue(v) {
+		return 0
+	}
+
+	switch v.Type().Kind() {
+	case reflect.Ptr:
+		return v.Pointer()
+	case reflect.Interface:
+		return e.toPointer(v.Elem())
+	case reflect.Slice:
+		return v.Pointer()
+	case reflect.Array:
+		return v.Pointer()
+	case reflect.Map:
+		return v.Pointer()
+	}
+	return 0
 }

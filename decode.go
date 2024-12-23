@@ -447,6 +447,9 @@ func (d *Decoder) nodeToValue(node ast.Node) (any, error) {
 			return nil, err
 		}
 		d.anchorNodeMap[anchorName] = n.Value
+		if d.isPointer(reflect.TypeOf(anchorValue)) {
+			d.anchorValueMap[anchorName] = reflect.ValueOf(anchorValue)
+		}
 		delete(d.aliasValueMap, anchorName)
 		return anchorValue, nil
 	case *ast.AliasNode:
@@ -989,7 +992,11 @@ func (d *Decoder) decodeValue(ctx context.Context, dst reflect.Value, src ast.No
 
 	if src.Type() == ast.AnchorType {
 		anchorName := src.(*ast.AnchorNode).Name.GetToken().Value
-		if _, exists := d.anchorValueMap[anchorName]; !exists {
+		if value, exists := d.anchorValueMap[anchorName]; exists {
+			if _, err := d.castToAssignableValue(dst, value.Type(), src); err != nil {
+				d.anchorValueMap[anchorName] = dst
+			}
+		} else {
 			d.anchorValueMap[anchorName] = dst
 		}
 	}
@@ -1154,6 +1161,9 @@ func (d *Decoder) castToAssignableValue(value reflect.Value, target reflect.Type
 
 	for i := 0; i < maxAddrCount; i++ {
 		if value.Type().AssignableTo(target) {
+			break
+		}
+		if !value.CanAddr() {
 			break
 		}
 		value = value.Addr()
@@ -1834,6 +1844,19 @@ func (d *Decoder) decodeMap(ctx context.Context, dst reflect.Value, src ast.Node
 		return foundErr
 	}
 	return nil
+}
+
+func (d *Decoder) isPointer(typ reflect.Type) bool {
+	if typ == nil {
+		return false
+	}
+	switch typ.Kind() {
+	case reflect.Pointer, reflect.Slice, reflect.Map:
+		return true
+	case reflect.Interface:
+		return d.isPointer(typ.Elem())
+	}
+	return false
 }
 
 func (d *Decoder) fileToReader(file string) (io.Reader, error) {

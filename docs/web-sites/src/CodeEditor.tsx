@@ -1,9 +1,12 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { editor } from 'monaco-editor'
 import MonacoEditor from '@monaco-editor/react';
 import AST from './AST.tsx'
 import { Box, Tabs, Tab } from '@mui/material';
 import Grid from '@mui/material/Grid2';
+import { useXTerm } from 'react-xtermjs';
+import { FitAddon } from '@xterm/addon-fit';
+import '@xterm/xterm/css/xterm.css';
 
 function TabPanel(props: { children: any, value: number, index: number }) {
     const { children, value, index, ...other } = props;
@@ -32,6 +35,38 @@ function a11yProps(index: number) {
     };
 }
 
+const TerminalComponent = () => {
+    const { instance, ref } = useXTerm()
+    const fitAddon = new FitAddon()
+
+    useEffect(() => {
+        if (instance === null) {
+            return
+        }
+        // Load the fit addon
+        instance.loadAddon(fitAddon)
+        instance.options.cursorInactiveStyle = 'none';
+        instance.options.cursorStyle = 'bar';
+        instance.options.letterSpacing = 4;
+        instance.options.fontFamily = 'monospace';
+        instance.options.fontSize = 16;
+
+        fitAddon.fit();
+
+        const handleResize = () => fitAddon.fit()
+
+        // Write custom message on your terminal
+        instance?.writeln("\x1b[31mRED\x1b[0m\n");
+        //instance?.onData((data) => instance?.write(data))
+        window.addEventListener('resize', handleResize)
+        return () => {
+            window.removeEventListener('resize', handleResize)
+        }
+    }, [ref, instance])
+
+    return <div ref={ref} style={{ height: 400, width: '100%', textAlign: 'left' }} />
+}
+
 function CodeEditor() {
     const editorRef = useRef<editor.IStandaloneCodeEditor | null>(null);
     const onChange = () => {
@@ -44,17 +79,17 @@ function CodeEditor() {
     const handleChange = (event: React.SyntheticEvent, newValue: number) => {
         setValue(newValue);
     };
-
     return (
         <>
             <Grid container>
-                <Grid size={{ xs: 6, md: 6 }}>
+                <Grid marginTop={10} size={{ xs: 6, md: 6 }}>
                     <MonacoEditor
                         height={400}
                         language="yaml"
                         theme="vs-dark"
                         value={'foo: bar'}
                         options={{
+                            fontSize: 16,
                             selectOnLineNumbers: true,
                             renderWhitespace: 'all',
                         }}
@@ -63,24 +98,31 @@ function CodeEditor() {
                     />
                 </Grid>
                 <Grid size={{ xs: 6, md: 6 }}>
-                    <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
-                        <Tabs value={value} onChange={handleChange} aria-label="basic tabs example">
-                            <Tab label="Console" {...a11yProps(0)} />
-                            <Tab label="Lexer" {...a11yProps(1)} />
-                            <Tab label="Parser" {...a11yProps(2)} />
-                            <Tab label="Three" {...a11yProps(3)} />
+                    <Box marginTop={1}>
+                        <Tabs
+                            textColor='secondary'
+                            indicatorColor='secondary'
+                            value={value}
+                            onChange={handleChange}
+                            variant="scrollable"
+                            scrollButtons="auto"
+                            aria-label="tabs">
+                            <Tab style={{ marginLeft: 20 }} label="Console" {...a11yProps(0)} />
+                            <Tab style={{ marginLeft: 20 }} label="Lexer" {...a11yProps(1)} />
+                            <Tab style={{ marginLeft: 20 }} label="Parser(Grouping)" {...a11yProps(2)} />
+                            <Tab style={{ marginLeft: 20 }} label="Parser(AST)" {...a11yProps(3)} />
                         </Tabs>
                         <TabPanel value={value} index={0}>
-                            OUT
+                            <TerminalComponent />
                         </TabPanel>
                         <TabPanel value={value} index={1}>
                             Lexer
                         </TabPanel>
                         <TabPanel value={value} index={2}>
-                            <AST></AST>
+                            Parser(Grouping)
                         </TabPanel>
                         <TabPanel value={value} index={3}>
-                            Item Three
+                            <AST></AST>
                         </TabPanel>
                     </Box>
                 </Grid>

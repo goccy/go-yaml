@@ -1,3 +1,5 @@
+//go:build js && wasm
+
 package main
 
 import (
@@ -5,7 +7,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"os"
+	"syscall/js"
 
 	"github.com/goccy/go-graphviz"
 	"github.com/goccy/go-yaml"
@@ -15,9 +17,58 @@ import (
 	"github.com/goccy/go-yaml/token"
 )
 
+func response(v any, err error) map[string]any {
+	if err != nil {
+		return map[string]any{
+			"error": err.Error(),
+		}
+	}
+	return map[string]any{
+		"response": v,
+	}
+}
+
+func tokenize(this js.Value, args []js.Value) any {
+	v := args[0].String()
+	b, err := Tokenize(v)
+	if err != nil {
+		return response(nil, err)
+	}
+	return response(string(b), nil)
+}
+
+func parse(this js.Value, args []js.Value) any {
+	v := args[0].String()
+	b, err := Parse(context.Background(), v)
+	if err != nil {
+		return response(nil, err)
+	}
+	return response(string(b), nil)
+}
+
+type Token struct {
+	Value  string `json:"value"`
+	Origin string `json:"origin"`
+	Error  string `json:"error"`
+	Line   int    `json:"line"`
+	Column int    `json:"column"`
+	Offset int    `json:"offset"`
+}
+
 func Tokenize(v string) ([]byte, error) {
 	tks := lexer.Tokenize(v)
-	b, err := json.Marshal(tks)
+	ret := make([]*Token, 0, len(tks))
+	for _, tk := range tks {
+		ret = append(ret, &Token{
+			Value:  tk.Value,
+			Origin: tk.Origin,
+			Error:  tk.Error,
+			Line:   tk.Position.Line,
+			Column: tk.Position.Column,
+			Offset: tk.Position.Offset,
+		})
+	}
+	b, err := json.Marshal(ret)
 	if err != nil {
 		return nil, err
 	}
@@ -49,12 +100,6 @@ func Parse(ctx context.Context, v string) ([]byte, error) {
 	if _, err := renderer.renderFile(graph, file); err != nil {
 		return nil, err
 	}
-	var xdot bytes.Buffer
-	if err := gv.Render(ctx, graph, graphviz.XDOT, &xdot); err != nil {
-		return nil, err
-	}
-	fmt.Println(xdot.String())
-
 	var out bytes.Buffer
 	if err := gv.Render(ctx, graph, graphviz.SVG, &out); err != nil {
 		return nil, err
@@ -712,11 +757,8 @@ func (r *NodeRenderer) renderToken(graph *graphviz.Graph, tk *token.Token) error
 }
 
 func main() {
-	b, err := Parse(context.Background(), `
-a: b # comment
-`)
-	if err != nil {
-		panic(err)
-	}
-	os.WriteFile("file.svg", b, 0o600)
+	js.Global().Set("tokenize", js.FuncOf(tokenize))
+	js.Global().Set("parse", js.FuncOf(parse))
+
+	<-make(chan struct{})
 }

@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { forwardRef, useState, useRef, useEffect } from 'react';
 import { editor } from 'monaco-editor'
 import MonacoEditor from '@monaco-editor/react';
 import AST from './AST.tsx'
@@ -6,6 +6,8 @@ import { Box, Tabs, Tab } from '@mui/material';
 import Grid from '@mui/material/Grid2';
 import { useXTerm } from 'react-xtermjs';
 import { FitAddon } from '@xterm/addon-fit';
+import { YAMLProcessResult, YAMLProcessResultType } from './YAML.ts';
+import yamlWorker from "./worker?worker";
 import '@xterm/xterm/css/xterm.css';
 
 function TabPanel(props: { children: any, value: number, index: number }) {
@@ -67,10 +69,67 @@ const TerminalComponent = () => {
     return <div ref={ref} style={{ height: 400, width: '100%', textAlign: 'left' }} />
 }
 
+interface Token {
+    value: string
+    origin: string
+    error: string
+    line: number
+    column: number
+    offset: number
+}
+
+const Lexer = (v: any) => {
+    console.log(v.tokens);
+    return (
+        <>
+            {
+                (v.tokens as Token[]).map((token) => {
+                    return <span style={{
+                        backgroundColor: 'gray',
+                        margin: 4,
+                        padding: 5,
+                    }}>{token.origin}</span>;
+                })
+            }
+        </>
+    )
+};
+
 function CodeEditor() {
     const editorRef = useRef<editor.IStandaloneCodeEditor | null>(null);
+    const workerRef = useRef<Worker | null>(null);
+    const [tokens, setTokens] = useState<Token[]>([]);
+    useEffect(() => {
+        workerRef.current = new yamlWorker();
+        workerRef.current.onmessage = (event) => {
+            const data = event.data as YAMLProcessResult[];
+            data.forEach((v) => {
+                console.log(v);
+                switch (v.type) {
+                    case YAMLProcessResultType.Lexer:
+                        if (typeof v.result === 'string') {
+                            console.error(v.result);
+                        } else {
+                            setTokens(v.result);
+                        }
+                        break;
+                    case YAMLProcessResultType.Parser:
+                        break;
+                    default:
+                        break;
+                }
+            });
+        };
+        return () => {
+            workerRef.current?.terminate();
+        };
+    }, []);
     const onChange = () => {
-        console.log('code = ', editorRef?.current?.getValue());
+        const code = editorRef?.current?.getValue()!;
+        console.log('code = ', code);
+        if (workerRef.current) {
+            workerRef.current.postMessage(code);
+        }
     };
     const onMount = (editor: editor.IStandaloneCodeEditor, monaco) => {
         editorRef.current = editor;
@@ -116,7 +175,7 @@ function CodeEditor() {
                             <TerminalComponent />
                         </TabPanel>
                         <TabPanel value={value} index={1}>
-                            Lexer
+                            <Lexer tokens={tokens}></Lexer>
                         </TabPanel>
                         <TabPanel value={value} index={2}>
                             Parser(Grouping)

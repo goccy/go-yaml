@@ -4,6 +4,7 @@ go 1.22.8
 
 require (
 	github.com/goccy/go-graphviz v0.2.9
+	github.com/goccy/go-json v0.10.4
 	github.com/goccy/go-yaml v1.15.13
 )
 

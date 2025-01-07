@@ -1,12 +1,11 @@
-import { forwardRef, useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { editor } from 'monaco-editor'
 import MonacoEditor from '@monaco-editor/react';
-import AST from './AST.tsx'
-import { Box, Tabs, Tab } from '@mui/material';
+import { Box, Tabs, Tab, Tooltip, TooltipProps, tooltipClasses, styled } from '@mui/material';
 import Grid from '@mui/material/Grid2';
 import { useXTerm } from 'react-xtermjs';
 import { FitAddon } from '@xterm/addon-fit';
-import { YAMLProcessResult, YAMLProcessResultType } from './YAML.ts';
+import { Token, YAMLProcessResult, YAMLProcessResultType } from './YAML.ts';
 import yamlWorker from "./worker?worker";
 import '@xterm/xterm/css/xterm.css';
 
@@ -37,9 +36,10 @@ function a11yProps(index: number) {
     };
 }
 
-const TerminalComponent = () => {
+const TerminalComponent = (v: any) => {
     const { instance, ref } = useXTerm()
     const fitAddon = new FitAddon()
+    const out = v.out;
 
     useEffect(() => {
         if (instance === null) {
@@ -52,53 +52,146 @@ const TerminalComponent = () => {
         instance.options.letterSpacing = 4;
         instance.options.fontFamily = 'monospace';
         instance.options.fontSize = 16;
+        instance.options.convertEol = true;
 
         fitAddon.fit();
-
+        instance.clear();
+        instance.writeln(out);
         const handleResize = () => fitAddon.fit()
 
-        // Write custom message on your terminal
-        instance?.writeln("\x1b[31mRED\x1b[0m\n");
-        //instance?.onData((data) => instance?.write(data))
         window.addEventListener('resize', handleResize)
         return () => {
             window.removeEventListener('resize', handleResize)
         }
-    }, [ref, instance])
+    }, [ref, instance, out]);
 
     return <div ref={ref} style={{ height: 400, width: '100%', textAlign: 'left' }} />
 }
 
-interface Token {
-    value: string
-    origin: string
-    error: string
-    line: number
-    column: number
-    offset: number
+
+interface RenderedToken {
+    origins: string[]
+    color: string
+    prop: string
 }
 
+const CustomTooltip = styled(({ className, ...props }: TooltipProps) => (
+    <Tooltip {...props} classes={{ popper: className }} />
+))({
+    [`& .${tooltipClasses.tooltip}`]: {
+        fontSize: 16,
+        whiteSpace: 'pre-wrap',
+    },
+});
+
 const Lexer = (v: any) => {
-    console.log(v.tokens);
+    if (!v.tokens) {
+        return <Box sx={{
+            backgroundColor: '#001435',
+            height: 400,
+        }}></Box>
+    }
+    const tokens = v.tokens as Token[];
+    const tks: RenderedToken[] = (tokens as Token[]).map((token, tokenIndex) => {
+        const orgs = token.origin.split('\n').map((v, idx) => {
+            if (idx > 0) {
+                return ["\n", v];
+            }
+            return v;
+        });
+        const color = () => {
+            if (tokens.length > tokenIndex + 1) {
+                const nextToken = v.tokens[tokenIndex + 1]
+                if (nextToken.type === 'MappingValue') {
+                    return '#008b8b';
+                }
+            }
+            switch (token.type) {
+                case "String":
+                    return '#ff7f50';
+            }
+            return 'black';
+        };
+        const prop = `type:   ${token.type}
+origin: ${JSON.stringify(token.origin)}
+value:  ${JSON.stringify(token.value)}
+line:   ${token.line}
+column: ${token.column}
+`
+        return {
+            origins: orgs.flat().filter((v) => { return v != "" }),
+            color: color(),
+            prop: prop,
+        }
+    })
     return (
         <>
-            {
-                (v.tokens as Token[]).map((token) => {
-                    return <span style={{
-                        backgroundColor: 'gray',
-                        margin: 4,
-                        padding: 5,
-                    }}>{token.origin}</span>;
-                })
-            }
+            <Box sx={{
+                textAlign: 'left',
+                backgroundColor: '#001435',
+                fontSize: 16,
+                fontWeight: 'bold',
+                fontFamily: 'monospace',
+                paddingLeft: '1em',
+                height: 400,
+            }}>
+                {
+                    tks.map((tk) => {
+                        return (
+                            <CustomTooltip title={tk.prop}>
+                                <Box component="span" sx={{
+                                    backgroundColor: 'white',
+                                    paddingRight: 1,
+                                    marginRight: 1,
+                                    borderRadius: 1,
+                                    color: tk.color,
+                                }}>
+                                    {
+                                        tk.origins.map((v) => {
+                                            return (
+                                                <Box component="span"
+                                                    sx={{
+                                                        whiteSpace: "pre-wrap",
+                                                        paddingLeft: 1,
+                                                    }}
+                                                >{v}</Box>
+                                            )
+                                        })
+                                    }
+                                </Box>
+                            </CustomTooltip>
+                        )
+                    })
+                }
+            </Box>
         </>
     )
 };
+
+const AST = (v: any) => {
+    if (!v?.svg) {
+      return <></>
+    }
+    const parser = new DOMParser()
+    const dom = parser.parseFromString(v.svg, 'text/xml');
+    const g = dom.getElementById('graph0');
+    if (!g) {
+        return <></>
+    }
+    const viewBox = g.parentElement!.getAttribute('viewBox')!;
+    return (
+        <>
+            <svg width={'100%'} height={'100%'} viewBox={viewBox} dangerouslySetInnerHTML={{__html: g.outerHTML}}></svg>
+        </>
+    )
+}
 
 function CodeEditor() {
     const editorRef = useRef<editor.IStandaloneCodeEditor | null>(null);
     const workerRef = useRef<Worker | null>(null);
     const [tokens, setTokens] = useState<Token[]>([]);
+    const [out, setOut] = useState<string>('');
+    const [svg, setSvg] = useState<string>('');
     useEffect(() => {
         workerRef.current = new yamlWorker();
         workerRef.current.onmessage = (event) => {
@@ -106,6 +199,9 @@ function CodeEditor() {
             data.forEach((v) => {
                 console.log(v);
                 switch (v.type) {
+                    case YAMLProcessResultType.Decode:
+                        setOut(v.result as string);
+                        break;
                     case YAMLProcessResultType.Lexer:
                         if (typeof v.result === 'string') {
                             console.error(v.result);
@@ -114,6 +210,7 @@ function CodeEditor() {
                         }
                         break;
                     case YAMLProcessResultType.Parser:
+                        setSvg(v.result as string);
                         break;
                     default:
                         break;
@@ -151,6 +248,7 @@ function CodeEditor() {
                             fontSize: 16,
                             selectOnLineNumbers: true,
                             renderWhitespace: 'all',
+                            autoIndent: 'none',
                         }}
                         onChange={onChange}
                         onMount={onMount}
@@ -172,7 +270,7 @@ function CodeEditor() {
                             <Tab style={{ marginLeft: 20 }} label="Parser(AST)" {...a11yProps(3)} />
                         </Tabs>
                         <TabPanel value={value} index={0}>
-                            <TerminalComponent />
+                            <TerminalComponent out={out} />
                         </TabPanel>
                         <TabPanel value={value} index={1}>
                             <Lexer tokens={tokens}></Lexer>
@@ -181,7 +279,7 @@ function CodeEditor() {
                             Parser(Grouping)
                         </TabPanel>
                         <TabPanel value={value} index={3}>
-                            <AST></AST>
+                            <AST svg={svg}></AST>
                         </TabPanel>
                     </Box>
                 </Grid>

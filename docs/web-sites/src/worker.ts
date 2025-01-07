@@ -3,6 +3,22 @@ import { YAMLFuncMap, YAMLProcessResultType, YAMLProcessResult, Token, initWASM 
 
 const yaml = initWASM('/yaml.wasm');
 const funcMap = yaml.then((v): Promise<YAMLFuncMap> => {
+    const decode = (code: string): Promise<YAMLProcessResult> => {
+        return new Promise((resolve) => {
+            const res = v.decode(code);
+            if (res.error !== undefined) {
+                resolve({
+                    type: YAMLProcessResultType.Decode,
+                    result: res.error,
+                });
+                return
+            }
+            resolve({
+                type: YAMLProcessResultType.Decode,
+                result: res.response as string,
+            });
+        });
+    };
     const tokenize = (code: string): Promise<YAMLProcessResult> => {
         return new Promise((resolve) => {
             const res = v.tokenize(code);
@@ -37,6 +53,7 @@ const funcMap = yaml.then((v): Promise<YAMLFuncMap> => {
     };
     return new Promise((resolve) => {
         resolve({
+            decode: decode,
             tokenize: tokenize,
             parse: parse,
         });
@@ -46,9 +63,10 @@ const funcMap = yaml.then((v): Promise<YAMLFuncMap> => {
 self.addEventListener('message', (e) => {
     const code = e.data as string;
     funcMap.then((v) => {
+        const decode = v.decode(code);
         const tokenize = v.tokenize(code);
         const parse = v.parse(code);
-        Promise.all([tokenize, parse]).then((value) => {
+        Promise.all([decode, tokenize, parse]).then((value) => {
             self.postMessage(value);
         });
     })

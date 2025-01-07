@@ -5,11 +5,14 @@ package main
 import (
 	"bytes"
 	"context"
-	"encoding/json"
+	"errors"
 	"fmt"
+	"io"
+	"strings"
 	"syscall/js"
 
 	"github.com/goccy/go-graphviz"
+	"github.com/goccy/go-json"
 	"github.com/goccy/go-yaml"
 	"github.com/goccy/go-yaml/ast"
 	"github.com/goccy/go-yaml/lexer"
@@ -46,7 +49,37 @@ func parse(this js.Value, args []js.Value) any {
 	return response(string(b), nil)
 }
 
+func decode(this js.Value, args []js.Value) any {
+	v := args[0].String()
+	b, err := Decode(v)
+	if err != nil {
+		return response(nil, err)
+	}
+	return response(string(b), nil)
+}
+
+func Decode(v string) ([]byte, error) {
+	var ret []string
+	dec := yaml.NewDecoder(strings.NewReader(v))
+	for {
+		var v any
+		if err := dec.Decode(&v); err != nil {
+			if err == io.EOF {
+				break
+			}
+			return nil, errors.New(yaml.FormatError(err, true, true))
+		}
+		got, err := json.MarshalIndentWithOption(v, "", "  ", json.Colorize(json.DefaultColorScheme))
+		if err != nil {
+			return nil, err
+		}
+		ret = append(ret, string(got))
+	}
+	return []byte(strings.Join(ret, "\n")), nil
+}
+
 type Token struct {
+	Type   string `json:"type"`
 	Value  string `json:"value"`
 	Origin string `json:"origin"`
 	Error  string `json:"error"`
@@ -60,6 +93,7 @@ func Tokenize(v string) ([]byte, error) {
 	ret := make([]*Token, 0, len(tks))
 	for _, tk := range tks {
 		ret = append(ret, &Token{
+			Type:   tk.Type.String(),
 			Value:  tk.Value,
 			Origin: tk.Origin,
 			Error:  tk.Error,
@@ -757,6 +791,7 @@ func (r *NodeRenderer) renderToken(graph *graphviz.Graph, tk *token.Token) error
 }
 
 func main() {
+	js.Global().Set("decode", js.FuncOf(decode))
 	js.Global().Set("tokenize", js.FuncOf(tokenize))
 	js.Global().Set("parse", js.FuncOf(parse))
 

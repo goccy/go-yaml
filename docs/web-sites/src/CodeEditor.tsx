@@ -293,19 +293,19 @@ const ParserGroup = (v: any) => {
 
 const AST = (v: any) => {
     if (!v?.svg) {
-        return <></>
+        return <Box sx={{height: 400, backgroundColor: '#001435'}}></Box>
     }
     const parser = new DOMParser()
     const dom = parser.parseFromString(v.svg, 'text/xml');
     const g = dom.getElementById('graph0');
     if (!g) {
-        return <></>
+        return <Box sx={{height: 400, backgroundColor: '#001435'}}></Box>
     }
     const viewBox = g.parentElement!.getAttribute('viewBox')!;
     return (
-        <>
+        <Box sx={{height: 400}}>
             <svg width={'100%'} height={'100%'} viewBox={viewBox} dangerouslySetInnerHTML={{ __html: g.outerHTML }}></svg>
-        </>
+        </Box>
     )
 }
 
@@ -369,7 +369,7 @@ function CodeEditor() {
     return (
         <>
             <Grid container>
-                <Grid marginTop={10} size={{ xs: 6, md: 6 }}>
+                <Grid marginTop={12} size={{ xs: 12, md: 6 }}>
                     <MonacoEditor
                         height={400}
                         language="yaml"
@@ -385,34 +385,32 @@ function CodeEditor() {
                         onMount={onMount}
                     />
                 </Grid>
-                <Grid size={{ xs: 6, md: 6 }}>
-                    <Box>
-                        <Tabs
-                            textColor='secondary'
-                            indicatorColor='secondary'
-                            value={value}
-                            onChange={handleChange}
-                            variant="scrollable"
-                            scrollButtons="auto"
-                            aria-label="tabs">
-                            <Tab icon={<ArrowBackIosNew/>} iconPosition="end" style={{ marginLeft: 20 }} label="OUTPUT" {...a11yProps(0)} />
-                            <Tab icon={<ArrowBackIosNew/>} iconPosition="end" style={{ marginLeft: 0 }} label="AST" {...a11yProps(3)} />
-                            <Tab icon={<ArrowBackIosNew/>} iconPosition="end" style={{ marginLeft: 0 }} label="GROUPED TOKENS" {...a11yProps(2)} />
-                            <Tab style={{ marginLeft: 0 }} label="TOKENS" {...a11yProps(1)} />
-                        </Tabs>
-                        <TabPanel value={value} index={0}>
-                            <TerminalComponent out={out} />
-                        </TabPanel>
-                        <TabPanel value={value} index={1}>
-                            <Lexer tokens={tokens}></Lexer>
-                        </TabPanel>
-                        <TabPanel value={value} index={2}>
-                            <ParserGroup tokens={groupedTokens}></ParserGroup>
-                        </TabPanel>
-                        <TabPanel value={value} index={3}>
-                            <AST svg={svg}></AST>
-                        </TabPanel>
-                    </Box>
+                <Grid size={{ xs: 12, md: 6 }}>
+                    <Tabs
+                        textColor='secondary'
+                        indicatorColor='secondary'
+                        value={value}
+                        onChange={handleChange}
+                        variant="scrollable"
+                        scrollButtons="auto"
+                        aria-label="tabs">
+                        <Tab icon={<ArrowBackIosNew />} iconPosition="end" style={{ marginLeft: 20 }} label="OUTPUT" {...a11yProps(0)} />
+                        <Tab icon={<ArrowBackIosNew />} iconPosition="end" style={{ marginLeft: 0 }} label="AST" {...a11yProps(1)} />
+                        <Tab icon={<ArrowBackIosNew />} iconPosition="end" style={{ marginLeft: 0 }} label="GROUPED TOKENS" {...a11yProps(2)} />
+                        <Tab style={{ marginLeft: 0 }} label="TOKENS" {...a11yProps(3)} />
+                    </Tabs>
+                    <TabPanel value={value} index={0}>
+                        <TerminalComponent out={out} />
+                    </TabPanel>
+                    <TabPanel value={value} index={1}>
+                        <AST svg={svg}></AST>
+                    </TabPanel>
+                    <TabPanel value={value} index={2}>
+                        <ParserGroup tokens={groupedTokens}></ParserGroup>
+                    </TabPanel>
+                    <TabPanel value={value} index={3}>
+                        <Lexer tokens={tokens}></Lexer>
+                    </TabPanel>
                 </Grid>
             </Grid>
         </>

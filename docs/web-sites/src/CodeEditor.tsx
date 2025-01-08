@@ -8,6 +8,7 @@ import { FitAddon } from '@xterm/addon-fit';
 import { Token, TokenGroup, GroupedToken, YAMLProcessResult, YAMLProcessResultType } from './YAML.ts';
 import yamlWorker from "./worker?worker";
 import '@xterm/xterm/css/xterm.css';
+import { ArrowBackIosNew } from '@mui/icons-material'
 
 function TabPanel(props: { children: any, value: number, index: number }) {
     const { children, value, index, ...other } = props;
@@ -385,7 +386,7 @@ function CodeEditor() {
                     />
                 </Grid>
                 <Grid size={{ xs: 6, md: 6 }}>
-                    <Box marginTop={1}>
+                    <Box>
                         <Tabs
                             textColor='secondary'
                             indicatorColor='secondary'
@@ -394,10 +395,10 @@ function CodeEditor() {
                             variant="scrollable"
                             scrollButtons="auto"
                             aria-label="tabs">
-                            <Tab style={{ marginLeft: 20 }} label="Console" {...a11yProps(0)} />
-                            <Tab style={{ marginLeft: 20 }} label="Lexer" {...a11yProps(1)} />
-                            <Tab style={{ marginLeft: 20 }} label="Parser(Grouping)" {...a11yProps(2)} />
-                            <Tab style={{ marginLeft: 20 }} label="Parser(AST)" {...a11yProps(3)} />
+                            <Tab icon={<ArrowBackIosNew/>} iconPosition="end" style={{ marginLeft: 20 }} label="OUTPUT" {...a11yProps(0)} />
+                            <Tab icon={<ArrowBackIosNew/>} iconPosition="end" style={{ marginLeft: 0 }} label="AST" {...a11yProps(3)} />
+                            <Tab icon={<ArrowBackIosNew/>} iconPosition="end" style={{ marginLeft: 0 }} label="GROUPED TOKENS" {...a11yProps(2)} />
+                            <Tab style={{ marginLeft: 0 }} label="TOKENS" {...a11yProps(1)} />
                         </Tabs>
                         <TabPanel value={value} index={0}>
                             <TerminalComponent out={out} />

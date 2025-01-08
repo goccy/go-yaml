@@ -95,7 +95,7 @@ func newParser(tokens token.Tokens, mode Mode, opts []Option) (*parser, error) {
 			filteredTokens = append(filteredTokens, tk)
 		}
 	}
-	tks, err := createGroupedTokens(token.Tokens(filteredTokens))
+	tks, err := CreateGroupedTokens(token.Tokens(filteredTokens))
 	if err != nil {
 		return nil, err
 	}

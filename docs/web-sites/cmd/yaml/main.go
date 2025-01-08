@@ -31,6 +31,15 @@ func response(v any, err error) map[string]any {
 	}
 }
 
+func decode(this js.Value, args []js.Value) any {
+	v := args[0].String()
+	b, err := Decode(v)
+	if err != nil {
+		return response(nil, err)
+	}
+	return response(string(b), nil)
+}
+
 func tokenize(this js.Value, args []js.Value) any {
 	v := args[0].String()
 	b, err := Tokenize(v)
@@ -40,18 +49,18 @@ func tokenize(this js.Value, args []js.Value) any {
 	return response(string(b), nil)
 }
 
-func parse(this js.Value, args []js.Value) any {
+func parseGroup(this js.Value, args []js.Value) any {
 	v := args[0].String()
-	b, err := Parse(context.Background(), v)
+	b, err := ParseGroup(v)
 	if err != nil {
 		return response(nil, err)
 	}
 	return response(string(b), nil)
 }
 
-func decode(this js.Value, args []js.Value) any {
+func parse(this js.Value, args []js.Value) any {
 	v := args[0].String()
-	b, err := Decode(v)
+	b, err := Parse(context.Background(), v)
 	if err != nil {
 		return response(nil, err)
 	}
@@ -92,15 +101,74 @@ func Tokenize(v string) ([]byte, error) {
 	tks := lexer.Tokenize(v)
 	ret := make([]*Token, 0, len(tks))
 	for _, tk := range tks {
-		ret = append(ret, &Token{
-			Type:   tk.Type.String(),
-			Value:  tk.Value,
-			Origin: tk.Origin,
-			Error:  tk.Error,
-			Line:   tk.Position.Line,
-			Column: tk.Position.Column,
-			Offset: tk.Position.Offset,
-		})
+		ret = append(ret, toToken(tk))
+	}
+	b, err := json.Marshal(ret)
+	if err != nil {
+		return nil, err
+	}
+	return b, nil
+}
+
+func toToken(tk *token.Token) *Token {
+	if tk == nil {
+		return nil
+	}
+	return &Token{
+		Type:   tk.Type.String(),
+		Value:  tk.Value,
+		Origin: tk.Origin,
+		Error:  tk.Error,
+		Line:   tk.Position.Line,
+		Column: tk.Position.Column,
+		Offset: tk.Position.Offset,
+	}
+}
+
+type GroupedToken struct {
+	Token       *Token      `json:"token"`
+	Group       *TokenGroup `json:"group"`
+	LineComment *Token      `json:"lineComment"`
+}
+
+type TokenGroup struct {
+	Type   string          `json:"type"`
+	Tokens []*GroupedToken `json:"tokens"`
+}
+
+func toGroupedToken(tk *parser.Token) *GroupedToken {
+	if tk == nil {
+		return nil
+	}
+	return &GroupedToken{
+		Token:       toToken(tk.Token),
+		Group:       toTokenGroup(tk.Group),
+		LineComment: toToken(tk.LineComment),
+	}
+}
+
+func toTokenGroup(g *parser.TokenGroup) *TokenGroup {
+	if g == nil {
+		return nil
+	}
+	tokens := make([]*GroupedToken, 0, len(g.Tokens))
+	for _, tk := range g.Tokens {
+		tokens = append(tokens, toGroupedToken(tk))
+	}
+	return &TokenGroup{
+		Type:   g.Type.String(),
+		Tokens: tokens,
+	}
+}
+
+func ParseGroup(v string) ([]byte, error) {
+	tks, err := parser.CreateGroupedTokens(lexer.Tokenize(v))
+	if err != nil {
+		return nil, err
+	}
+	ret := make([]*GroupedToken, 0, len(tks))
+	for _, tk := range tks {
+		ret = append(ret, toGroupedToken(tk))
 	}
 	b, err := json.Marshal(ret)
 	if err != nil {
@@ -793,6 +861,7 @@ func (r *NodeRenderer) renderToken(graph *graphviz.Graph, tk *token.Token) error
 func main() {
 	js.Global().Set("decode", js.FuncOf(decode))
 	js.Global().Set("tokenize", js.FuncOf(tokenize))
+	js.Global().Set("parseGroup", js.FuncOf(parseGroup))
 	js.Global().Set("parse", js.FuncOf(parse))
 
 	<-make(chan struct{})

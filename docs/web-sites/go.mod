@@ -23,3 +23,5 @@ replace github.com/goccy/go-graphviz => ../../../go-graphviz
 replace github.com/flopp/go-fontdir => ../../../go-findfont
 
 replace github.com/flopp/go-findfont => ../../../go-findfont
+
+replace github.com/goccy/go-yaml => ../../

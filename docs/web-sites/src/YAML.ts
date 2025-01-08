@@ -6,12 +6,14 @@ export interface GoValueType {
 export interface YAMLGoFuncMap {
   decode: (v: string) => GoValueType;
   tokenize: (v: string) => GoValueType;
+  parseGroup: (v: string) => GoValueType;
   parse: (v: string) => GoValueType;
 }
 
 export interface YAMLFuncMap {
   decode: (code: string) => Promise<YAMLProcessResult>
   tokenize: (code: string) => Promise<YAMLProcessResult>
+  parseGroup: (code: string) => Promise<YAMLProcessResult>
   parse: (code: string) => Promise<YAMLProcessResult>
 }
 
@@ -24,7 +26,7 @@ export enum YAMLProcessResultType {
 
 export interface YAMLProcessResult {
   type: YAMLProcessResultType
-  result: Token[] | string
+  result: Token[] | GroupedToken[]| string
 }
 
 export interface Token {
@@ -37,8 +39,20 @@ export interface Token {
   offset: number
 }
 
+export interface GroupedToken {
+  token: Token
+  group: TokenGroup
+  lineComment: Token
+}
+
+export interface TokenGroup {
+  type: string
+  tokens: GroupedToken[]
+}
+
 declare function decode(v: string): GoValueType;
 declare function tokenize(v: string): GoValueType;
+declare function parseGroup(v: string): GoValueType;
 declare function parse(v: string): GoValueType;
 
 export const initWASM = async (path: string): Promise<YAMLGoFuncMap> => {
@@ -52,6 +66,7 @@ export const initWASM = async (path: string): Promise<YAMLGoFuncMap> => {
   return {
     decode: decode,
     tokenize: tokenize,
+    parseGroup: parseGroup,
     parse: parse,
   };
 };

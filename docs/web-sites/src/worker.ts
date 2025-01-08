@@ -1,5 +1,5 @@
 import './wasm_exec';
-import { YAMLFuncMap, YAMLProcessResultType, YAMLProcessResult, Token, initWASM } from './YAML.ts';
+import { YAMLFuncMap, YAMLProcessResultType, YAMLProcessResult, Token, TokenGroup, GroupedToken, initWASM } from './YAML.ts';
 
 const yaml = initWASM('/yaml.wasm');
 const funcMap = yaml.then((v): Promise<YAMLFuncMap> => {
@@ -35,6 +35,22 @@ const funcMap = yaml.then((v): Promise<YAMLFuncMap> => {
             });
         });
     };
+    const parseGroup = (code: string): Promise<YAMLProcessResult> => {
+        return new Promise((resolve) => {
+            const res = v.parseGroup(code);
+            if (res.error !== undefined) {
+                resolve({
+                    type: YAMLProcessResultType.ParserGroup,
+                    result: res.error,
+                });
+                return
+            }
+            resolve({
+                type: YAMLProcessResultType.ParserGroup,
+                result: JSON.parse(res.response) as GroupedToken[],
+            });           
+        });
+    };
     const parse = (code: string): Promise<YAMLProcessResult> => {
         return new Promise((resolve) => {
             const res = v.parse(code);
@@ -55,6 +71,7 @@ const funcMap = yaml.then((v): Promise<YAMLFuncMap> => {
         resolve({
             decode: decode,
             tokenize: tokenize,
+            parseGroup: parseGroup,
             parse: parse,
         });
     })
@@ -65,8 +82,9 @@ self.addEventListener('message', (e) => {
     funcMap.then((v) => {
         const decode = v.decode(code);
         const tokenize = v.tokenize(code);
+        const parseGroup = v.parseGroup(code);
         const parse = v.parse(code);
-        Promise.all([decode, tokenize, parse]).then((value) => {
+        Promise.all([decode, tokenize, parseGroup, parse]).then((value) => {
             self.postMessage(value);
         });
     })

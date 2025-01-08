@@ -5,7 +5,7 @@ import { Box, Tabs, Tab, Tooltip, TooltipProps, tooltipClasses, styled } from '@
 import Grid from '@mui/material/Grid2';
 import { useXTerm } from 'react-xtermjs';
 import { FitAddon } from '@xterm/addon-fit';
-import { Token, YAMLProcessResult, YAMLProcessResultType } from './YAML.ts';
+import { Token, TokenGroup, GroupedToken, YAMLProcessResult, YAMLProcessResultType } from './YAML.ts';
 import yamlWorker from "./worker?worker";
 import '@xterm/xterm/css/xterm.css';
 
@@ -68,13 +68,6 @@ const TerminalComponent = (v: any) => {
     return <div ref={ref} style={{ height: 400, width: '100%', textAlign: 'left' }} />
 }
 
-
-interface RenderedToken {
-    origins: string[]
-    color: string
-    prop: string
-}
-
 const CustomTooltip = styled(({ className, ...props }: TooltipProps) => (
     <Tooltip {...props} classes={{ popper: className }} />
 ))({
@@ -84,93 +77,222 @@ const CustomTooltip = styled(({ className, ...props }: TooltipProps) => (
     },
 });
 
-const Lexer = (v: any) => {
-    if (!v.tokens) {
-        return <Box sx={{
+const EmptyTokenContainer = () => {
+    return (
+        <Box sx={{
+            textAlign: 'left',
             backgroundColor: '#001435',
+            fontSize: 16,
+            fontWeight: 'bold',
+            fontFamily: 'monospace',
+            paddingLeft: '1em',
             height: 400,
         }}></Box>
+    )
+};
+
+const TokenContainer = ({ children }) => {
+    return (
+        <Box sx={{
+            textAlign: 'left',
+            backgroundColor: '#001435',
+            fontSize: 16,
+            fontWeight: 'bold',
+            fontFamily: 'monospace',
+            paddingLeft: '1em',
+            height: 400,
+        }}>{children}</Box>
+    )
+};
+
+const Lexer = (v: any) => {
+    if (!v.tokens) {
+        return <EmptyTokenContainer />
     }
     const tokens = v.tokens as Token[];
-    const tks: RenderedToken[] = (tokens as Token[]).map((token, tokenIndex) => {
-        const orgs = token.origin.split('\n').map((v, idx) => {
-            if (idx > 0) {
-                return ["\n", v];
-            }
-            return v;
-        });
-        const color = () => {
-            if (tokens.length > tokenIndex + 1) {
-                const nextToken = v.tokens[tokenIndex + 1]
-                if (nextToken.type === 'MappingValue') {
-                    return '#008b8b';
-                }
-            }
-            switch (token.type) {
-                case "String":
-                    return '#ff7f50';
-            }
-            return 'black';
-        };
-        const prop = `type:   ${token.type}
-origin: ${JSON.stringify(token.origin)}
-value:  ${JSON.stringify(token.value)}
-line:   ${token.line}
-column: ${token.column}
-`
-        return {
-            origins: orgs.flat().filter((v) => { return v != "" }),
-            color: color(),
-            prop: prop,
-        }
-    })
     return (
         <>
+            <TokenContainer>
+                {
+                    tokens.map((tk, idx) => {
+                        if (tokens.length > idx + 1) {
+                            return tokenToComponent(tk, tokens[idx + 1]);
+                        }
+                        return tokenToComponent(tk, null)
+                    })
+                }
+            </TokenContainer>
+        </>
+    )
+};
+
+const groupedTokenToComponent = (g: GroupedToken, groups: string[]) => {
+    if (g.token) {
+        return tokenToComponentWithoutTip(g.token);
+    }
+    return groupTokenToComponent(g.group, groups);
+};
+
+const groupTokenToComponent = (g: TokenGroup, groups: string[]) => {
+    if (!g) {
+        return <></>
+    }
+    const groupColor = () => {
+        switch (g.type) {
+            case "directive":
+                return "dimgray";
+            case "directive_name":
+                return "orange"
+            case "document":
+                return "hotpink";
+            case "document_body":
+                return "olive"
+            case "anchor":
+                return "deepskyblue";
+            case "anchor_name":
+                return "brown"
+            case "alias":
+                return "limegreen";
+            case "literal":
+                return "gold"
+            case "folded":
+                return "gold"
+            case "scalar_tag":
+                return "blueviolet";
+            case "map_key":
+                return "coral";
+            case "map_key_value":
+                return "teal"
+        }
+        return 'white';
+    }
+    const newGroups = [...groups, g.type];
+    return (
+        <CustomTooltip
+            sx={{ zIndex: 1500 + newGroups.length }}
+            title={newGroups.join(' > ')}
+            followCursor
+            arrow
+        >
             <Box sx={{
-                textAlign: 'left',
-                backgroundColor: '#001435',
-                fontSize: 16,
-                fontWeight: 'bold',
-                fontFamily: 'monospace',
-                paddingLeft: '1em',
-                height: 400,
+                backgroundColor: groupColor(),
+                borderRadius: 1,
+                paddingLeft: 1,
+                paddingRight: 1,
+                marginRight: '1em'
+            }} component="span">
+                {
+                    g.tokens.map(tk => {
+                        return groupedTokenToComponent(tk, newGroups);
+                    })
+                }
+            </Box>
+        </CustomTooltip>
+    )
+};
+
+const tokenToComponent = (tk: Token, nextTk: Token | null) => {
+    if (!tk) {
+        return <></>
+    }
+    const orgs = tk.origin.split('\n').map((v, idx) => {
+        if (idx > 0) {
+            return ["\n", v];
+        }
+        return v;
+    });
+    const color = () => {
+        if (nextTk && nextTk.type === 'MappingValue') {
+            return '#008b8b';
+        }
+        switch (tk.type) {
+            case "String":
+                return '#ff7f50';
+        }
+        return 'black';
+    };
+    const prop = `type:   ${tk.type}
+origin: ${JSON.stringify(tk.origin)}
+value:  ${JSON.stringify(tk.value)}
+line:   ${tk.line}
+column: ${tk.column}
+`
+    return (
+        <CustomTooltip title={prop}>
+            <Box component="span" sx={{
+                backgroundColor: 'white',
+                paddingRight: 1,
+                marginRight: 1,
+                borderRadius: 1,
+                color: color(),
             }}>
                 {
-                    tks.map((tk) => {
+                    orgs.map((v) => {
                         return (
-                            <CustomTooltip title={tk.prop}>
-                                <Box component="span" sx={{
-                                    backgroundColor: 'white',
-                                    paddingRight: 1,
-                                    marginRight: 1,
-                                    borderRadius: 1,
-                                    color: tk.color,
-                                }}>
-                                    {
-                                        tk.origins.map((v) => {
-                                            return (
-                                                <Box component="span"
-                                                    sx={{
-                                                        whiteSpace: "pre-wrap",
-                                                        paddingLeft: 1,
-                                                    }}
-                                                >{v}</Box>
-                                            )
-                                        })
-                                    }
-                                </Box>
-                            </CustomTooltip>
+                            <Box component="span"
+                                sx={{
+                                    whiteSpace: "pre-wrap",
+                                    paddingLeft: 1,
+                                }}
+                            >{v}</Box>
                         )
                     })
                 }
             </Box>
-        </>
+        </CustomTooltip>
+    )
+};
+
+const tokenToComponentWithoutTip = (tk: Token) => {
+    if (!tk) {
+        return <></>
+    }
+    const orgs = tk.origin.split('\n').map((v, idx) => {
+        if (idx > 0) {
+            return ["\n", v];
+        }
+        return v;
+    });
+    return (
+        <Box component="span" sx={{
+            backgroundColor: 'white',
+            paddingRight: 1,
+            borderRadius: 1,
+        }}>
+            {
+                orgs.map((v) => {
+                    return (
+                        <Box component="span"
+                            sx={{
+                                whiteSpace: "pre-wrap",
+                                paddingLeft: 1,
+                            }}
+                        >{v}</Box>
+                    )
+                })
+            }
+        </Box>
+    )
+};
+
+
+const ParserGroup = (v: any) => {
+    if (!v.tokens) {
+        return <EmptyTokenContainer />
+    }
+    const tokens = v.tokens as GroupedToken[];
+    return (
+        <TokenContainer>
+            {
+                tokens.map(tk => { return groupedTokenToComponent(tk, []); })
+            }
+        </TokenContainer>
     )
 };
 
 const AST = (v: any) => {
     if (!v?.svg) {
-      return <></>
+        return <></>
     }
     const parser = new DOMParser()
     const dom = parser.parseFromString(v.svg, 'text/xml');
@@ -181,7 +303,7 @@ const AST = (v: any) => {
     const viewBox = g.parentElement!.getAttribute('viewBox')!;
     return (
         <>
-            <svg width={'100%'} height={'100%'} viewBox={viewBox} dangerouslySetInnerHTML={{__html: g.outerHTML}}></svg>
+            <svg width={'100%'} height={'100%'} viewBox={viewBox} dangerouslySetInnerHTML={{ __html: g.outerHTML }}></svg>
         </>
     )
 }
@@ -190,6 +312,7 @@ function CodeEditor() {
     const editorRef = useRef<editor.IStandaloneCodeEditor | null>(null);
     const workerRef = useRef<Worker | null>(null);
     const [tokens, setTokens] = useState<Token[]>([]);
+    const [groupedTokens, setGroupedTokens] = useState<GroupedToken[]>([]);
     const [out, setOut] = useState<string>('');
     const [svg, setSvg] = useState<string>('');
     useEffect(() => {
@@ -206,7 +329,14 @@ function CodeEditor() {
                         if (typeof v.result === 'string') {
                             console.error(v.result);
                         } else {
-                            setTokens(v.result);
+                            setTokens(v.result as Token[]);
+                        }
+                        break;
+                    case YAMLProcessResultType.ParserGroup:
+                        if (typeof v.result === 'string') {
+                            console.error(v.result);
+                        } else {
+                            setGroupedTokens(v.result as GroupedToken[]);
                         }
                         break;
                     case YAMLProcessResultType.Parser:
@@ -276,7 +406,7 @@ function CodeEditor() {
                             <Lexer tokens={tokens}></Lexer>
                         </TabPanel>
                         <TabPanel value={value} index={2}>
-                            Parser(Grouping)
+                            <ParserGroup tokens={groupedTokens}></ParserGroup>
                         </TabPanel>
                         <TabPanel value={value} index={3}>
                             <AST svg={svg}></AST>

@@ -1,14 +1,14 @@
 import { useState, useRef, useEffect } from 'react';
 import { editor } from 'monaco-editor'
-import MonacoEditor from '@monaco-editor/react';
+import MonacoEditor, { loader } from '@monaco-editor/react';
 import { Box, Tabs, Tab, Tooltip, TooltipProps, tooltipClasses, styled } from '@mui/material';
 import Grid from '@mui/material/Grid2';
-import { useXTerm } from 'react-xtermjs';
 import { FitAddon } from '@xterm/addon-fit';
 import { Token, TokenGroup, GroupedToken, YAMLProcessResult, YAMLProcessResultType } from './YAML.ts';
 import yamlWorker from "./worker?worker";
 import '@xterm/xterm/css/xterm.css';
 import { ArrowBackIosNew } from '@mui/icons-material'
+import { Terminal } from '@xterm/xterm';
 
 function TabPanel(props: { children: any, value: number, index: number }) {
     const { children, value, index, ...other } = props;
@@ -38,35 +38,78 @@ function a11yProps(index: number) {
 }
 
 const TerminalComponent = (v: any) => {
-    const { instance, ref } = useXTerm()
-    const fitAddon = new FitAddon()
+    const terminalRef = useRef<HTMLDivElement>(null)
+    const [terminalInstance, setTerminalInstance] = useState<Terminal | null>(null)
+    const fitAddon = new FitAddon();
     const out = v.out;
 
     useEffect(() => {
-        if (instance === null) {
-            return
-        }
-        // Load the fit addon
-        instance.loadAddon(fitAddon)
-        instance.options.cursorInactiveStyle = 'none';
-        instance.options.cursorStyle = 'bar';
-        instance.options.letterSpacing = 4;
-        instance.options.fontFamily = 'monospace';
-        instance.options.fontSize = 16;
-        instance.options.convertEol = true;
+        const instance = new Terminal({
+            cursorInactiveStyle: 'none',
+            cursorStyle: 'bar',
+            letterSpacing: 4,
+            fontFamily: 'monospace',
+            fontSize: 16,
+            fontWeightBold: 'bold',
+            convertEol: true,
+            theme: {
+                background: '#313131',
+                cursor: '#313131',
+                brightRed: '#da433a',
+            },
+        });
 
+        instance.loadAddon(fitAddon);
+
+        if (terminalRef.current) {
+            instance.open(terminalRef.current)
+        }
+
+        setTerminalInstance(instance)
+
+        return () => {
+            instance.dispose()
+            setTerminalInstance(null)
+        }
+    }, [
+        terminalRef,
+    ]);
+
+    useEffect(() => {
+        if (!terminalInstance) {
+            return;
+        }
+
+        terminalInstance.loadAddon(fitAddon);
         fitAddon.fit();
-        instance.clear();
-        instance.writeln(out);
+        terminalInstance.clear();
+        terminalInstance.writeln(out);
         const handleResize = () => fitAddon.fit()
 
         window.addEventListener('resize', handleResize)
         return () => {
-            window.removeEventListener('resize', handleResize)
+            window.removeEventListener('resize', handleResize);
         }
-    }, [ref, instance, out]);
+    }, [terminalRef, terminalInstance, out]);
 
-    return <div ref={ref} style={{ height: 400, width: '100%', textAlign: 'left' }} />
+    return (
+        <Box component="div" sx={{
+            height: 400,
+            width: '100%',
+            backgroundColor: '#313131',
+        }}>
+            <Box
+                component="div"
+                ref={terminalRef}
+                sx={{
+                    height: '100%',
+                    width: '90%',
+                    textAlign: 'left',
+                    paddingLeft: 1,
+                    paddingTop: 1,
+                }} />
+        </Box>
+    )
 }
 
 const CustomTooltip = styled(({ className, ...props }: TooltipProps) => (
@@ -82,7 +125,7 @@ const EmptyTokenContainer = () => {
     return (
         <Box sx={{
             textAlign: 'left',
-            backgroundColor: '#001435',
+            backgroundColor: '#313131',
             fontSize: 16,
             fontWeight: 'bold',
             fontFamily: 'monospace',
@@ -96,7 +139,7 @@ const TokenContainer = ({ children }) => {
     return (
         <Box sx={{
             textAlign: 'left',
-            backgroundColor: '#001435',
+            backgroundColor: '#313131',
             fontSize: 16,
             fontWeight: 'bold',
             fontFamily: 'monospace',
@@ -293,17 +336,17 @@ const ParserGroup = (v: any) => {
 
 const AST = (v: any) => {
     if (!v?.svg) {
-        return <Box sx={{height: 400, backgroundColor: '#001435'}}></Box>
+        return <Box sx={{ height: 400, backgroundColor: '#313131' }}></Box>
     }
     const parser = new DOMParser()
     const dom = parser.parseFromString(v.svg, 'text/xml');
     const g = dom.getElementById('graph0');
     if (!g) {
-        return <Box sx={{height: 400, backgroundColor: '#001435'}}></Box>
+        return <Box sx={{ height: 400, backgroundColor: '#313131' }}></Box>
     }
     const viewBox = g.parentElement!.getAttribute('viewBox')!;
     return (
-        <Box sx={{height: 400}}>
+        <Box sx={{ height: 400 }}>
             <svg width={'100%'} height={'100%'} viewBox={viewBox} dangerouslySetInnerHTML={{ __html: g.outerHTML }}></svg>
         </Box>
     )
@@ -359,6 +402,19 @@ function CodeEditor() {
             workerRef.current.postMessage(code);
         }
     };
+    loader.init().then((monaco) => {
+        monaco.editor.defineTheme('go-yaml-theme', {
+            base: 'vs-dark',
+            inherit: true,
+            rules: [],
+            colors: {
+                'editor.background': '#313131',
+                'editor.selectionHighlightBorder': '#313131',
+                'editor.lineHighlightBackground': '#313131',
+                'editor.selectionBackground': '#313131',
+            },
+        });
+    });
     const onMount = (editor: editor.IStandaloneCodeEditor, monaco) => {
         editorRef.current = editor;
     };
@@ -366,6 +422,7 @@ function CodeEditor() {
     const handleChange = (event: React.SyntheticEvent, newValue: number) => {
         setValue(newValue);
     };
+
     return (
         <>
             <Grid container>
@@ -373,8 +430,7 @@ function CodeEditor() {
                     <MonacoEditor
                         height={400}
                         language="yaml"
-                        theme="vs-dark"
-                        value={'foo: bar'}
+                        theme="go-yaml-theme"
                         options={{
                             fontSize: 16,
                             selectOnLineNumbers: true,

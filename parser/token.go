@@ -201,7 +201,7 @@ func (g *TokenGroup) TokenType() token.Type {
 	return g.Tokens[0].Type()
 }
 
-func createGroupedTokens(tokens token.Tokens) ([]*Token, error) {
+func CreateGroupedTokens(tokens token.Tokens) ([]*Token, error) {
 	var err error
 	tks := newTokens(tokens)
 	tks = createLineCommentTokenGroups(tks)

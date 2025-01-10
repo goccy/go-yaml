@@ -561,11 +561,13 @@ func (p *parser) parseMapKeyValue(ctx *context, g *TokenGroup) (*ast.MappingValu
 	if err != nil {
 		return nil, err
 	}
-	value, err := p.parseToken(ctx.withChild(p.mapKeyText(key)), g.Last())
+
+	c := ctx.withChild(p.mapKeyText(key))
+	value, err := p.parseToken(c, g.Last())
 	if err != nil {
 		return nil, err
 	}
-	return newMappingValueNode(ctx, keyGroup.Last(), key, value)
+	return newMappingValueNode(c, keyGroup.Last(), key, value)
 }
 
 func (p *parser) parseMapKey(ctx *context, g *TokenGroup) (ast.MapKeyNode, error) {

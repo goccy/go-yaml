@@ -62,6 +62,12 @@ The repositories that use goccy/go-yaml are listed here.
 The source data is [here](https://github.com/goccy/go-yaml/network/dependents). 
 It is already being used in many repositories. Now it's your turn 😄
 
+# Playground
+
+The Playground visualizes how go-yaml processes YAML text. Use it to assist with your debugging or issue reporting.
+
+https://goccy.github.io/go-yaml
+
 # Installation
 
 ```sh

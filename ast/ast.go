@@ -1598,6 +1598,9 @@ func (n *SequenceNode) blockStyleString() string {
 	}
 
 	for idx, value := range n.Values {
+		if value == nil {
+			continue
+		}
 		valueStr := value.String()
 		newLinePrefix := ""
 		if strings.HasPrefix(valueStr, "\n") {

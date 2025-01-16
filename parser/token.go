@@ -426,6 +426,10 @@ func createScalarTagTokenGroups(tokens []*Token) ([]*Token, error) {
 				ret = append(ret, tk)
 				continue
 			}
+			if isFlowType(tokens[i+1]) {
+				ret = append(ret, tk)
+				continue
+			}
 			ret = append(ret, &Token{
 				Group: &TokenGroup{
 					Type:   TokenGroupScalarTag,
@@ -730,4 +734,12 @@ func isNotMapKeyType(tk *Token) bool {
 		typ == token.SequenceStartType ||
 		typ == token.SequenceEntryType ||
 		typ == token.SequenceEndType
+}
+
+func isFlowType(tk *Token) bool {
+	typ := tk.Type()
+	return typ == token.MappingStartType ||
+		typ == token.MappingEndType ||
+		typ == token.SequenceStartType ||
+		typ == token.SequenceEntryType
 }

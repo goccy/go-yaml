@@ -3175,3 +3175,18 @@ func TestDecodeError(t *testing.T) {
 		})
 	}
 }
+
+func TestIssue617(t *testing.T) {
+	data := `
+a: !Not [!Equals [!Ref foo, 'bar']]
+`
+	var v map[string][]any
+	if err := yaml.Unmarshal([]byte(data), &v); err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(v, map[string][]any{
+		"a": {[]any{"foo", "bar"}},
+	}) {
+		t.Fatalf("found unexpected value: %v", v)
+	}
+}

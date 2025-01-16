@@ -1939,6 +1939,14 @@ func (n *TagNode) IsMergeKey() bool {
 	return key.IsMergeKey()
 }
 
+func (n *TagNode) ArrayRange() *ArrayNodeIter {
+	arr, ok := n.Value.(ArrayNode)
+	if !ok {
+		return nil
+	}
+	return arr.ArrayRange()
+}
+
 // CommentNode type of comment node
 type CommentNode struct {
 	*BaseNode

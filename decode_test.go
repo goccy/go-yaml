@@ -3185,7 +3185,7 @@ a: !Not [!Equals [!Ref foo, 'bar']]
 		t.Fatal(err)
 	}
 	if !reflect.DeepEqual(v, map[string][]any{
-		"a": []any{[]any{"foo", "bar"}},
+		"a": {[]any{"foo", "bar"}},
 	}) {
 		t.Fatalf("found unexpected value: %v", v)
 	}

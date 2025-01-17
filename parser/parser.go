@@ -533,7 +533,7 @@ func (p *parser) validateMapKeyValueNextToken(ctx *context, keyTk, tk *Token) er
 	if tk.Column() <= keyTk.Column() {
 		return nil
 	}
-	if ctx.isFlow && tk.Type() == token.CollectEntryType {
+	if ctx.isFlow && (tk.Type() == token.CollectEntryType || tk.Type() == token.SequenceEndType) {
 		return nil
 	}
 	// a: b

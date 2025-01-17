@@ -647,6 +647,23 @@ merge:
 			"v: [A,1,C]",
 			map[string]interface{}{"v": []interface{}{"A", 1, "C"}},
 		},
+		{
+			"v: [a: b, c: d]",
+			map[string]any{"v": []any{
+				map[string]any{"a": "b"},
+				map[string]any{"c": "d"},
+			}},
+		},
+		{
+			"v: [{a: b}, {c: d, e: f}]",
+			map[string]any{"v": []any{
+				map[string]any{"a": "b"},
+				map[string]any{
+					"c": "d",
+					"e": "f",
+				},
+			}},
+		},
 
 		// Block sequence
 		{

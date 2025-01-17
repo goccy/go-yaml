@@ -22,6 +22,7 @@ var failureTestNames = []string{
 	"empty-keys-in-block-and-flow-mapping",             // no json.
 	"empty-lines-at-end-of-document",                   // no json.
 	"flow-mapping-separate-values",                     // no json.
+	"flow-sequence-in-flow-mapping",                    // no json.
 	"implicit-flow-mapping-key-on-one-line",            // no json.
 	"mapping-key-and-flow-sequence-item-anchors",       // no json.
 	"nested-implicit-complex-keys",                     // no json.
@@ -46,10 +47,8 @@ var failureTestNames = []string{
 	"comment-without-whitespace-after-doublequoted-scalar",
 	"construct-binary",
 	"dash-in-flow-sequence",
-	"flow-sequence-in-flow-mapping",
 	"flow-collections-over-many-lines/01",
 	"flow-mapping-colon-on-line-after-key/02",
-	"flow-mapping-edge-cases",
 	"invalid-comment-after-comma",
 	"invalid-comment-after-end-of-flow-sequence",
 	"invalid-comma-in-tag",

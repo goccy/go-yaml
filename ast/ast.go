@@ -1350,7 +1350,6 @@ type MappingValueNode struct {
 	Start       *token.Token
 	Key         MapKeyNode
 	Value       Node
-	Anchor      *AnchorNode
 	FootComment *CommentGroupNode
 }
 

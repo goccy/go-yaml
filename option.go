@@ -114,7 +114,7 @@ type EncodeOption func(e *Encoder) error
 // Indent change indent number
 func Indent(spaces int) EncodeOption {
 	return func(e *Encoder) error {
-		e.indent = spaces
+		e.indentNum = spaces
 		return nil
 	}
 }

@@ -1980,6 +1980,9 @@ func (d *Decoder) decodeInit() error {
 		return err
 	}
 	d.parsedFile = file
+	for k := range d.toCommentMap {
+		delete(d.toCommentMap, k)
+	}
 	return nil
 }
 

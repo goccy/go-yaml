@@ -629,7 +629,7 @@ func (n *indexNode) filter(node ast.Node) (ast.Node, error) {
 	}
 	sequence, _ := node.(*ast.SequenceNode)
 	if n.selector >= uint(len(sequence.Values)) {
-		return nil, fmt.Errorf("expected index is %d. but got sequences has %d items: %w", n.selector, sequence.Values, ErrInvalidQuery)
+		return nil, fmt.Errorf("expected index is %d. but got sequences has %d items: %w", n.selector, len(sequence.Values), ErrInvalidQuery)
 	}
 	value := sequence.Values[n.selector]
 	if n.child == nil {
@@ -648,7 +648,7 @@ func (n *indexNode) replace(node ast.Node, target ast.Node) error {
 	}
 	sequence, _ := node.(*ast.SequenceNode)
 	if n.selector >= uint(len(sequence.Values)) {
-		return fmt.Errorf("expected index is %d. but got sequences has %d items: %w", n.selector, sequence.Values, ErrInvalidQuery)
+		return fmt.Errorf("expected index is %d. but got sequences has %d items: %w", n.selector, len(sequence.Values), ErrInvalidQuery)
 	}
 	if n.child == nil {
 		if err := sequence.Replace(int(n.selector), target); err != nil {

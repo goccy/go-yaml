@@ -648,10 +648,7 @@ func (e *Encoder) isMapNode(node ast.Node) bool {
 
 func (e *Encoder) isTagAndMapNode(node ast.Node) bool {
 	tn, ok := node.(*ast.TagNode)
-	if ok {
-		_, ok = tn.Value.(ast.MapNode)
-	}
-	return ok
+	return ok && e.isMapNode(tn.Value)
 }
 
 func (e *Encoder) encodeMap(ctx context.Context, value reflect.Value, column int) ast.Node {

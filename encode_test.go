@@ -1718,9 +1718,9 @@ values:
 	}
 }
 
-type tagMarshaler struct{}
+type issue401 struct{}
 
-func (b *tagMarshaler) MarshalYAML() ([]byte, error) {
+func (b *issue401) MarshalYAML() ([]byte, error) {
 	v, err := yaml.Marshal("test")
 	if err != nil {
 		return nil, err
@@ -1732,8 +1732,8 @@ func TestBytesMarshalerWithTag(t *testing.T) {
 	b, err := yaml.Marshal(map[string]interface{}{
 		"a": map[string]interface{}{
 			"b": map[string]interface{}{
-				"c": &tagMarshaler{},
-				"d": []*tagMarshaler{&tagMarshaler{}, &tagMarshaler{}},
+				"c": &issue401{},
+				"d": []*issue401{&issue401{}, &issue401{}},
 			},
 		},
 	})
@@ -1785,16 +1785,16 @@ func TestTagMarshalerMapValue(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	expected := `
+	expected :=
+		`
 a:
-  b:
-    !mytag
+  b: !mytag
     c: 15
     d: 99
 `
 	got := "\n" + string(b)
 	if expected != got {
-		t.Fatalf("failed to encode. expected %s but got %s", expected, got)
+		t.Fatalf("failed to encode. expected:\n%s\n but got:\n%s", expected, got)
 	}
 }
 
@@ -1814,9 +1814,34 @@ func TestTagMarshalerMapValue2(t *testing.T) {
 	}
 	expected := `
 a:
-  b:
-    !mytag
+  b: !mytag
     c: 15
+`
+	got := "\n" + string(b)
+	if expected != got {
+		t.Fatalf("failed to encode. expected %s but got %s", expected, got)
+	}
+}
+
+func TestTagMarshalerTaggedSequence(t *testing.T) {
+	b, err := yaml.Marshal(map[string]interface{}{
+		"a": map[string]interface{}{
+			"b": &tagMarshalerMapValue{
+				Tag: "!mytag",
+				Value: []interface{}{
+					15, 20,
+				},
+			},
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	expected := `
+a:
+  b: !mytag
+  - 15
+  - 20
 `
 	got := "\n" + string(b)
 	if expected != got {

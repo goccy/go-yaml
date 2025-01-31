@@ -1,0 +1,11 @@
+# The !!omap tag is one of the optional types
+# introduced for YAML 1.1. In 1.2, it is not
+# part of the standard tags and should not be
+# enabled by default.
+# Ordered maps are represented as
+# A sequence of mappings, with
+# each mapping having one key
+--- !!omap
+- Mark McGwire: 65
+- Sammy Sosa: 63
+- Ken Griffy: 58

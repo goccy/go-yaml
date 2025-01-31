@@ -1,0 +1,27 @@
+[
+  {
+    "center": {
+      "x": 73,
+      "y": 129
+    },
+    "radius": 7
+  },
+  {
+    "start": {
+      "x": 73,
+      "y": 129
+    },
+    "finish": {
+      "x": 89,
+      "y": 102
+    }
+  },
+  {
+    "start": {
+      "x": 73,
+      "y": 129
+    },
+    "color": 16772795,
+    "text": "Pretty vector drawing."
+  }
+]

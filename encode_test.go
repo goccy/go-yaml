@@ -3,17 +3,18 @@ package yaml_test
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"math"
 	"reflect"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 
-	"github.com/goccy/go-yaml/parser"
-
 	"github.com/goccy/go-yaml"
 	"github.com/goccy/go-yaml/ast"
+	"github.com/goccy/go-yaml/parser"
 )
 
 var zero = 0
@@ -81,6 +82,16 @@ func TestEncoder(t *testing.T) {
 			nil,
 		},
 		{
+			"v: 1e-06\n",
+			map[string]float32{"v": 1e-06},
+			nil,
+		},
+		{
+			"v: 1e-06\n",
+			map[string]float64{"v": 0.000001},
+			nil,
+		},
+		{
 			"v: 0.123456789\n",
 			map[string]float64{"v": 0.123456789},
 			nil,
@@ -98,6 +109,16 @@ func TestEncoder(t *testing.T) {
 		{
 			"v: 1e+06\n",
 			map[string]float64{"v": 1000000},
+			nil,
+		},
+		{
+			"v: 1e-06\n",
+			map[string]float64{"v": 0.000001},
+			nil,
+		},
+		{
+			"v: 1e-06\n",
+			map[string]float64{"v": 1e-06},
 			nil,
 		},
 		{
@@ -254,7 +275,7 @@ func TestEncoder(t *testing.T) {
 			nil,
 		},
 		{
-			"t2: 2018-01-09T10:40:47Z\nt4: 2098-01-09T10:40:47Z\n",
+			"t2: \"2018-01-09T10:40:47Z\"\nt4: \"2098-01-09T10:40:47Z\"\n",
 			map[string]string{
 				"t2": "2018-01-09T10:40:47Z",
 				"t4": "2098-01-09T10:40:47Z",
@@ -316,6 +337,11 @@ func TestEncoder(t *testing.T) {
 		{
 			"a: \" b \"\n",
 			map[string]string{"a": " b "},
+			nil,
+		},
+		{
+			"a: \"`b` c\"\n",
+			map[string]string{"a": "`b` c"},
 			nil,
 		},
 		{
@@ -658,12 +684,12 @@ func TestEncoder(t *testing.T) {
 		// time value
 		{
 			"v: 0001-01-01T00:00:00Z\n",
-			map[string]time.Time{"v": time.Time{}},
+			map[string]time.Time{"v": {}},
 			nil,
 		},
 		{
 			"v: 0001-01-01T00:00:00Z\n",
-			map[string]*time.Time{"v": &time.Time{}},
+			map[string]*time.Time{"v": {}},
 			nil,
 		},
 		{
@@ -693,14 +719,16 @@ func TestEncoder(t *testing.T) {
 		},
 	}
 	for _, test := range tests {
-		var buf bytes.Buffer
-		enc := yaml.NewEncoder(&buf, test.options...)
-		if err := enc.Encode(test.value); err != nil {
-			t.Fatalf("%+v", err)
-		}
-		if test.source != buf.String() {
-			t.Fatalf("expect = [%s], actual = [%s]", test.source, buf.String())
-		}
+		t.Run(test.source, func(t *testing.T) {
+			var buf bytes.Buffer
+			enc := yaml.NewEncoder(&buf, test.options...)
+			if err := enc.Encode(test.value); err != nil {
+				t.Fatalf("%+v", err)
+			}
+			if test.source != buf.String() {
+				t.Fatalf("expect = [%s], actual = [%s]", test.source, buf.String())
+			}
+		})
 	}
 }
 
@@ -776,8 +804,8 @@ func TestEncodeWithAutoAlias(t *testing.T) {
 	var v struct {
 		A *T `yaml:"a,anchor=a"`
 		B *T `yaml:"b,anchor=b"`
-		C *T `yaml:"c,alias"`
-		D *T `yaml:"d,alias"`
+		C *T `yaml:"c"`
+		D *T `yaml:"d"`
 	}
 	v.A = &T{I: 1, S: "hello"}
 	v.B = &T{I: 2, S: "world"}
@@ -810,8 +838,8 @@ func TestEncodeWithImplicitAnchorAndAlias(t *testing.T) {
 	var v struct {
 		A *T `yaml:"a,anchor"`
 		B *T `yaml:"b,anchor"`
-		C *T `yaml:"c,alias"`
-		D *T `yaml:"d,alias"`
+		C *T `yaml:"c"`
+		D *T `yaml:"d"`
 	}
 	v.A = &T{I: 1, S: "hello"}
 	v.B = &T{I: 2, S: "world"}
@@ -836,7 +864,7 @@ d: *b
 
 func TestEncodeWithMerge(t *testing.T) {
 	type Person struct {
-		*Person `yaml:",omitempty,inline,alias"`
+		*Person `yaml:",omitempty,inline"`
 		Name    string `yaml:",omitempty"`
 		Age     int    `yaml:",omitempty"`
 	}
@@ -897,9 +925,6 @@ func TestEncodeWithNestedYAML(t *testing.T) {
 		{
 			value:           map[string]interface{}{"v": "# comment\n"},
 			expectDifferent: true,
-		},
-		{
-			value: map[string]interface{}{"v": "\n"},
 		},
 	}
 
@@ -1053,7 +1078,7 @@ func TestEncoder_FlowRecursive(t *testing.T) {
 		M map[string][]int `yaml:",flow"`
 	}
 	v.M = map[string][]int{
-		"test": []int{1, 2, 3},
+		"test": {1, 2, 3},
 	}
 	var buf bytes.Buffer
 	if err := yaml.NewEncoder(&buf).Encode(v); err != nil {
@@ -1126,8 +1151,8 @@ func TestEncoder_MarshalAnchor(t *testing.T) {
 		Host *Host `yaml:",anchor"`
 	}
 	type Queue struct {
-		Name  string `yaml:","`
-		*Host `yaml:",alias"`
+		Name string `yaml:","`
+		*Host
 	}
 	var doc struct {
 		Hosts  []*HostDecl `yaml:"hosts"`
@@ -1163,7 +1188,7 @@ func TestEncoder_MarshalAnchor(t *testing.T) {
 	hostIdx := 1
 	opt := yaml.MarshalAnchor(func(anchor *ast.AnchorNode, value interface{}) error {
 		if _, ok := value.(*Host); ok {
-			nameNode := anchor.Name.(*ast.StringNode)
+			nameNode, _ := anchor.Name.(*ast.StringNode)
 			nameNode.Value = fmt.Sprintf("host%d", hostIdx)
 			hostIdx++
 		}
@@ -1265,7 +1290,7 @@ func TestEncoder_MultipleDocuments(t *testing.T) {
 	}
 }
 
-func Example_Marshal_Node() {
+func ExampleMarshal_node() {
 	type T struct {
 		Text ast.Node `yaml:"text"`
 	}
@@ -1282,7 +1307,7 @@ func Example_Marshal_Node() {
 	// text: node example
 }
 
-func Example_Marshal_ExplicitAnchorAlias() {
+func ExampleMarshal_explicitAnchorAlias() {
 	type T struct {
 		A int
 		B string
@@ -1305,7 +1330,7 @@ func Example_Marshal_ExplicitAnchorAlias() {
 	// d: *x
 }
 
-func Example_Marshal_ImplicitAnchorAlias() {
+func ExampleMarshal_implicitAnchorAlias() {
 	type T struct {
 		I int
 		S string
@@ -1313,8 +1338,8 @@ func Example_Marshal_ImplicitAnchorAlias() {
 	var v struct {
 		A *T `yaml:"a,anchor"`
 		B *T `yaml:"b,anchor"`
-		C *T `yaml:"c,alias"`
-		D *T `yaml:"d,alias"`
+		C *T `yaml:"c"`
+		D *T `yaml:"d"`
 	}
 	v.A = &T{I: 1, S: "hello"}
 	v.B = &T{I: 2, S: "world"}
@@ -1377,10 +1402,10 @@ type marshalContext struct{}
 func (c *marshalContext) MarshalYAML(ctx context.Context) ([]byte, error) {
 	v, ok := ctx.Value("k").(int)
 	if !ok {
-		return nil, fmt.Errorf("cannot get valid context")
+		return nil, errors.New("cannot get valid context")
 	}
 	if v != 1 {
-		return nil, fmt.Errorf("cannot get valid context")
+		return nil, errors.New("cannot get valid context")
 	}
 	return []byte("1"), nil
 }
@@ -1430,7 +1455,7 @@ func (t TextMarshaler) MarshalText() ([]byte, error) {
 	return []byte(strconv.FormatInt(int64(t), 8)), nil
 }
 
-func Example_MarshalYAML() {
+func ExampleMarshal() {
 	var slow SlowMarshaler
 	slow.A = "Hello slow poke"
 	slow.B = 100
@@ -1628,6 +1653,68 @@ b:
 	got := "\n" + string(b)
 	if expected != got {
 		t.Fatalf("failed to encode. expected %s but got %s", expected, got)
+	}
+}
+
+type Issue174 struct {
+	K string
+	V []int
+}
+
+func (v Issue174) MarshalYAML() ([]byte, error) {
+	return yaml.MarshalWithOptions(map[string][]int{v.K: v.V}, yaml.Flow(true))
+}
+
+func TestIssue174(t *testing.T) {
+	b, err := yaml.Marshal(Issue174{"00:00:00-23:59:59", []int{1, 2, 3}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := strings.TrimSuffix(string(b), "\n")
+	if got != `{"00:00:00-23:59:59": [1, 2, 3]}` {
+		t.Fatalf("failed to encode: %q", got)
+	}
+}
+
+func TestIssue259(t *testing.T) {
+	type AnchorValue struct {
+		Foo uint64
+		Bar string
+	}
+
+	type Value struct {
+		Baz   string       `yaml:"baz"`
+		Value *AnchorValue `yaml:"value,anchor"`
+	}
+
+	type Schema struct {
+		Values []*Value
+	}
+
+	schema := Schema{}
+	anchorValue := AnchorValue{Foo: 3, Bar: "bar"}
+	schema.Values = []*Value{
+		{Baz: "xxx", Value: &anchorValue},
+		{Baz: "yyy", Value: &anchorValue},
+		{Baz: "zzz", Value: &anchorValue},
+	}
+	b, err := yaml.Marshal(schema)
+	if err != nil {
+		t.Fatal(err)
+	}
+	expected := `
+values:
+- baz: xxx
+  value: &value
+    foo: 3
+    bar: bar
+- baz: yyy
+  value: *value
+- baz: zzz
+  value: *value
+`
+	if strings.TrimPrefix(expected, "\n") != string(b) {
+		t.Fatalf("failed to encode: got = %s", string(b))
 	}
 }
 

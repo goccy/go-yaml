@@ -3,14 +3,14 @@ package main
 import (
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"os"
 
 	"github.com/fatih/color"
+	"github.com/mattn/go-colorable"
+
 	"github.com/goccy/go-yaml"
 	"github.com/goccy/go-yaml/lexer"
 	"github.com/goccy/go-yaml/printer"
-	"github.com/mattn/go-colorable"
 )
 
 const escape = "\x1b"
@@ -24,7 +24,7 @@ func _main(args []string) error {
 		return errors.New("ycat: usage: ycat file.yml")
 	}
 	filename := args[1]
-	bytes, err := ioutil.ReadFile(filename)
+	bytes, err := os.ReadFile(filename)
 	if err != nil {
 		return err
 	}
@@ -71,8 +71,14 @@ func _main(args []string) error {
 			Suffix: format(color.Reset),
 		}
 	}
+	p.Comment = func() *printer.Property {
+		return &printer.Property{
+			Prefix: format(color.FgHiBlack),
+			Suffix: format(color.Reset),
+		}
+	}
 	writer := colorable.NewColorableStdout()
-	writer.Write([]byte(p.PrintTokens(tokens) + "\n"))
+	_, _ = writer.Write([]byte(p.PrintTokens(tokens) + "\n"))
 	return nil
 }
 

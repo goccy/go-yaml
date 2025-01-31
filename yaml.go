@@ -9,7 +9,6 @@ import (
 
 	"github.com/goccy/go-yaml/ast"
 	"github.com/goccy/go-yaml/internal/errors"
-	"golang.org/x/xerrors"
 )
 
 // BytesMarshaler interface may be implemented by types to customize their
@@ -80,11 +79,11 @@ func (s MapSlice) ToMap() map[interface{}]interface{} {
 // of the generated document will reflect the structure of the value itself.
 // Maps and pointers (to struct, string, int, etc) are accepted as the in value.
 //
-// Struct fields are only marshalled if they are exported (have an upper case
-// first letter), and are marshalled using the field name lowercased as the
+// Struct fields are only marshaled if they are exported (have an upper case
+// first letter), and are marshaled using the field name lowercased as the
 // default key. Custom keys may be defined via the "yaml" name in the field
 // tag: the content preceding the first comma is used as the key, and the
-// following comma-separated options are used to tweak the marshalling process.
+// following comma-separated options are used to tweak the marshaling process.
 // Conflicting names result in a runtime error.
 //
 // The field tag format accepted is:
@@ -138,7 +137,7 @@ func MarshalWithOptions(v interface{}, opts ...EncodeOption) ([]byte, error) {
 func MarshalContext(ctx context.Context, v interface{}, opts ...EncodeOption) ([]byte, error) {
 	var buf bytes.Buffer
 	if err := NewEncoder(&buf, opts...).EncodeContext(ctx, v); err != nil {
-		return nil, errors.Wrapf(err, "failed to marshal")
+		return nil, err
 	}
 	return buf.Bytes(), nil
 }
@@ -148,7 +147,7 @@ func ValueToNode(v interface{}, opts ...EncodeOption) (ast.Node, error) {
 	var buf bytes.Buffer
 	node, err := NewEncoder(&buf, opts...).EncodeToNode(v)
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to convert value to node")
+		return nil, err
 	}
 	return node, nil
 }
@@ -161,7 +160,7 @@ func ValueToNode(v interface{}, opts ...EncodeOption) (ast.Node, error) {
 // lowercased as the default key. Custom keys may be defined via the
 // "yaml" name in the field tag: the content preceding the first comma
 // is used as the key, and the following comma-separated options are
-// used to tweak the marshalling process (see Marshal).
+// used to tweak the marshaling process (see Marshal).
 // Conflicting names result in a runtime error.
 //
 // For example:
@@ -192,7 +191,7 @@ func UnmarshalContext(ctx context.Context, data []byte, v interface{}, opts ...D
 		if err == io.EOF {
 			return nil
 		}
-		return errors.Wrapf(err, "failed to unmarshal")
+		return err
 	}
 	return nil
 }
@@ -201,7 +200,7 @@ func UnmarshalContext(ctx context.Context, data []byte, v interface{}, opts ...D
 func NodeToValue(node ast.Node, v interface{}, opts ...DecodeOption) error {
 	var buf bytes.Buffer
 	if err := NewDecoder(&buf, opts...).DecodeFromNode(node, v); err != nil {
-		return errors.Wrapf(err, "failed to convert node to value")
+		return err
 	}
 	return nil
 }
@@ -213,11 +212,9 @@ func NodeToValue(node ast.Node, v interface{}, opts ...DecodeOption) error {
 // If the third argument `inclSource` is true, the error message will
 // contain snippets of the YAML source that was used.
 func FormatError(e error, colored, inclSource bool) string {
-	var pp errors.PrettyPrinter
-	if xerrors.As(e, &pp) {
-		var buf bytes.Buffer
-		pp.PrettyPrint(&errors.Sink{&buf}, colored, inclSource)
-		return buf.String()
+	var pe errors.PrettyFormatError
+	if errors.As(e, &pe) {
+		return pe.FormatError(colored, inclSource)
 	}
 
 	return e.Error()
@@ -227,11 +224,11 @@ func FormatError(e error, colored, inclSource bool) string {
 func YAMLToJSON(bytes []byte) ([]byte, error) {
 	var v interface{}
 	if err := UnmarshalWithOptions(bytes, &v, UseOrderedMap()); err != nil {
-		return nil, errors.Wrapf(err, "failed to unmarshal")
+		return nil, err
 	}
 	out, err := MarshalWithOptions(v, JSON())
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to marshal with json option")
+		return nil, err
 	}
 	return out, nil
 }
@@ -240,11 +237,11 @@ func YAMLToJSON(bytes []byte) ([]byte, error) {
 func JSONToYAML(bytes []byte) ([]byte, error) {
 	var v interface{}
 	if err := UnmarshalWithOptions(bytes, &v, UseOrderedMap()); err != nil {
-		return nil, errors.Wrapf(err, "failed to unmarshal from json bytes")
+		return nil, err
 	}
 	out, err := Marshal(v)
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to marshal")
+		return nil, err
 	}
 	return out, nil
 }

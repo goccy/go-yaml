@@ -1,10 +1,9 @@
 package yaml
 
 import (
+	"fmt"
 	"reflect"
 	"strings"
-
-	"golang.org/x/xerrors"
 )
 
 const (
@@ -84,11 +83,7 @@ func isIgnoredStructField(field reflect.StructField) bool {
 		// private field
 		return true
 	}
-	tag := getTag(field)
-	if tag == "-" {
-		return true
-	}
-	return false
+	return getTag(field) == "-"
 }
 
 type StructFieldMap map[string]*StructField
@@ -121,7 +116,7 @@ func structFieldMap(structType reflect.Type) (StructFieldMap, error) {
 		}
 		structField := structField(field)
 		if _, exists := renderNameMap[structField.RenderName]; exists {
-			return nil, xerrors.Errorf("duplicated struct field name %s", structField.RenderName)
+			return nil, fmt.Errorf("duplicated struct field name %s", structField.RenderName)
 		}
 		structFieldMap[structField.FieldName] = structField
 		renderNameMap[structField.RenderName] = struct{}{}

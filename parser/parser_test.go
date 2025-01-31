@@ -17,6 +17,7 @@ import (
 func TestParser(t *testing.T) {
 	sources := []string{
 		"null\n",
+		"0_",
 		"{}\n",
 		"v: hi\n",
 		"v: \"true\"\n",
@@ -69,7 +70,7 @@ func TestParser(t *testing.T) {
 		"%YAML 1.2\n---\n",
 		"a: !!binary gIGC\n",
 		"a: !!binary |\n  " + strings.Repeat("kJCQ", 17) + "kJ\n  CQ\n",
-		"- !tag\n  a: b\n  c: d\n",
+		"v: !!foo 1",
 		"v:\n- A\n- |-\n  B\n  C\n",
 		"v:\n- A\n- >-\n  B\n  C\n",
 		"v: |-\n  0\n",
@@ -83,6 +84,64 @@ func TestParser(t *testing.T) {
 }`,
 		"\"a\": a\n\"b\": b",
 		"'a': a\n'b': b",
+		"a: \r\n  b: 1\r\n",
+		"a_ok: \r  bc: 2\r",
+		"a_mk: \n  bd: 3\n",
+		"a: :a",
+		"{a: , b: c}",
+		"value: >\n",
+		"value: >\n\n",
+		"value: >\nother:",
+		"value: >\n\nother:",
+		"a:\n-",
+		"a: {foo}",
+		"a: {foo,bar}",
+		`
+{
+  a: {
+    b: c
+  },
+  d: e
+}
+`,
+		`
+[
+  a: {
+    b: c
+  }]
+`,
+		`
+{
+  a: {
+    b: c
+  }}
+`,
+		`
+- !tag
+  a: b
+  c: d
+`,
+		`
+a: !tag
+  b: c
+`,
+		`
+a: !tag
+  b: c
+  d: e
+`,
+		`
+a:
+  b: c
+     
+`,
+		`
+foo: xxx
+---
+foo: yyy
+---
+foo: zzz
+`,
 	}
 	for _, src := range sources {
 		if _, err := parser.Parse(lexer.Tokenize(src), 0); err != nil {
@@ -438,6 +497,20 @@ a:
 		},
 		{
 			`
+v: |
+ a
+ b
+ c`,
+			`
+v: |
+ a
+ b
+ c
+`,
+		},
+
+		{
+			`
 a: |
    bbbbbbb
 
@@ -583,6 +656,34 @@ g: "h"
 i: 'j'
 `,
 		},
+		{
+			`
+a:
+  - |2
+        b
+    c: d
+`,
+			`
+a:
+  - |2
+        b
+    c: d
+`,
+		},
+		{
+			`
+a:
+ b: &anchor
+ c: &anchor2
+d: e
+`,
+			`
+a:
+ b: &anchor null
+ c: &anchor2 null
+d: e
+`,
+		},
 	}
 
 	for _, test := range tests {
@@ -592,6 +693,10 @@ i: 'j'
 			if err != nil {
 				t.Fatalf("%+v", err)
 			}
+			got := f.String()
+			if got != strings.TrimPrefix(test.expect, "\n") {
+				t.Fatalf("failed to parse comment:\nexpected:\n%s\ngot:\n%s", strings.TrimPrefix(test.expect, "\n"), got)
+			}
 			var v Visitor
 			for _, doc := range f.Docs {
 				ast.Walk(&v, doc.Body)
@@ -600,6 +705,300 @@ i: 'j'
 			if test.expect != expect {
 				tokens.Dump()
 				t.Fatalf("unexpected output: [%s] != [%s]", test.expect, expect)
+			}
+		})
+	}
+}
+
+func TestParseWhitespace(t *testing.T) {
+	tests := []struct {
+		source string
+		expect string
+	}{
+		{
+			`
+a: b
+
+c: d
+
+
+e: f
+g: h
+`,
+			`
+a: b
+
+c: d
+
+e: f
+g: h
+`,
+		},
+		{
+			`
+a:
+  - b: c
+    d: e
+
+  - f: g
+    h: i
+`,
+			`
+a:
+  - b: c
+    d: e
+
+  - f: g
+    h: i
+`,
+		},
+		{
+			`
+a:
+  - b: c
+    d: e
+
+  - f: g
+    h: i
+`,
+			`
+a:
+  - b: c
+    d: e
+
+  - f: g
+    h: i
+`,
+		},
+		{
+			`
+a:
+- b: c
+  d: e
+
+- f: g
+  h: i
+`,
+			`
+a:
+- b: c
+  d: e
+
+- f: g
+  h: i
+`,
+		},
+		{
+			`
+a:
+# comment 1
+- b: c
+  d: e
+
+# comment 2
+- f: g
+  h: i
+`,
+			`
+a:
+# comment 1
+- b: c
+  d: e
+
+# comment 2
+- f: g
+  h: i
+`,
+		},
+		{
+			`
+a:
+  # comment 1
+  - b: c
+    # comment 2
+    d: e
+
+  # comment 3
+  # comment 4
+  - f: g
+    h: i # comment 5
+`,
+			`
+a:
+  # comment 1
+  - b: c
+    # comment 2
+    d: e
+
+  # comment 3
+  # comment 4
+  - f: g
+    h: i # comment 5
+`,
+		},
+		{
+			`
+a:
+  # comment 1
+  - b: c
+    # comment 2
+    d: e
+
+  # comment 3
+  # comment 4
+  - f: |
+      g
+      g
+    h: i # comment 5
+`,
+			`
+a:
+  # comment 1
+  - b: c
+    # comment 2
+    d: e
+
+  # comment 3
+  # comment 4
+  - f: |
+      g
+      g
+    h: i # comment 5
+`,
+		},
+		{
+			`
+a:
+  # comment 1
+  - b: c
+    # comment 2
+    d: e
+
+  # comment 3
+  # comment 4
+  - f: |
+      asd
+      def
+
+    h: i # comment 5
+`,
+			`
+a:
+  # comment 1
+  - b: c
+    # comment 2
+    d: e
+
+  # comment 3
+  # comment 4
+  - f: |
+      asd
+      def
+
+    h: i # comment 5
+`,
+		},
+		{
+			`
+- b: c
+  d: e
+
+- f: g
+  h: i # comment 4
+`,
+			`
+- b: c
+  d: e
+
+- f: g
+  h: i # comment 4
+`,
+		},
+		{
+			`
+a: null
+b: null
+
+d: e
+`,
+			`
+a: null
+b: null
+
+d: e
+`,
+		},
+		{
+			`
+foo:
+  bar: null # comment
+
+  baz: 1
+`,
+			`
+foo:
+  bar: null # comment
+
+  baz: 1
+`,
+		},
+		{
+			`
+foo:
+  bar: null # comment
+
+baz: 1
+`,
+			`
+foo:
+  bar: null # comment
+
+baz: 1
+`,
+		},
+		{
+			`
+{
+	"apiVersion": "apps/v1",
+	"kind": "Deployment",
+	"metadata": {
+		"name": "foo",
+		"labels": {
+			"app": "bar"
+		}
+	},
+	"spec": {
+		"replicas": 3,
+		"selector": {
+			"matchLabels": {
+				"app": "bar"
+			}
+		},
+		"template": {
+			"metadata": {
+				"labels": {
+					"app": "bar"
+				}
+			}
+		}
+	}
+}
+`,
+			`
+{"apiVersion": "apps/v1", "kind": "Deployment", "metadata": {"name": "foo", "labels": {"app": "bar"}}, "spec": {"replicas": 3, "selector": {"matchLabels": {"app": "bar"}}, "template": {"metadata": {"labels": {"app": "bar"}}}}}
+`,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.source, func(t *testing.T) {
+			f, err := parser.ParseBytes([]byte(test.source), parser.ParseComments)
+			if err != nil {
+				t.Fatal(err)
+			}
+			got := f.String()
+			if got != strings.TrimPrefix(test.expect, "\n") {
+				t.Fatalf("failed to parse comment:\nexpected:\n%s\ngot:\n%s", strings.TrimPrefix(test.expect, "\n"), got)
 			}
 		})
 	}
@@ -617,10 +1016,11 @@ func TestNewLineChar(t *testing.T) {
 		}
 		actual := fmt.Sprintf("%v", ast)
 		expect := `a: "a"
+
 b: 1
 `
 		if expect != actual {
-			t.Fatal("unexpected result")
+			t.Fatalf("unexpected result\nexpected:\n%s\ngot:\n%s", expect, actual)
 		}
 	}
 }
@@ -660,15 +1060,15 @@ a
 		{
 			`%YAML 1.1 {}`,
 			`
-[1:2] unexpected directive value. document not started
+[1:1] unexpected directive value. document not started
 >  1 | %YAML 1.1 {}
-        ^
+       ^
 `,
 		},
 		{
 			`{invalid`,
 			`
-[1:2] unexpected map
+[1:2] could not find flow map content
 >  1 | {invalid
         ^
 `,
@@ -676,22 +1076,294 @@ a
 		{
 			`{ "key": "value" `,
 			`
-[1:1] unterminated flow mapping
+[1:1] could not find flow mapping end token '}'
 >  1 | { "key": "value"
        ^
 `,
 		},
 		{
 			`
-a:
-- b: c
-- `,
+a: |invalidopt
+  foo
+`,
 			`
-[4:1] empty sequence entry
-   2 | a:
-   3 | - b: c
->  4 | -
+[2:4] invalid header option: "invalidopt"
+>  2 | a: |invalidopt
+          ^
+   3 |   foo`,
+		},
+		{
+			`
+a: 1
+b
+`,
+			`
+[3:1] non-map value is specified
+   2 | a: 1
+>  3 | b
        ^
+`,
+		},
+		{
+			`
+a: 'b'
+  c: d
+`,
+			`
+[3:3] value is not allowed in this context. map key-value is pre-defined
+   2 | a: 'b'
+>  3 |   c: d
+         ^
+`,
+		},
+		{
+			`
+a: 'b'
+  - c
+`,
+			`
+[3:3] value is not allowed in this context. map key-value is pre-defined
+   2 | a: 'b'
+>  3 |   - c
+         ^
+`,
+		},
+		{
+			`
+a: 'b'
+  # comment
+  - c
+`,
+			`
+[4:3] value is not allowed in this context. map key-value is pre-defined
+   2 | a: 'b'
+   3 |   # comment
+>  4 |   - c
+         ^
+`,
+		},
+		{
+			`
+a: 1
+b
+- c
+`,
+			`
+[3:1] non-map value is specified
+   2 | a: 1
+>  3 | b
+       ^
+   4 | - c`,
+		},
+		{
+			`a: [`,
+			`
+[1:4] sequence end token ']' not found
+>  1 | a: [
+          ^
+`,
+		},
+		{
+			`a: ]`,
+			`
+[1:4] could not find '[' character corresponding to ']'
+>  1 | a: ]
+          ^
+`,
+		},
+		{
+			`a: [ [1] [2] [3] ]`,
+			`
+[1:10] ',' or ']' must be specified
+>  1 | a: [ [1] [2] [3] ]
+                ^
+`,
+		},
+		{
+			`
+a: -
+b: -
+`,
+			`
+[2:4] block sequence entries are not allowed in this context
+>  2 | a: -
+          ^
+   3 | b: -`,
+		},
+		{
+			`
+a: - 1
+b: - 2
+`,
+			`
+[2:4] block sequence entries are not allowed in this context
+>  2 | a: - 1
+          ^
+   3 | b: - 2`,
+		},
+		{
+			`a: 'foobarbaz`,
+			`
+[1:4] could not find end character of single-quoted text
+>  1 | a: 'foobarbaz
+          ^
+`,
+		},
+		{
+			`a: "\"key\": \"value:\"`,
+			`
+[1:4] could not find end character of double-quoted text
+>  1 | a: "\"key\": \"value:\"
+          ^
+`,
+		},
+		{
+			`foo: [${should not be allowed}]`,
+			`
+[1:8] ',' or ']' must be specified
+>  1 | foo: [${should not be allowed}]
+              ^
+`,
+		},
+		{
+			`foo: [$[should not be allowed]]`,
+			`
+[1:8] ',' or ']' must be specified
+>  1 | foo: [$[should not be allowed]]
+              ^
+`,
+		},
+		{
+			">\n>",
+			`
+[2:1] could not find multi-line content
+   1 | >
+>  2 | >
+       ^
+`,
+		},
+		{
+			">\n1",
+			`
+[2:1] could not find multi-line content
+   1 | >
+>  2 | 1
+       ^
+`,
+		},
+		{
+			"|\n1",
+			`
+[2:1] could not find multi-line content
+   1 | |
+>  2 | 1
+       ^
+`,
+		},
+		{
+			"a: >3\n  1",
+			`
+[2:3] invalid number of indent is specified in the multi-line header
+   1 | a: >3
+>  2 |   1
+         ^
+`,
+		},
+		{
+			`
+a:
+  - |
+        b
+    c: d
+`,
+			`
+[5:5] value is not allowed in this context
+   2 | a:
+   3 |   - |
+   4 |         b
+>  5 |     c: d
+           ^
+`,
+		},
+		{
+			`
+a:
+  - |
+        b
+    c:
+      d: e
+`,
+			`
+[5:5] value is not allowed in this context
+   2 | a:
+   3 |   - |
+   4 |         b
+>  5 |     c:
+           ^
+   6 |       d: e`,
+		},
+		{
+			"key: [@val]",
+			`
+[1:7] '@' is a reserved character
+>  1 | key: [@val]
+             ^
+`,
+		},
+		{
+			"key: [`val]",
+			"\n[1:7] '`' is a reserved character\n>  1 | key: [`val]\n             ^\n",
+		},
+		{
+			`{a: b}: v`,
+			`
+[1:7] found an invalid key for this map
+>  1 | {a: b}: v
+             ^
+`,
+		},
+		{
+			`[a]: v`,
+			`
+[1:4] found an invalid key for this map
+>  1 | [a]: v
+          ^
+`,
+		},
+		{
+			`
+foo:
+  bar:
+    foo: 2
+  baz:
+    foo: 3
+foo: 2
+`,
+			`
+[7:1] mapping key "foo" already defined at [2:1]
+   4 |     foo: 2
+   5 |   baz:
+   6 |     foo: 3
+>  7 | foo: 2
+       ^
+`,
+		},
+		{
+			`
+foo:
+  bar:
+    foo: 2
+  baz:
+    foo: 3
+    foo: 4
+`,
+			`
+[7:5] mapping key "foo" already defined at [6:5]
+   4 |     foo: 2
+   5 |   baz:
+   6 |     foo: 3
+>  7 |     foo: 4
+           ^
 `,
 		},
 	}
@@ -794,6 +1466,14 @@ foo: > # comment
   x: 42
 `,
 		},
+		{
+			name: "unattached comment",
+			yaml: `
+# This comment is in its own document
+---
+a: b
+`,
+		},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
@@ -827,8 +1507,9 @@ foo:
 		if len(f.Docs) != 1 {
 			t.Fatal("failed to parse content with same line comment")
 		}
-		if f.Docs[0].String() != strings.TrimPrefix(expected, "\n") {
-			t.Fatal("failed to parse comment")
+		got := f.Docs[0].String()
+		if got != strings.TrimPrefix(expected, "\n") {
+			t.Fatalf("failed to parse comment:\nexpected:\n%s\ngot:\n%s", strings.TrimPrefix(expected, "\n"), got)
 		}
 	})
 	t.Run("next line", func(t *testing.T) {
@@ -840,7 +1521,8 @@ foo:
 `
 		expected := `
 foo:
-  bar: null # comment
+  bar: null
+  # comment
   baz: 1`
 		f, err := parser.ParseBytes([]byte(content), parser.ParseComments)
 		if err != nil {
@@ -849,8 +1531,9 @@ foo:
 		if len(f.Docs) != 1 {
 			t.Fatal("failed to parse content with next line comment")
 		}
-		if f.Docs[0].String() != strings.TrimPrefix(expected, "\n") {
-			t.Fatal("failed to parse comment")
+		got := f.Docs[0].String()
+		if got != strings.TrimPrefix(expected, "\n") {
+			t.Fatalf("failed to parse comment:\nexpected:\n%s\ngot:\n%s", strings.TrimPrefix(expected, "\n"), got)
 		}
 	})
 	t.Run("next line and different indent", func(t *testing.T) {
@@ -868,10 +1551,12 @@ baz: 1`
 		}
 		expected := `
 foo:
-  bar: null # comment
+  bar: null
+# comment
 baz: 1`
-		if f.Docs[0].String() != strings.TrimPrefix(expected, "\n") {
-			t.Fatal("failed to parse comment")
+		got := f.Docs[0].String()
+		if got != strings.TrimPrefix(expected, "\n") {
+			t.Fatalf("failed to parse comment:\nexpected:\n%s\ngot:\n%s", strings.TrimPrefix(expected, "\n"), got)
 		}
 	})
 }
@@ -897,8 +1582,9 @@ foo:
   - bar: 1
 baz:
   - xxx`
-	if f.Docs[0].String() != strings.TrimPrefix(expected, "\n") {
-		t.Fatal("failed to parse comment")
+	got := f.Docs[0].String()
+	if got != strings.TrimPrefix(expected, "\n") {
+		t.Fatalf("failed to parse comment:\nexpected:\n%s\ngot:\n%s", strings.TrimPrefix(expected, "\n"), got)
 	}
 	t.Run("foo[0].bar", func(t *testing.T) {
 		path, err := yaml.PathString("$.foo[0].bar")
@@ -926,6 +1612,66 @@ baz:
 			t.Fatal("failed to get baz[0] value")
 		}
 	})
+}
+
+func TestCommentWithMap(t *testing.T) {
+	yml := `
+single:
+  # foo comment
+  foo: bar
+
+multiple:
+    # a comment
+    a: b
+    # c comment
+    c: d
+`
+
+	file, err := parser.ParseBytes([]byte(yml), parser.ParseComments)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(file.Docs) == 0 {
+		t.Fatal("cannot get file docs")
+	}
+	if file.Docs[0].Body == nil {
+		t.Fatal("cannot get docs body")
+	}
+	mapNode, ok := file.Docs[0].Body.(*ast.MappingNode)
+	if !ok {
+		t.Fatalf("failed to get map node. got: %T\n", file.Docs[0].Body)
+	}
+	if len(mapNode.Values) != 2 {
+		t.Fatalf("failed to get map values. got %d", len(mapNode.Values))
+	}
+
+	singleNode, ok := mapNode.Values[0].Value.(*ast.MappingNode)
+	if !ok {
+		t.Fatalf("failed to get single node. got %T", mapNode.Values[0].Value)
+	}
+	if len(singleNode.Values) != 1 {
+		t.Fatalf("failed to get single node values. got %d", len(singleNode.Values))
+	}
+	if singleNode.Values[0].GetComment().GetToken().Value != " foo comment" {
+		t.Fatalf("failed to get comment from single. got %q", singleNode.GetComment().GetToken().Value)
+	}
+
+	multiNode, ok := mapNode.Values[1].Value.(*ast.MappingNode)
+	if !ok {
+		t.Fatalf("failed to get multiple node. got: %T", mapNode.Values[1])
+	}
+	if multiNode.GetComment() != nil {
+		t.Fatalf("found unexpected comment")
+	}
+	if len(multiNode.Values) != 2 {
+		t.Fatalf("failed to get multiple node values. got %d", len(multiNode.Values))
+	}
+	if multiNode.Values[0].GetComment().GetToken().Value != " a comment" {
+		t.Fatalf("failed to get comment from multiple[0]. got %q", multiNode.Values[0].GetComment().GetToken().Value)
+	}
+	if multiNode.Values[1].GetComment().GetToken().Value != " c comment" {
+		t.Fatalf("failed to get comment from multiple[1]. got %q", multiNode.Values[1].GetComment().GetToken().Value)
+	}
 }
 
 func TestNodePath(t *testing.T) {
@@ -999,8 +1745,7 @@ func (c *pathCapturer) Visit(node ast.Node) ast.Visitor {
 	return c
 }
 
-type Visitor struct {
-}
+type Visitor struct{}
 
 func (v *Visitor) Visit(node ast.Node) ast.Visitor {
 	tk := node.GetToken()

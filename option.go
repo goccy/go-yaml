@@ -50,11 +50,10 @@ func Validator(v StructValidator) DecodeOption {
 	}
 }
 
-// Strict enable DisallowUnknownField and DisallowDuplicateKey
+// Strict enable DisallowUnknownField
 func Strict() DecodeOption {
 	return func(d *Decoder) error {
 		d.disallowUnknownField = true
-		d.disallowDuplicateKey = true
 		return nil
 	}
 }
@@ -69,10 +68,10 @@ func DisallowUnknownField() DecodeOption {
 	}
 }
 
-// DisallowDuplicateKey causes an error when mapping keys that are duplicates
-func DisallowDuplicateKey() DecodeOption {
+// AllowDuplicateMapKey ignore syntax error when mapping keys that are duplicates.
+func AllowDuplicateMapKey() DecodeOption {
 	return func(d *Decoder) error {
-		d.disallowDuplicateKey = true
+		d.allowDuplicateMapKey = true
 		return nil
 	}
 }

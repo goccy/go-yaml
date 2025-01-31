@@ -28,8 +28,6 @@ const (
 type Encoder struct {
 	writer                     io.Writer
 	opts                       []EncodeOption
-	indent                     int
-	indentSequence             bool
 	singleQuote                bool
 	isFlowStyle                bool
 	isJSONStyle                bool
@@ -41,11 +39,12 @@ type Encoder struct {
 	commentMap                 map[*Path][]*Comment
 	written                    bool
 
-	line        int
-	column      int
-	offset      int
-	indentNum   int
-	indentLevel int
+	line           int
+	column         int
+	offset         int
+	indentNum      int
+	indentLevel    int
+	indentSequence bool
 }
 
 // NewEncoder returns a new encoder that writes to w.
@@ -54,12 +53,12 @@ func NewEncoder(w io.Writer, opts ...EncodeOption) *Encoder {
 	return &Encoder{
 		writer:             w,
 		opts:               opts,
-		indent:             DefaultIndentSpaces,
 		anchorPtrToNameMap: map[uintptr]string{},
 		customMarshalerMap: map[reflect.Type]func(interface{}) ([]byte, error){},
 		line:               1,
 		column:             1,
 		offset:             0,
+		indentNum:          DefaultIndentSpaces,
 	}
 }
 
@@ -573,8 +572,13 @@ func (e *Encoder) encodeBool(v bool) *ast.BoolNode {
 
 func (e *Encoder) encodeSlice(ctx context.Context, value reflect.Value) (*ast.SequenceNode, error) {
 	if e.indentSequence {
-		e.column += e.indent
+		e.column += e.indentNum
 	}
+	defer func() {
+		if e.indentSequence {
+			e.column -= e.indentNum
+		}
+	}()
 	column := e.column
 	sequence := ast.Sequence(token.New("-", "-", e.pos(column)), e.isFlowStyle)
 	for i := 0; i < value.Len(); i++ {
@@ -583,17 +587,19 @@ func (e *Encoder) encodeSlice(ctx context.Context, value reflect.Value) (*ast.Se
 			return nil, err
 		}
 		sequence.Values = append(sequence.Values, node)
-	}
-	if e.indentSequence {
-		e.column -= e.indent
 	}
 	return sequence, nil
 }
 
 func (e *Encoder) encodeArray(ctx context.Context, value reflect.Value) (*ast.SequenceNode, error) {
 	if e.indentSequence {
-		e.column += e.indent
+		e.column += e.indentNum
 	}
+	defer func() {
+		if e.indentSequence {
+			e.column -= e.indentNum
+		}
+	}()
 	column := e.column
 	sequence := ast.Sequence(token.New("-", "-", e.pos(column)), e.isFlowStyle)
 	for i := 0; i < value.Len(); i++ {
@@ -602,9 +608,6 @@ func (e *Encoder) encodeArray(ctx context.Context, value reflect.Value) (*ast.Se
 			return nil, err
 		}
 		sequence.Values = append(sequence.Values, node)
-	}
-	if e.indentSequence {
-		e.column -= e.indent
 	}
 	return sequence, nil
 }
@@ -617,7 +620,7 @@ func (e *Encoder) encodeMapItem(ctx context.Context, item MapItem, column int) (
 		return nil, err
 	}
 	if e.isMapNode(value) {
-		value.AddColumn(e.indent)
+		value.AddColumn(e.indentNum)
 	}
 	return ast.MappingValue(
 		token.New("", "", e.pos(column)),
@@ -660,7 +663,7 @@ func (e *Encoder) encodeMap(ctx context.Context, value reflect.Value, column int
 			return nil
 		}
 		if e.isMapNode(value) {
-			value.AddColumn(e.indent)
+			value.AddColumn(e.indentNum)
 		}
 		node.Values = append(node.Values, ast.MappingValue(
 			nil,
@@ -783,7 +786,7 @@ func (e *Encoder) encodeStruct(ctx context.Context, value reflect.Value, column 
 			return nil, err
 		}
 		if e.isMapNode(value) {
-			value.AddColumn(e.indent)
+			value.AddColumn(e.indentNum)
 		}
 		var key ast.MapKeyNode = e.encodeString(structField.RenderName, column)
 		switch {
@@ -833,8 +836,8 @@ func (e *Encoder) encodeStruct(ctx context.Context, value reflect.Value, column 
 					// if declared same key name, skip encoding this field
 					continue
 				}
-				key.AddColumn(-e.indent)
-				value.AddColumn(-e.indent)
+				key.AddColumn(-e.indentNum)
+				value.AddColumn(-e.indentNum)
 				node.Values = append(node.Values, ast.MappingValue(nil, key, value))
 			}
 			continue
@@ -848,7 +851,7 @@ func (e *Encoder) encodeStruct(ctx context.Context, value reflect.Value, column 
 		node.Values = append(node.Values, ast.MappingValue(nil, key, value))
 	}
 	if hasInlineAnchorField {
-		node.AddColumn(e.indent)
+		node.AddColumn(e.indentNum)
 		anchorName := "anchor"
 		anchorNode := ast.Anchor(token.New("&", "&", e.pos(column)))
 		anchorNode.Name = ast.String(token.New(anchorName, anchorName, e.pos(column)))

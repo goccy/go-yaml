@@ -576,7 +576,9 @@ func (d *DocumentNode) String() string {
 	if d.Start != nil {
 		doc = append(doc, d.Start.Value)
 	}
-	doc = append(doc, d.Body.String())
+	if d.Body != nil {
+		doc = append(doc, d.Body.String())
+	}
 	if d.End != nil {
 		doc = append(doc, d.End.Value)
 	}
@@ -816,11 +818,12 @@ func (n *StringNode) String() string {
 		// It works mostly, but inconsistencies occur if line break characters are mixed.
 		header := token.LiteralBlockHeader(n.Value)
 		space := strings.Repeat(" ", n.Token.Position.Column-1)
+		indent := strings.Repeat(" ", n.Token.Position.IndentNum)
 		values := []string{}
 		for _, v := range strings.Split(n.Value, lbc) {
-			values = append(values, fmt.Sprintf("%s  %s", space, v))
+			values = append(values, fmt.Sprintf("%s%s%s", space, indent, v))
 		}
-		block := strings.TrimSuffix(strings.TrimSuffix(strings.Join(values, lbc), fmt.Sprintf("%s  %s", lbc, space)), fmt.Sprintf("  %s", space))
+		block := strings.TrimSuffix(strings.TrimSuffix(strings.Join(values, lbc), fmt.Sprintf("%s%s%s", lbc, indent, space)), fmt.Sprintf("%s%s", indent, space))
 		return fmt.Sprintf("%s%s%s", header, lbc, block)
 	} else if len(n.Value) > 0 && (n.Value[0] == '{' || n.Value[0] == '[') {
 		return fmt.Sprintf(`'%s'`, n.Value)
@@ -847,11 +850,12 @@ func (n *StringNode) stringWithoutComment() string {
 		// It works mostly, but inconsistencies occur if line break characters are mixed.
 		header := token.LiteralBlockHeader(n.Value)
 		space := strings.Repeat(" ", n.Token.Position.Column-1)
+		indent := strings.Repeat(" ", n.Token.Position.IndentNum)
 		values := []string{}
 		for _, v := range strings.Split(n.Value, lbc) {
-			values = append(values, fmt.Sprintf("%s  %s", space, v))
+			values = append(values, fmt.Sprintf("%s%s%s", space, indent, v))
 		}
-		block := strings.TrimSuffix(strings.TrimSuffix(strings.Join(values, lbc), fmt.Sprintf("%s  %s", lbc, space)), fmt.Sprintf("  %s", space))
+		block := strings.TrimSuffix(strings.TrimSuffix(strings.Join(values, lbc), fmt.Sprintf("%s%s%s", lbc, indent, space)), fmt.Sprintf("  %s", space))
 		return fmt.Sprintf("%s%s%s", header, lbc, block)
 	} else if len(n.Value) > 0 && (n.Value[0] == '{' || n.Value[0] == '[') {
 		return fmt.Sprintf(`'%s'`, n.Value)

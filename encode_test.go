@@ -1540,49 +1540,71 @@ func TestIssue356(t *testing.T) {
 }
 
 func TestMarshalIndentWithMultipleText(t *testing.T) {
-	t.Run("depth1", func(t *testing.T) {
-		b, err := yaml.MarshalWithOptions(map[string]interface{}{
-			"key": []string{`line1
+	tests := []struct {
+		name   string
+		input  map[string]interface{}
+		indent yaml.EncodeOption
+		want   string
+	}{
+		{
+			name: "depth1",
+			input: map[string]interface{}{
+				"key": []string{`line1
 line2
 line3`},
-		}, yaml.Indent(2))
-		if err != nil {
-			t.Fatal(err)
-		}
-		got := string(b)
-		expected := `key:
+			},
+			indent: yaml.Indent(2),
+			want: `key:
 - |-
   line1
   line2
   line3
-`
-		if expected != got {
-			t.Fatalf("failed to encode.\nexpected:\n%s\nbut got:\n%s\n", expected, got)
-		}
-	})
-	t.Run("depth2", func(t *testing.T) {
-		b, err := yaml.MarshalWithOptions(map[string]interface{}{
-			"key": map[string]interface{}{
-				"key2": []string{`line1
+`,
+		},
+		{
+			name: "depth2",
+			input: map[string]interface{}{
+				"key": map[string]interface{}{
+					"key2": []string{`line1
 line2
 line3`},
+				},
 			},
-		}, yaml.Indent(2))
-		if err != nil {
-			t.Fatal(err)
-		}
-		got := string(b)
-		expected := `key:
+			indent: yaml.Indent(2),
+			want: `key:
   key2:
   - |-
     line1
     line2
     line3
-`
-		if expected != got {
-			t.Fatalf("failed to encode.\nexpected:\n%s\nbut got:\n%s\n", expected, got)
-		}
-	})
+`,
+		},
+		{
+			name: "raw string new lines",
+			input: map[string]interface{}{
+				"key": "line1\nline2\nline3",
+			},
+			indent: yaml.Indent(4),
+			want: `key: |-
+    line1
+    line2
+    line3
+`,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			b, err := yaml.MarshalWithOptions(tt.input, tt.indent)
+			if err != nil {
+				t.Fatalf("failed to marshal yaml: %v", err)
+			}
+			got := string(b)
+			if tt.want != got {
+				t.Fatalf("failed to encode.\nexpected:\n%s\nbut got:\n%s\n", tt.want, got)
+			}
+		})
+	}
 }
 
 type bytesMarshaler struct{}

@@ -16,6 +16,7 @@ import (
 
 func TestParser(t *testing.T) {
 	sources := []string{
+		"",
 		"null\n",
 		"0_",
 		"{}\n",
@@ -144,10 +145,50 @@ foo: zzz
 `,
 	}
 	for _, src := range sources {
-		if _, err := parser.Parse(lexer.Tokenize(src), 0); err != nil {
+		f, err := parser.Parse(lexer.Tokenize(src), 0)
+		if err != nil {
 			t.Fatalf("parse error: source [%s]: %+v", src, err)
 		}
+		_ = f.String() // ensure no panic
 	}
+}
+
+func TestParseEmptyDocument(t *testing.T) {
+	t.Run("empty document", func(t *testing.T) {
+		f, err := parser.ParseBytes([]byte(""), parser.ParseComments)
+		if err != nil {
+			t.Fatal(err)
+		}
+		got := f.String()
+		expected := "\n"
+		if got != expected {
+			t.Fatalf("failed to parse comment:\nexpected:\n%q\ngot:\n%q", expected, got)
+		}
+	})
+
+	t.Run("empty document with comment (parse comment = off)", func(t *testing.T) {
+		f, err := parser.ParseBytes([]byte("# comment"), 0)
+		if err != nil {
+			t.Fatal(err)
+		}
+		got := f.String()
+		expected := "\n"
+		if got != expected {
+			t.Fatalf("failed to parse comment:\nexpected:\n%q\ngot:\n%q", expected, got)
+		}
+	})
+
+	t.Run("empty document with comment (parse comment = on)", func(t *testing.T) {
+		f, err := parser.ParseBytes([]byte("# comment"), parser.ParseComments)
+		if err != nil {
+			t.Fatal(err)
+		}
+		got := f.String()
+		expected := "# comment\n"
+		if got != expected {
+			t.Fatalf("failed to parse comment:\nexpected:\n%q\ngot:\n%q", expected, got)
+		}
+	})
 }
 
 func TestParseComplicatedDocument(t *testing.T) {

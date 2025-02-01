@@ -1755,7 +1755,7 @@ func TestBytesMarshalerWithTag(t *testing.T) {
 		"a": map[string]interface{}{
 			"b": map[string]interface{}{
 				"c": &issue401{},
-				"d": []*issue401{&issue401{}, &issue401{}},
+				"d": []*issue401{{}, {}},
 			},
 		},
 	})

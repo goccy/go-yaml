@@ -623,7 +623,7 @@ func (e *Encoder) encodeMapItem(ctx context.Context, item MapItem, column int) (
 		value.AddColumn(e.indentNum)
 	}
 	if e.isTagAndMapNode(value) {
-		value.AddColumn(e.indent)
+		value.AddColumn(e.indentNum)
 	}
 	return ast.MappingValue(
 		token.New("", "", e.pos(column)),
@@ -674,7 +674,7 @@ func (e *Encoder) encodeMap(ctx context.Context, value reflect.Value, column int
 			value.AddColumn(e.indentNum)
 		}
 		if e.isTagAndMapNode(value) {
-			value.AddColumn(e.indent)
+			value.AddColumn(e.indentNum)
 		}
 		node.Values = append(node.Values, ast.MappingValue(
 			nil,

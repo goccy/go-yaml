@@ -1754,6 +1754,11 @@ a: !mytag
 - 1
 - 2
 - 3`},
+		{name: "anchor before tag", input: `
+a: &anc !mytag
+- 1
+- 2
+- 3`},
 		{name: "flow mapping", input: "a: !mytag {b: 2}"},
 		{name: "flow sequence", input: "a: !mytag [1, 2, 3]"},
 		{name: "explicit type", input: "a: !!timestamp test"},

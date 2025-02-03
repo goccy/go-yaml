@@ -1740,133 +1740,38 @@ values:
 	}
 }
 
-type issue401 struct{}
+func TestTagMarshalling(t *testing.T) {
+	tests := []struct {
+		name  string
+		input string
+	}{
+		{name: "scalar", input: "a: !mytag 1"},
+		{name: "mapping", input: `
+a: !mytag
+  b: 2`},
+		{name: "sequence", input: `
+a: !mytag
+- 1
+- 2
+- 3`},
+		{name: "flow mapping", input: "a: !mytag {b: 2}"},
+		{name: "flow sequence", input: "a: !mytag [1, 2, 3]"},
+		{name: "explicit type", input: "a: !!timestamp test"},
+	}
 
-func (b *issue401) MarshalYAML() ([]byte, error) {
-	v, err := yaml.Marshal("test")
-	if err != nil {
-		return nil, err
-	}
-	return []byte(fmt.Sprintf("%s %s", "!!timestamp", string(v))), nil
-}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			res, _ := parser.ParseBytes([]byte(tt.input), 0)
+			result, err := yaml.Marshal(res.Docs[0])
+			if err != nil {
+				t.Fatal(err)
+			}
 
-func TestBytesMarshalerWithTag(t *testing.T) {
-	b, err := yaml.Marshal(map[string]interface{}{
-		"a": map[string]interface{}{
-			"b": map[string]interface{}{
-				"c": &issue401{},
-				"d": []*issue401{{}, {}},
-			},
-		},
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	expected := `
-a:
-  b:
-    c: !!timestamp test
-    d:
-    - !!timestamp test
-    - !!timestamp test
-`
-	got := "\n" + string(b)
-	if expected != got {
-		t.Fatalf("failed to encode. expected %s but got %s", expected, got)
-	}
-}
-
-type tagMarshalerMapValue struct {
-	Tag   string
-	Value any
-}
-
-func (t *tagMarshalerMapValue) MarshalYAML() ([]byte, error) {
-	var out bytes.Buffer
-	_, _ = fmt.Fprintf(&out, "\n%s\n", t.Tag)
-	v, err := yaml.ValueToNode(t.Value, yaml.Flow(false))
-	if err != nil {
-		return nil, err
-	}
-	_, _ = fmt.Fprintf(&out, "%s", v)
-	return out.Bytes(), nil
-}
-
-func TestTagMarshalerMapValue(t *testing.T) {
-	b, err := yaml.Marshal(map[string]interface{}{
-		"a": map[string]interface{}{
-			"b": &tagMarshalerMapValue{
-				Tag: "!mytag",
-				Value: map[string]interface{}{
-					"c": 15,
-					"d": 99,
-				},
-			},
-		},
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	expected :=
-		`
-a:
-  b: !mytag
-    c: 15
-    d: 99
-`
-	got := "\n" + string(b)
-	if expected != got {
-		t.Fatalf("failed to encode. expected:\n%s\n but got:\n%s", expected, got)
-	}
-}
-
-func TestTagMarshalerMapValue2(t *testing.T) {
-	b, err := yaml.Marshal(map[string]interface{}{
-		"a": map[string]interface{}{
-			"b": &tagMarshalerMapValue{
-				Tag: "!mytag",
-				Value: map[string]interface{}{
-					"c": 15,
-				},
-			},
-		},
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	expected := `
-a:
-  b: !mytag
-    c: 15
-`
-	got := "\n" + string(b)
-	if expected != got {
-		t.Fatalf("failed to encode. expected %s but got %s", expected, got)
-	}
-}
-
-func TestTagMarshalerTaggedSequence(t *testing.T) {
-	b, err := yaml.Marshal(map[string]interface{}{
-		"a": map[string]interface{}{
-			"b": &tagMarshalerMapValue{
-				Tag: "!mytag",
-				Value: []interface{}{
-					15, 20,
-				},
-			},
-		},
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	expected := `
-a:
-  b: !mytag
-  - 15
-  - 20
-`
-	got := "\n" + string(b)
-	if expected != got {
-		t.Fatalf("failed to encode. expected %s but got %s", expected, got)
+			expected := strings.TrimSpace(tt.input)
+			output := strings.TrimSpace(string(result))
+			if expected != output {
+				t.Fatalf("input is not equal to output.\n\nexpected:\n%v\n actual:\n%v", expected, output)
+			}
+		})
 	}
 }

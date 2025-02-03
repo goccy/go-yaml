@@ -7,6 +7,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"io"
+	"maps"
 	"math"
 	"os"
 	"path/filepath"
@@ -30,6 +31,7 @@ type Decoder struct {
 	aliasValueMap        map[*ast.AliasNode]any
 	anchorValueMap       map[string]reflect.Value
 	customUnmarshalerMap map[reflect.Type]func(interface{}, []byte) error
+	commentMaps          []CommentMap
 	toCommentMap         CommentMap
 	opts                 []DecodeOption
 	referenceFiles       []string
@@ -1957,6 +1959,12 @@ func (d *Decoder) parse(bytes []byte) (*ast.File, error) {
 		if v != nil {
 			normalizedFile.Docs = append(normalizedFile.Docs, doc)
 		}
+		cm := CommentMap{}
+		maps.Copy(cm, d.toCommentMap)
+		d.commentMaps = append(d.commentMaps, cm)
+		for k := range d.toCommentMap {
+			delete(d.toCommentMap, k)
+		}
 	}
 	return normalizedFile, nil
 }
@@ -1980,9 +1988,6 @@ func (d *Decoder) decodeInit() error {
 		return err
 	}
 	d.parsedFile = file
-	for k := range d.toCommentMap {
-		delete(d.toCommentMap, k)
-	}
 	return nil
 }
 
@@ -1994,6 +1999,9 @@ func (d *Decoder) decode(ctx context.Context, v reflect.Value) error {
 	body := d.parsedFile.Docs[d.streamIndex].Body
 	if body == nil {
 		return nil
+	}
+	if len(d.commentMaps) > d.streamIndex {
+		maps.Copy(d.toCommentMap, d.commentMaps[d.streamIndex])
 	}
 	if err := d.decodeValue(ctx, v.Elem(), body); err != nil {
 		return err

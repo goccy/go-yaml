@@ -1627,6 +1627,29 @@ baz:
 	if got != strings.TrimPrefix(expected, "\n") {
 		t.Fatalf("failed to parse comment:\nexpected:\n%s\ngot:\n%s", strings.TrimPrefix(expected, "\n"), got)
 	}
+
+	t.Run("foo", func(t *testing.T) {
+		path, err := yaml.PathString("$.foo")
+		if err != nil {
+			t.Fatal(err)
+		}
+		v, err := path.FilterFile(f)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if v.GetComment() == nil {
+			t.Fatal("failed to get foo comment")
+		}
+		if len(v.GetComment().Comments) != 1 {
+			t.Fatalf("failed to get foo comment. got %d", len(v.GetComment().Comments))
+		}
+		if v.GetComment().Comments[0].String() != "# comment" {
+			t.Fatalf("failed to get foo comment. got %q", v.GetComment().Comments[0].String())
+		}
+		if v.String() != "  # comment\n  - bar: 1" {
+			t.Fatalf("failed to get foo value: %q", v.String())
+		}
+	})
 	t.Run("foo[0].bar", func(t *testing.T) {
 		path, err := yaml.PathString("$.foo[0].bar")
 		if err != nil {

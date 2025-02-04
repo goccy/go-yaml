@@ -1448,7 +1448,10 @@ func (n *MappingValueNode) toString() string {
 		return fmt.Sprintf("%s%s: %s", space, n.Key.String(), n.Value.String())
 	} else if _, ok := n.Value.(*AliasNode); ok {
 		return fmt.Sprintf("%s%s: %s", space, n.Key.String(), n.Value.String())
+	} else if _, ok := n.Value.(*TagNode); ok {
+		return fmt.Sprintf("%s%s: %s", space, n.Key.String(), n.Value.String())
 	}
+
 	if keyComment != nil {
 		return fmt.Sprintf(
 			"%s%s: %s\n%s",
@@ -1741,9 +1744,7 @@ func (n *AnchorNode) AddColumn(col int) {
 // String anchor to text
 func (n *AnchorNode) String() string {
 	value := n.Value.String()
-	if len(strings.Split(value, "\n")) > 1 {
-		return fmt.Sprintf("&%s\n%s", n.Name.String(), value)
-	} else if s, ok := n.Value.(*SequenceNode); ok && !s.IsFlowStyle {
+	if s, ok := n.Value.(*SequenceNode); ok && !s.IsFlowStyle {
 		return fmt.Sprintf("&%s\n%s", n.Name.String(), value)
 	} else if m, ok := n.Value.(*MappingNode); ok && !m.IsFlowStyle {
 		return fmt.Sprintf("&%s\n%s", n.Name.String(), value)
@@ -1922,7 +1923,14 @@ func (n *TagNode) AddColumn(col int) {
 
 // String tag to text
 func (n *TagNode) String() string {
-	return fmt.Sprintf("%s %s", n.Start.Value, n.Value.String())
+	value := n.Value.String()
+	if s, ok := n.Value.(*SequenceNode); ok && !s.IsFlowStyle {
+		return fmt.Sprintf("%s\n%s", n.Start.Value, value)
+	} else if m, ok := n.Value.(*MappingNode); ok && !m.IsFlowStyle {
+		return fmt.Sprintf("%s\n%s", n.Start.Value, value)
+	}
+
+	return fmt.Sprintf("%s %s", n.Start.Value, value)
 }
 
 // MarshalYAML encodes to a YAML text

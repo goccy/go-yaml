@@ -1739,3 +1739,44 @@ values:
 		t.Fatalf("failed to encode: got = %s", string(b))
 	}
 }
+
+func TestTagMarshalling(t *testing.T) {
+	tests := []struct {
+		name  string
+		input string
+	}{
+		{name: "scalar", input: "a: !mytag 1"},
+		{name: "mapping", input: `
+a: !mytag
+  b: 2`},
+		{name: "sequence", input: `
+a: !mytag
+- 1
+- 2
+- 3`},
+		{name: "anchor before tag", input: `
+a: &anc !mytag
+- 1
+- 2
+- 3`},
+		{name: "flow mapping", input: "a: !mytag {b: 2}"},
+		{name: "flow sequence", input: "a: !mytag [1, 2, 3]"},
+		{name: "explicit type", input: "a: !!timestamp test"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			res, _ := parser.ParseBytes([]byte(tt.input), 0)
+			result, err := yaml.Marshal(res.Docs[0])
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			expected := strings.TrimSpace(tt.input)
+			output := strings.TrimSpace(string(result))
+			if expected != output {
+				t.Fatalf("input is not equal to output.\n\nexpected:\n%v\n actual:\n%v", expected, output)
+			}
+		})
+	}
+}

@@ -57,6 +57,16 @@ type InterfaceUnmarshalerContext interface {
 	UnmarshalYAML(context.Context, func(interface{}) error) error
 }
 
+// NodeUnmarshaler interface is similar to BytesUnmarshaler but provide related AST node instead of raw YAML source.
+type NodeUnmarshaler interface {
+	UnmarshalYAML(ast.Node) error
+}
+
+// NodeUnmarshalerContext interface is similar to BytesUnmarshaler but provide related AST node instead of raw YAML source.
+type NodeUnmarshalerContext interface {
+	UnmarshalYAML(context.Context, ast.Node) error
+}
+
 // MapItem is an item in a MapSlice.
 type MapItem struct {
 	Key, Value interface{}

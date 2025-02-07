@@ -402,7 +402,7 @@ print yaml file with color
 
 ```sh
 git clone https://github.com/goccy/go-yaml.git
-cd ./cmd/ycat && go insatll .
+cd go-yaml/cmd/ycat && go install .
 ```
 
 

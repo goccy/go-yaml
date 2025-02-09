@@ -2757,13 +2757,13 @@ type unmarshalList struct {
 
 func (u *unmarshalList) UnmarshalYAML(b []byte) error {
 	expected := `
- - b: c
-   d: |
-     hello
+- b: c
+  d: |
+    hello
 
-     hello
-   f: g
- - h: i`
+    hello
+  f: g
+- h: i`
 	actual := "\n" + string(b)
 	if expected != actual {
 		return fmt.Errorf("unexpected bytes: expected [%q] but got [%q]", expected, actual)
@@ -3205,5 +3205,54 @@ a: !Not [!Equals [!Ref foo, 'bar']]
 		"a": {[]any{"foo", "bar"}},
 	}) {
 		t.Fatalf("found unexpected value: %v", v)
+	}
+}
+
+type issue337Template struct{}
+
+func (i *issue337Template) UnmarshalYAML(b []byte) error {
+	expected := strings.TrimPrefix(`
+|
+  apiVersion: v1
+  kind: ConfigMap
+  metadata:
+    name: "abc"
+    namespace: "abc"
+  data:
+    foo: FOO
+`, "\n")
+	if !bytes.Equal(b, []byte(expected)) {
+		return fmt.Errorf("expected:\n%s\nbut got:\n%s\n", expected, string(b))
+	}
+	return nil
+}
+
+func TestIssue337(t *testing.T) {
+	yml := `
+releases:
+- name: foo
+  chart: ./raw
+  values:
+  - templates:
+    - |
+      apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        name: "abc"
+        namespace: "abc"
+      data:
+        foo: FOO
+`
+	type Value struct {
+		Templates []*issue337Template `yaml:"templates"`
+	}
+	type Release struct {
+		Values []*Value `yaml:"values"`
+	}
+	var v struct {
+		Releases []*Release `yaml:"releases"`
+	}
+	if err := yaml.Unmarshal([]byte(yml), &v); err != nil {
+		t.Fatal(err)
 	}
 }

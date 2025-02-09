@@ -2757,8 +2757,9 @@ type unmarshalList struct {
 
 func (u *unmarshalList) UnmarshalYAML(b []byte) error {
 	expected := `
-- b: c
-  d: |
+- b: c # comment
+  # comment
+  d: | # comment
     hello
 
     hello
@@ -2807,8 +2808,9 @@ config:
 func TestDecoder_UnmarshalBytesWithSeparatedList(t *testing.T) {
 	yml := `
 a:
- - b: c
-   d: |
+ - b: c # comment
+   # comment
+   d: | # comment
      hello
 
      hello
@@ -2818,7 +2820,8 @@ a:
 	var v struct {
 		A unmarshalList
 	}
-	if err := yaml.Unmarshal([]byte(yml), &v); err != nil {
+	cm := yaml.CommentMap{}
+	if err := yaml.UnmarshalWithOptions([]byte(yml), &v, yaml.CommentToMap(cm)); err != nil {
 		t.Fatal(err)
 	}
 	if len(v.A.v) != 2 {

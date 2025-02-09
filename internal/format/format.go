@@ -80,31 +80,31 @@ func (f *Formatter) formatDocument(n *ast.DocumentNode) string {
 }
 
 func (f *Formatter) formatNull(n *ast.NullNode) string {
-	return f.formatCommentGroup(n.Comment) + f.origin(n.Token)
+	return f.origin(n.Token) + f.formatCommentGroup(n.Comment)
 }
 
 func (f *Formatter) formatString(n *ast.StringNode) string {
-	return f.formatCommentGroup(n.Comment) + f.origin(n.Token)
+	return f.origin(n.Token) + f.formatCommentGroup(n.Comment)
 }
 
 func (f *Formatter) formatInteger(n *ast.IntegerNode) string {
-	return f.formatCommentGroup(n.Comment) + f.origin(n.Token)
+	return f.origin(n.Token) + f.formatCommentGroup(n.Comment)
 }
 
 func (f *Formatter) formatFloat(n *ast.FloatNode) string {
-	return f.formatCommentGroup(n.Comment) + f.origin(n.Token)
+	return f.origin(n.Token) + f.formatCommentGroup(n.Comment)
 }
 
 func (f *Formatter) formatBool(n *ast.BoolNode) string {
-	return f.formatCommentGroup(n.Comment) + f.origin(n.Token)
+	return f.origin(n.Token) + f.formatCommentGroup(n.Comment)
 }
 
 func (f *Formatter) formatInfinity(n *ast.InfinityNode) string {
-	return f.formatCommentGroup(n.Comment) + f.origin(n.Token)
+	return f.origin(n.Token) + f.formatCommentGroup(n.Comment)
 }
 
 func (f *Formatter) formatNan(n *ast.NanNode) string {
-	return f.formatCommentGroup(n.Comment) + f.origin(n.Token)
+	return f.origin(n.Token) + f.formatCommentGroup(n.Comment)
 }
 
 func (f *Formatter) formatLiteral(n *ast.LiteralNode) string {

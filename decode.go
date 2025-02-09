@@ -19,6 +19,7 @@ import (
 
 	"github.com/goccy/go-yaml/ast"
 	"github.com/goccy/go-yaml/internal/errors"
+	"github.com/goccy/go-yaml/internal/format"
 	"github.com/goccy/go-yaml/parser"
 	"github.com/goccy/go-yaml/token"
 )
@@ -756,33 +757,13 @@ func (d *Decoder) deleteStructKeys(structType reflect.Type, unknownFields map[st
 	return nil
 }
 
-func (d *Decoder) lastNode(node ast.Node) ast.Node {
-	switch n := node.(type) {
-	case *ast.MappingNode:
-		if len(n.Values) > 0 {
-			return d.lastNode(n.Values[len(n.Values)-1])
-		}
-	case *ast.MappingValueNode:
-		return d.lastNode(n.Value)
-	case *ast.SequenceNode:
-		if len(n.Values) > 0 {
-			return d.lastNode(n.Values[len(n.Values)-1])
-		}
-	}
-	return node
-}
-
 func (d *Decoder) unmarshalableDocument(node ast.Node) ([]byte, error) {
 	var err error
 	node, err = d.resolveAlias(node)
 	if err != nil {
 		return nil, err
 	}
-	doc := node.String()
-	last := d.lastNode(node)
-	if last != nil && last.Type() == ast.LiteralType {
-		doc += "\n"
-	}
+	doc := format.FormatNode(node, d.toCommentMap != nil)
 	return []byte(doc), nil
 }
 

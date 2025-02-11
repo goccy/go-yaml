@@ -312,11 +312,8 @@ func (f *Formatter) formatAlias(n *ast.AliasNode) string {
 			// If formatted text contains newline characters, indentation needs to be considered.
 			if strings.Contains(formatted, "\n") {
 				// If the first character is not a newline, the first line should be output without indentation.
-				if strings.HasPrefix(formatted, "\n") {
-					formatted = f.addIndentSpace(n.GetToken().Position.IndentNum, formatted, false)
-				} else {
-					formatted = f.addIndentSpace(n.GetToken().Position.IndentNum, formatted, true)
-				}
+				isIgnoredFirstLine := !strings.HasPrefix(formatted, "\n")
+				formatted = f.addIndentSpace(n.GetToken().Position.IndentNum, formatted, isIgnoredFirstLine)
 			}
 			return formatted
 		}

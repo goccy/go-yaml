@@ -545,75 +545,6 @@ func (d *Decoder) nodeToValue(node ast.Node) (any, error) {
 	return nil, nil
 }
 
-func (d *Decoder) resolveAlias(node ast.Node) (ast.Node, error) {
-	d.stepIn()
-	defer d.stepOut()
-	if d.isExceededMaxDepth() {
-		return nil, ErrExceededMaxDepth
-	}
-
-	switch n := node.(type) {
-	case *ast.MappingNode:
-		for idx, v := range n.Values {
-			value, err := d.resolveAlias(v)
-			if err != nil {
-				return nil, err
-			}
-			n.Values[idx], _ = value.(*ast.MappingValueNode)
-		}
-	case *ast.TagNode:
-		value, err := d.resolveAlias(n.Value)
-		if err != nil {
-			return nil, err
-		}
-		n.Value = value
-	case *ast.MappingKeyNode:
-		value, err := d.resolveAlias(n.Value)
-		if err != nil {
-			return nil, err
-		}
-		n.Value = value
-	case *ast.MappingValueNode:
-		if n.Key.IsMergeKey() && n.Value.Type() == ast.AliasType {
-			value, err := d.resolveAlias(n.Value)
-			if err != nil {
-				return nil, err
-			}
-			keyColumn := n.Key.GetToken().Position.Column
-			requiredColumn := keyColumn + 2
-			value.AddColumn(requiredColumn)
-			n.Value = value
-		} else {
-			key, err := d.resolveAlias(n.Key)
-			if err != nil {
-				return nil, err
-			}
-			n.Key, _ = key.(ast.MapKeyNode)
-			value, err := d.resolveAlias(n.Value)
-			if err != nil {
-				return nil, err
-			}
-			n.Value = value
-		}
-	case *ast.SequenceNode:
-		for idx, v := range n.Values {
-			value, err := d.resolveAlias(v)
-			if err != nil {
-				return nil, err
-			}
-			n.Values[idx] = value
-		}
-	case *ast.AliasNode:
-		aliasName := n.Value.GetToken().Value
-		node := d.anchorNodeMap[aliasName]
-		if node == nil {
-			return nil, fmt.Errorf("cannot find anchor by alias name %s", aliasName)
-		}
-		return d.resolveAlias(node)
-	}
-	return node, nil
-}
-
 func (d *Decoder) getMapNode(node ast.Node, isMerge bool) (ast.MapNode, error) {
 	d.stepIn()
 	defer d.stepOut()
@@ -762,27 +693,13 @@ func (d *Decoder) unmarshalableDocument(node ast.Node) ([]byte, error) {
 	return []byte(doc), nil
 }
 
-func (d *Decoder) unmarshalableText(node ast.Node) ([]byte, bool, error) {
-	var err error
-	node, err = d.resolveAlias(node)
-	if err != nil {
-		return nil, false, err
+func (d *Decoder) unmarshalableText(node ast.Node) ([]byte, bool) {
+	doc := format.FormatNodeWithResolvedAlias(node, d.anchorNodeMap)
+	var v string
+	if err := Unmarshal([]byte(doc), &v); err != nil {
+		return nil, false
 	}
-	if node.Type() == ast.AnchorType {
-		node = node.(*ast.AnchorNode).Value
-	}
-	switch n := node.(type) {
-	case *ast.StringNode:
-		return []byte(n.Value), true, nil
-	case *ast.LiteralNode:
-		return []byte(n.Value.GetToken().Value), true, nil
-	default:
-		scalar, ok := n.(ast.ScalarNode)
-		if ok {
-			return []byte(fmt.Sprint(scalar.GetValue())), true, nil
-		}
-	}
-	return nil, false, nil
+	return []byte(v), true
 }
 
 type jsonUnmarshaler interface {
@@ -919,10 +836,7 @@ func (d *Decoder) decodeByUnmarshaler(ctx context.Context, dst reflect.Value, sr
 	}
 
 	if unmarshaler, isText := iface.(encoding.TextUnmarshaler); isText {
-		b, ok, err := d.unmarshalableText(src)
-		if err != nil {
-			return err
-		}
+		b, ok := d.unmarshalableText(src)
 		if ok {
 			if err := unmarshaler.UnmarshalText(b); err != nil {
 				return err

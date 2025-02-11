@@ -1362,7 +1362,7 @@ type MappingValueNode struct {
 	Key          MapKeyNode
 	Value        Node
 	FootComment  *CommentGroupNode
-  IsFlowStyle  bool
+	IsFlowStyle  bool
 }
 
 // Replace replace value node.

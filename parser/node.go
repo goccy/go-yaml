@@ -14,16 +14,25 @@ func newMappingNode(ctx *context, tk *Token, isFlow bool, values ...*ast.Mapping
 	return node, nil
 }
 
-func newMappingValueNode(ctx *context, tk *Token, key ast.MapKeyNode, value ast.Node) (*ast.MappingValueNode, error) {
-	node := ast.MappingValue(tk.RawToken(), key, value)
+func newMappingValueNode(ctx *context, colonTk, entryTk *Token, key ast.MapKeyNode, value ast.Node) (*ast.MappingValueNode, error) {
+	node := ast.MappingValue(colonTk.RawToken(), key, value)
 	node.SetPath(ctx.path)
+	node.CollectEntry = entryTk.RawToken()
 	if key.GetToken().Position.Line == value.GetToken().Position.Line {
 		// originally key was commented, but now that null value has been added, value must be commented.
-		if err := setLineComment(ctx, value, tk); err != nil {
+		if err := setLineComment(ctx, value, colonTk); err != nil {
+			return nil, err
+		}
+		// set line comment by colonTk or entryTk.
+		if err := setLineComment(ctx, value, entryTk); err != nil {
 			return nil, err
 		}
 	} else {
-		if err := setLineComment(ctx, key, tk); err != nil {
+		if err := setLineComment(ctx, key, colonTk); err != nil {
+			return nil, err
+		}
+		// set line comment by colonTk or entryTk.
+		if err := setLineComment(ctx, key, entryTk); err != nil {
 			return nil, err
 		}
 	}
@@ -218,7 +227,7 @@ func newTagDefaultScalarValueNode(ctx *context, tag *token.Token) (ast.ScalarNod
 }
 
 func setLineComment(ctx *context, node ast.Node, tk *Token) error {
-	if tk.LineComment == nil {
+	if tk == nil || tk.LineComment == nil {
 		return nil
 	}
 	comment := ast.CommentGroup([]*token.Token{tk.LineComment})

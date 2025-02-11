@@ -51,6 +51,8 @@ const (
 	MappingValueType
 	// SequenceType type identifier for sequence node
 	SequenceType
+	// SequenceEntryType type identifier for sequence entry node
+	SequenceEntryType
 	// AnchorType type identifier for anchor node
 	AnchorType
 	// AliasType type identifier for alias node
@@ -98,6 +100,8 @@ func (t NodeType) String() string {
 		return "MappingValue"
 	case SequenceType:
 		return "Sequence"
+	case SequenceEntryType:
+		return "SequenceEntry"
 	case AnchorType:
 		return "Anchor"
 	case AliasType:
@@ -148,6 +152,8 @@ func (t NodeType) YAMLName() string {
 		return "value"
 	case SequenceType:
 		return "sequence"
+	case SequenceEntryType:
+		return "value"
 	case AnchorType:
 		return "anchor"
 	case AliasType:
@@ -1351,11 +1357,12 @@ func (n *MappingKeyNode) IsMergeKey() bool {
 // MappingValueNode type of mapping value
 type MappingValueNode struct {
 	*BaseNode
-	Start       *token.Token
-	Key         MapKeyNode
-	Value       Node
-	IsFlowStyle bool
-	FootComment *CommentGroupNode
+	Start        *token.Token // delimiter token ':'.
+	CollectEntry *token.Token // collect entry token ','.
+	Key          MapKeyNode
+	Value        Node
+	FootComment  *CommentGroupNode
+  IsFlowStyle  bool
 }
 
 // Replace replace value node.
@@ -1524,6 +1531,7 @@ type SequenceNode struct {
 	IsFlowStyle       bool
 	Values            []Node
 	ValueHeadComments []*CommentGroupNode
+	Entries           []*SequenceEntryNode
 	FootComment       *CommentGroupNode
 }
 
@@ -1667,6 +1675,65 @@ func (n *SequenceNode) ArrayRange() *ArrayNodeIter {
 // MarshalYAML encodes to a YAML text
 func (n *SequenceNode) MarshalYAML() ([]byte, error) {
 	return []byte(n.String()), nil
+}
+
+// SequenceEntryNode is the sequence entry.
+type SequenceEntryNode struct {
+	*BaseNode
+	HeadComment *CommentGroupNode // head comment.
+	LineComment *CommentGroupNode // line comment e.g.) - # comment.
+	Start       *token.Token      // entry token.
+	Value       Node              // value node.
+}
+
+// String node to text
+func (n *SequenceEntryNode) String() string {
+	return "" // TODO
+}
+
+// GetToken returns token instance
+func (n *SequenceEntryNode) GetToken() *token.Token {
+	return n.Start
+}
+
+// Type returns type of node
+func (n *SequenceEntryNode) Type() NodeType {
+	return SequenceEntryType
+}
+
+// AddColumn add column number to child nodes recursively
+func (n *SequenceEntryNode) AddColumn(col int) {
+	n.Start.AddColumn(col)
+}
+
+// SetComment set line comment.
+func (n *SequenceEntryNode) SetComment(cm *CommentGroupNode) error {
+	n.LineComment = cm
+	return nil
+}
+
+// Comment returns comment token instance
+func (n *SequenceEntryNode) GetComment() *CommentGroupNode {
+	return n.LineComment
+}
+
+// MarshalYAML
+func (n *SequenceEntryNode) MarshalYAML() ([]byte, error) {
+	return []byte(n.String()), nil
+}
+
+func (n *SequenceEntryNode) Read(p []byte) (int, error) {
+	return readNode(p, n)
+}
+
+// SequenceEntry creates SequenceEntryNode instance.
+func SequenceEntry(start *token.Token, value Node, headComment *CommentGroupNode) *SequenceEntryNode {
+	return &SequenceEntryNode{
+		BaseNode:    &BaseNode{},
+		HeadComment: headComment,
+		Start:       start,
+		Value:       value,
+	}
 }
 
 // SequenceMergeValue creates SequenceMergeValueNode instance.

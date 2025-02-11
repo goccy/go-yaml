@@ -7,6 +7,16 @@ import (
 	"github.com/goccy/go-yaml/token"
 )
 
+func FormatNodeWithResolvedAlias(n ast.Node, anchorNodeMap map[string]ast.Node) string {
+	tk := n.GetToken()
+	if tk == nil {
+		return ""
+	}
+	formatter := newFormatter(tk, hasComment(n))
+	formatter.anchorNodeMap = anchorNodeMap
+	return formatter.format(n)
+}
+
 func FormatNode(n ast.Node) string {
 	tk := n.GetToken()
 	if tk == nil {
@@ -124,6 +134,7 @@ func hasComment(n ast.Node) bool {
 type Formatter struct {
 	existsComment    bool
 	tokenToOriginMap map[*token.Token]string
+	anchorNodeMap    map[string]ast.Node
 }
 
 func newFormatter(tk *token.Token, existsComment bool) *Formatter {
@@ -294,6 +305,22 @@ func (f *Formatter) formatAnchor(n *ast.AnchorNode) string {
 }
 
 func (f *Formatter) formatAlias(n *ast.AliasNode) string {
+	if f.anchorNodeMap != nil {
+		node := f.anchorNodeMap[n.Value.GetToken().Value]
+		if node != nil {
+			formatted := f.formatNode(node)
+			// If formatted text contains newline characters, indentation needs to be considered.
+			if strings.Contains(formatted, "\n") {
+				// If the first character is not a newline, the first line should be output without indentation.
+				if strings.HasPrefix(formatted, "\n") {
+					formatted = f.addIndentSpace(n.GetToken().Position.IndentNum, formatted, false)
+				} else {
+					formatted = f.addIndentSpace(n.GetToken().Position.IndentNum, formatted, true)
+				}
+			}
+			return formatted
+		}
+	}
 	return f.origin(n.Start) + f.formatNode(n.Value)
 }
 
@@ -385,12 +412,29 @@ func (f *Formatter) trimIndentSpace(trimIndentNum int, v string) string {
 	}
 	lines := strings.Split(normalizeNewLineChars(v), "\n")
 	out := make([]string, 0, len(lines))
-	for _, line := range strings.Split(v, "\n") {
+	for _, line := range lines {
 		var cnt int
 		out = append(out, strings.TrimLeftFunc(line, func(r rune) bool {
 			cnt++
 			return r == ' ' && cnt <= trimIndentNum
 		}))
+	}
+	return strings.Join(out, "\n")
+}
+
+func (f *Formatter) addIndentSpace(indentNum int, v string, isIgnoredFirstLine bool) string {
+	if indentNum == 0 {
+		return v
+	}
+	indent := strings.Repeat(" ", indentNum)
+	lines := strings.Split(normalizeNewLineChars(v), "\n")
+	out := make([]string, 0, len(lines))
+	for idx, line := range lines {
+		if line == "" || (isIgnoredFirstLine && idx == 0) {
+			out = append(out, line)
+			continue
+		}
+		out = append(out, indent+line)
 	}
 	return strings.Join(out, "\n")
 }

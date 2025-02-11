@@ -3151,6 +3151,41 @@ func TestMapKeyCustomUnmarshaler(t *testing.T) {
 	}
 }
 
+type bytesUnmershalerWithMapAlias struct{}
+
+func (*bytesUnmershalerWithMapAlias) UnmarshalYAML(b []byte) error {
+	expected := strings.TrimPrefix(`
+stuff:
+  bar:
+    - one
+    - two
+
+`, "\n")
+	if string(b) != expected {
+		return fmt.Errorf("failed to decode: expected:\n[%s]\nbut got:\n[%s]\n", expected, string(b))
+	}
+	return nil
+}
+
+func TestBytesUnmarshalerWithMapAlias(t *testing.T) {
+	yml := `
+x-foo: &data
+  bar:
+    - one
+    - two
+
+foo:
+  stuff: *data
+`
+	type T struct {
+		Foo bytesUnmershalerWithMapAlias `yaml:"foo"`
+	}
+	var v T
+	if err := yaml.Unmarshal([]byte(yml), &v); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestDecoderPreservesDefaultValues(t *testing.T) {
 	type nested struct {
 		Val string `yaml:"val"`

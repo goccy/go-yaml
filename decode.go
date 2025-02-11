@@ -763,7 +763,7 @@ func (d *Decoder) unmarshalableDocument(node ast.Node) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	doc := format.FormatNode(node, d.toCommentMap != nil)
+	doc := format.FormatNode(node)
 	return []byte(doc), nil
 }
 

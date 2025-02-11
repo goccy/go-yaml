@@ -7,15 +7,118 @@ import (
 	"github.com/goccy/go-yaml/token"
 )
 
-func FormatNode(n ast.Node, existsComment bool) string {
-	return newFormatter(n.GetToken(), existsComment).format(n)
+func FormatNode(n ast.Node) string {
+	tk := n.GetToken()
+	if tk == nil {
+		return ""
+	}
+	return newFormatter(tk, hasComment(n)).format(n)
 }
 
-func FormatFile(file *ast.File, existsComment bool) string {
+func FormatFile(file *ast.File) string {
 	if len(file.Docs) == 0 {
 		return ""
 	}
-	return newFormatter(file.Docs[0].GetToken(), existsComment).formatFile(file)
+	tk := file.Docs[0].GetToken()
+	if tk == nil {
+		return ""
+	}
+	return newFormatter(tk, hasCommentFile(file)).formatFile(file)
+}
+
+func hasCommentFile(f *ast.File) bool {
+	for _, doc := range f.Docs {
+		if hasComment(doc.Body) {
+			return true
+		}
+	}
+	return false
+}
+
+func hasComment(n ast.Node) bool {
+	if n == nil {
+		return false
+	}
+	switch nn := n.(type) {
+	case *ast.DocumentNode:
+		return hasComment(nn.Body)
+	case *ast.NullNode:
+		return nn.Comment != nil
+	case *ast.BoolNode:
+		return nn.Comment != nil
+	case *ast.IntegerNode:
+		return nn.Comment != nil
+	case *ast.FloatNode:
+		return nn.Comment != nil
+	case *ast.StringNode:
+		return nn.Comment != nil
+	case *ast.InfinityNode:
+		return nn.Comment != nil
+	case *ast.NanNode:
+		return nn.Comment != nil
+	case *ast.LiteralNode:
+		return nn.Comment != nil
+	case *ast.DirectiveNode:
+		if nn.Comment != nil {
+			return true
+		}
+		for _, value := range nn.Values {
+			if hasComment(value) {
+				return true
+			}
+		}
+	case *ast.TagNode:
+		if nn.Comment != nil {
+			return true
+		}
+		return hasComment(nn.Value)
+	case *ast.MappingNode:
+		if nn.Comment != nil || nn.FootComment != nil {
+			return true
+		}
+		for _, value := range nn.Values {
+			if value.Comment != nil || value.FootComment != nil {
+				return true
+			}
+			if hasComment(value.Key) {
+				return true
+			}
+			if hasComment(value.Value) {
+				return true
+			}
+		}
+	case *ast.MappingKeyNode:
+		return nn.Comment != nil
+	case *ast.MergeKeyNode:
+		return nn.Comment != nil
+	case *ast.SequenceNode:
+		if nn.Comment != nil || nn.FootComment != nil {
+			return true
+		}
+		for _, entry := range nn.Entries {
+			if entry.Comment != nil || entry.HeadComment != nil || entry.LineComment != nil {
+				return true
+			}
+			if hasComment(entry.Value) {
+				return true
+			}
+		}
+	case *ast.AnchorNode:
+		if nn.Comment != nil {
+			return true
+		}
+		if hasComment(nn.Name) || hasComment(nn.Value) {
+			return true
+		}
+	case *ast.AliasNode:
+		if nn.Comment != nil {
+			return true
+		}
+		if hasComment(nn.Value) {
+			return true
+		}
+	}
+	return false
 }
 
 type Formatter struct {
@@ -143,18 +246,9 @@ func (f *Formatter) formatMapping(n *ast.MappingNode) string {
 		ret = f.origin(n.Start)
 	}
 	ret += f.formatCommentGroup(n.Comment)
-	entry := n.Start
 	for _, value := range n.Values {
-		if n.IsFlowStyle {
-			tk := value.GetToken()
-			for tk.Prev != nil && tk != entry {
-				tk = tk.Prev
-				if tk.Type == token.CollectEntryType {
-					ret += f.origin(tk)
-					entry = tk
-					break
-				}
-			}
+		if value.CollectEntry != nil {
+			ret += f.origin(value.CollectEntry)
 		}
 		ret += f.formatMappingValue(value)
 	}
@@ -177,33 +271,22 @@ func (f *Formatter) formatSequence(n *ast.SequenceNode) string {
 		return "[]"
 	}
 
-	var (
-		ret   string
-		entry = n.Start
-	)
+	var ret string
 	if n.IsFlowStyle {
 		ret = f.origin(n.Start)
 	}
-	for idx, value := range n.Values {
-		tk := value.GetToken()
-		for tk.Prev != nil && tk != entry {
-			tk = tk.Prev
-			if tk.Type == token.SequenceEntryType || tk.Type == token.CollectEntryType {
-				ret += f.origin(tk)
-				entry = tk
-				break
-			}
-		}
-		if len(n.ValueHeadComments) > idx {
-			ret += f.formatCommentGroup(n.ValueHeadComments[idx])
-		}
-		ret += f.formatNode(value)
+	for _, entry := range n.Entries {
+		ret += f.formatNode(entry)
 	}
 	if n.IsFlowStyle {
 		ret += f.origin(n.End)
 	}
 	ret += f.formatCommentGroup(n.FootComment)
 	return ret
+}
+
+func (f *Formatter) formatSequenceEntry(n *ast.SequenceEntryNode) string {
+	return f.formatCommentGroup(n.HeadComment) + f.origin(n.Start) + f.formatCommentGroup(n.LineComment) + f.formatNode(n.Value)
 }
 
 func (f *Formatter) formatAnchor(n *ast.AnchorNode) string {
@@ -248,6 +331,8 @@ func (f *Formatter) formatNode(n ast.Node) string {
 		return f.formatMergeKey(nn)
 	case *ast.SequenceNode:
 		return f.formatSequence(nn)
+	case *ast.SequenceEntryNode:
+		return f.formatSequenceEntry(nn)
 	case *ast.AnchorNode:
 		return f.formatAnchor(nn)
 	case *ast.AliasNode:

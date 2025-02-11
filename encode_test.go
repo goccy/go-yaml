@@ -704,7 +704,7 @@ func TestEncoder(t *testing.T) {
 		},
 		// Quote style
 		{
-			`v: '\'a\'b'` + "\n",
+			`v: '''a''b'` + "\n",
 			map[string]string{"v": `'a'b`},
 			[]yaml.EncodeOption{
 				yaml.UseSingleQuote(true),
@@ -715,6 +715,20 @@ func TestEncoder(t *testing.T) {
 			map[string]string{"v": `'a'b`},
 			[]yaml.EncodeOption{
 				yaml.UseSingleQuote(false),
+			},
+		},
+		{
+			// Might be obvious but in case you are confused.
+			//
+			// Here, \ is doubled like \\ in test.source and test.value, only because they are Go string literals.
+			// This is testing that a slash is encoded as-is, without escaping.
+			// In the YAML spec, the only escape sequence is '', which represents a single quote.
+			// \\, \n, \t, or whatever you might expect YAML, Go strings, and Go strconv.Quote() to escape using the extra backslash,
+			// are not escaped and printed as-is in the YAML single-quoted string.
+			"a: '\\.yaml'" + "\n",
+			map[string]string{"a": "\\.yaml"},
+			[]yaml.EncodeOption{
+				yaml.UseSingleQuote(true),
 			},
 		},
 	}

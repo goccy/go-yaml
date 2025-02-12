@@ -1715,6 +1715,70 @@ multiple:
 	}
 }
 
+func TestInFlowStyle(t *testing.T) {
+	type inFlowStyle interface {
+		SetIsFlowStyle(bool)
+	}
+
+	tests := []struct {
+		source string
+		expect string
+	}{
+		{
+			`
+  - foo
+  - bar
+  - baz
+`,
+			`[foo, bar, baz]
+`,
+		},
+		{
+			`
+foo: bar
+baz: fizz
+`,
+			`{foo: bar, baz: fizz}
+`,
+		},
+		{
+			`
+foo:
+  - bar
+  - baz
+  - fizz: buzz
+`,
+			`{foo: [bar, baz, {fizz: buzz}]}
+`,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.source, func(t *testing.T) {
+			f, err := parser.ParseBytes([]byte(test.source), parser.ParseComments)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			if len(f.Docs) != 1 {
+				t.Fatal("failed to parse content")
+			}
+
+			ifs, ok := f.Docs[0].Body.(inFlowStyle)
+			if !ok {
+				t.Fatalf("failed to get inFlowStyle. got: %T", f.Docs[0].Body)
+			}
+			ifs.SetIsFlowStyle(true)
+
+			got := f.String()
+
+			if got != test.expect {
+				t.Fatalf("failed to parse comment:\nexpected:\n%s\ngot:\n%s", test.expect, got)
+			}
+		})
+	}
+}
+
 func TestNodePath(t *testing.T) {
 	yml := `
 a: # commentA

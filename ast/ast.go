@@ -1362,6 +1362,7 @@ type MappingValueNode struct {
 	Key          MapKeyNode
 	Value        Node
 	FootComment  *CommentGroupNode
+	IsFlowStyle  bool
 }
 
 // Replace replace value node.
@@ -1398,6 +1399,7 @@ func (n *MappingValueNode) AddColumn(col int) {
 
 // SetIsFlowStyle set value to IsFlowStyle field recursively.
 func (n *MappingValueNode) SetIsFlowStyle(isFlow bool) {
+	n.IsFlowStyle = isFlow
 	switch value := n.Value.(type) {
 	case *MappingNode:
 		value.SetIsFlowStyle(isFlow)
@@ -1436,7 +1438,7 @@ func (n *MappingValueNode) toString() string {
 	keyComment := n.Key.GetComment()
 	if _, ok := n.Value.(ScalarNode); ok {
 		return fmt.Sprintf("%s%s: %s", space, n.Key.String(), n.Value.String())
-	} else if keyIndentLevel < valueIndentLevel {
+	} else if keyIndentLevel < valueIndentLevel && !n.IsFlowStyle {
 		if keyComment != nil {
 			return fmt.Sprintf(
 				"%s%s: %s\n%s",

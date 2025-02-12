@@ -132,7 +132,6 @@ func (c *context) addNullValueToken(tk *Token) *Token {
 	rawTk := nullToken.RawToken()
 
 	// add space for map or sequence value.
-	rawTk.Origin = " null"
 	rawTk.Position.Column++
 
 	c.addToken(nullToken)
@@ -144,7 +143,7 @@ func (c *context) addNullValueToken(tk *Token) *Token {
 func (c *context) createNullToken(base *Token) *Token {
 	pos := *(base.RawToken().Position)
 	pos.Column++
-	return &Token{Token: token.New("null", "null", &pos)}
+	return &Token{Token: token.New("null", " null", &pos)}
 }
 
 func (c *context) insertToken(tk *Token) {

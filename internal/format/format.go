@@ -8,7 +8,7 @@ import (
 )
 
 func FormatNodeWithResolvedAlias(n ast.Node, anchorNodeMap map[string]ast.Node) string {
-	tk := n.GetToken()
+	tk := getFirstToken(n)
 	if tk == nil {
 		return ""
 	}
@@ -18,7 +18,7 @@ func FormatNodeWithResolvedAlias(n ast.Node, anchorNodeMap map[string]ast.Node) 
 }
 
 func FormatNode(n ast.Node) string {
-	tk := n.GetToken()
+	tk := getFirstToken(n)
 	if tk == nil {
 		return ""
 	}
@@ -29,7 +29,7 @@ func FormatFile(file *ast.File) string {
 	if len(file.Docs) == 0 {
 		return ""
 	}
-	tk := file.Docs[0].GetToken()
+	tk := getFirstToken(file.Docs[0])
 	if tk == nil {
 		return ""
 	}
@@ -131,6 +131,58 @@ func hasComment(n ast.Node) bool {
 	return false
 }
 
+func getFirstToken(n ast.Node) *token.Token {
+	if n == nil {
+		return nil
+	}
+	switch nn := n.(type) {
+	case *ast.DocumentNode:
+		if nn.Start != nil {
+			return nn.Start
+		}
+		return getFirstToken(nn.Body)
+	case *ast.NullNode:
+		return nn.Token
+	case *ast.BoolNode:
+		return nn.Token
+	case *ast.IntegerNode:
+		return nn.Token
+	case *ast.FloatNode:
+		return nn.Token
+	case *ast.StringNode:
+		return nn.Token
+	case *ast.InfinityNode:
+		return nn.Token
+	case *ast.NanNode:
+		return nn.Token
+	case *ast.LiteralNode:
+		return nn.Start
+	case *ast.DirectiveNode:
+		return nn.Start
+	case *ast.TagNode:
+		return nn.Start
+	case *ast.MappingNode:
+		if nn.IsFlowStyle {
+			return nn.Start
+		}
+		if len(nn.Values) == 0 {
+			return nn.Start
+		}
+		return getFirstToken(nn.Values[0].Key)
+	case *ast.MappingKeyNode:
+		return nn.Start
+	case *ast.MergeKeyNode:
+		return nn.Token
+	case *ast.SequenceNode:
+		return nn.Start
+	case *ast.AnchorNode:
+		return nn.Start
+	case *ast.AliasNode:
+		return nn.Start
+	}
+	return nil
+}
+
 type Formatter struct {
 	existsComment    bool
 	tokenToOriginMap map[*token.Token]string
@@ -155,17 +207,66 @@ func newFormatter(tk *token.Token, existsComment bool) *Formatter {
 		tokenToOriginMap[tk] = origin
 		origin = ""
 	}
-
 	return &Formatter{
 		existsComment:    existsComment,
 		tokenToOriginMap: tokenToOriginMap,
 	}
 }
 
+func getIndentNumByFirstLineToken(tk *token.Token) int {
+	defaultIndent := tk.Position.Column - 1
+
+	// key: value
+	//    ^
+	//   next
+	if tk.Type == token.SequenceEntryType {
+		// If the current token is the sequence entry.
+		// the indent is calculated from the column value of the current token.
+		return defaultIndent
+	}
+
+	// key: value
+	//    ^
+	//   next
+	if tk.Next != nil && tk.Next.Type == token.MappingValueType {
+		// If the current token is the key in the mapping-value,
+		// the indent is calculated from the column value of the current token.
+		return defaultIndent
+	}
+
+	if tk.Prev == nil {
+		return defaultIndent
+	}
+	prev := tk.Prev
+
+	// key: value
+	//    ^
+	//   prev
+	if prev.Type == token.MappingValueType {
+		// If the current token is the value in the mapping-value,
+		// the indent is calculated from the column value of the key two steps back.
+		if prev.Prev == nil {
+			return defaultIndent
+		}
+		return prev.Prev.Position.Column - 1
+	}
+
+	// - value
+	// ^
+	// prev
+	if prev.Type == token.SequenceEntryType {
+		// If the value is not a mapping-value and the previous token was a sequence entry,
+		// the indent is calculated using the column value of the sequence entry token.
+		return prev.Position.Column - 1
+	}
+
+	return defaultIndent
+}
+
 func (f *Formatter) format(n ast.Node) string {
 	return f.trimSpacePrefix(
 		f.trimIndentSpace(
-			n.GetToken().Position.IndentNum,
+			getIndentNumByFirstLineToken(getFirstToken(n)),
 			f.trimNewLineCharPrefix(f.formatNode(n)),
 		),
 	)
@@ -306,7 +407,8 @@ func (f *Formatter) formatAnchor(n *ast.AnchorNode) string {
 
 func (f *Formatter) formatAlias(n *ast.AliasNode) string {
 	if f.anchorNodeMap != nil {
-		node := f.anchorNodeMap[n.Value.GetToken().Value]
+		anchorName := n.Value.GetToken().Value
+		node := f.anchorNodeMap[anchorName]
 		if node != nil {
 			formatted := f.formatNode(node)
 			// If formatted text contains newline characters, indentation needs to be considered.

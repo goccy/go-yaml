@@ -284,6 +284,9 @@ func (f *Formatter) formatFile(file *ast.File) string {
 }
 
 func (f *Formatter) origin(tk *token.Token) string {
+	if tk == nil {
+		return ""
+	}
 	if f.existsComment {
 		return tk.Origin
 	}
@@ -349,10 +352,6 @@ func (f *Formatter) formatDirective(n *ast.DirectiveNode) string {
 }
 
 func (f *Formatter) formatMapping(n *ast.MappingNode) string {
-	if len(n.Values) == 0 {
-		return "{}"
-	}
-
 	var ret string
 	if n.IsFlowStyle {
 		ret = f.origin(n.Start)
@@ -379,10 +378,6 @@ func (f *Formatter) formatMappingKey(n *ast.MappingKeyNode) string {
 }
 
 func (f *Formatter) formatSequence(n *ast.SequenceNode) string {
-	if len(n.Values) == 0 {
-		return "[]"
-	}
-
 	var ret string
 	if n.IsFlowStyle {
 		ret = f.origin(n.Start)

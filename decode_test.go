@@ -3196,6 +3196,41 @@ foo:
 	}
 }
 
+func TestBytesUnmarshalerWithEmptyValue(t *testing.T) {
+	type T struct{}
+
+	unmarshaler := func(dst *T, b []byte) error {
+		var v any
+		return yaml.Unmarshal(b, &v)
+	}
+
+	yml := `
+map: &m {}
+seq: &seq []
+foo: # comment
+bar: *m
+baz: *seq
+`
+	m := yaml.CommentMap{}
+	var v T
+	if err := yaml.UnmarshalWithOptions(
+		[]byte(yml),
+		&v,
+		yaml.CommentToMap(m),
+		yaml.CustomUnmarshaler[T](unmarshaler),
+	); err != nil {
+		t.Fatal(err)
+	}
+	if err := yaml.UnmarshalWithOptions(
+		[]byte(yml),
+		&v,
+		yaml.CustomUnmarshaler[T](unmarshaler),
+	); err != nil {
+		t.Fatal(err)
+	}
+
+}
+
 func TestIssue650(t *testing.T) {
 	type Disk struct {
 		Name   string `yaml:"name"`

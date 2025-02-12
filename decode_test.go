@@ -3155,10 +3155,15 @@ type bytesUnmershalerWithMapAlias struct{}
 
 func (*bytesUnmershalerWithMapAlias) UnmarshalYAML(b []byte) error {
 	expected := strings.TrimPrefix(`
-stuff:
-  bar:
-    - one
-    - two
+aaaaa:
+  bbbbb:
+    bar:
+      - |
+        foo
+          bar
+      - name: |
+          foo
+            bar
 
 `, "\n")
 	if string(b) != expected {
@@ -3171,11 +3176,16 @@ func TestBytesUnmarshalerWithMapAlias(t *testing.T) {
 	yml := `
 x-foo: &data
   bar:
-    - one
-    - two
+    - |
+      foo
+        bar
+    - name: |
+        foo
+          bar
 
 foo:
-  stuff: *data
+  aaaaa:
+    bbbbb: *data
 `
 	type T struct {
 		Foo bytesUnmershalerWithMapAlias `yaml:"foo"`
@@ -3184,6 +3194,100 @@ foo:
 	if err := yaml.Unmarshal([]byte(yml), &v); err != nil {
 		t.Fatal(err)
 	}
+}
+
+func TestIssue650(t *testing.T) {
+	type Disk struct {
+		Name   string `yaml:"name"`
+		Format *bool  `yaml:"format"`
+	}
+
+	type Sample struct {
+		Disks []Disk `yaml:"disks"`
+	}
+
+	unmarshalDisk := func(dst *Disk, b []byte) error {
+		var s string
+		if err := yaml.Unmarshal(b, &s); err == nil {
+			*dst = Disk{Name: s}
+			return nil
+		}
+		return yaml.Unmarshal(b, dst)
+	}
+
+	data := []byte(`
+disks:
+    -      name: foo
+           format: true
+`)
+
+	var sample Sample
+	if err := yaml.UnmarshalWithOptions(data, &sample, yaml.CustomUnmarshaler[Disk](unmarshalDisk)); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestBytesUnmarshalerWithLiteral(t *testing.T) {
+	t.Run("map value", func(t *testing.T) {
+		type Literal string
+
+		unmarshalLit := func(dst *Literal, b []byte) error {
+			var s string
+			if err := yaml.Unmarshal(b, &s); err != nil {
+				return err
+			}
+			*dst = Literal(s)
+			return nil
+		}
+
+		data := []byte(`
+-         name:  |
+           foo
+             bar
+-         name:
+           |
+           foo
+           bar
+`)
+
+		var v []map[string]Literal
+		if err := yaml.UnmarshalWithOptions(data, &v, yaml.CustomUnmarshaler[Literal](unmarshalLit)); err != nil {
+			t.Fatal(err)
+		}
+		if !reflect.DeepEqual(v, []map[string]Literal{{"name": "foo\n  bar\n"}, {"name": "foo\nbar\n"}}) {
+			t.Fatalf("failed to get decoded value. got: %q", v)
+		}
+	})
+	t.Run("sequence value", func(t *testing.T) {
+		type Literal string
+
+		unmarshalLit := func(dst *Literal, b []byte) error {
+			var s string
+			if err := yaml.Unmarshal(b, &s); err != nil {
+				return err
+			}
+			*dst = Literal(s)
+			return nil
+		}
+
+		data := []byte(`
+-            |
+  foo
+    bar
+-
+ |
+ foo
+ bar
+`)
+
+		var v []Literal
+		if err := yaml.UnmarshalWithOptions(data, &v, yaml.CustomUnmarshaler[Literal](unmarshalLit)); err != nil {
+			t.Fatal(err)
+		}
+		if !reflect.DeepEqual(v, []Literal{"foo\n  bar\n", "foo\nbar\n"}) {
+			t.Fatalf("failed to get decoded value. got: %q", v)
+		}
+	})
 }
 
 func TestDecoderPreservesDefaultValues(t *testing.T) {

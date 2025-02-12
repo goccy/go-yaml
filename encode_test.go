@@ -704,7 +704,7 @@ func TestEncoder(t *testing.T) {
 		},
 		// Quote style
 		{
-			`v: '\'a\'b'` + "\n",
+			`v: '''a''b'` + "\n",
 			map[string]string{"v": `'a'b`},
 			[]yaml.EncodeOption{
 				yaml.UseSingleQuote(true),
@@ -715,6 +715,13 @@ func TestEncoder(t *testing.T) {
 			map[string]string{"v": `'a'b`},
 			[]yaml.EncodeOption{
 				yaml.UseSingleQuote(false),
+			},
+		},
+		{
+			`a: '\.yaml'` + "\n",
+			map[string]string{"a": `\.yaml`},
+			[]yaml.EncodeOption{
+				yaml.UseSingleQuote(true),
 			},
 		},
 	}

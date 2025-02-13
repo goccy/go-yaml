@@ -25,6 +25,10 @@ type PrettyFormatError interface {
 	FormatError(bool, bool) string
 }
 
+type ErrorWithSource interface {
+	WithMessage(string) error
+}
+
 type SyntaxError struct {
 	Message string
 	Token   *token.Token
@@ -117,12 +121,20 @@ func (e *SyntaxError) FormatError(colored, inclSource bool) string {
 	return formatError(e.Message, e.Token, colored, inclSource)
 }
 
+func (e *SyntaxError) WithMessage(msg string) error {
+	return ErrSyntax(msg, e.Token)
+}
+
 func (e *OverflowError) Error() string {
 	return e.FormatError(defaultFormatColor, defaultIncludeSource)
 }
 
 func (e *OverflowError) FormatError(colored, inclSource bool) string {
 	return formatError(fmt.Sprintf("cannot unmarshal %s into Go value of type %s ( overflow )", e.SrcNum, e.DstType), e.Token, colored, inclSource)
+}
+
+func (e *OverflowError) WithMessage(msg string) error {
+	return ErrSyntax(msg, e.Token)
 }
 
 func (e *TypeError) msg() string {
@@ -140,12 +152,20 @@ func (e *TypeError) FormatError(colored, inclSource bool) string {
 	return formatError(e.msg(), e.Token, colored, inclSource)
 }
 
+func (e *TypeError) WithMessage(msg string) error {
+	return ErrSyntax(msg, e.Token)
+}
+
 func (e *DuplicateKeyError) Error() string {
 	return e.FormatError(defaultFormatColor, defaultIncludeSource)
 }
 
 func (e *DuplicateKeyError) FormatError(colored, inclSource bool) string {
 	return formatError(e.Message, e.Token, colored, inclSource)
+}
+
+func (e *DuplicateKeyError) WithMessage(msg string) error {
+	return ErrSyntax(msg, e.Token)
 }
 
 func (e *UnknownFieldError) Error() string {
@@ -156,12 +176,20 @@ func (e *UnknownFieldError) FormatError(colored, inclSource bool) string {
 	return formatError(e.Message, e.Token, colored, inclSource)
 }
 
+func (e *UnknownFieldError) WithMessage(msg string) error {
+	return ErrSyntax(msg, e.Token)
+}
+
 func (e *UnexpectedNodeTypeError) Error() string {
 	return e.FormatError(defaultFormatColor, defaultIncludeSource)
 }
 
 func (e *UnexpectedNodeTypeError) FormatError(colored, inclSource bool) string {
 	return formatError(fmt.Sprintf("%s was used where %s is expected", e.Actual.YAMLName(), e.Expected.YAMLName()), e.Token, colored, inclSource)
+}
+
+func (e *UnexpectedNodeTypeError) WithMessage(msg string) error {
+	return ErrSyntax(msg, e.Token)
 }
 
 func formatError(errMsg string, token *token.Token, colored, inclSource bool) string {

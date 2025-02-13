@@ -25,6 +25,7 @@ type (
 	DuplicateKeyError       = errors.DuplicateKeyError
 	UnknownFieldError       = errors.UnknownFieldError
 	UnexpectedNodeTypeError = errors.UnexpectedNodeTypeError
+	ErrorWithSource         = errors.ErrorWithSource
 )
 
 func ErrUnsupportedHeadPositionType(node ast.Node) error {

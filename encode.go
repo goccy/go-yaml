@@ -17,7 +17,6 @@ import (
 	"github.com/goccy/go-yaml/parser"
 	"github.com/goccy/go-yaml/printer"
 	"github.com/goccy/go-yaml/token"
-	"golang.org/x/xerrors"
 )
 
 const (
@@ -29,8 +28,6 @@ const (
 type Encoder struct {
 	writer                      io.Writer
 	opts                        []EncodeOption
-	indent                      int
-	indentSequence              bool
 	singleQuote                 bool
 	isFlowStyle                 bool
 	isJSONStyle                 bool
@@ -43,11 +40,12 @@ type Encoder struct {
 	commentMap                  map[*Path][]*Comment
 	written                     bool
 
-	line        int
-	column      int
-	offset      int
-	indentNum   int
-	indentLevel int
+	line           int
+	column         int
+	offset         int
+	indentNum      int
+	indentLevel    int
+	indentSequence bool
 }
 
 // NewEncoder returns a new encoder that writes to w.
@@ -56,13 +54,13 @@ func NewEncoder(w io.Writer, opts ...EncodeOption) *Encoder {
 	return &Encoder{
 		writer:                      w,
 		opts:                        opts,
-		indent:                      DefaultIndentSpaces,
 		anchorPtrToNameMap:          map[uintptr]string{},
 		customMarshalerMap:          map[reflect.Type]func(interface{}) ([]byte, error){},
 		customInterfaceMarshalerMap: map[reflect.Type]func(interface{}) (interface{}, error){},
 		line:                        1,
 		column:                      1,
 		offset:                      0,
+		indentNum:                   DefaultIndentSpaces,
 	}
 }
 
@@ -86,19 +84,19 @@ func (e *Encoder) Encode(v interface{}) error {
 func (e *Encoder) EncodeContext(ctx context.Context, v interface{}) error {
 	node, err := e.EncodeToNodeContext(ctx, v)
 	if err != nil {
-		return errors.Wrapf(err, "failed to encode to node")
+		return err
 	}
 	if err := e.setCommentByCommentMap(node); err != nil {
-		return errors.Wrapf(err, "failed to set comment by comment map")
+		return err
 	}
 	if !e.written {
 		e.written = true
 	} else {
 		// write document separator
-		e.writer.Write([]byte("---\n"))
+		_, _ = e.writer.Write([]byte("---\n"))
 	}
 	var p printer.Printer
-	e.writer.Write(p.PrintNode(node))
+	_, _ = e.writer.Write(p.PrintNode(node))
 	return nil
 }
 
@@ -111,12 +109,12 @@ func (e *Encoder) EncodeToNode(v interface{}) (ast.Node, error) {
 func (e *Encoder) EncodeToNodeContext(ctx context.Context, v interface{}) (ast.Node, error) {
 	for _, opt := range e.opts {
 		if err := opt(e); err != nil {
-			return nil, errors.Wrapf(err, "failed to run option for encoder")
+			return nil, err
 		}
 	}
 	node, err := e.encodeValue(ctx, reflect.ValueOf(v), 1)
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to encode value")
+		return nil, err
 	}
 	return node, nil
 }
@@ -128,7 +126,7 @@ func (e *Encoder) setCommentByCommentMap(node ast.Node) error {
 	for path, comments := range e.commentMap {
 		n, err := path.FilterNode(node)
 		if err != nil {
-			return errors.Wrapf(err, "failed to filter node")
+			return err
 		}
 		if n == nil {
 			continue
@@ -142,15 +140,15 @@ func (e *Encoder) setCommentByCommentMap(node ast.Node) error {
 			switch comment.Position {
 			case CommentHeadPosition:
 				if err := e.setHeadComment(node, n, commentGroup); err != nil {
-					return errors.Wrapf(err, "failed to set head comment")
+					return err
 				}
 			case CommentLinePosition:
 				if err := e.setLineComment(node, n, commentGroup); err != nil {
-					return errors.Wrapf(err, "failed to set line comment")
+					return err
 				}
 			case CommentFootPosition:
 				if err := e.setFootComment(node, n, commentGroup); err != nil {
-					return errors.Wrapf(err, "failed to set foot comment")
+					return err
 				}
 			default:
 				return ErrUnknownCommentPositionType
@@ -168,11 +166,11 @@ func (e *Encoder) setHeadComment(node ast.Node, filtered ast.Node, comment *ast.
 	switch p := parent.(type) {
 	case *ast.MappingValueNode:
 		if err := p.SetComment(comment); err != nil {
-			return errors.Wrapf(err, "failed to set comment")
+			return err
 		}
 	case *ast.MappingNode:
 		if err := p.SetComment(comment); err != nil {
-			return errors.Wrapf(err, "failed to set comment")
+			return err
 		}
 	case *ast.SequenceNode:
 		if len(p.ValueHeadComments) == 0 {
@@ -198,11 +196,11 @@ func (e *Encoder) setLineComment(node ast.Node, filtered ast.Node, comment *ast.
 		// Line comment cannot be set for mapping value node.
 		// It should probably be set for the parent map node
 		if err := e.setLineCommentToParentMapNode(node, filtered, comment); err != nil {
-			return errors.Wrapf(err, "failed to set line comment to parent node")
+			return err
 		}
 	default:
 		if err := filtered.SetComment(comment); err != nil {
-			return errors.Wrapf(err, "failed to set comment")
+			return err
 		}
 	}
 	return nil
@@ -216,11 +214,11 @@ func (e *Encoder) setLineCommentToParentMapNode(node ast.Node, filtered ast.Node
 	switch p := parent.(type) {
 	case *ast.MappingValueNode:
 		if err := p.Key.SetComment(comment); err != nil {
-			return errors.Wrapf(err, "failed to set comment")
+			return err
 		}
 	case *ast.MappingNode:
 		if err := p.SetComment(comment); err != nil {
-			return errors.Wrapf(err, "failed to set comment")
+			return err
 		}
 	default:
 		return ErrUnsupportedLinePositionType(parent)
@@ -249,7 +247,7 @@ func (e *Encoder) setFootComment(node ast.Node, filtered ast.Node, comment *ast.
 func (e *Encoder) encodeDocument(doc []byte) (ast.Node, error) {
 	f, err := parser.ParseBytes(doc, 0)
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to parse yaml")
+		return nil, err
 	}
 	for _, docNode := range f.Docs {
 		if docNode.Body != nil {
@@ -367,18 +365,18 @@ func (e *Encoder) encodeByMarshaler(ctx context.Context, v reflect.Value, column
 	if marshaler, exists := e.marshalerFromCustomMarshalerMap(v.Type()); exists {
 		doc, err := marshaler(iface)
 		if err != nil {
-			return nil, errors.Wrapf(err, "failed to MarshalYAML")
+			return nil, err
 		}
 		node, err := e.encodeDocument(doc)
 		if err != nil {
-			return nil, errors.Wrapf(err, "failed to encode document")
+			return nil, err
 		}
 		return node, nil
 	}
 	if marshaler, exists := e.marshalerFromCustomInterfaceMarshalerMap(v.Type()); exists {
 		marshalV, err := marshaler(iface)
 		if err != nil {
-			return nil, errors.Wrapf(err, "failed to MarshalYAML")
+			return nil, err
 		}
 		return e.encodeValue(ctx, reflect.ValueOf(marshalV), column)
 	}
@@ -386,11 +384,11 @@ func (e *Encoder) encodeByMarshaler(ctx context.Context, v reflect.Value, column
 	if marshaler, ok := iface.(BytesMarshalerContext); ok {
 		doc, err := marshaler.MarshalYAML(ctx)
 		if err != nil {
-			return nil, errors.Wrapf(err, "failed to MarshalYAML")
+			return nil, err
 		}
 		node, err := e.encodeDocument(doc)
 		if err != nil {
-			return nil, errors.Wrapf(err, "failed to encode document")
+			return nil, err
 		}
 		return node, nil
 	}
@@ -398,11 +396,11 @@ func (e *Encoder) encodeByMarshaler(ctx context.Context, v reflect.Value, column
 	if marshaler, ok := iface.(BytesMarshaler); ok {
 		doc, err := marshaler.MarshalYAML()
 		if err != nil {
-			return nil, errors.Wrapf(err, "failed to MarshalYAML")
+			return nil, err
 		}
 		node, err := e.encodeDocument(doc)
 		if err != nil {
-			return nil, errors.Wrapf(err, "failed to encode document")
+			return nil, err
 		}
 		return node, nil
 	}
@@ -410,7 +408,7 @@ func (e *Encoder) encodeByMarshaler(ctx context.Context, v reflect.Value, column
 	if marshaler, ok := iface.(InterfaceMarshalerContext); ok {
 		marshalV, err := marshaler.MarshalYAML(ctx)
 		if err != nil {
-			return nil, errors.Wrapf(err, "failed to MarshalYAML")
+			return nil, err
 		}
 		return e.encodeValue(ctx, reflect.ValueOf(marshalV), column)
 	}
@@ -418,7 +416,7 @@ func (e *Encoder) encodeByMarshaler(ctx context.Context, v reflect.Value, column
 	if marshaler, ok := iface.(InterfaceMarshaler); ok {
 		marshalV, err := marshaler.MarshalYAML()
 		if err != nil {
-			return nil, errors.Wrapf(err, "failed to MarshalYAML")
+			return nil, err
 		}
 		return e.encodeValue(ctx, reflect.ValueOf(marshalV), column)
 	}
@@ -434,11 +432,11 @@ func (e *Encoder) encodeByMarshaler(ctx context.Context, v reflect.Value, column
 	if marshaler, ok := iface.(encoding.TextMarshaler); ok {
 		doc, err := marshaler.MarshalText()
 		if err != nil {
-			return nil, errors.Wrapf(err, "failed to MarshalText")
+			return nil, err
 		}
 		node, err := e.encodeDocument(doc)
 		if err != nil {
-			return nil, errors.Wrapf(err, "failed to encode document")
+			return nil, err
 		}
 		return node, nil
 	}
@@ -447,21 +445,21 @@ func (e *Encoder) encodeByMarshaler(ctx context.Context, v reflect.Value, column
 		if marshaler, ok := iface.(jsonMarshaler); ok {
 			jsonBytes, err := marshaler.MarshalJSON()
 			if err != nil {
-				return nil, errors.Wrapf(err, "failed to MarshalJSON")
+				return nil, err
 			}
 			doc, err := JSONToYAML(jsonBytes)
 			if err != nil {
-				return nil, errors.Wrapf(err, "failed to convert json to yaml")
+				return nil, err
 			}
 			node, err := e.encodeDocument(doc)
 			if err != nil {
-				return nil, errors.Wrapf(err, "failed to encode document")
+				return nil, err
 			}
 			return node, nil
 		}
 	}
 
-	return nil, xerrors.Errorf("does not implemented Marshaler")
+	return nil, errors.New("does not implemented Marshaler")
 }
 
 func (e *Encoder) encodeValue(ctx context.Context, v reflect.Value, column int) (ast.Node, error) {
@@ -471,7 +469,7 @@ func (e *Encoder) encodeValue(ctx context.Context, v reflect.Value, column int) 
 	if e.canEncodeByMarshaler(v) {
 		node, err := e.encodeByMarshaler(ctx, v, column)
 		if err != nil {
-			return nil, errors.Wrapf(err, "failed to encode by marshaler")
+			return nil, err
 		}
 		return node, nil
 	}
@@ -519,7 +517,7 @@ func (e *Encoder) encodeValue(ctx context.Context, v reflect.Value, column int) 
 	case reflect.Map:
 		return e.encodeMap(ctx, v, column), nil
 	default:
-		return nil, xerrors.Errorf("unknown value type %s", v.Type().String())
+		return nil, fmt.Errorf("unknown value type %s", v.Type().String())
 	}
 }
 
@@ -539,12 +537,12 @@ func (e *Encoder) encodeNil() *ast.NullNode {
 }
 
 func (e *Encoder) encodeInt(v int64) *ast.IntegerNode {
-	value := fmt.Sprint(v)
+	value := strconv.FormatInt(v, 10)
 	return ast.Integer(token.New(value, value, e.pos(e.column)))
 }
 
 func (e *Encoder) encodeUint(v uint64) *ast.IntegerNode {
-	value := fmt.Sprint(v)
+	value := strconv.FormatUint(v, 10)
 	return ast.Integer(token.New(value, value, e.pos(e.column)))
 }
 
@@ -577,6 +575,17 @@ func (e *Encoder) isNeedQuoted(v string) bool {
 	if e.isFlowStyle && strings.ContainsAny(v, `]},'"`) {
 		return true
 	}
+	if e.isFlowStyle {
+		for i := 0; i < len(v); i++ {
+			if v[i] != ':' {
+				continue
+			}
+			if i+1 < len(v) && v[i+1] == '/' {
+				continue
+			}
+			return true
+		}
+	}
 	if token.IsNeedQuoted(v) {
 		return true
 	}
@@ -595,44 +604,48 @@ func (e *Encoder) encodeString(v string, column int) *ast.StringNode {
 }
 
 func (e *Encoder) encodeBool(v bool) *ast.BoolNode {
-	value := fmt.Sprint(v)
+	value := strconv.FormatBool(v)
 	return ast.Bool(token.New(value, value, e.pos(e.column)))
 }
 
 func (e *Encoder) encodeSlice(ctx context.Context, value reflect.Value) (*ast.SequenceNode, error) {
 	if e.indentSequence {
-		e.column += e.indent
+		e.column += e.indentNum
 	}
+	defer func() {
+		if e.indentSequence {
+			e.column -= e.indentNum
+		}
+	}()
 	column := e.column
 	sequence := ast.Sequence(token.New("-", "-", e.pos(column)), e.isFlowStyle)
 	for i := 0; i < value.Len(); i++ {
 		node, err := e.encodeValue(ctx, value.Index(i), column)
 		if err != nil {
-			return nil, errors.Wrapf(err, "failed to encode value for slice")
+			return nil, err
 		}
 		sequence.Values = append(sequence.Values, node)
-	}
-	if e.indentSequence {
-		e.column -= e.indent
 	}
 	return sequence, nil
 }
 
 func (e *Encoder) encodeArray(ctx context.Context, value reflect.Value) (*ast.SequenceNode, error) {
 	if e.indentSequence {
-		e.column += e.indent
+		e.column += e.indentNum
 	}
+	defer func() {
+		if e.indentSequence {
+			e.column -= e.indentNum
+		}
+	}()
 	column := e.column
 	sequence := ast.Sequence(token.New("-", "-", e.pos(column)), e.isFlowStyle)
 	for i := 0; i < value.Len(); i++ {
 		node, err := e.encodeValue(ctx, value.Index(i), column)
 		if err != nil {
-			return nil, errors.Wrapf(err, "failed to encode value for array")
+			return nil, err
 		}
 		sequence.Values = append(sequence.Values, node)
-	}
-	if e.indentSequence {
-		e.column -= e.indent
 	}
 	return sequence, nil
 }
@@ -642,10 +655,13 @@ func (e *Encoder) encodeMapItem(ctx context.Context, item MapItem, column int) (
 	v := reflect.ValueOf(item.Value)
 	value, err := e.encodeValue(ctx, v, column)
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to encode MapItem")
+		return nil, err
 	}
 	if e.isMapNode(value) {
-		value.AddColumn(e.indent)
+		value.AddColumn(e.indentNum)
+	}
+	if e.isTagAndMapNode(value) {
+		value.AddColumn(e.indentNum)
 	}
 	return ast.MappingValue(
 		token.New("", "", e.pos(column)),
@@ -659,7 +675,7 @@ func (e *Encoder) encodeMapSlice(ctx context.Context, value MapSlice, column int
 	for _, item := range value {
 		value, err := e.encodeMapItem(ctx, item, column)
 		if err != nil {
-			return nil, errors.Wrapf(err, "failed to encode MapItem for MapSlice")
+			return nil, err
 		}
 		node.Values = append(node.Values, value)
 	}
@@ -669,6 +685,11 @@ func (e *Encoder) encodeMapSlice(ctx context.Context, value MapSlice, column int
 func (e *Encoder) isMapNode(node ast.Node) bool {
 	_, ok := node.(ast.MapNode)
 	return ok
+}
+
+func (e *Encoder) isTagAndMapNode(node ast.Node) bool {
+	tn, ok := node.(*ast.TagNode)
+	return ok && e.isMapNode(tn.Value)
 }
 
 func (e *Encoder) encodeMap(ctx context.Context, value reflect.Value, column int) ast.Node {
@@ -688,7 +709,10 @@ func (e *Encoder) encodeMap(ctx context.Context, value reflect.Value, column int
 			return nil
 		}
 		if e.isMapNode(value) {
-			value.AddColumn(e.indent)
+			value.AddColumn(e.indentNum)
+		}
+		if e.isTagAndMapNode(value) {
+			value.AddColumn(e.indentNum)
 		}
 		node.Values = append(node.Values, ast.MappingValue(
 			nil,
@@ -768,7 +792,7 @@ func (e *Encoder) encodeAnchor(anchorName string, value ast.Node, fieldValue ref
 	anchorNode.Value = value
 	if e.anchorCallback != nil {
 		if err := e.anchorCallback(anchorNode, fieldValue.Interface()); err != nil {
-			return nil, errors.Wrapf(err, "failed to marshal anchor")
+			return nil, err
 		}
 		if snode, ok := anchorNode.Name.(*ast.StringNode); ok {
 			anchorName = snode.Value
@@ -785,7 +809,7 @@ func (e *Encoder) encodeStruct(ctx context.Context, value reflect.Value, column 
 	structType := value.Type()
 	structFieldMap, err := structFieldMap(structType)
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to get struct field map")
+		return nil, err
 	}
 	hasInlineAnchorField := false
 	var inlineAnchorValue reflect.Value
@@ -808,49 +832,34 @@ func (e *Encoder) encodeStruct(ctx context.Context, value reflect.Value, column 
 		}
 		value, err := ve.encodeValue(ctx, fieldValue, column)
 		if err != nil {
-			return nil, errors.Wrapf(err, "failed to encode value")
+			return nil, err
 		}
 		if e.isMapNode(value) {
-			value.AddColumn(e.indent)
+			value.AddColumn(e.indentNum)
 		}
 		var key ast.MapKeyNode = e.encodeString(structField.RenderName, column)
 		switch {
+		case value.Type() == ast.AliasType:
+			if aliasName := structField.AliasName; aliasName != "" {
+				alias, ok := value.(*ast.AliasNode)
+				if !ok {
+					return nil, errors.ErrUnexpectedNodeType(value.Type(), ast.AliasType, value.GetToken())
+				}
+				got := alias.Value.String()
+				if aliasName != got {
+					return nil, fmt.Errorf("expected alias name is %q but got %q", aliasName, got)
+				}
+			}
+			if structField.IsInline {
+				// if both used alias and inline, output `<<: *alias`
+				key = ast.MergeKey(token.New("<<", "<<", e.pos(column)))
+			}
 		case structField.AnchorName != "":
 			anchorNode, err := e.encodeAnchor(structField.AnchorName, value, fieldValue, column)
 			if err != nil {
-				return nil, errors.Wrapf(err, "failed to encode anchor")
+				return nil, err
 			}
 			value = anchorNode
-		case structField.IsAutoAlias:
-			if fieldValue.Kind() != reflect.Ptr {
-				return nil, xerrors.Errorf(
-					"%s in struct is not pointer type. but required automatically alias detection",
-					structField.FieldName,
-				)
-			}
-			anchorName := e.anchorPtrToNameMap[fieldValue.Pointer()]
-			if anchorName == "" {
-				return nil, xerrors.Errorf(
-					"cannot find anchor name from pointer address for automatically alias detection",
-				)
-			}
-			aliasName := anchorName
-			alias := ast.Alias(token.New("*", "*", e.pos(column)))
-			alias.Value = ast.String(token.New(aliasName, aliasName, e.pos(column)))
-			value = alias
-			if structField.IsInline {
-				// if both used alias and inline, output `<<: *alias`
-				key = ast.MergeKey(token.New("<<", "<<", e.pos(column)))
-			}
-		case structField.AliasName != "":
-			aliasName := structField.AliasName
-			alias := ast.Alias(token.New("*", "*", e.pos(column)))
-			alias.Value = ast.String(token.New(aliasName, aliasName, e.pos(column)))
-			value = alias
-			if structField.IsInline {
-				// if both used alias and inline, output `<<: *alias`
-				key = ast.MergeKey(token.New("<<", "<<", e.pos(column)))
-			}
 		case structField.IsInline:
 			isAutoAnchor := structField.IsAutoAnchor
 			if !hasInlineAnchorField {
@@ -865,7 +874,7 @@ func (e *Encoder) encodeStruct(ctx context.Context, value reflect.Value, column 
 				if _, ok := value.(*ast.NullNode); ok {
 					continue
 				}
-				return nil, xerrors.Errorf("inline value is must be map or struct type")
+				return nil, errors.New("inline value is must be map or struct type")
 			}
 			mapIter := mapNode.MapRange()
 			for mapIter.Next() {
@@ -876,29 +885,29 @@ func (e *Encoder) encodeStruct(ctx context.Context, value reflect.Value, column 
 					// if declared same key name, skip encoding this field
 					continue
 				}
-				key.AddColumn(-e.indent)
-				value.AddColumn(-e.indent)
+				key.AddColumn(-e.indentNum)
+				value.AddColumn(-e.indentNum)
 				node.Values = append(node.Values, ast.MappingValue(nil, key, value))
 			}
 			continue
 		case structField.IsAutoAnchor:
 			anchorNode, err := e.encodeAnchor(structField.RenderName, value, fieldValue, column)
 			if err != nil {
-				return nil, errors.Wrapf(err, "failed to encode anchor")
+				return nil, err
 			}
 			value = anchorNode
 		}
 		node.Values = append(node.Values, ast.MappingValue(nil, key, value))
 	}
 	if hasInlineAnchorField {
-		node.AddColumn(e.indent)
+		node.AddColumn(e.indentNum)
 		anchorName := "anchor"
 		anchorNode := ast.Anchor(token.New("&", "&", e.pos(column)))
 		anchorNode.Name = ast.String(token.New(anchorName, anchorName, e.pos(column)))
 		anchorNode.Value = node
 		if e.anchorCallback != nil {
 			if err := e.anchorCallback(anchorNode, value.Addr().Interface()); err != nil {
-				return nil, errors.Wrapf(err, "failed to marshal anchor")
+				return nil, err
 			}
 			if snode, ok := anchorNode.Name.(*ast.StringNode); ok {
 				anchorName = snode.Value

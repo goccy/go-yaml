@@ -18,7 +18,6 @@ import (
 	"github.com/goccy/go-yaml/ast"
 	"github.com/goccy/go-yaml/internal/errors"
 	"github.com/goccy/go-yaml/parser"
-	"golang.org/x/xerrors"
 )
 
 type Child struct {
@@ -252,6 +251,10 @@ func TestDecoder(t *testing.T) {
 			"v: 4294967295",
 			map[string]uint{"v": math.MaxUint32},
 		},
+		{
+			"v: 1e3",
+			map[string]uint{"v": 1000},
+		},
 
 		// uint64
 		{
@@ -269,6 +272,10 @@ func TestDecoder(t *testing.T) {
 		{
 			"v: 9223372036854775807",
 			map[string]uint64{"v": math.MaxInt64},
+		},
+		{
+			"v: 1e3",
+			map[string]uint64{"v": 1000},
 		},
 
 		// float32
@@ -288,6 +295,10 @@ func TestDecoder(t *testing.T) {
 			"v: 18446744073709551616",
 			map[string]float32{"v": float32(math.MaxUint64 + 1)},
 		},
+		{
+			"v: 1e-06",
+			map[string]float32{"v": 1e-6},
+		},
 
 		// float64
 		{
@@ -305,6 +316,10 @@ func TestDecoder(t *testing.T) {
 		{
 			"v: 18446744073709551616",
 			map[string]float64{"v": float64(math.MaxUint64 + 1)},
+		},
+		{
+			"v: 1e-06",
+			map[string]float64{"v": 1e-06},
 		},
 
 		// Timestamps
@@ -567,6 +582,53 @@ func TestDecoder(t *testing.T) {
 			"v: !!timestamp 2015-01-01",
 			map[string]time.Time{"v": time.Date(2015, 1, 1, 0, 0, 0, 0, time.UTC)},
 		},
+		{
+			"v: !!bool yes",
+			map[string]bool{"v": true},
+		},
+		{
+			"v: !!bool False",
+			map[string]bool{"v": false},
+		},
+		{
+			`
+!!merge <<: { a: 1, b: 2 }
+c: 3
+`,
+			map[string]any{"a": 1, "b": 2, "c": 3},
+		},
+
+		// merge
+		{
+			`
+a: &a
+ foo: 1
+b: &b
+ bar: 2
+merge:
+ <<: [*a, *b]
+`,
+			map[string]map[string]any{
+				"a":     {"foo": 1},
+				"b":     {"bar": 2},
+				"merge": {"foo": 1, "bar": 2},
+			},
+		},
+		{
+			`
+a: &a
+ foo: 1
+b: &b
+ bar: 2
+merge:
+ <<: [*a, *b]
+`,
+			map[string]yaml.MapSlice{
+				"a":     {{Key: "foo", Value: 1}},
+				"b":     {{Key: "bar", Value: 2}},
+				"merge": {{Key: "foo", Value: 1}, {Key: "bar", Value: 2}},
+			},
+		},
 
 		// Flow sequence
 		{
@@ -575,15 +637,32 @@ func TestDecoder(t *testing.T) {
 		},
 		{
 			"v: [A,B,C,]",
-			map[string][]string{"v": []string{"A", "B", "C"}},
+			map[string][]string{"v": {"A", "B", "C"}},
 		},
 		{
 			"v: [A,1,C]",
-			map[string][]string{"v": []string{"A", "1", "C"}},
+			map[string][]string{"v": {"A", "1", "C"}},
 		},
 		{
 			"v: [A,1,C]",
 			map[string]interface{}{"v": []interface{}{"A", 1, "C"}},
+		},
+		{
+			"v: [a: b, c: d]",
+			map[string]any{"v": []any{
+				map[string]any{"a": "b"},
+				map[string]any{"c": "d"},
+			}},
+		},
+		{
+			"v: [{a: b}, {c: d, e: f}]",
+			map[string]any{"v": []any{
+				map[string]any{"a": "b"},
+				map[string]any{
+					"c": "d",
+					"e": "f",
+				},
+			}},
 		},
 
 		// Block sequence
@@ -593,11 +672,11 @@ func TestDecoder(t *testing.T) {
 		},
 		{
 			"v:\n - A\n - B\n - C",
-			map[string][]string{"v": []string{"A", "B", "C"}},
+			map[string][]string{"v": {"A", "B", "C"}},
 		},
 		{
 			"v:\n - A\n - 1\n - C",
-			map[string][]string{"v": []string{"A", "1", "C"}},
+			map[string][]string{"v": {"A", "1", "C"}},
 		},
 		{
 			"v:\n - A\n - 1\n - C",
@@ -787,7 +866,7 @@ func TestDecoder(t *testing.T) {
 		},
 		{
 			"a: \"\\0\"\n",
-			map[string]string{"a": "\\0"},
+			map[string]string{"a": "\x00"},
 		},
 		{
 			"b: 2\na: 1\nd: 4\nc: 3\nsub:\n  e: 5\n",
@@ -933,7 +1012,17 @@ func TestDecoder(t *testing.T) {
 			"a: &a [1, 2]\nb: *a\n",
 			struct{ B []int }{[]int{1, 2}},
 		},
-
+		{
+			"key1: &anchor\n  subkey: *anchor\nkey2: *anchor\n",
+			map[string]any{
+				"key1": map[string]any{
+					"subkey": nil,
+				},
+				"key2": map[string]any{
+					"subkey": nil,
+				},
+			},
+		},
 		{
 			"tags:\n- hello-world\na: foo",
 			struct {
@@ -947,6 +1036,10 @@ func TestDecoder(t *testing.T) {
 		},
 		{
 			"{}", struct{}{},
+		},
+		{
+			"{a: , b: c}",
+			map[string]any{"a": nil, "b": "c"},
 		},
 		{
 			"v: /a/{b}",
@@ -1070,6 +1163,124 @@ c:
 			"v: あいうえお\nv2: かきくけこ",
 			map[string]string{"v": "あいうえお", "v2": "かきくけこ"},
 		},
+		{
+			`
+- "Fun with \\"
+- "\" \a \b \e \f"
+- "\n \r \t \v \0"
+- "\  \_ \N \L \P \
+  \x41 \u0041 \U00000041"
+`,
+			[]string{"Fun with \\", "\" \u0007 \b \u001b \f", "\n \r \t \u000b \u0000", "\u0020 \u00a0 \u0085 \u2028 \u2029 A A A"},
+		},
+		{
+			`"\ud83e\udd23"`,
+			"🤣",
+		},
+		{
+			`"\uD83D\uDE00\uD83D\uDE01"`,
+			"😀😁",
+		},
+		{
+			`"\uD83D\uDE00a\uD83D\uDE01"`,
+			"😀a😁",
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.source, func(t *testing.T) {
+			buf := bytes.NewBufferString(test.source)
+			dec := yaml.NewDecoder(buf)
+			typ := reflect.ValueOf(test.value).Type()
+			value := reflect.New(typ)
+			if err := dec.Decode(value.Interface()); err != nil {
+				if err == io.EOF {
+					return
+				}
+				t.Fatalf("%s: %+v", test.source, err)
+			}
+			actual := fmt.Sprintf("%+v", value.Elem().Interface())
+			expect := fmt.Sprintf("%+v", test.value)
+			if actual != expect {
+				t.Fatalf("failed to test [%s], actual=[%s], expect=[%s]", test.source, actual, expect)
+			}
+		})
+	}
+}
+
+func TestDecoder_Invalid(t *testing.T) {
+	tests := []struct {
+		src    string
+		expect string
+	}{
+		{
+			"*-0",
+			`
+[1:2] could not find alias "-0"
+>  1 | *-0
+        ^
+`,
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.src, func(t *testing.T) {
+			var v any
+			err := yaml.Unmarshal([]byte(test.src), &v)
+			if err == nil {
+				t.Fatal("cannot catch decode error")
+			}
+			actual := "\n" + err.Error()
+			if test.expect != actual {
+				t.Fatalf("expected: [%s] but got [%s]", test.expect, actual)
+			}
+		})
+	}
+}
+
+func TestDecoder_ScientificNotation(t *testing.T) {
+	tests := []struct {
+		source string
+		value  interface{}
+	}{
+		{
+			"v: 1e3",
+			map[string]uint{"v": 1000},
+		},
+		{
+			"v: 1e-3",
+			map[string]uint{"v": 0},
+		},
+		{
+			"v: 1e3",
+			map[string]int{"v": 1000},
+		},
+		{
+			"v: 1e-3",
+			map[string]int{"v": 0},
+		},
+		{
+			"v: 1e3",
+			map[string]float32{"v": 1000},
+		},
+		{
+			"v: 1.0e3",
+			map[string]float64{"v": 1000},
+		},
+		{
+			"v: 1e-3",
+			map[string]float64{"v": 0.001},
+		},
+		{
+			"v: 1.0e-3",
+			map[string]float64{"v": 0.001},
+		},
+		{
+			"v: 1.0e+3",
+			map[string]float64{"v": 1000},
+		},
+		{
+			"v: 1.0e+3",
+			map[string]float64{"v": 1000},
+		},
 	}
 	for _, test := range tests {
 		t.Run(test.source, func(t *testing.T) {
@@ -1114,6 +1325,17 @@ func TestDecoder_TypeConversionError(t *testing.T) {
 				t.Fatalf("expected error message: %s to contain: %s", err.Error(), msg)
 			}
 		})
+		t.Run("string to uint", func(t *testing.T) {
+			var v T
+			err := yaml.Unmarshal([]byte(`b: str`), &v)
+			if err == nil {
+				t.Fatal("expected to error")
+			}
+			msg := "cannot unmarshal string into Go struct field T.B of type uint"
+			if !strings.Contains(err.Error(), msg) {
+				t.Fatalf("expected error message: %s to contain: %s", err.Error(), msg)
+			}
+		})
 		t.Run("string to bool", func(t *testing.T) {
 			var v T
 			err := yaml.Unmarshal([]byte(`d: str`), &v)
@@ -1148,12 +1370,6 @@ func TestDecoder_TypeConversionError(t *testing.T) {
 			if !strings.Contains(err.Error(), msg) {
 				t.Fatalf("expected error message: %s to contain: %s", err.Error(), msg)
 			}
-			if len(v) == 0 || len(v["v"]) == 0 {
-				t.Fatal("failed to decode value")
-			}
-			if v["v"][0] != 1 {
-				t.Fatal("failed to decode value")
-			}
 		})
 		t.Run("string to int", func(t *testing.T) {
 			var v map[string][]int
@@ -1164,12 +1380,6 @@ func TestDecoder_TypeConversionError(t *testing.T) {
 			msg := "cannot unmarshal string into Go value of type int"
 			if !strings.Contains(err.Error(), msg) {
 				t.Fatalf("expected error message: %s to contain: %s", err.Error(), msg)
-			}
-			if len(v) == 0 || len(v["v"]) == 0 {
-				t.Fatal("failed to decode value")
-			}
-			if v["v"][0] != 1 {
-				t.Fatal("failed to decode value")
 			}
 		})
 	})
@@ -1296,7 +1506,6 @@ func TestDecoder_AnchorReferenceDirsRecursive(t *testing.T) {
 	buf := bytes.NewBufferString("a: *a\n")
 	dec := yaml.NewDecoder(
 		buf,
-		yaml.RecursiveDir(true),
 		yaml.ReferenceDirs("testdata"),
 	)
 	var v struct {
@@ -1354,7 +1563,7 @@ items:
 		Items []*Item
 	}
 	buf := bytes.NewBufferString(yml)
-	dec := yaml.NewDecoder(buf)
+	dec := yaml.NewDecoder(buf, yaml.AllowDuplicateMapKey())
 	var v T
 	if err := dec.Decode(&v); err != nil {
 		t.Fatalf("%+v", err)
@@ -1375,7 +1584,7 @@ items:
 		if err := dec.Decode(&v); err != nil {
 			t.Fatalf("%+v", err)
 		}
-		items := v.(map[string]interface{})["items"].([]interface{})
+		items, _ := v.(map[string]interface{})["items"].([]interface{})
 		if len(items) != 2 {
 			t.Fatal("failed to decode with merge key")
 		}
@@ -1686,39 +1895,23 @@ children:
 	})
 }
 
-func TestDecoder_DisallowDuplicateKey(t *testing.T) {
+func TestDecoder_AllowDuplicateMapKey(t *testing.T) {
 	yml := `
 a: b
 a: c
 `
-	expected := `
-[3:1] duplicate key "a"
-   2 | a: b
->  3 | a: c
-       ^
-`
 	t.Run("map", func(t *testing.T) {
 		var v map[string]string
-		err := yaml.NewDecoder(strings.NewReader(yml), yaml.DisallowDuplicateKey()).Decode(&v)
-		if err == nil {
-			t.Fatal("decoding should fail")
-		}
-		actual := "\n" + err.Error()
-		if expected != actual {
-			t.Fatalf("expected:[%s] actual:[%s]", expected, actual)
+		if err := yaml.NewDecoder(strings.NewReader(yml), yaml.AllowDuplicateMapKey()).Decode(&v); err != nil {
+			t.Fatal(err)
 		}
 	})
 	t.Run("struct", func(t *testing.T) {
 		var v struct {
 			A string
 		}
-		err := yaml.NewDecoder(strings.NewReader(yml), yaml.DisallowDuplicateKey()).Decode(&v)
-		if err == nil {
-			t.Fatal("decoding should fail")
-		}
-		actual := "\n" + err.Error()
-		if expected != actual {
-			t.Fatalf("expected:[%s] actual:[%s]", expected, actual)
+		if err := yaml.NewDecoder(strings.NewReader(yml), yaml.AllowDuplicateMapKey()).Decode(&v); err != nil {
+			t.Fatal(err)
 		}
 	})
 }
@@ -1850,7 +2043,7 @@ w: w_value
 	}
 }
 
-func Example_YAMLTags() {
+func ExampleUnmarshal_yAMLTags() {
 	yml := `---
 foo: 1
 bar: c
@@ -2056,13 +2249,13 @@ type unmarshalContext struct {
 func (c *unmarshalContext) UnmarshalYAML(ctx context.Context, b []byte) error {
 	v, ok := ctx.Value("k").(int)
 	if !ok {
-		return fmt.Errorf("cannot get valid context")
+		return errors.New("cannot get valid context")
 	}
 	if v != 1 {
-		return fmt.Errorf("cannot get valid context")
+		return errors.New("cannot get valid context")
 	}
 	if string(b) != "1" {
-		return fmt.Errorf("cannot get valid bytes")
+		return errors.New("cannot get valid bytes")
 	}
 	c.v = v
 	return nil
@@ -2131,13 +2324,13 @@ map: &map
 		var buf bytes.Buffer
 		var v bool
 		err := yaml.NewDecoder(&buf).DecodeFromNode(nil, v)
-		if !xerrors.Is(err, errors.ErrDecodeRequiredPointerType) {
+		if !errors.Is(err, yaml.ErrDecodeRequiredPointerType) {
 			t.Fatalf("unexpected error: %s", err)
 		}
 	})
 }
 
-func Example_JSONTags() {
+func ExampleUnmarshal_jSONTags() {
 	yml := `---
 foo: 1
 bar: c
@@ -2156,7 +2349,7 @@ bar: c
 	// c
 }
 
-func Example_DisallowUnknownField() {
+func ExampleDecoder_Decode_disallowUnknownField() {
 	var v struct {
 		A string `yaml:"simple"`
 		C string `yaml:"complicated"`
@@ -2164,20 +2357,20 @@ func Example_DisallowUnknownField() {
 
 	const src = `---
 simple: string
-complecated: string
+unknown: string
 `
 	err := yaml.NewDecoder(strings.NewReader(src), yaml.DisallowUnknownField()).Decode(&v)
 	fmt.Printf("%v\n", err)
 
 	// OUTPUT:
-	// [3:1] unknown field "complecated"
-	//        1 | ---
-	//        2 | simple: string
-	//     >  3 | complecated: string
-	//            ^
+	// [3:1] unknown field "unknown"
+	//    1 | ---
+	//    2 | simple: string
+	// >  3 | unknown: string
+	//        ^
 }
 
-func Example_Unmarshal_Node() {
+func ExampleNodeToValue() {
 	f, err := parser.ParseBytes([]byte("text: node example"), 0)
 	if err != nil {
 		panic(err)
@@ -2630,7 +2823,7 @@ map:
  <<: *z
  e: f
 `,
-			err: "cannot find anchor by alias name y",
+			err: `could not find alias "y"`,
 		},
 	}
 
@@ -2671,16 +2864,17 @@ type unmarshalList struct {
 
 func (u *unmarshalList) UnmarshalYAML(b []byte) error {
 	expected := `
- - b: c
-   d: |
-     hello
+- b: c # comment
+  # comment
+  d: | # comment
+    hello
 
-     hello
-   f: g
- - h: i`
+    hello
+  f: g
+- h: i`
 	actual := "\n" + string(b)
 	if expected != actual {
-		return xerrors.Errorf("unexpected bytes: expected [%q] but got [%q]", expected, actual)
+		return fmt.Errorf("unexpected bytes: expected [%q] but got [%q]", expected, actual)
 	}
 	var v []map[string]unmarshalString
 	if err := yaml.Unmarshal(b, &v); err != nil {
@@ -2690,11 +2884,40 @@ func (u *unmarshalList) UnmarshalYAML(b []byte) error {
 	return nil
 }
 
+func TestDecoder_DecodeWithAnchorAnyValue(t *testing.T) {
+	type Config struct {
+		Env []string `json:"env"`
+	}
+
+	type Schema struct {
+		Def    map[string]any `json:"def"`
+		Config Config         `json:"config"`
+	}
+
+	data := `
+def:
+  myenv: &my_env
+    - VAR1=1
+    - VAR2=2
+config:
+  env: *my_env
+`
+
+	var cfg Schema
+	if err := yaml.NewDecoder(strings.NewReader(data)).Decode(&cfg); err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(cfg.Config.Env, []string{"VAR1=1", "VAR2=2"}) {
+		t.Fatalf("failed to decode value. actual = %+v", cfg)
+	}
+}
+
 func TestDecoder_UnmarshalBytesWithSeparatedList(t *testing.T) {
 	yml := `
 a:
- - b: c
-   d: |
+ - b: c # comment
+   # comment
+   d: | # comment
      hello
 
      hello
@@ -2704,7 +2927,8 @@ a:
 	var v struct {
 		A unmarshalList
 	}
-	if err := yaml.Unmarshal([]byte(yml), &v); err != nil {
+	cm := yaml.CommentMap{}
+	if err := yaml.UnmarshalWithOptions([]byte(yml), &v, yaml.CommentToMap(cm)); err != nil {
 		t.Fatal(err)
 	}
 	if len(v.A.v) != 2 {
@@ -2724,23 +2948,17 @@ func TestDecoder_LiteralWithNewLine(t *testing.T) {
 		LastNode string `yaml:"last"`
 	}
 	tests := []A{
-		A{
+		{
 			Node: "hello\nworld",
 		},
-		A{
+		{
 			Node: "hello\nworld\n",
 		},
-		A{
-			Node: "hello\nworld\n\n",
-		},
-		A{
+		{
 			LastNode: "hello\nworld",
 		},
-		A{
+		{
 			LastNode: "hello\nworld\n",
-		},
-		A{
-			LastNode: "hello\nworld\n\n",
 		},
 	}
 	// struct(want) -> Marshal -> Unmarchal -> struct(got)
@@ -3011,5 +3229,314 @@ func TestSameNameInineStruct(t *testing.T) {
 	}
 	if fmt.Sprint(v.X.X) != "0.7" {
 		t.Fatalf("failed to decode")
+	}
+}
+
+type unmarshableMapKey struct {
+	Key string
+}
+
+func (mk *unmarshableMapKey) UnmarshalYAML(b []byte) error {
+	mk.Key = string(b)
+	return nil
+}
+
+func TestMapKeyCustomUnmarshaler(t *testing.T) {
+	var m map[unmarshableMapKey]string
+	if err := yaml.Unmarshal([]byte(`key: value`), &m); err != nil {
+		t.Fatalf("failed to unmarshal %v", err)
+	}
+	if len(m) != 1 {
+		t.Fatalf("expected 1 element in map, but got %d", len(m))
+	}
+	val, ok := m[unmarshableMapKey{Key: "key"}]
+	if !ok {
+		t.Fatal("expected to have element 'key' in map")
+	}
+	if val != "value" {
+		t.Fatalf("expected to have value \"value\", but got %q", val)
+	}
+}
+
+type bytesUnmershalerWithMapAlias struct{}
+
+func (*bytesUnmershalerWithMapAlias) UnmarshalYAML(b []byte) error {
+	expected := strings.TrimPrefix(`
+aaaaa:
+  bbbbb:
+    bar:
+      - |
+        foo
+          bar
+      - name: |
+          foo
+            bar
+
+`, "\n")
+	if string(b) != expected {
+		return fmt.Errorf("failed to decode: expected:\n[%s]\nbut got:\n[%s]\n", expected, string(b))
+	}
+	return nil
+}
+
+func TestBytesUnmarshalerWithMapAlias(t *testing.T) {
+	yml := `
+x-foo: &data
+  bar:
+    - |
+      foo
+        bar
+    - name: |
+        foo
+          bar
+
+foo:
+  aaaaa:
+    bbbbb: *data
+`
+	type T struct {
+		Foo bytesUnmershalerWithMapAlias `yaml:"foo"`
+	}
+	var v T
+	if err := yaml.Unmarshal([]byte(yml), &v); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestBytesUnmarshalerWithEmptyValue(t *testing.T) {
+	type T struct{}
+
+	unmarshaler := func(dst *T, b []byte) error {
+		var v any
+		return yaml.Unmarshal(b, &v)
+	}
+
+	yml := `
+map: &m {}
+seq: &seq []
+foo: # comment
+bar: *m
+baz: *seq
+`
+	m := yaml.CommentMap{}
+	var v T
+	if err := yaml.UnmarshalWithOptions(
+		[]byte(yml),
+		&v,
+		yaml.CommentToMap(m),
+		yaml.CustomUnmarshaler[T](unmarshaler),
+	); err != nil {
+		t.Fatal(err)
+	}
+	if err := yaml.UnmarshalWithOptions(
+		[]byte(yml),
+		&v,
+		yaml.CustomUnmarshaler[T](unmarshaler),
+	); err != nil {
+		t.Fatal(err)
+	}
+
+}
+
+func TestIssue650(t *testing.T) {
+	type Disk struct {
+		Name   string `yaml:"name"`
+		Format *bool  `yaml:"format"`
+	}
+
+	type Sample struct {
+		Disks []Disk `yaml:"disks"`
+	}
+
+	unmarshalDisk := func(dst *Disk, b []byte) error {
+		var s string
+		if err := yaml.Unmarshal(b, &s); err == nil {
+			*dst = Disk{Name: s}
+			return nil
+		}
+		return yaml.Unmarshal(b, dst)
+	}
+
+	data := []byte(`
+disks:
+    -      name: foo
+           format: true
+`)
+
+	var sample Sample
+	if err := yaml.UnmarshalWithOptions(data, &sample, yaml.CustomUnmarshaler[Disk](unmarshalDisk)); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestBytesUnmarshalerWithLiteral(t *testing.T) {
+	t.Run("map value", func(t *testing.T) {
+		type Literal string
+
+		unmarshalLit := func(dst *Literal, b []byte) error {
+			var s string
+			if err := yaml.Unmarshal(b, &s); err != nil {
+				return err
+			}
+			*dst = Literal(s)
+			return nil
+		}
+
+		data := []byte(`
+-         name:  |
+           foo
+             bar
+-         name:
+           |
+           foo
+           bar
+`)
+
+		var v []map[string]Literal
+		if err := yaml.UnmarshalWithOptions(data, &v, yaml.CustomUnmarshaler[Literal](unmarshalLit)); err != nil {
+			t.Fatal(err)
+		}
+		if !reflect.DeepEqual(v, []map[string]Literal{{"name": "foo\n  bar\n"}, {"name": "foo\nbar\n"}}) {
+			t.Fatalf("failed to get decoded value. got: %q", v)
+		}
+	})
+	t.Run("sequence value", func(t *testing.T) {
+		type Literal string
+
+		unmarshalLit := func(dst *Literal, b []byte) error {
+			var s string
+			if err := yaml.Unmarshal(b, &s); err != nil {
+				return err
+			}
+			*dst = Literal(s)
+			return nil
+		}
+
+		data := []byte(`
+-            |
+  foo
+    bar
+-
+ |
+ foo
+ bar
+`)
+
+		var v []Literal
+		if err := yaml.UnmarshalWithOptions(data, &v, yaml.CustomUnmarshaler[Literal](unmarshalLit)); err != nil {
+			t.Fatal(err)
+		}
+		if !reflect.DeepEqual(v, []Literal{"foo\n  bar\n", "foo\nbar\n"}) {
+			t.Fatalf("failed to get decoded value. got: %q", v)
+		}
+	})
+}
+
+func TestDecoderPreservesDefaultValues(t *testing.T) {
+	type nested struct {
+		Val string `yaml:"val"`
+	}
+
+	type test struct {
+		First   string `yaml:"first"`
+		Default nested `yaml:"nested"`
+	}
+
+	yml := `
+first: "Test"
+nested:
+  # Just some comment here
+#  val: "default"
+`
+	v := test{Default: nested{Val: "default"}}
+	if err := yaml.Unmarshal([]byte(yml), &v); err != nil {
+		t.Fatal(err)
+	}
+	if v.Default.Val != "default" {
+		t.Fatal("decoder doesn't preserve struct defaults")
+	}
+}
+
+func TestDecodeError(t *testing.T) {
+	tests := []struct {
+		name   string
+		source string
+	}{
+		{
+			name:   "duplicated map key name with anchor-alias",
+			source: "&0: *0\n*0:\n*0:",
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			var v any
+			if err := yaml.Unmarshal([]byte(test.source), &v); err == nil {
+				t.Fatal("cannot catch decode error")
+			}
+		})
+	}
+}
+
+func TestIssue617(t *testing.T) {
+	data := `
+a: !Not [!Equals [!Ref foo, 'bar']]
+`
+	var v map[string][]any
+	if err := yaml.Unmarshal([]byte(data), &v); err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(v, map[string][]any{
+		"a": {[]any{"foo", "bar"}},
+	}) {
+		t.Fatalf("found unexpected value: %v", v)
+	}
+}
+
+type issue337Template struct{}
+
+func (i *issue337Template) UnmarshalYAML(b []byte) error {
+	expected := strings.TrimPrefix(`
+|
+  apiVersion: v1
+  kind: ConfigMap
+  metadata:
+    name: "abc"
+    namespace: "abc"
+  data:
+    foo: FOO
+`, "\n")
+	if !bytes.Equal(b, []byte(expected)) {
+		return fmt.Errorf("expected:\n%s\nbut got:\n%s\n", expected, string(b))
+	}
+	return nil
+}
+
+func TestIssue337(t *testing.T) {
+	yml := `
+releases:
+- name: foo
+  chart: ./raw
+  values:
+  - templates:
+    - |
+      apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        name: "abc"
+        namespace: "abc"
+      data:
+        foo: FOO
+`
+	type Value struct {
+		Templates []*issue337Template `yaml:"templates"`
+	}
+	type Release struct {
+		Values []*Value `yaml:"values"`
+	}
+	var v struct {
+		Releases []*Release `yaml:"releases"`
+	}
+	if err := yaml.Unmarshal([]byte(yml), &v); err != nil {
+		t.Fatal(err)
 	}
 }

@@ -1,0 +1,42 @@
+name: Deploy static content to Pages
+on:
+  push:
+    tags:
+      - v*
+
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: 'pages'
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: checkout
+        uses: actions/checkout@v4
+      - name: setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: docs/playground/package-lock.json
+      - name: install dependencies
+        run: make -C ./docs/playground deps
+      - name: build
+        run: make -C ./docs/playground build
+      - name: setup Pages
+        uses: actions/configure-pages@v4
+      - name: upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: './docs/playground/dist'
+      - name: deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

@@ -2,7 +2,6 @@ package lexer_test
 
 import (
 	"sort"
-	"strings"
 	"testing"
 
 	"github.com/goccy/go-yaml/lexer"
@@ -10,59 +9,2616 @@ import (
 )
 
 func TestTokenize(t *testing.T) {
-	sources := []string{
-		"null\n",
-		"{}\n",
-		"v: hi\n",
-		"v: \"true\"\n",
-		"v: \"false\"\n",
-		"v: true\n",
-		"v: false\n",
-		"v: 10\n",
-		"v: -10\n",
-		"v: 42\n",
-		"v: 4294967296\n",
-		"v: \"10\"\n",
-		"v: 0.1\n",
-		"v: 0.99\n",
-		"v: -0.1\n",
-		"v: .inf\n",
-		"v: -.inf\n",
-		"v: .nan\n",
-		"v: null\n",
-		"v: \"\"\n",
-		"v:\n- A\n- B\n",
-		"v:\n- A\n- |-\n  B\n  C\n",
-		"v:\n- A\n- 1\n- B:\n  - 2\n  - 3\n",
-		"a:\n  b: c\n",
-		"a: '-'\n",
-		"123\n",
-		"hello: world\n",
-		"a: null\n",
-		"a: {x: 1}\n",
-		"a: [1, 2]\n",
-		"t2: 2018-01-09T10:40:47Z\nt4: 2098-01-09T10:40:47Z\n",
-		"a: {b: c, d: e}\n",
-		"a: 3s\n",
-		"a: <foo>\n",
-		"a: \"1:1\"\n",
-		"a: \"\\0\"\n",
-		"a: !!binary gIGC\n",
-		"a: !!binary |\n  " + strings.Repeat("kJCQ", 17) + "kJ\n  CQ\n",
-		"b: 2\na: 1\nd: 4\nc: 3\nsub:\n  e: 5\n",
-		"a: 1.2.3.4\n",
-		"a: \"2015-02-24T18:19:39Z\"\n",
-		"a: 'b: c'\n",
-		"a: 'Hello #comment'\n",
-		"a: 100.5\n",
-		"a: bogus\n",
-		"\"a\": double quoted map key",
-		"'a': single quoted map key",
-		"a: \"double quoted\"\nb: \"value map\"",
-		"a: 'single quoted'\nb: 'value map'",
+	tests := []struct {
+		YAML   string
+		Tokens token.Tokens
+	}{
+		{
+			YAML: `null
+  `,
+			Tokens: token.Tokens{
+				{
+					Type:          token.NullType,
+					CharacterType: token.CharacterTypeMiscellaneous,
+					Indicator:     token.NotIndicator,
+					Value:         "null",
+					Origin:        "null\n  ",
+				},
+			},
+		},
+		{
+			YAML: `0_`,
+			Tokens: token.Tokens{
+				{
+					Type:          token.IntegerType,
+					CharacterType: token.CharacterTypeMiscellaneous,
+					Indicator:     token.NotIndicator,
+					Value:         "0_",
+					Origin:        "0_",
+				},
+			},
+		},
+		{
+			YAML: `"hello\tworld"`,
+			Tokens: token.Tokens{
+				{
+					Type:          token.DoubleQuoteType,
+					CharacterType: token.CharacterTypeIndicator,
+					Indicator:     token.QuotedScalarIndicator,
+					Value:         "hello\tworld",
+					Origin:        `"hello\tworld"`,
+				},
+			},
+		},
+		{
+			YAML: `0x_1A_2B_3C`,
+			Tokens: token.Tokens{
+				{
+					Type:          token.HexIntegerType,
+					CharacterType: token.CharacterTypeMiscellaneous,
+					Indicator:     token.NotIndicator,
+					Value:         "0x_1A_2B_3C",
+					Origin:        "0x_1A_2B_3C",
+				},
+			},
+		},
+		{
+			YAML: `+0b1010`,
+			Tokens: token.Tokens{
+				{
+					Type:          token.BinaryIntegerType,
+					CharacterType: token.CharacterTypeMiscellaneous,
+					Indicator:     token.NotIndicator,
+					Value:         "+0b1010",
+					Origin:        "+0b1010",
+				},
+			},
+		},
+		{
+			YAML: `0100`,
+			Tokens: token.Tokens{
+				{
+					Type:          token.OctetIntegerType,
+					CharacterType: token.CharacterTypeMiscellaneous,
+					Indicator:     token.NotIndicator,
+					Value:         "0100",
+					Origin:        "0100",
+				},
+			},
+		},
+		{
+			YAML: `0o10`,
+			Tokens: token.Tokens{
+				{
+					Type:          token.OctetIntegerType,
+					CharacterType: token.CharacterTypeMiscellaneous,
+					Indicator:     token.NotIndicator,
+					Value:         "0o10",
+					Origin:        "0o10",
+				},
+			},
+		},
+		{
+			YAML: `0.123e+123`,
+			Tokens: token.Tokens{
+				{
+					Type:          token.FloatType,
+					CharacterType: token.CharacterTypeMiscellaneous,
+					Indicator:     token.NotIndicator,
+					Value:         "0.123e+123",
+					Origin:        "0.123e+123",
+				},
+			},
+		},
+		{
+			YAML: `{}
+  `,
+			Tokens: token.Tokens{
+				{
+					Type:          token.MappingStartType,
+					CharacterType: token.CharacterTypeIndicator,
+					Indicator:     token.FlowCollectionIndicator,
+					Value:         "{",
+					Origin:        "{",
+				},
+				{
+					Type:          token.MappingEndType,
+					CharacterType: token.CharacterTypeIndicator,
+					Indicator:     token.FlowCollectionIndicator,
+					Value:         "}",
+					Origin:        "}",
+				},
+			},
+		},
+		{
+			YAML: `v: hi`,
+			Tokens: token.Tokens{
+				{
+					Type:          token.StringType,
+					CharacterType: token.CharacterTypeMiscellaneous,
+					Indicator:     token.NotIndicator,
+					Value:         "v",
+					Origin:        "v",
+				},
+				{
+					Type:          token.MappingValueType,
+					CharacterType: token.CharacterTypeIndicator,
+					Indicator:     token.BlockStructureIndicator,
+					Value:         ":",
+					Origin:        ":",
+				},
+				{
+					Type:          token.StringType,
+					CharacterType: token.CharacterTypeMiscellaneous,
+					Indicator:     token.NotIndicator,
+					Value:         "hi",
+					Origin:        " hi",
+				},
+			},
+		},
+		{
+			YAML: `v:	a`,
+			Tokens: token.Tokens{
+				{
+					Type:          token.StringType,
+					CharacterType: token.CharacterTypeMiscellaneous,
+					Indicator:     token.NotIndicator,
+					Value:         "v",
+					Origin:        "v",
+				},
+				{
+					Type:          token.MappingValueType,
+					CharacterType: token.CharacterTypeIndicator,
+					Indicator:     token.BlockStructureIndicator,
+					Value:         ":",
+					Origin:        ":",
+				},
+				{
+					Type:          token.StringType,
+					CharacterType: token.CharacterTypeMiscellaneous,
+					Indicator:     token.NotIndicator,
+					Value:         "a",
+					// nolint: gci
+					Origin: "	a",
+				},
+			},
+		},
+		{
+			YAML: `v: "true"`,
+			Tokens: token.Tokens{
+				{
+					Type:          token.StringType,
+					CharacterType: token.CharacterTypeMiscellaneous,
+					Indicator:     token.NotIndicator,
+					Value:         "v",
+					Origin:        "v",
+				},
+				{
+					Type:          token.MappingValueType,
+					CharacterType: token.CharacterTypeIndicator,
+					Indicator:     token.BlockStructureIndicator,
+					Value:         ":",
+					Origin:        ":",
+				},
+				{
+					Type:          token.DoubleQuoteType,
+					CharacterType: token.CharacterTypeIndicator,
+					Indicator:     token.QuotedScalarIndicator,
+					Value:         "true",
+					Origin:        " \"true\"",
+				},
+			},
+		},
+		{
+			YAML: `v: "false"`,
+			Tokens: token.Tokens{
+				{
+					Type:          token.StringType,
+					CharacterType: token.CharacterTypeMiscellaneous,
+					Indicator:     token.NotIndicator,
+					Value:         "v",
+					Origin:        "v",
+				},
+				{
+					Type:          token.MappingValueType,
+					CharacterType: token.CharacterTypeIndicator,
+					Indicator:     token.BlockStructureIndicator,
+					Value:         ":",
+					Origin:        ":",
+				},
+				{
+					Type:          token.DoubleQuoteType,
+					CharacterType: token.CharacterTypeIndicator,
+					Indicator:     token.QuotedScalarIndicator,
+					Value:         "false",
+					Origin:        " \"false\"",
+				},
+			},
+		},
+		{
+			YAML: `v: true`,
+			Tokens: token.Tokens{
+				{
+					Type:          token.StringType,
+					CharacterType: token.CharacterTypeMiscellaneous,
+					Indicator:     token.NotIndicator,
+					Value:         "v",
+					Origin:        "v",
+				},
+				{
+					Type:          token.MappingValueType,
+					CharacterType: token.CharacterTypeIndicator,
+					Indicator:     token.BlockStructureIndicator,
+					Value:         ":",
+					Origin:        ":",
+				},
+				{
+					Type:          token.BoolType,
+					CharacterType: token.CharacterTypeMiscellaneous,
+					Indicator:     token.NotIndicator,
+					Value:         "true",
+					Origin:        " true",
+				},
+			},
+		},
+		{
+			YAML: `v: false`,
+			Tokens: token.Tokens{
+				{
+					Type:          token.StringType,
+					CharacterType: token.CharacterTypeMiscellaneous,
+					Indicator:     token.NotIndicator,
+					Value:         "v",
+					Origin:        "v",
+				},
+				{
+					Type:          token.MappingValueType,
+					CharacterType: token.CharacterTypeIndicator,
+					Indicator:     token.BlockStructureIndicator,
+					Value:         ":",
+					Origin:        ":",
+				},
+				{
+					Type:          token.BoolType,
+					CharacterType: token.CharacterTypeMiscellaneous,
+					Indicator:     token.NotIndicator,
+					Value:         "false",
+					Origin:        " false",
+				},
+			},
+		},
+		{
+			YAML: `v: 10`,
+			Tokens: token.Tokens{
+				{
+					Type:          token.StringType,
+					CharacterType: token.CharacterTypeMiscellaneous,
+					Indicator:     token.NotIndicator,
+					Value:         "v",
+					Origin:        "v",
+				},
+				{
+					Type:          token.MappingValueType,
+					CharacterType: token.CharacterTypeIndicator,
+					Indicator:     token.BlockStructureIndicator,
+					Value:         ":",
+					Origin:        ":",
+				},
+				{
+					Type:          token.IntegerType,
+					CharacterType: token.CharacterTypeMiscellaneous,
+					Indicator:     token.NotIndicator,
+					Value:         "10",
+					Origin:        " 10",
+				},
+			},
+		},
+		{
+			YAML: `v: -10`,
+			Tokens: token.Tokens{
+				{
+					Type:          token.StringType,
+					CharacterType: token.CharacterTypeMiscellaneous,
+					Indicator:     token.NotIndicator,
+					Value:         "v",
+					Origin:        "v",
+				},
+				{
+					Type:          token.MappingValueType,
+					CharacterType: token.CharacterTypeIndicator,
+					Indicator:     token.BlockStructureIndicator,
+					Value:         ":",
+					Origin:        ":",
+				},
+				{
+					Type:          token.IntegerType,
+					CharacterType: token.CharacterTypeMiscellaneous,
+					Indicator:     token.NotIndicator,
+					Value:         "-10",
+					Origin:        " -10",
+				},
+			},
+		},
+		{
+			YAML: `v: 42`,
+			Tokens: token.Tokens{
+				{
+					Type:          token.StringType,
+					CharacterType: token.CharacterTypeMiscellaneous,
+					Indicator:     token.NotIndicator,
+					Value:         "v",
+					Origin:        "v",
+				},
+				{
+					Type:          token.MappingValueType,
+					CharacterType: token.CharacterTypeIndicator,
+					Indicator:     token.BlockStructureIndicator,
+					Value:         ":",
+					Origin:        ":",
+				},
+				{
+					Type:          token.IntegerType,
+					CharacterType: token.CharacterTypeMiscellaneous,
+					Indicator:     token.NotIndicator,
+					Value:         "42",
+					Origin:        " 42",
+				},
+			},
+		},
+		{
+			YAML: `v: 4294967296`,
+			Tokens: token.Tokens{
+				{
+					Type:          token.StringType,
+					CharacterType: token.CharacterTypeMiscellaneous,
+					Indicator:     token.NotIndicator,
+					Value:         "v",
+					Origin:        "v",
+				},
+				{
+					Type:          token.MappingValueType,
+					CharacterType: token.CharacterTypeIndicator,
+					Indicator:     token.BlockStructureIndicator,
+					Value:         ":",
+					Origin:        ":",
+				},
+				{
+					Type:          token.IntegerType,
+					CharacterType: token.CharacterTypeMiscellaneous,
+					Indicator:     token.NotIndicator,
+					Value:         "4294967296",
+					Origin:        " 4294967296",
+				},
+			},
+		},
+		{
+			YAML: `v: "10"`,
+			Tokens: token.Tokens{
+				{
+					Type:          token.StringType,
+					CharacterType: token.CharacterTypeMiscellaneous,
+					Indicator:     token.NotIndicator,
+					Value:         "v",
+					Origin:        "v",
+				},
+				{
+					Type:          token.MappingValueType,
+					CharacterType: token.CharacterTypeIndicator,
+					Indicator:     token.BlockStructureIndicator,
+					Value:         ":",
+					Origin:        ":",
+				},
+				{
+					Type:          token.DoubleQuoteType,
+					CharacterType: token.CharacterTypeIndicator,
+					Indicator:     token.QuotedScalarIndicator,
+					Value:         "10",
+					Origin:        " \"10\"",
+				},
+			},
+		},
+		{
+			YAML: `v: 0.1`,
+			Tokens: token.Tokens{
+				{
+					Type:          token.StringType,
+					CharacterType: token.CharacterTypeMiscellaneous,
+					Indicator:     token.NotIndicator,
+					Value:         "v",
+					Origin:        "v",
+				},
+				{
+					Type:          token.MappingValueType,
+					CharacterType: token.CharacterTypeIndicator,
+					Indicator:     token.BlockStructureIndicator,
+					Value:         ":",
+					Origin:        ":",
+				},
+				{
+					Type:          token.FloatType,
+					CharacterType: token.CharacterTypeMiscellaneous,
+					Indicator:     token.NotIndicator,
+					Value:         "0.1",
+					Origin:        " 0.1",
+				},
+			},
+		},
+		{
+			YAML: `v: 0.99`,
+			Tokens: token.Tokens{
+				{
+					Type:          token.StringType,
+					CharacterType: token.CharacterTypeMiscellaneous,
+					Indicator:     token.NotIndicator,
+					Value:         "v",
+					Origin:        "v",
+				},
+				{
+					Type:          token.MappingValueType,
+					CharacterType: token.CharacterTypeIndicator,
+					Indicator:     token.BlockStructureIndicator,
+					Value:         ":",
+					Origin:        ":",
+				},
+				{
+					Type:          token.FloatType,
+					CharacterType: token.CharacterTypeMiscellaneous,
+					Indicator:     token.NotIndicator,
+					Value:         "0.99",
+					Origin:        " 0.99",
+				},
+			},
+		},
+		{
+			YAML: `v: -0.1`,
+			Tokens: token.Tokens{
+				{
+					Type:          token.StringType,
+					CharacterType: token.CharacterTypeMiscellaneous,
+					Indicator:     token.NotIndicator,
+					Value:         "v",
+					Origin:        "v",
+				},
+				{
+					Type:          token.MappingValueType,
+					CharacterType: token.CharacterTypeIndicator,
+					Indicator:     token.BlockStructureIndicator,
+					Value:         ":",
+					Origin:        ":",
+				},
+				{
+					Type:          token.FloatType,
+					CharacterType: token.CharacterTypeMiscellaneous,
+					Indicator:     token.NotIndicator,
+					Value:         "-0.1",
+					Origin:        " -0.1",
+				},
+			},
+		},
+		{
+			YAML: `v: .inf`,
+			Tokens: token.Tokens{
+				{
+					Type:          token.StringType,
+					CharacterType: token.CharacterTypeMiscellaneous,
+					Indicator:     token.NotIndicator,
+					Value:         "v",
+					Origin:        "v",
+				},
+				{
+					Type:          token.MappingValueType,
+					CharacterType: token.CharacterTypeIndicator,
+					Indicator:     token.BlockStructureIndicator,
+					Value:         ":",
+					Origin:        ":",
+				},
+				{
+					Type:          token.InfinityType,
+					CharacterType: token.CharacterTypeMiscellaneous,
+					Indicator:     token.NotIndicator,
+					Value:         ".inf",
+					Origin:        " .inf",
+				},
+			},
+		},
+		{
+			YAML: `v: -.inf`,
+			Tokens: token.Tokens{
+				{
+					Type:          token.StringType,
+					CharacterType: token.CharacterTypeMiscellaneous,
+					Indicator:     token.NotIndicator,
+					Value:         "v",
+					Origin:        "v",
+				},
+				{
+					Type:          token.MappingValueType,
+					CharacterType: token.CharacterTypeIndicator,
+					Indicator:     token.BlockStructureIndicator,
+					Value:         ":",
+					Origin:        ":",
+				},
+				{
+					Type:          token.InfinityType,
+					CharacterType: token.CharacterTypeMiscellaneous,
+					Indicator:     token.NotIndicator,
+					Value:         "-.inf",
+					Origin:        " -.inf",
+				},
+			},
+		},
+		{
+			YAML: `v: .nan`,
+			Tokens: token.Tokens{
+				{
+					Type:          token.StringType,
+					CharacterType: token.CharacterTypeMiscellaneous,
+					Indicator:     token.NotIndicator,
+					Value:         "v",
+					Origin:        "v",
+				},
+				{
+					Type:          token.MappingValueType,
+					CharacterType: token.CharacterTypeIndicator,
+					Indicator:     token.BlockStructureIndicator,
+					Value:         ":",
+					Origin:        ":",
+				},
+				{
+					Type:          token.NanType,
+					CharacterType: token.CharacterTypeMiscellaneous,
+					Indicator:     token.NotIndicator,
+					Value:         ".nan",
+					Origin:        " .nan",
+				},
+			},
+		},
+		{
+			YAML: `
+a:
+  "bbb  \
+      ccc
+
+      ddd eee\n\
+  \ \ fff ggg\nhhh iii\n
+  jjj kkk
+  "
+`,
+			Tokens: token.Tokens{
+				{
+					Type:          token.StringType,
+					CharacterType: token.CharacterTypeMiscellaneous,
+					Indicator:     token.NotIndicator,
+					Value:         "a",
+					Origin:        "\na",
+				},
+				{
+					Type:          token.MappingValueType,
+					CharacterType: token.CharacterTypeIndicator,
+					Indicator:     token.BlockStructureIndicator,
+					Value:         ":",
+					Origin:        ":",
+				},
+				{
+					Type:          token.DoubleQuoteType,
+					CharacterType: token.CharacterTypeIndicator,
+					Indicator:     token.QuotedScalarIndicator,
+					Value:         "bbb  ccc\nddd eee\n  fff ggg\nhhh iii\n jjj kkk ",
+					Origin:        "\n  \"bbb  \\\n      ccc\n\n      ddd eee\\n\\\n  \\ \\ fff ggg\\nhhh iii\\n\n  jjj kkk\n  \"",
+				},
+			},
+		},
+		{
+			YAML: `v: null`,
+			Tokens: token.Tokens{
+				{
+					Type:          token.StringType,
+					CharacterType: token.CharacterTypeMiscellaneous,
+					Indicator:     token.NotIndicator,
+					Value:         "v",
+					Origin:        "v",
+				},
+				{
+					Type:          token.MappingValueType,
+					CharacterType: token.CharacterTypeIndicator,
+					Indicator:     token.BlockStructureIndicator,
+					Value:         ":",
+					Origin:        ":",
+				},
+				{
+					Type:          token.NullType,
+					CharacterType: token.CharacterTypeMiscellaneous,
+					Indicator:     token.NotIndicator,
+					Value:         "null",
+					Origin:        " null",
+				},
+			},
+		},
+		{
+			YAML: `v: ""`,
+			Tokens: token.Tokens{
+				{
+					Type:          token.StringType,
+					CharacterType: token.CharacterTypeMiscellaneous,
+					Indicator:     token.NotIndicator,
+					Value:         "v",
+					Origin:        "v",
+				},
+				{
+					Type:          token.MappingValueType,
+					CharacterType: token.CharacterTypeIndicator,
+					Indicator:     token.BlockStructureIndicator,
+					Value:         ":",
+					Origin:        ":",
+				},
+				{
+					Type:          token.DoubleQuoteType,
+					CharacterType: token.CharacterTypeIndicator,
+					Indicator:     token.QuotedScalarIndicator,
+					Value:         "",
+					Origin:        " \"\"",
+				},
+			},
+		},
+		{
+			YAML: `
+v:
+- A
+- B
+`,
+			Tokens: token.Tokens{
+				{
+					Type:          token.StringType,
+					CharacterType: token.CharacterTypeMiscellaneous,
+					Indicator:     token.NotIndicator,
+					Value:         "v",
+					Origin:        "\nv",
+				},
+				{
+					Type:          token.MappingValueType,
+					CharacterType: token.CharacterTypeIndicator,
+					Indicator:     token.BlockStructureIndicator,
+					Value:         ":",
+					Origin:        ":",
+				},
+				{
+					Type:          token.SequenceEntryType,
+					CharacterType: token.CharacterTypeIndicator,
+					Indicator:     token.BlockStructureIndicator,
+					Value:         "-",
+					Origin:        "\n-",
+				},
+				{
+					Type:          token.StringType,
+					CharacterType: token.CharacterTypeMiscellaneous,
+					Indicator:     token.NotIndicator,
+					Value:         "A",
+					Origin:        " A\n",
+				},
+				{
+					Type:          token.SequenceEntryType,
+					CharacterType: token.CharacterTypeIndicator,
+					Indicator:     token.BlockStructureIndicator,
+					Value:         "-",
+					Origin:        "-",
+				},
+				{
+					Type:          token.StringType,
+					CharacterType: token.CharacterTypeMiscellaneous,
+					Indicator:     token.NotIndicator,
+					Value:         "B",
+					Origin:        " B",
+				},
+			},
+		},
+		{
+			YAML: `
+v:
+- A
+- |-
+ B
+ C
+`,
+			Tokens: token.Tokens{
+				{
+					Type:          token.StringType,
+					CharacterType: token.CharacterTypeMiscellaneous,
+					Indicator:     token.NotIndicator,
+					Value:         "v",
+					Origin:        "\nv",
+				},
+				{
+					Type:          token.MappingValueType,
+					CharacterType: token.CharacterTypeIndicator,
+					Indicator:     token.BlockStructureIndicator,
+					Value:         ":",
+					Origin:        ":",
+				},
+				{
+					Type:          token.SequenceEntryType,
+					CharacterType: token.CharacterTypeIndicator,
+					Indicator:     token.BlockStructureIndicator,
+					Value:         "-",
+					Origin:        "\n-",
+				},
+				{
+					Type:          token.StringType,
+					CharacterType: token.CharacterTypeMiscellaneous,
+					Indicator:     token.NotIndicator,
+					Value:         "A",
+					Origin:        " A\n",
+				},
+				{
+					Type:          token.SequenceEntryType,
+					CharacterType: token.CharacterTypeIndicator,
+					Indicator:     token.BlockStructureIndicator,
+					Value:         "-",
+					Origin:        "-",
+				},
+				{
+					Type:          token.LiteralType,
+					CharacterType: token.CharacterTypeIndicator,
+					Indicator:     token.BlockScalarIndicator,
+					Value:         "|-",
+					Origin:        " |-\n",
+				},
+				{
+					Type:          token.StringType,
+					CharacterType: token.CharacterTypeMiscellaneous,
+					Indicator:     token.NotIndicator,
+					Value:         "B\nC",
+					Origin:        " B\n C\n",
+				},
+			},
+		},
+		{
+			YAML: `
+v:
+- A
+- 1
+- B:
+ - 2
+ - 3
+`,
+			Tokens: token.Tokens{
+				{
+					Type:          token.StringType,
+					CharacterType: token.CharacterTypeMiscellaneous,
+					Indicator:     token.NotIndicator,
+					Value:         "v",
+					Origin:        "\nv",
+				},
+				{
+					Type:          token.MappingValueType,
+					CharacterType: token.CharacterTypeIndicator,
+					Indicator:     token.BlockStructureIndicator,
+					Value:         ":",
+					Origin:        ":",
+				},
+				{
+					Type:          token.SequenceEntryType,
+					CharacterType: token.CharacterTypeIndicator,
+					Indicator:     token.BlockStructureIndicator,
+					Value:         "-",
+					Origin:        "\n-",
+				},
+				{
+					Type:          token.StringType,
+					CharacterType: token.CharacterTypeMiscellaneous,
+					Indicator:     token.NotIndicator,
+					Value:         "A",
+					Origin:        " A\n",
+				},
+				{
+					Type:          token.SequenceEntryType,
+					CharacterType: token.CharacterTypeIndicator,
+					Indicator:     token.BlockStructureIndicator,
+					Value:         "-",
+					Origin:        "-",
+				},
+				{
+					Type:          token.IntegerType,
+					CharacterType: token.CharacterTypeMiscellaneous,
+					Indicator:     token.NotIndicator,
+					Value:         "1",
+					Origin:        " 1\n",
+				},
+				{
+					Type:          token.SequenceEntryType,
+					CharacterType: token.CharacterTypeIndicator,
+					Indicator:     token.BlockStructureIndicator,
+					Value:         "-",
+					Origin:        "-",
+				},
+				{
+					Type:          token.StringType,
+					CharacterType: token.CharacterTypeMiscellaneous,
+					Indicator:     token.NotIndicator,
+					Value:         "B",
+					Origin:        " B",
+				},
+				{
+					Type:          token.MappingValueType,
+					CharacterType: token.CharacterTypeIndicator,
+					Indicator:     token.BlockStructureIndicator,
+					Value:         ":",
+					Origin:        ":",
+				},
+				{
+					Type:          token.SequenceEntryType,
+					CharacterType: token.CharacterTypeIndicator,
+					Indicator:     token.BlockStructureIndicator,
+					Value:         "-",
+					Origin:        "\n -",
+				},
+				{
+					Type:          token.IntegerType,
+					CharacterType: token.CharacterTypeMiscellaneous,
+					Indicator:     token.NotIndicator,
+					Value:         "2",
+					Origin:        " 2\n ",
+				},
+				{
+					Type:          token.SequenceEntryType,
+					CharacterType: token.CharacterTypeIndicator,
+					Indicator:     token.BlockStructureIndicator,
+					Value:         "-",
+					Origin:        "-",
+				},
+				{
+					Type:          token.IntegerType,
+					CharacterType: token.CharacterTypeMiscellaneous,
+					Indicator:     token.NotIndicator,
+					Value:         "3",
+					Origin:        " 3",
+				},
+			},
+		},
+		{
+			YAML: `
+a:
+ b: c
+`,
+			Tokens: token.Tokens{
+				{
+					Type:          token.StringType,
+					CharacterType: token.CharacterTypeMiscellaneous,
+					Indicator:     token.NotIndicator,
+					Value:         "a",
+					Origin:        "\na",
+				},
+				{
+					Type:          token.MappingValueType,
+					CharacterType: token.CharacterTypeIndicator,
+					Indicator:     token.BlockStructureIndicator,
+					Value:         ":",
+					Origin:        ":",
+				},
+				{
+					Type:          token.StringType,
+					CharacterType: token.CharacterTypeMiscellaneous,
+					Indicator:     token.NotIndicator,
+					Value:         "b",
+					Origin:        "\n b",
+				},
+				{
+					Type:          token.MappingValueType,
+					CharacterType: token.CharacterTypeIndicator,
+					Indicator:     token.BlockStructureIndicator,
+					Value:         ":",
+					Origin:        ":",
+				},
+				{
+					Type:          token.StringType,
+					CharacterType: token.CharacterTypeMiscellaneous,
+					Indicator:     token.NotIndicator,
+					Value:         "c",
+					Origin:        " c",
+				},
+			},
+		},
+		{
+			YAML: `a: '-'`,
+			Tokens: token.Tokens{
+				{
+					Type:          token.StringType,
+					CharacterType: token.CharacterTypeMiscellaneous,
+					Indicator:     token.NotIndicator,
+					Value:         "a",
+					Origin:        "a",
+				},
+				{
+					Type:          token.MappingValueType,
+					CharacterType: token.CharacterTypeIndicator,
+					Indicator:     token.BlockStructureIndicator,
+					Value:         ":",
+					Origin:        ":",
+				},
+				{
+					Type:          token.SingleQuoteType,
+					CharacterType: token.CharacterTypeIndicator,
+					Indicator:     token.QuotedScalarIndicator,
+					Value:         "-",
+					Origin:        " '-'",
+				},
+			},
+		},
+		{
+			YAML: `123`,
+			Tokens: token.Tokens{
+				{
+					Type:          token.IntegerType,
+					CharacterType: token.CharacterTypeMiscellaneous,
+					Indicator:     token.NotIndicator,
+					Value:         "123",
+					Origin:        "123",
+				},
+			},
+		},
+		{
+			YAML: `hello: world
+`,
+			Tokens: token.Tokens{
+				{
+					Type:          token.StringType,
+					CharacterType: token.CharacterTypeMiscellaneous,
+					Indicator:     token.NotIndicator,
+					Value:         "hello",
+					Origin:        "hello",
+				},
+				{
+					Type:          token.MappingValueType,
+					CharacterType: token.CharacterTypeIndicator,
+					Indicator:     token.BlockStructureIndicator,
+					Value:         ":",
+					Origin:        ":",
+				},
+				{
+					Type:          token.StringType,
+					CharacterType: token.CharacterTypeMiscellaneous,
+					Indicator:     token.NotIndicator,
+					Value:         "world",
+					Origin:        " world",
+				},
+			},
+		},
+		{
+			YAML: `a: null`,
+			Tokens: token.Tokens{
+				{
+					Type:          token.StringType,
+					CharacterType: token.CharacterTypeMiscellaneous,
+					Indicator:     token.NotIndicator,
+					Value:         "a",
+					Origin:        "a",
+				},
+				{
+					Type:          token.MappingValueType,
+					CharacterType: token.CharacterTypeIndicator,
+					Indicator:     token.BlockStructureIndicator,
+					Value:         ":",
+					Origin:        ":",
+				},
+				{
+					Type:          token.NullType,
+					CharacterType: token.CharacterTypeMiscellaneous,
+					Indicator:     token.NotIndicator,
+					Value:         "null",
+					Origin:        " null",
+				},
+			},
+		},
+		{
+			YAML: `a: {x: 1}`,
+			Tokens: token.Tokens{
+				{
+					Type:          token.StringType,
+					CharacterType: token.CharacterTypeMiscellaneous,
+					Indicator:     token.NotIndicator,
+					Value:         "a",
+					Origin:        "a",
+				},
+				{
+					Type:          token.MappingValueType,
+					CharacterType: token.CharacterTypeIndicator,
+					Indicator:     token.BlockStructureIndicator,
+					Value:         ":",
+					Origin:        ":",
+				},
+				{
+					Type:          token.MappingStartType,
+					CharacterType: token.CharacterTypeIndicator,
+					Indicator:     token.FlowCollectionIndicator,
+					Value:         "{",
+					Origin:        " {",
+				},
+				{
+					Type:          token.StringType,
+					CharacterType: token.CharacterTypeMiscellaneous,
+					Indicator:     token.NotIndicator,
+					Value:         "x",
+					Origin:        "x",
+				},
+				{
+					Type:          token.MappingValueType,
+					CharacterType: token.CharacterTypeIndicator,
+					Indicator:     token.BlockStructureIndicator,
+					Value:         ":",
+					Origin:        ":",
+				},
+				{
+					Type:          token.IntegerType,
+					CharacterType: token.CharacterTypeMiscellaneous,
+					Indicator:     token.NotIndicator,
+					Value:         "1",
+					Origin:        " 1",
+				},
+				{
+					Type:          token.MappingEndType,
+					CharacterType: token.CharacterTypeIndicator,
+					Indicator:     token.FlowCollectionIndicator,
+					Value:         "}",
+					Origin:        "}",
+				},
+			},
+		},
+		{
+			YAML: `a: [1, 2]`,
+			Tokens: token.Tokens{
+				{
+					Type:          token.StringType,
+					CharacterType: token.CharacterTypeMiscellaneous,
+					Indicator:     token.NotIndicator,
+					Value:         "a",
+					Origin:        "a",
+				},
+				{
+					Type:          token.MappingValueType,
+					CharacterType: token.CharacterTypeIndicator,
+					Indicator:     token.BlockStructureIndicator,
+					Value:         ":",
+					Origin:        ":",
+				},
+				{
+					Type:          token.SequenceStartType,
+					CharacterType: token.CharacterTypeIndicator,
+					Indicator:     token.FlowCollectionIndicator,
+					Value:         "[",
+					Origin:        " [",
+				},
+				{
+					Type:          token.IntegerType,
+					CharacterType: token.CharacterTypeMiscellaneous,
+					Indicator:     token.NotIndicator,
+					Value:         "1",
+					Origin:        "1",
+				},
+				{
+					Type:          token.CollectEntryType,
+					CharacterType: token.CharacterTypeIndicator,
+					Indicator:     token.FlowCollectionIndicator,
+					Value:         ",",
+					Origin:        ",",
+				},
+				{
+					Type:          token.IntegerType,
+					CharacterType: token.CharacterTypeMiscellaneous,
+					Indicator:     token.NotIndicator,
+					Value:         "2",
+					Origin:        " 2",
+				},
+				{
+					Type:          token.SequenceEndType,
+					CharacterType: token.CharacterTypeIndicator,
+					Indicator:     token.FlowCollectionIndicator,
+					Value:         "]",
+					Origin:        "]",
+				},
+			},
+		},
+		{
+			YAML: `
+t2: 2018-01-09T10:40:47Z
+t4: 2098-01-09T10:40:47Z
+`,
+			Tokens: token.Tokens{
+				{
+					Type:          token.StringType,
+					CharacterType: token.CharacterTypeMiscellaneous,
+					Indicator:     token.NotIndicator,
+					Value:         "t2",
+					Origin:        "\nt2",
+				},
+				{
+					Type:          token.MappingValueType,
+					CharacterType: token.CharacterTypeIndicator,
+					Indicator:     token.BlockStructureIndicator,
+					Value:         ":",
+					Origin:        ":",
+				},
+				{
+					Type:          token.StringType,
+					CharacterType: token.CharacterTypeMiscellaneous,
+					Indicator:     token.NotIndicator,
+					Value:         "2018-01-09T10:40:47Z",
+					Origin:        " 2018-01-09T10:40:47Z\n",
+				},
+				{
+					Type:          token.StringType,
+					CharacterType: token.CharacterTypeMiscellaneous,
+					Indicator:     token.NotIndicator,
+					Value:         "t4",
+					Origin:        "t4",
+				},
+				{
+					Type:          token.MappingValueType,
+					CharacterType: token.CharacterTypeIndicator,
+					Indicator:     token.BlockStructureIndicator,
+					Value:         ":",
+					Origin:        ":",
+				},
+				{
+					Type:          token.StringType,
+					CharacterType: token.CharacterTypeMiscellaneous,
+					Indicator:     token.NotIndicator,
+					Value:         "2098-01-09T10:40:47Z",
+					Origin:        " 2098-01-09T10:40:47Z",
+				},
+			},
+		},
+		{
+			YAML: `a: {b: c, d: e}`,
+			Tokens: token.Tokens{
+				{
+					Type:          token.StringType,
+					CharacterType: token.CharacterTypeMiscellaneous,
+					Indicator:     token.NotIndicator,
+					Value:         "a",
+					Origin:        "a",
+				},
+				{
+					Type:          token.MappingValueType,
+					CharacterType: token.CharacterTypeIndicator,
+					Indicator:     token.BlockStructureIndicator,
+					Value:         ":",
+					Origin:        ":",
+				},
+				{
+					Type:          token.MappingStartType,
+					CharacterType: token.CharacterTypeIndicator,
+					Indicator:     token.FlowCollectionIndicator,
+					Value:         "{",
+					Origin:        " {",
+				},
+				{
+					Type:          token.StringType,
+					CharacterType: token.CharacterTypeMiscellaneous,
+					Indicator:     token.NotIndicator,
+					Value:         "b",
+					Origin:        "b",
+				},
+				{
+					Type:          token.MappingValueType,
+					CharacterType: token.CharacterTypeIndicator,
+					Indicator:     token.BlockStructureIndicator,
+					Value:         ":",
+					Origin:        ":",
+				},
+				{
+					Type:          token.StringType,
+					CharacterType: token.CharacterTypeMiscellaneous,
+					Indicator:     token.NotIndicator,
+					Value:         "c",
+					Origin:        " c",
+				},
+				{
+					Type:          token.CollectEntryType,
+					CharacterType: token.CharacterTypeIndicator,
+					Indicator:     token.FlowCollectionIndicator,
+					Value:         ",",
+					Origin:        ",",
+				},
+				{
+					Type:          token.StringType,
+					CharacterType: token.CharacterTypeMiscellaneous,
+					Indicator:     token.NotIndicator,
+					Value:         "d",
+					Origin:        " d",
+				},
+				{
+					Type:          token.MappingValueType,
+					CharacterType: token.CharacterTypeIndicator,
+					Indicator:     token.BlockStructureIndicator,
+					Value:         ":",
+					Origin:        ":",
+				},
+				{
+					Type:          token.StringType,
+					CharacterType: token.CharacterTypeMiscellaneous,
+					Indicator:     token.NotIndicator,
+					Value:         "e",
+					Origin:        " e",
+				},
+				{
+					Type:          token.MappingEndType,
+					CharacterType: token.CharacterTypeIndicator,
+					Indicator:     token.FlowCollectionIndicator,
+					Value:         "}",
+					Origin:        "}",
+				},
+			},
+		},
+		{
+			YAML: `a: 3s`,
+			Tokens: token.Tokens{
+				{
+					Type:          token.StringType,
+					CharacterType: token.CharacterTypeMiscellaneous,
+					Indicator:     token.NotIndicator,
+					Value:         "a",
+					Origin:        "a",
+				},
+				{
+					Type:          token.MappingValueType,
+					CharacterType: token.CharacterTypeIndicator,
+					Indicator:     token.BlockStructureIndicator,
+					Value:         ":",
+					Origin:        ":",
+				},
+				{
+					Type:          token.StringType,
+					CharacterType: token.CharacterTypeMiscellaneous,
+					Indicator:     token.NotIndicator,
+					Value:         "3s",
+					Origin:        " 3s",
+				},
+			},
+		},
+		{
+			YAML: `a: <foo>`,
+			Tokens: token.Tokens{
+				{
+					Type:          token.StringType,
+					CharacterType: token.CharacterTypeMiscellaneous,
+					Indicator:     token.NotIndicator,
+					Value:         "a",
+					Origin:        "a",
+				},
+				{
+					Type:          token.MappingValueType,
+					CharacterType: token.CharacterTypeIndicator,
+					Indicator:     token.BlockStructureIndicator,
+					Value:         ":",
+					Origin:        ":",
+				},
+				{
+					Type:          token.StringType,
+					CharacterType: token.CharacterTypeMiscellaneous,
+					Indicator:     token.NotIndicator,
+					Value:         "<foo>",
+					Origin:        " <foo>",
+				},
+			},
+		},
+		{
+			YAML: `a: "1:1"`,
+			Tokens: token.Tokens{
+				{
+					Type:          token.StringType,
+					CharacterType: token.CharacterTypeMiscellaneous,
+					Indicator:     token.NotIndicator,
+					Value:         "a",
+					Origin:        "a",
+				},
+				{
+					Type:          token.MappingValueType,
+					CharacterType: token.CharacterTypeIndicator,
+					Indicator:     token.BlockStructureIndicator,
+					Value:         ":",
+					Origin:        ":",
+				},
+				{
+					Type:          token.DoubleQuoteType,
+					CharacterType: token.CharacterTypeIndicator,
+					Indicator:     token.QuotedScalarIndicator,
+					Value:         "1:1",
+					Origin:        " \"1:1\"",
+				},
+			},
+		},
+		{
+			YAML: `a: "\0"`,
+			Tokens: token.Tokens{
+				{
+					Type:          token.StringType,
+					CharacterType: token.CharacterTypeMiscellaneous,
+					Indicator:     token.NotIndicator,
+					Value:         "a",
+					Origin:        "a",
+				},
+				{
+					Type:          token.MappingValueType,
+					CharacterType: token.CharacterTypeIndicator,
+					Indicator:     token.BlockStructureIndicator,
+					Value:         ":",
+					Origin:        ":",
+				},
+				{
+					Type:          token.DoubleQuoteType,
+					CharacterType: token.CharacterTypeIndicator,
+					Indicator:     token.QuotedScalarIndicator,
+					Value:         "\x00",
+					Origin:        " \"\\0\"",
+				},
+			},
+		},
+		{
+			YAML: `a: !!binary gIGC`,
+			Tokens: token.Tokens{
+				{
+					Type:          token.StringType,
+					CharacterType: token.CharacterTypeMiscellaneous,
+					Indicator:     token.NotIndicator,
+					Value:         "a",
+					Origin:        "a",
+				},
+				{
+					Type:          token.MappingValueType,
+					CharacterType: token.CharacterTypeIndicator,
+					Indicator:     token.BlockStructureIndicator,
+					Value:         ":",
+					Origin:        ":",
+				},
+				{
+					Type:          token.TagType,
+					CharacterType: token.CharacterTypeIndicator,
+					Indicator:     token.NodePropertyIndicator,
+					Value:         "!!binary",
+					Origin:        " !!binary ",
+				},
+				{
+					Type:          token.StringType,
+					CharacterType: token.CharacterTypeMiscellaneous,
+					Indicator:     token.NotIndicator,
+					Value:         "gIGC",
+					Origin:        "gIGC",
+				},
+			},
+		},
+		{
+			YAML: `
+a: !!binary |
+ kJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJ
+ CQ
+`,
+			Tokens: token.Tokens{
+				{
+					Type:          token.StringType,
+					CharacterType: token.CharacterTypeMiscellaneous,
+					Indicator:     token.NotIndicator,
+					Value:         "a",
+					Origin:        "\na",
+				},
+				{
+					Type:          token.MappingValueType,
+					CharacterType: token.CharacterTypeIndicator,
+					Indicator:     token.BlockStructureIndicator,
+					Value:         ":",
+					Origin:        ":",
+				},
+				{
+					Type:          token.TagType,
+					CharacterType: token.CharacterTypeIndicator,
+					Indicator:     token.NodePropertyIndicator,
+					Value:         "!!binary",
+					Origin:        " !!binary ",
+				},
+				{
+					Type:          token.LiteralType,
+					CharacterType: token.CharacterTypeIndicator,
+					Indicator:     token.BlockScalarIndicator,
+					Value:         "|",
+					Origin:        "|\n",
+				},
+				{
+					Type:          token.StringType,
+					CharacterType: token.CharacterTypeMiscellaneous,
+					Indicator:     token.NotIndicator,
+					Value:         "kJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJ\nCQ\n",
+					Origin:        " kJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJ\n CQ\n",
+				},
+			},
+		},
+		{
+			YAML: `
+b: 2
+a: 1
+d: 4
+c: 3
+sub:
+  e: 5
+`,
+			Tokens: token.Tokens{
+				{
+					Type:          token.StringType,
+					CharacterType: token.CharacterTypeMiscellaneous,
+					Indicator:     token.NotIndicator,
+					Value:         "b",
+					Origin:        "\nb",
+				},
+				{
+					Type:          token.MappingValueType,
+					CharacterType: token.CharacterTypeIndicator,
+					Indicator:     token.BlockStructureIndicator,
+					Value:         ":",
+					Origin:        ":",
+				},
+				{
+					Type:          token.IntegerType,
+					CharacterType: token.CharacterTypeMiscellaneous,
+					Indicator:     token.NotIndicator,
+					Value:         "2",
+					Origin:        " 2\n",
+				},
+				{
+					Type:          token.StringType,
+					CharacterType: token.CharacterTypeMiscellaneous,
+					Indicator:     token.NotIndicator,
+					Value:         "a",
+					Origin:        "a",
+				},
+				{
+					Type:          token.MappingValueType,
+					CharacterType: token.CharacterTypeIndicator,
+					Indicator:     token.BlockStructureIndicator,
+					Value:         ":",
+					Origin:        ":",
+				},
+				{
+					Type:          token.IntegerType,
+					CharacterType: token.CharacterTypeMiscellaneous,
+					Indicator:     token.NotIndicator,
+					Value:         "1",
+					Origin:        " 1\n",
+				},
+				{
+					Type:          token.StringType,
+					CharacterType: token.CharacterTypeMiscellaneous,
+					Indicator:     token.NotIndicator,
+					Value:         "d",
+					Origin:        "d",
+				},
+				{
+					Type:          token.MappingValueType,
+					CharacterType: token.CharacterTypeIndicator,
+					Indicator:     token.BlockStructureIndicator,
+					Value:         ":",
+					Origin:        ":",
+				},
+				{
+					Type:          token.IntegerType,
+					CharacterType: token.CharacterTypeMiscellaneous,
+					Indicator:     token.NotIndicator,
+					Value:         "4",
+					Origin:        " 4\n",
+				},
+				{
+					Type:          token.StringType,
+					CharacterType: token.CharacterTypeMiscellaneous,
+					Indicator:     token.NotIndicator,
+					Value:         "c",
+					Origin:        "c",
+				},
+				{
+					Type:          token.MappingValueType,
+					CharacterType: token.CharacterTypeIndicator,
+					Indicator:     token.BlockStructureIndicator,
+					Value:         ":",
+					Origin:        ":",
+				},
+				{
+					Type:          token.IntegerType,
+					CharacterType: token.CharacterTypeMiscellaneous,
+					Indicator:     token.NotIndicator,
+					Value:         "3",
+					Origin:        " 3\n",
+				},
+				{
+					Type:          token.StringType,
+					CharacterType: token.CharacterTypeMiscellaneous,
+					Indicator:     token.NotIndicator,
+					Value:         "sub",
+					Origin:        "sub",
+				},
+				{
+					Type:          token.MappingValueType,
+					CharacterType: token.CharacterTypeIndicator,
+					Indicator:     token.BlockStructureIndicator,
+					Value:         ":",
+					Origin:        ":",
+				},
+				{
+					Type:          token.StringType,
+					CharacterType: token.CharacterTypeMiscellaneous,
+					Indicator:     token.NotIndicator,
+					Value:         "e",
+					Origin:        "\n  e",
+				},
+				{
+					Type:          token.MappingValueType,
+					CharacterType: token.CharacterTypeIndicator,
+					Indicator:     token.BlockStructureIndicator,
+					Value:         ":",
+					Origin:        ":",
+				},
+				{
+					Type:          token.IntegerType,
+					CharacterType: token.CharacterTypeMiscellaneous,
+					Indicator:     token.NotIndicator,
+					Value:         "5",
+					Origin:        " 5",
+				},
+			},
+		},
+		{
+			YAML: `a: 1.2.3.4`,
+			Tokens: token.Tokens{
+				{
+					Type:          token.StringType,
+					CharacterType: token.CharacterTypeMiscellaneous,
+					Indicator:     token.NotIndicator,
+					Value:         "a",
+					Origin:        "a",
+				},
+				{
+					Type:          token.MappingValueType,
+					CharacterType: token.CharacterTypeIndicator,
+					Indicator:     token.BlockStructureIndicator,
+					Value:         ":",
+					Origin:        ":",
+				},
+				{
+					Type:          token.StringType,
+					CharacterType: token.CharacterTypeMiscellaneous,
+					Indicator:     token.NotIndicator,
+					Value:         "1.2.3.4",
+					Origin:        " 1.2.3.4",
+				},
+			},
+		},
+		{
+			YAML: `a: "2015-02-24T18:19:39Z"`,
+			Tokens: token.Tokens{
+				{
+					Type:          token.StringType,
+					CharacterType: token.CharacterTypeMiscellaneous,
+					Indicator:     token.NotIndicator,
+					Value:         "a",
+					Origin:        "a",
+				},
+				{
+					Type:          token.MappingValueType,
+					CharacterType: token.CharacterTypeIndicator,
+					Indicator:     token.BlockStructureIndicator,
+					Value:         ":",
+					Origin:        ":",
+				},
+				{
+					Type:          token.DoubleQuoteType,
+					CharacterType: token.CharacterTypeIndicator,
+					Indicator:     token.QuotedScalarIndicator,
+					Value:         "2015-02-24T18:19:39Z",
+					Origin:        " \"2015-02-24T18:19:39Z\"",
+				},
+			},
+		},
+		{
+			YAML: `a: 'b: c'`,
+			Tokens: token.Tokens{
+				{
+					Type:          token.StringType,
+					CharacterType: token.CharacterTypeMiscellaneous,
+					Indicator:     token.NotIndicator,
+					Value:         "a",
+					Origin:        "a",
+				},
+				{
+					Type:          token.MappingValueType,
+					CharacterType: token.CharacterTypeIndicator,
+					Indicator:     token.BlockStructureIndicator,
+					Value:         ":",
+					Origin:        ":",
+				},
+				{
+					Type:          token.SingleQuoteType,
+					CharacterType: token.CharacterTypeIndicator,
+					Indicator:     token.QuotedScalarIndicator,
+					Value:         "b: c",
+					Origin:        " 'b: c'",
+				},
+			},
+		},
+		{
+			YAML: `a: 'Hello #comment'`,
+			Tokens: token.Tokens{
+				{
+					Type:          token.StringType,
+					CharacterType: token.CharacterTypeMiscellaneous,
+					Indicator:     token.NotIndicator,
+					Value:         "a",
+					Origin:        "a",
+				},
+				{
+					Type:          token.MappingValueType,
+					CharacterType: token.CharacterTypeIndicator,
+					Indicator:     token.BlockStructureIndicator,
+					Value:         ":",
+					Origin:        ":",
+				},
+				{
+					Type:          token.SingleQuoteType,
+					CharacterType: token.CharacterTypeIndicator,
+					Indicator:     token.QuotedScalarIndicator,
+					Value:         "Hello #comment",
+					Origin:        " 'Hello #comment'",
+				},
+			},
+		},
+		{
+			YAML: `a: 100.5`,
+			Tokens: token.Tokens{
+				{
+					Type:          token.StringType,
+					CharacterType: token.CharacterTypeMiscellaneous,
+					Indicator:     token.NotIndicator,
+					Value:         "a",
+					Origin:        "a",
+				},
+				{
+					Type:          token.MappingValueType,
+					CharacterType: token.CharacterTypeIndicator,
+					Indicator:     token.BlockStructureIndicator,
+					Value:         ":",
+					Origin:        ":",
+				},
+				{
+					Type:          token.FloatType,
+					CharacterType: token.CharacterTypeMiscellaneous,
+					Indicator:     token.NotIndicator,
+					Value:         "100.5",
+					Origin:        " 100.5",
+				},
+			},
+		},
+		{
+			YAML: `a: bogus`,
+			Tokens: token.Tokens{
+				{
+					Type:          token.StringType,
+					CharacterType: token.CharacterTypeMiscellaneous,
+					Indicator:     token.NotIndicator,
+					Value:         "a",
+					Origin:        "a",
+				},
+				{
+					Type:          token.MappingValueType,
+					CharacterType: token.CharacterTypeIndicator,
+					Indicator:     token.BlockStructureIndicator,
+					Value:         ":",
+					Origin:        ":",
+				},
+				{
+					Type:          token.StringType,
+					CharacterType: token.CharacterTypeMiscellaneous,
+					Indicator:     token.NotIndicator,
+					Value:         "bogus",
+					Origin:        " bogus",
+				},
+			},
+		},
+		{
+			YAML: `"a": double quoted map key`,
+			Tokens: token.Tokens{
+				{
+					Type:          token.DoubleQuoteType,
+					CharacterType: token.CharacterTypeIndicator,
+					Indicator:     token.QuotedScalarIndicator,
+					Value:         "a",
+					Origin:        "\"a\"",
+				},
+				{
+					Type:          token.MappingValueType,
+					CharacterType: token.CharacterTypeIndicator,
+					Indicator:     token.BlockStructureIndicator,
+					Value:         ":",
+					Origin:        ":",
+				},
+				{
+					Type:          token.StringType,
+					CharacterType: token.CharacterTypeMiscellaneous,
+					Indicator:     token.NotIndicator,
+					Value:         "double quoted map key",
+					Origin:        " double quoted map key",
+				},
+			},
+		},
+		{
+			YAML: `'a': single quoted map key`,
+			Tokens: token.Tokens{
+				{
+					Type:          token.SingleQuoteType,
+					CharacterType: token.CharacterTypeIndicator,
+					Indicator:     token.QuotedScalarIndicator,
+					Value:         "a",
+					Origin:        "'a'",
+				},
+				{
+					Type:          token.MappingValueType,
+					CharacterType: token.CharacterTypeIndicator,
+					Indicator:     token.BlockStructureIndicator,
+					Value:         ":",
+					Origin:        ":",
+				},
+				{
+					Type:          token.StringType,
+					CharacterType: token.CharacterTypeMiscellaneous,
+					Indicator:     token.NotIndicator,
+					Value:         "single quoted map key",
+					Origin:        " single quoted map key",
+				},
+			},
+		},
+		{
+			YAML: `
+a: "double quoted"
+b: "value map"`,
+			Tokens: token.Tokens{
+				{
+					Type:          token.StringType,
+					CharacterType: token.CharacterTypeMiscellaneous,
+					Indicator:     token.NotIndicator,
+					Value:         "a",
+					Origin:        "\na",
+				},
+				{
+					Type:          token.MappingValueType,
+					CharacterType: token.CharacterTypeIndicator,
+					Indicator:     token.BlockStructureIndicator,
+					Value:         ":",
+					Origin:        ":",
+				},
+				{
+					Type:          token.DoubleQuoteType,
+					CharacterType: token.CharacterTypeIndicator,
+					Indicator:     token.QuotedScalarIndicator,
+					Value:         "double quoted",
+					Origin:        " \"double quoted\"",
+				},
+				{
+					Type:          token.StringType,
+					CharacterType: token.CharacterTypeMiscellaneous,
+					Indicator:     token.NotIndicator,
+					Value:         "b",
+					Origin:        "\nb",
+				},
+				{
+					Type:          token.MappingValueType,
+					CharacterType: token.CharacterTypeIndicator,
+					Indicator:     token.BlockStructureIndicator,
+					Value:         ":",
+					Origin:        ":",
+				},
+				{
+					Type:          token.DoubleQuoteType,
+					CharacterType: token.CharacterTypeIndicator,
+					Indicator:     token.QuotedScalarIndicator,
+					Value:         "value map",
+					Origin:        " \"value map\"",
+				},
+			},
+		},
+		{
+			YAML: `
+a: 'single quoted'
+b: 'value map'`,
+			Tokens: token.Tokens{
+				{
+					Type:          token.StringType,
+					CharacterType: token.CharacterTypeMiscellaneous,
+					Indicator:     token.NotIndicator,
+					Value:         "a",
+					Origin:        "\na",
+				},
+				{
+					Type:          token.MappingValueType,
+					CharacterType: token.CharacterTypeIndicator,
+					Indicator:     token.BlockStructureIndicator,
+					Value:         ":",
+					Origin:        ":",
+				},
+				{
+					Type:          token.SingleQuoteType,
+					CharacterType: token.CharacterTypeIndicator,
+					Indicator:     token.QuotedScalarIndicator,
+					Value:         "single quoted",
+					Origin:        " 'single quoted'",
+				},
+				{
+					Type:          token.StringType,
+					CharacterType: token.CharacterTypeMiscellaneous,
+					Indicator:     token.NotIndicator,
+					Value:         "b",
+					Origin:        "\nb",
+				},
+				{
+					Type:          token.MappingValueType,
+					CharacterType: token.CharacterTypeIndicator,
+					Indicator:     token.BlockStructureIndicator,
+					Value:         ":",
+					Origin:        ":",
+				},
+				{
+					Type:          token.SingleQuoteType,
+					CharacterType: token.CharacterTypeIndicator,
+					Indicator:     token.QuotedScalarIndicator,
+					Value:         "value map",
+					Origin:        " 'value map'",
+				},
+			},
+		},
+		{
+			YAML: `json: '\"expression\": \"thi:\"'`,
+			Tokens: token.Tokens{
+				{
+					Type:          token.StringType,
+					CharacterType: token.CharacterTypeMiscellaneous,
+					Indicator:     token.NotIndicator,
+					Value:         "json",
+					Origin:        "json",
+				},
+				{
+					Type:          token.MappingValueType,
+					CharacterType: token.CharacterTypeIndicator,
+					Indicator:     token.BlockStructureIndicator,
+					Value:         ":",
+					Origin:        ":",
+				},
+				{
+					Type:          token.SingleQuoteType,
+					CharacterType: token.CharacterTypeIndicator,
+					Indicator:     token.QuotedScalarIndicator,
+					Value:         "\\\"expression\\\": \\\"thi:\\\"",
+					Origin:        " '\\\"expression\\\": \\\"thi:\\\"'",
+				},
+			},
+		},
+		{
+			YAML: `json: "\"expression\": \"thi:\""`,
+			Tokens: token.Tokens{
+				{
+					Type:          token.StringType,
+					CharacterType: token.CharacterTypeMiscellaneous,
+					Indicator:     token.NotIndicator,
+					Value:         "json",
+					Origin:        "json",
+				},
+				{
+					Type:          token.MappingValueType,
+					CharacterType: token.CharacterTypeIndicator,
+					Indicator:     token.BlockStructureIndicator,
+					Value:         ":",
+					Origin:        ":",
+				},
+				{
+					Type:          token.DoubleQuoteType,
+					CharacterType: token.CharacterTypeIndicator,
+					Indicator:     token.QuotedScalarIndicator,
+					Value:         "\"expression\": \"thi:\"",
+					Origin:        " \"\\\"expression\\\": \\\"thi:\\\"\"",
+				},
+			},
+		},
+		{
+			YAML: `
+a:
+ b
+
+ c
+`,
+			Tokens: token.Tokens{
+				{
+					Type:          token.StringType,
+					CharacterType: token.CharacterTypeMiscellaneous,
+					Indicator:     token.NotIndicator,
+					Value:         "a",
+					Origin:        "\na",
+				},
+				{
+					Type:          token.MappingValueType,
+					CharacterType: token.CharacterTypeIndicator,
+					Indicator:     token.BlockStructureIndicator,
+					Value:         ":",
+					Origin:        ":",
+				},
+				{
+					Type:          token.StringType,
+					CharacterType: token.CharacterTypeMiscellaneous,
+					Indicator:     token.NotIndicator,
+					Value:         "b\nc",
+					Origin:        "\n b\n\n c",
+				},
+			},
+		},
+		{
+			YAML: `
+a:   
+ b   
+
+  
+ c
+ d 
+e: f
+`,
+			Tokens: token.Tokens{
+				{
+					Type:          token.StringType,
+					CharacterType: token.CharacterTypeMiscellaneous,
+					Indicator:     token.NotIndicator,
+					Value:         "a",
+					Origin:        "\na",
+				},
+				{
+					Type:          token.MappingValueType,
+					CharacterType: token.CharacterTypeIndicator,
+					Indicator:     token.BlockStructureIndicator,
+					Value:         ":",
+					Origin:        ":",
+				},
+				{
+					Type:          token.StringType,
+					CharacterType: token.CharacterTypeMiscellaneous,
+					Indicator:     token.NotIndicator,
+					Value:         "b\nc d",
+					Origin:        "\n b\n\n\n c\n d\n",
+				},
+				{
+					Type:          token.StringType,
+					CharacterType: token.CharacterTypeMiscellaneous,
+					Indicator:     token.NotIndicator,
+					Value:         "e",
+					Origin:        "e",
+				},
+				{
+					Type:          token.MappingValueType,
+					CharacterType: token.CharacterTypeIndicator,
+					Indicator:     token.BlockStructureIndicator,
+					Value:         ":",
+					Origin:        ":",
+				},
+				{
+					Type:          token.StringType,
+					CharacterType: token.CharacterTypeMiscellaneous,
+					Indicator:     token.NotIndicator,
+					Value:         "f",
+					Origin:        " f",
+				},
+			},
+		},
+		{
+			YAML: `
+a: |
+ b   
+
+  
+ c
+ d 
+e: f
+`,
+			Tokens: token.Tokens{
+				{
+					Type:          token.StringType,
+					CharacterType: token.CharacterTypeMiscellaneous,
+					Indicator:     token.NotIndicator,
+					Value:         "a",
+					Origin:        "\na",
+				},
+				{
+					Type:          token.MappingValueType,
+					CharacterType: token.CharacterTypeIndicator,
+					Indicator:     token.BlockStructureIndicator,
+					Value:         ":",
+					Origin:        ":",
+				},
+				{
+					Type:          token.LiteralType,
+					CharacterType: token.CharacterTypeIndicator,
+					Indicator:     token.BlockScalarIndicator,
+					Value:         "|",
+					Origin:        " |\n",
+				},
+				{
+					Type:          token.StringType,
+					CharacterType: token.CharacterTypeMiscellaneous,
+					Indicator:     token.NotIndicator,
+					Value:         "b   \n\n \nc\nd \n",
+					Origin:        " b   \n\n  \n c\n d \n",
+				},
+				{
+					Type:          token.StringType,
+					CharacterType: token.CharacterTypeMiscellaneous,
+					Indicator:     token.NotIndicator,
+					Value:         "e",
+					Origin:        "e",
+				},
+				{
+					Type:          token.MappingValueType,
+					CharacterType: token.CharacterTypeIndicator,
+					Indicator:     token.BlockStructureIndicator,
+					Value:         ":",
+					Origin:        ":",
+				},
+				{
+					Type:          token.StringType,
+					CharacterType: token.CharacterTypeMiscellaneous,
+					Indicator:     token.NotIndicator,
+					Value:         "f",
+					Origin:        " f",
+				},
+			},
+		},
+		{
+			YAML: `
+a: >
+ b   
+
+  
+ c
+ d 
+e: f
+`,
+			Tokens: token.Tokens{
+				{
+					Type:          token.StringType,
+					CharacterType: token.CharacterTypeMiscellaneous,
+					Indicator:     token.NotIndicator,
+					Value:         "a",
+					Origin:        "\na",
+				},
+				{
+					Type:          token.MappingValueType,
+					CharacterType: token.CharacterTypeIndicator,
+					Indicator:     token.BlockStructureIndicator,
+					Value:         ":",
+					Origin:        ":",
+				},
+				{
+					Type:          token.FoldedType,
+					CharacterType: token.CharacterTypeIndicator,
+					Indicator:     token.BlockScalarIndicator,
+					Value:         ">",
+					Origin:        " >\n",
+				},
+				{
+					Type:          token.StringType,
+					CharacterType: token.CharacterTypeMiscellaneous,
+					Indicator:     token.NotIndicator,
+					Value:         "b   \n\n \nc d \n",
+					Origin:        " b   \n\n  \n c\n d \n",
+				},
+				{
+					Type:          token.StringType,
+					CharacterType: token.CharacterTypeMiscellaneous,
+					Indicator:     token.NotIndicator,
+					Value:         "e",
+					Origin:        "e",
+				},
+				{
+					Type:          token.MappingValueType,
+					CharacterType: token.CharacterTypeIndicator,
+					Indicator:     token.BlockStructureIndicator,
+					Value:         ":",
+					Origin:        ":",
+				},
+				{
+					Type:          token.StringType,
+					CharacterType: token.CharacterTypeMiscellaneous,
+					Indicator:     token.NotIndicator,
+					Value:         "f",
+					Origin:        " f",
+				},
+			},
+		},
+		{
+			YAML: `
+a: >
+  Text`,
+			Tokens: token.Tokens{
+				{
+					Type:          token.StringType,
+					CharacterType: token.CharacterTypeMiscellaneous,
+					Indicator:     token.NotIndicator,
+					Value:         "a",
+					Origin:        "\na",
+				},
+				{
+					Type:          token.MappingValueType,
+					CharacterType: token.CharacterTypeIndicator,
+					Indicator:     token.BlockStructureIndicator,
+					Value:         ":",
+					Origin:        ":",
+				},
+				{
+					Type:          token.FoldedType,
+					CharacterType: token.CharacterTypeIndicator,
+					Indicator:     token.BlockScalarIndicator,
+					Value:         ">",
+					Origin:        " >\n",
+				},
+				{
+					Type:          token.StringType,
+					CharacterType: token.CharacterTypeMiscellaneous,
+					Indicator:     token.NotIndicator,
+					Value:         "Text",
+					Origin:        "  Text",
+				},
+			},
+		},
+		{
+			YAML: `
+s: >
+        1s
+`,
+			Tokens: token.Tokens{
+				{
+					Type:          token.StringType,
+					CharacterType: token.CharacterTypeMiscellaneous,
+					Indicator:     token.NotIndicator,
+					Value:         "s",
+					Origin:        "\ns",
+				},
+				{
+					Type:          token.MappingValueType,
+					CharacterType: token.CharacterTypeIndicator,
+					Indicator:     token.BlockStructureIndicator,
+					Value:         ":",
+					Origin:        ":",
+				},
+				{
+					Type:          token.FoldedType,
+					CharacterType: token.CharacterTypeIndicator,
+					Indicator:     token.BlockScalarIndicator,
+					Value:         ">",
+					Origin:        " >\n",
+				},
+				{
+					Type:          token.StringType,
+					CharacterType: token.CharacterTypeMiscellaneous,
+					Indicator:     token.NotIndicator,
+					Value:         "1s\n",
+					Origin:        "        1s\n",
+				},
+			},
+		},
+		{
+			YAML: `
+s: >1        # comment
+        1s
+`,
+			Tokens: token.Tokens{
+				{
+					Type:          token.StringType,
+					CharacterType: token.CharacterTypeMiscellaneous,
+					Indicator:     token.NotIndicator,
+					Value:         "s",
+					Origin:        "\ns",
+				},
+				{
+					Type:          token.MappingValueType,
+					CharacterType: token.CharacterTypeIndicator,
+					Indicator:     token.BlockStructureIndicator,
+					Value:         ":",
+					Origin:        ":",
+				},
+				{
+					Type:          token.FoldedType,
+					CharacterType: token.CharacterTypeIndicator,
+					Indicator:     token.BlockScalarIndicator,
+					Value:         ">1",
+					Origin:        " >1        ",
+				},
+				{
+					Type:          token.CommentType,
+					CharacterType: token.CharacterTypeIndicator,
+					Indicator:     token.CommentIndicator,
+					Value:         " comment",
+					Origin:        "# comment\n",
+				},
+				{
+					Type:          token.StringType,
+					CharacterType: token.CharacterTypeMiscellaneous,
+					Indicator:     token.NotIndicator,
+					Value:         "       1s\n",
+					Origin:        "        1s\n",
+				},
+			},
+		},
+		{
+			YAML: `
+s: >+2
+        1s
+`,
+			Tokens: token.Tokens{
+				{
+					Type:          token.StringType,
+					CharacterType: token.CharacterTypeMiscellaneous,
+					Indicator:     token.NotIndicator,
+					Value:         "s",
+					Origin:        "\ns",
+				},
+				{
+					Type:          token.MappingValueType,
+					CharacterType: token.CharacterTypeIndicator,
+					Indicator:     token.BlockStructureIndicator,
+					Value:         ":",
+					Origin:        ":",
+				},
+				{
+					Type:          token.FoldedType,
+					CharacterType: token.CharacterTypeIndicator,
+					Indicator:     token.BlockScalarIndicator,
+					Value:         ">+2",
+					Origin:        " >+2\n",
+				},
+				{
+					Type:          token.StringType,
+					CharacterType: token.CharacterTypeMiscellaneous,
+					Indicator:     token.NotIndicator,
+					Value:         "      1s\n",
+					Origin:        "        1s\n",
+				},
+			},
+		},
+		{
+			YAML: `
+s: >-3
+        1s
+`,
+			Tokens: token.Tokens{
+				{
+					Type:          token.StringType,
+					CharacterType: token.CharacterTypeMiscellaneous,
+					Indicator:     token.NotIndicator,
+					Value:         "s",
+					Origin:        "\ns",
+				},
+				{
+					Type:          token.MappingValueType,
+					CharacterType: token.CharacterTypeIndicator,
+					Indicator:     token.BlockStructureIndicator,
+					Value:         ":",
+					Origin:        ":",
+				},
+				{
+					Type:          token.FoldedType,
+					CharacterType: token.CharacterTypeIndicator,
+					Indicator:     token.BlockScalarIndicator,
+					Value:         ">-3",
+					Origin:        " >-3\n",
+				},
+				{
+					Type:          token.StringType,
+					CharacterType: token.CharacterTypeMiscellaneous,
+					Indicator:     token.NotIndicator,
+					Value:         "     1s",
+					Origin:        "        1s\n",
+				},
+			},
+		},
+		{
+			YAML: `
+s: >
+    1s
+    2s
+`,
+			Tokens: token.Tokens{
+				{
+					Type:          token.StringType,
+					CharacterType: token.CharacterTypeMiscellaneous,
+					Indicator:     token.NotIndicator,
+					Value:         "s",
+					Origin:        "\ns",
+				},
+				{
+					Type:          token.MappingValueType,
+					CharacterType: token.CharacterTypeIndicator,
+					Indicator:     token.BlockStructureIndicator,
+					Value:         ":",
+					Origin:        ":",
+				},
+				{
+					Type:          token.FoldedType,
+					CharacterType: token.CharacterTypeIndicator,
+					Indicator:     token.BlockScalarIndicator,
+					Value:         ">",
+					Origin:        " >\n",
+				},
+				{
+					Type:          token.StringType,
+					CharacterType: token.CharacterTypeMiscellaneous,
+					Indicator:     token.NotIndicator,
+					Value:         "1s 2s\n",
+					Origin:        "    1s\n    2s\n",
+				},
+			},
+		},
+		{
+			YAML: `
+s: >
+    1s
+      2s
+    3s
+`,
+			Tokens: token.Tokens{
+				{
+					Type:          token.StringType,
+					CharacterType: token.CharacterTypeMiscellaneous,
+					Indicator:     token.NotIndicator,
+					Value:         "s",
+					Origin:        "\ns",
+				},
+				{
+					Type:          token.MappingValueType,
+					CharacterType: token.CharacterTypeIndicator,
+					Indicator:     token.BlockStructureIndicator,
+					Value:         ":",
+					Origin:        ":",
+				},
+				{
+					Type:          token.FoldedType,
+					CharacterType: token.CharacterTypeIndicator,
+					Indicator:     token.BlockScalarIndicator,
+					Value:         ">",
+					Origin:        " >\n",
+				},
+				{
+					Type:          token.StringType,
+					CharacterType: token.CharacterTypeMiscellaneous,
+					Indicator:     token.NotIndicator,
+					Value:         "1s\n  2s\n3s\n",
+					Origin:        "    1s\n      2s\n    3s\n",
+				},
+			},
+		},
+		{
+			YAML: `
+s: >
+    1s
+      2s
+      3s
+    4s
+    5s
+`,
+			Tokens: token.Tokens{
+				{
+					Type:          token.StringType,
+					CharacterType: token.CharacterTypeMiscellaneous,
+					Indicator:     token.NotIndicator,
+					Value:         "s",
+					Origin:        "\ns",
+				},
+				{
+					Type:          token.MappingValueType,
+					CharacterType: token.CharacterTypeIndicator,
+					Indicator:     token.BlockStructureIndicator,
+					Value:         ":",
+					Origin:        ":",
+				},
+				{
+					Type:          token.FoldedType,
+					CharacterType: token.CharacterTypeIndicator,
+					Indicator:     token.BlockScalarIndicator,
+					Value:         ">",
+					Origin:        " >\n",
+				},
+				{
+					Type:          token.StringType,
+					CharacterType: token.CharacterTypeMiscellaneous,
+					Indicator:     token.NotIndicator,
+					Value:         "1s\n  2s\n  3s\n4s 5s\n",
+					Origin:        "    1s\n      2s\n      3s\n    4s\n    5s\n",
+				},
+			},
+		},
+		{
+			YAML: `
+s: >-3
+    1s
+      2s
+      3s
+    4s
+    5s
+`,
+			Tokens: token.Tokens{
+				{
+					Type:          token.StringType,
+					CharacterType: token.CharacterTypeMiscellaneous,
+					Indicator:     token.NotIndicator,
+					Value:         "s",
+					Origin:        "\ns",
+				},
+				{
+					Type:          token.MappingValueType,
+					CharacterType: token.CharacterTypeIndicator,
+					Indicator:     token.BlockStructureIndicator,
+					Value:         ":",
+					Origin:        ":",
+				},
+				{
+					Type:          token.FoldedType,
+					CharacterType: token.CharacterTypeIndicator,
+					Indicator:     token.BlockScalarIndicator,
+					Value:         ">-3",
+					Origin:        " >-3\n",
+				},
+				{
+					Type:          token.StringType,
+					CharacterType: token.CharacterTypeMiscellaneous,
+					Indicator:     token.NotIndicator,
+					Value:         " 1s\n   2s\n   3s\n 4s\n 5s",
+					Origin:        "    1s\n      2s\n      3s\n    4s\n    5s\n",
+				},
+			},
+		},
+		{
+			YAML: `
+|2-
+
+                  text
+`,
+			Tokens: token.Tokens{
+				{
+					Type:          token.LiteralType,
+					CharacterType: token.CharacterTypeIndicator,
+					Indicator:     token.BlockScalarIndicator,
+					Value:         "|2-",
+					Origin:        "\n|2-\n",
+				},
+				{
+					Type:          token.StringType,
+					CharacterType: token.CharacterTypeMiscellaneous,
+					Indicator:     token.NotIndicator,
+					Value:         "\n                text",
+					Origin:        "\n                  text\n",
+				},
+			},
+		},
+		{
+			YAML: `
+|
+  a
+
+
+
+`,
+			Tokens: token.Tokens{
+				{
+					Type:          token.LiteralType,
+					CharacterType: token.CharacterTypeIndicator,
+					Indicator:     token.BlockScalarIndicator,
+					Value:         "|",
+					Origin:        "\n|\n",
+				},
+				{
+					Type:          token.StringType,
+					CharacterType: token.CharacterTypeMiscellaneous,
+					Indicator:     token.NotIndicator,
+					Value:         "a\n",
+					Origin:        "  a\n\n\n\n",
+				},
+			},
+		},
+		{
+			YAML: `
+|  		  # comment
+  foo
+`,
+			Tokens: token.Tokens{
+				{
+					Type:          token.LiteralType,
+					CharacterType: token.CharacterTypeIndicator,
+					Indicator:     token.BlockScalarIndicator,
+					Value:         "|",
+					Origin:        "\n|  		  ",
+				},
+				{
+					Type:          token.CommentType,
+					CharacterType: token.CharacterTypeIndicator,
+					Indicator:     token.CommentIndicator,
+					Value:         " comment",
+					Origin:        "# comment\n",
+				},
+				{
+					Type:          token.StringType,
+					CharacterType: token.CharacterTypeMiscellaneous,
+					Indicator:     token.NotIndicator,
+					Value:         "foo\n",
+					Origin:        "  foo\n",
+				},
+			},
+		},
+		{
+			YAML: `1x0`,
+			Tokens: token.Tokens{
+				{
+					Type:          token.StringType,
+					CharacterType: token.CharacterTypeMiscellaneous,
+					Indicator:     token.NotIndicator,
+					Value:         "1x0",
+					Origin:        "1x0",
+				},
+			},
+		},
+		{
+			YAML: `0b98765`,
+			Tokens: token.Tokens{
+				{
+					Type:          token.StringType,
+					CharacterType: token.CharacterTypeMiscellaneous,
+					Indicator:     token.NotIndicator,
+					Value:         "0b98765",
+					Origin:        "0b98765",
+				},
+			},
+		},
+		{
+			YAML: `098765`,
+			Tokens: token.Tokens{
+				{
+					Type:          token.StringType,
+					CharacterType: token.CharacterTypeMiscellaneous,
+					Indicator:     token.NotIndicator,
+					Value:         "098765",
+					Origin:        "098765",
+				},
+			},
+		},
+		{
+			YAML: `0o98765`,
+			Tokens: token.Tokens{
+				{
+					Type:          token.StringType,
+					CharacterType: token.CharacterTypeMiscellaneous,
+					Indicator:     token.NotIndicator,
+					Value:         "0o98765",
+					Origin:        "0o98765",
+				},
+			},
+		},
 	}
-	for _, src := range sources {
-		lexer.Tokenize(src).Dump()
+	for _, test := range tests {
+		t.Run(test.YAML, func(t *testing.T) {
+			tokens := lexer.Tokenize(test.YAML)
+			if len(tokens) != len(test.Tokens) {
+				t.Fatalf("Tokenize(%q) token count mismatch, expected: %d got: %d", test.YAML, len(test.Tokens), len(tokens))
+			}
+			for i := range test.Tokens {
+				if tokens[i].Type != test.Tokens[i].Type {
+					t.Errorf("Tokenize(%q)[%d] token.Type mismatch, expected: %s got: %s", test.YAML, i, test.Tokens[i].Type, tokens[i].Type)
+				}
+				if tokens[i].CharacterType != test.Tokens[i].CharacterType {
+					t.Errorf("Tokenize(%q)[%d] token.CharacterType mismatch, expected: %s got: %s", test.YAML, i, test.Tokens[i].CharacterType, tokens[i].CharacterType)
+				}
+				if tokens[i].Indicator != test.Tokens[i].Indicator {
+					t.Errorf("Tokenize(%q)[%d] token.Indicator mismatch, expected: %s got: %s", test.YAML, i, test.Tokens[i].Indicator, tokens[i].Indicator)
+				}
+				if tokens[i].Value != test.Tokens[i].Value {
+					t.Errorf("Tokenize(%q)[%d] token.Value mismatch, expected: %q got: %q", test.YAML, i, test.Tokens[i].Value, tokens[i].Value)
+				}
+				if tokens[i].Origin != test.Tokens[i].Origin {
+					t.Errorf("Tokenize(%q)[%d] token.Origin mismatch, expected: %q got: %q", test.YAML, i, test.Tokens[i].Origin, tokens[i].Origin)
+				}
+			}
+		})
 	}
 }
 
@@ -471,7 +3027,7 @@ foo2: 'bar2'`,
 				{
 					line:   1,
 					column: 6,
-					value:  "test     bar",
+					value:  "test\n\n\n\nbar",
 				},
 				{
 					line:   7,
@@ -618,4 +3174,121 @@ b: 1`,
 			}
 		})
 	}
+}
+
+func TestInvalid(t *testing.T) {
+	tests := []struct {
+		name string
+		src  string
+	}{
+		{
+			name: "literal opt with content",
+			src: `
+a: |invalid
+  foo`,
+		},
+		{
+			name: "literal opt",
+			src: `
+a: |invalid`,
+		},
+		{
+			name: "invalid single-quoted",
+			src:  `a: 'foobarbaz`,
+		},
+		{
+			name: "invalid double-quoted",
+			src:  `a: "\"key\": \"value:\"`,
+		},
+		{
+			name: "invalid document folded",
+			src:  ">\n>",
+		},
+		{
+			name: "invalid document number",
+			src:  ">\n1",
+		},
+		{
+			name: "invalid document header option number",
+			src:  "a: >3\n  1",
+		},
+		{
+			name: "use reserved character @",
+			src:  "key: [@val]",
+		},
+		{
+			name: "use reserved character `",
+			src:  "key: [`val]",
+		},
+		{
+			name: "use tab character as indent",
+			// nolint: gci
+			src: "	a: b",
+		},
+		{
+			name: "use tab character as indent in literal",
+			src: `
+a: |
+	b
+	c
+`,
+		},
+		{
+			name: "invalid UTF-16 character",
+			src:  `"\u00"`,
+		},
+		{
+			name: "invalid UTF-16 surrogate pair length",
+			src:  `"\ud800"`,
+		},
+		{
+			name: "invalid UTF-16 low surrogate prefix",
+			src:  `"\ud800\v"`,
+		},
+		{
+			name: "invalid UTF-16 low surrogate",
+			src:  `"\ud800\u0000"`,
+		},
+		{
+			name: "invalid UTF-32 character",
+			src:  `"\U0000"`,
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			got := lexer.Tokenize(test.src)
+			if got.InvalidToken() == nil {
+				t.Fatal("expected contains invalid token")
+			}
+		})
+	}
+}
+
+func TestTokenOffset(t *testing.T) {
+	t.Run("crlf", func(t *testing.T) {
+		content := "project:\r\n  version: 1.2.3\r\n"
+		tokens := lexer.Tokenize(content)
+		if len(tokens) != 5 {
+			t.Fatalf("invalid token num. got %d", len(tokens))
+		}
+		if tokens[4].Value != "1.2.3" {
+			t.Fatalf("unexpected value. got %q", tokens[4].Value)
+		}
+		if tokens[4].Position.Offset != 22 {
+			t.Fatalf("unexpected offset. got %d", tokens[4].Position.Offset)
+		}
+	})
+	t.Run("lf", func(t *testing.T) {
+		content := "project:\n  version: 1.2.3\n"
+		tokens := lexer.Tokenize(content)
+		if len(tokens) != 5 {
+			t.Fatalf("invalid token num. got %d", len(tokens))
+		}
+		if tokens[4].Value != "1.2.3" {
+			t.Fatalf("unexpected value. got %q", tokens[4].Value)
+		}
+		if tokens[4].Position.Offset != 21 {
+			t.Fatalf("unexpected offset. got %d", tokens[4].Position.Offset)
+		}
+	})
 }

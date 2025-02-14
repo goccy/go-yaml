@@ -85,6 +85,36 @@ store:
 			expected: []interface{}{"john", "ken"},
 		},
 		{
+			name: "$.store.book[*]",
+			path: builder().Root().Child("store").Child("book").IndexAll().Build(),
+			expected: []interface{}{
+				map[string]interface{}{
+					"author": "john",
+					"price":  uint64(10),
+				},
+				map[string]interface{}{
+					"author": "ken",
+					"price":  uint64(12),
+				},
+			},
+		},
+		{
+			name: "$..book[*]",
+			path: builder().Root().Recursive("book").IndexAll().Build(),
+			expected: []interface{}{
+				[]interface{}{
+					map[string]interface{}{
+						"author": "john",
+						"price":  uint64(10),
+					},
+					map[string]interface{}{
+						"author": "ken",
+						"price":  uint64(12),
+					},
+				},
+			},
+		},
+		{
 			name:     "$.store.book[0]",
 			path:     builder().Root().Child("store").Child("book").Index(0).Build(),
 			expected: map[string]interface{}{"author": "john", "price": uint64(10)},
@@ -103,6 +133,31 @@ store:
 			name:     `$.store.'bicycle*unicycle'.price`,
 			path:     builder().Root().Child("store").Child(`bicycle*unicycle`).Child("price").Build(),
 			expected: float64(20.25),
+		},
+		{
+			name: "$",
+			path: builder().Root().Build(),
+			expected: map[string]interface{}{
+				"store": map[string]interface{}{
+					"book": []interface{}{
+						map[string]interface{}{
+							"author": "john",
+							"price":  uint64(10),
+						},
+						map[string]interface{}{
+							"author": "ken",
+							"price":  uint64(12),
+						},
+					},
+					"bicycle": map[string]interface{}{
+						"color": "red",
+						"price": 19.95,
+					},
+					"bicycle*unicycle": map[string]interface{}{
+						"price": 20.25,
+					},
+				},
+			},
 		},
 	}
 	t.Run("PathString", func(t *testing.T) {
@@ -275,6 +330,143 @@ func TestPath_Invalid(t *testing.T) {
 			}
 			if !yaml.IsNotFoundNodeError(err) {
 				t.Fatalf("unexpected error %s", err)
+			}
+		})
+	}
+}
+
+func TestPath_ReadNode(t *testing.T) {
+	tests := []struct {
+		name     string
+		path     string
+		src      string
+		expected interface{}
+	}{
+		{
+			name: "nested array sequence",
+			path: `$.a.b[0].c`,
+			src: `
+a:
+  b:
+   - c: 123
+  e: |
+   Line1
+   Line2
+`,
+			expected: uint64(123),
+		},
+		{
+			name: "nested array sequence issue#281",
+			path: `$..a.c`,
+			src: `
+s:
+  - a:
+      b: u1
+      c: get1
+      d: i1
+  - w:
+      c: bad
+      e:
+        - a:
+           b: u2
+           c: get2
+           d: i2
+`,
+			// The expected values are
+			// - get1
+			// - get2
+			expected: []interface{}{
+				map[string]interface{}{
+					"b": "u1",
+					"c": "get1",
+					"d": "i1",
+				},
+				map[string]interface{}{
+					"b": "u2",
+					"c": "get2",
+					"d": "i2",
+				},
+			},
+		},
+		{
+			name: "nested array sequence issue#281",
+			path: `$..c`,
+			src: `
+s:
+  - a:
+      b: u1
+      c: get1
+      d: i1
+  - w:
+      c: bad
+      e:
+        - a:
+            b: u2
+            c: get2
+            d: i2
+`,
+			expected: []interface{}{"get1", "bad", "get2"},
+		},
+		{
+			name: "nested array sequence issue#281",
+			path: `$.s[0].a.c`,
+			src: `
+s:
+  - a:
+      b: u1
+      c: get1
+      d: i1
+  - w:
+      c: bad
+      e:
+        - a:
+            b: u2
+            c: get2
+            d: i2
+`,
+			expected: "get1",
+		},
+		{
+			name: "nested array sequence issue#281",
+			path: "$.s[*].a.c",
+			src: `
+s:
+  - a:
+      b: u1
+      c: get1
+      d: i1
+  - w:
+      c: bad
+      e:
+        - a:
+            b: u2
+            c: get2
+            d: i2
+`,
+			expected: []interface{}{"get1"},
+		},
+	}
+	for _, test := range tests {
+		path, err := yaml.PathString(test.path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		t.Run(fmt.Sprintf("path.ReadNode %s path %s", test.name, test.path), func(t *testing.T) {
+			file, err := parser.ParseBytes([]byte(test.src), 0)
+			if err != nil {
+				t.Fatal(err)
+			}
+			n, err := path.ReadNode(file)
+			if err != nil {
+				t.Fatal("expected error", err)
+			}
+			var v interface{}
+			err = yaml.Unmarshal([]byte(n.String()), &v)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !reflect.DeepEqual(test.expected, v) {
+				t.Fatalf("expected %v(%T) but got %v(%T)", test.expected, test.expected, v, v)
 			}
 		})
 	}
@@ -578,6 +770,33 @@ building:
 	}
 }
 
+func TestInvalidPath(t *testing.T) {
+	tests := []struct {
+		name string
+		path string
+	}{
+		{
+			name: "missing root with dot",
+			path: ".foo",
+		},
+		{
+			name: "missing root with index",
+			path: "foo[0]",
+		},
+		{
+			name: "missing root with recursive",
+			path: "..foo",
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			if _, err := yaml.PathString(test.path); err == nil {
+				t.Fatal("expected error")
+			}
+		})
+	}
+}
+
 func ExamplePath_AnnotateSource() {
 	yml := `
 a: 1
@@ -609,7 +828,7 @@ b: "hello"
 	//    3 | b: "hello"
 }
 
-func ExamplePath_AnnotateSourceWithComment() {
+func ExamplePath_AnnotateSource_withComment() {
 	yml := `
 # This is my document
 doc:
@@ -619,7 +838,7 @@ doc:
     - value1
     - value2
   other: value3
-	`
+`
 	path, err := yaml.PathString("$.doc.map[0]")
 	if err != nil {
 		log.Fatal(err)
@@ -637,10 +856,9 @@ doc:
 	//              ^
 	//    8 |     - value2
 	//    9 |   other: value3
-	//   10 |
 }
 
-func ExamplePath_PathString() {
+func ExamplePathString() {
 	yml := `
 store:
   book:

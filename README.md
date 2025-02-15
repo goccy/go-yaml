@@ -417,7 +417,8 @@ I'm looking for sponsors this library. This library is being developed as a pers
 
 # Star History
 
-[![Star History Chart](https://api.star-history.com/svg?repos=GitHub.com/goccy&type=Date)](https://star-history.com/#GitHub.com/goccy&Date)
+[![Star History Chart](https://api.star-history.com/svg?repos=Goccy/go-yaml&type=Date)](https://star-history.com/#Goccy/go-yaml&Date)
+
 # License
 
 MIT

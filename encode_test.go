@@ -171,7 +171,7 @@ func TestEncoder(t *testing.T) {
 			},
 		},
 		{
-			"a: -\n",
+			"a: \"-\"\n",
 			map[string]string{"a": "-"},
 			nil,
 		},

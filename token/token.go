@@ -679,6 +679,9 @@ func IsNeedQuoted(value string) bool {
 	if isNumber(value) {
 		return true
 	}
+	if value == "-" {
+		return true
+	}
 	first := value[0]
 	switch first {
 	case '*', '&', '[', '{', '}', ']', ',', '!', '|', '>', '%', '\'', '"', '@', ' ', '`':
@@ -696,7 +699,7 @@ func IsNeedQuoted(value string) bool {
 		switch c {
 		case '#', '\\':
 			return true
-		case ':':
+		case ':', '-':
 			if i+1 < len(value) && value[i+1] == ' ' {
 				return true
 			}

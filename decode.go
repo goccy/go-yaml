@@ -26,46 +26,48 @@ import (
 
 // Decoder reads and decodes YAML values from an input stream.
 type Decoder struct {
-	reader               io.Reader
-	referenceReaders     []io.Reader
-	anchorNodeMap        map[string]ast.Node
-	aliasValueMap        map[*ast.AliasNode]any
-	anchorValueMap       map[string]reflect.Value
-	customUnmarshalerMap map[reflect.Type]func(interface{}, []byte) error
-	commentMaps          []CommentMap
-	toCommentMap         CommentMap
-	opts                 []DecodeOption
-	referenceFiles       []string
-	referenceDirs        []string
-	isRecursiveDir       bool
-	isResolvedReference  bool
-	validator            StructValidator
-	disallowUnknownField bool
-	allowDuplicateMapKey bool
-	useOrderedMap        bool
-	useJSONUnmarshaler   bool
-	parsedFile           *ast.File
-	streamIndex          int
-	decodeDepth          int
+	reader                        io.Reader
+	referenceReaders              []io.Reader
+	anchorNodeMap                 map[string]ast.Node
+	aliasValueMap                 map[*ast.AliasNode]any
+	anchorValueMap                map[string]reflect.Value
+	customUnmarshalerMap          map[reflect.Type]func(interface{}, []byte) error
+	customInterfaceUnmarshalerMap map[reflect.Type]func(interface{}, func(interface{}) error) error
+	commentMaps                   []CommentMap
+	toCommentMap                  CommentMap
+	opts                          []DecodeOption
+	referenceFiles                []string
+	referenceDirs                 []string
+	isRecursiveDir                bool
+	isResolvedReference           bool
+	validator                     StructValidator
+	disallowUnknownField          bool
+	allowDuplicateMapKey          bool
+	useOrderedMap                 bool
+	useJSONUnmarshaler            bool
+	parsedFile                    *ast.File
+	streamIndex                   int
+	decodeDepth                   int
 }
 
 // NewDecoder returns a new decoder that reads from r.
 func NewDecoder(r io.Reader, opts ...DecodeOption) *Decoder {
 	return &Decoder{
-		reader:               r,
-		anchorNodeMap:        map[string]ast.Node{},
-		aliasValueMap:        make(map[*ast.AliasNode]any),
-		anchorValueMap:       map[string]reflect.Value{},
-		customUnmarshalerMap: map[reflect.Type]func(interface{}, []byte) error{},
-		opts:                 opts,
-		referenceReaders:     []io.Reader{},
-		referenceFiles:       []string{},
-		referenceDirs:        []string{},
-		isRecursiveDir:       false,
-		isResolvedReference:  false,
-		disallowUnknownField: false,
-		allowDuplicateMapKey: false,
-		useOrderedMap:        false,
+		reader:                        r,
+		anchorNodeMap:                 map[string]ast.Node{},
+		aliasValueMap:                 make(map[*ast.AliasNode]any),
+		anchorValueMap:                map[string]reflect.Value{},
+		customUnmarshalerMap:          map[reflect.Type]func(interface{}, []byte) error{},
+		customInterfaceUnmarshalerMap: map[reflect.Type]func(interface{}, func(interface{}) error) error{},
+		opts:                          opts,
+		referenceReaders:              []io.Reader{},
+		referenceFiles:                []string{},
+		referenceDirs:                 []string{},
+		isRecursiveDir:                false,
+		isResolvedReference:           false,
+		disallowUnknownField:          false,
+		allowDuplicateMapKey:          false,
+		useOrderedMap:                 false,
 	}
 }
 
@@ -723,7 +725,6 @@ func (d *Decoder) unmarshalerFromCustomUnmarshalerMap(t reflect.Type) (func(inte
 	if unmarshaler, exists := d.customUnmarshalerMap[t]; exists {
 		return unmarshaler, exists
 	}
-
 	globalCustomUnmarshalerMu.Lock()
 	defer globalCustomUnmarshalerMu.Unlock()
 	if unmarshaler, exists := globalCustomUnmarshalerMap[t]; exists {
@@ -732,9 +733,38 @@ func (d *Decoder) unmarshalerFromCustomUnmarshalerMap(t reflect.Type) (func(inte
 	return nil, false
 }
 
+func (d *Decoder) existsTypeInCustomInterfaceUnmarshalerMap(t reflect.Type) bool {
+	if _, exists := d.customInterfaceUnmarshalerMap[t]; exists {
+		return true
+	}
+
+	globalCustomInterfaceUnmarshalerMu.Lock()
+	defer globalCustomInterfaceUnmarshalerMu.Unlock()
+	if _, exists := globalCustomInterfaceUnmarshalerMap[t]; exists {
+		return true
+	}
+	return false
+}
+
+func (d *Decoder) unmarshalerFromCustomInterfaceUnmarshalerMap(t reflect.Type) (func(interface{}, func(interface{}) error) error, bool) {
+	if unmarshaler, exists := d.customInterfaceUnmarshalerMap[t]; exists {
+		return unmarshaler, exists
+	}
+
+	globalCustomInterfaceUnmarshalerMu.Lock()
+	defer globalCustomInterfaceUnmarshalerMu.Unlock()
+	if unmarshaler, exists := globalCustomInterfaceUnmarshalerMap[t]; exists {
+		return unmarshaler, exists
+	}
+	return nil, false
+}
+
 func (d *Decoder) canDecodeByUnmarshaler(dst reflect.Value) bool {
 	ptrValue := dst.Addr()
 	if d.existsTypeInCustomUnmarshalerMap(ptrValue.Type()) {
+		return true
+	}
+	if d.existsTypeInCustomInterfaceUnmarshalerMap(ptrValue.Type()) {
 		return true
 	}
 	iface := ptrValue.Interface()
@@ -767,6 +797,36 @@ func (d *Decoder) decodeByUnmarshaler(ctx context.Context, dst reflect.Value, sr
 			return err
 		}
 		if err := unmarshaler(ptrValue.Interface(), b); err != nil {
+			return err
+		}
+		return nil
+	}
+	if unmarshaler, exists := d.unmarshalerFromCustomInterfaceUnmarshalerMap(ptrValue.Type()); exists {
+		if err := unmarshaler(ptrValue.Interface(), func(v interface{}) error {
+			rv := reflect.ValueOf(v)
+			if rv.Type().Kind() != reflect.Ptr {
+				return ErrDecodeRequiredPointerType
+			}
+			if err := d.decodeValue(ctx, rv.Elem(), src); err != nil {
+				return err
+			}
+			return nil
+		}); err != nil {
+			return err
+		}
+		return nil
+	}
+	if unmarshaler, exists := d.unmarshalerFromCustomInterfaceUnmarshalerMap(ptrValue.Type()); exists {
+		if err := unmarshaler(ptrValue.Interface(), func(v interface{}) error {
+			rv := reflect.ValueOf(v)
+			if rv.Type().Kind() != reflect.Ptr {
+				return ErrDecodeRequiredPointerType
+			}
+			if err := d.decodeValue(ctx, rv.Elem(), src); err != nil {
+				return err
+			}
+			return nil
+		}); err != nil {
 			return err
 		}
 		return nil

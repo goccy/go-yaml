@@ -3058,6 +3058,28 @@ bar:
 	})
 }
 
+func TestDecodeWithSameAnchor(t *testing.T) {
+	yml := `
+a: &a 1
+b: &a 2
+c: &a 3
+d: *a
+`
+	type T struct {
+		A int
+		B int
+		C int
+		D int
+	}
+	var v T
+	if err := yaml.Unmarshal([]byte(yml), &v); err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(v, T{A: 1, B: 2, C: 3, D: 3}) {
+		t.Fatalf("failed to decode same anchor: %+v", v)
+	}
+}
+
 func TestUnmarshalMapSliceParallel(t *testing.T) {
 	content := `
 steps:

@@ -874,9 +874,6 @@ func (d *Decoder) decodeValue(ctx context.Context, dst reflect.Value, src ast.No
 	if src.Type() == ast.AnchorType {
 		anchor, _ := src.(*ast.AnchorNode)
 		anchorName := anchor.Name.GetToken().Value
-		if _, exists := d.anchorValueMap[anchorName]; exists {
-			return nil
-		}
 		if err := d.decodeValue(withAnchor(ctx, anchorName), dst, anchor.Value); err != nil {
 			return err
 		}

@@ -1,6 +1,7 @@
 package yaml_test
 
 import (
+	"fmt"
 	"io"
 	"reflect"
 	"strings"
@@ -70,5 +71,30 @@ foo: bar # comment
 		{"$[2]"},
 	}) {
 		t.Fatalf("failed to get comment: %v", commentPathsWithDocIndex)
+	}
+}
+
+func TestDecodeKeepAddress(t *testing.T) {
+	var data = `
+a: &a [_]
+b: &b [*a,*a]
+c: &c [*b,*b]
+d: &d [*c,*c]
+`
+	var v map[string]any
+	if err := yaml.Unmarshal([]byte(data), &v); err != nil {
+		t.Fatal(err)
+	}
+	a := v["a"]
+	b := v["b"]
+	for _, vv := range v["b"].([]any) {
+		if fmt.Sprintf("%p", a) != fmt.Sprintf("%p", vv) {
+			t.Fatalf("failed to decode b element as keep address")
+		}
+	}
+	for _, vv := range v["c"].([]any) {
+		if fmt.Sprintf("%p", b) != fmt.Sprintf("%p", vv) {
+			t.Fatalf("failed to decode c element as keep address")
+		}
 	}
 }

@@ -1,6 +1,7 @@
 package yaml_test
 
 import (
+	"reflect"
 	"strings"
 	"testing"
 
@@ -193,6 +194,55 @@ lt10: 20
 				t.Fatalf("unexpected error: %v", err)
 			case tc.ExpectedErr != "" && tc.ExpectedErr != err.Error():
 				t.Fatalf("expected `%s` but actual `%s`", tc.ExpectedErr, err.Error())
+			}
+		})
+	}
+}
+
+type testValidator struct {
+	t *testing.T
+	v *validator.Validate
+}
+
+func (tv *testValidator) Struct(v any) error {
+	vr := reflect.ValueOf(v)
+	if vr.Kind() != reflect.Pointer {
+		tv.t.Fatalf("Expected a pointer, not a %s to validate", vr.Kind())
+	}
+	return tv.v.Struct(v)
+}
+
+func TestStructValidatorWithAPointer(t *testing.T) {
+
+	cases := []struct {
+		TestName    string
+		YAMLContent string
+		Instance    interface{}
+	}{
+		{
+			TestName: "Test_Simple",
+			YAMLContent: `---
+name: john
+age: 20
+`,
+			Instance: &struct {
+				Name string `yaml:"name" validate:"required"`
+				Age  int    `yaml:"age" validate:"gte=0,lt=120"`
+			}{},
+		},
+	}
+
+	for _, tc := range cases {
+		tc := tc // NOTE: https://github.com/golang/go/wiki/CommonMistakes#using-goroutines-on-loop-iterator-variables
+		t.Run(tc.TestName, func(t *testing.T) {
+			dec := yaml.NewDecoder(
+				strings.NewReader(tc.YAMLContent),
+				yaml.Validator(&testValidator{t: t, v: validator.New()}),
+				yaml.Strict(),
+			)
+			err := dec.Decode(tc.Instance)
+			if err != nil {
+				t.Fatal("Unexpected error", err)
 			}
 		})
 	}

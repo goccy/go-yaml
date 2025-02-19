@@ -42,12 +42,13 @@ type Encoder struct {
 	commentMap                 map[*Path][]*Comment
 	written                    bool
 
-	line           int
-	column         int
-	offset         int
-	indentNum      int
-	indentLevel    int
-	indentSequence bool
+	line              int
+	column            int
+	offset            int
+	indentNum         int
+	indentLevel       int
+	indentSequence    bool
+	quoteStringValues bool
 }
 
 // NewEncoder returns a new encoder that writes to w.
@@ -464,7 +465,7 @@ func (e *Encoder) encodeValue(ctx context.Context, v reflect.Value, column int) 
 	case reflect.Interface:
 		return e.encodeValue(ctx, v.Elem(), column)
 	case reflect.String:
-		return e.encodeString(v.String(), column), nil
+		return e.encodeString(v.String(), column, false), nil
 	case reflect.Bool:
 		return e.encodeBool(v.Bool()), nil
 	case reflect.Slice:
@@ -580,8 +581,8 @@ func (e *Encoder) isNeedQuoted(v string) bool {
 	return false
 }
 
-func (e *Encoder) encodeString(v string, column int) *ast.StringNode {
-	if e.isNeedQuoted(v) {
+func (e *Encoder) encodeString(v string, column int, isKey bool) *ast.StringNode {
+	if e.isNeedQuoted(v) || (e.quoteStringValues && !isKey) {
 		if e.singleQuote {
 			v = quoteWith(v, '\'')
 		} else {
@@ -653,7 +654,7 @@ func (e *Encoder) encodeMapItem(ctx context.Context, item MapItem, column int) (
 	}
 	return ast.MappingValue(
 		token.New("", "", e.pos(column)),
-		e.encodeString(k.Interface().(string), column),
+		e.encodeString(k.Interface().(string), column, true),
 		value,
 	), nil
 }
@@ -715,7 +716,7 @@ func (e *Encoder) encodeMap(ctx context.Context, value reflect.Value, column int
 		}
 		node.Values = append(node.Values, ast.MappingValue(
 			nil,
-			e.encodeString(keyText, column),
+			e.encodeString(keyText, column, true),
 			value,
 		))
 		e.setSmartAnchor(vRef, keyText)
@@ -837,7 +838,7 @@ func (e *Encoder) encodeStruct(ctx context.Context, value reflect.Value, column 
 		if e.isMapNode(value) {
 			value.AddColumn(e.indentNum)
 		}
-		var key ast.MapKeyNode = e.encodeString(structField.RenderName, column)
+		var key ast.MapKeyNode = e.encodeString(structField.RenderName, column, true)
 		switch {
 		case value.Type() == ast.AliasType:
 			if aliasName := structField.AliasName; aliasName != "" {

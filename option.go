@@ -127,6 +127,14 @@ func IndentSequence(indent bool) EncodeOption {
 	}
 }
 
+// QuoteStringValues causes all string values to be quoted.
+func QuoteStringValues(quote bool) EncodeOption {
+	return func(e *Encoder) error {
+		e.quoteStringValues = quote
+		return nil
+	}
+}
+
 // UseSingleQuote determines if single or double quotes should be preferred for strings.
 func UseSingleQuote(sq bool) EncodeOption {
 	return func(e *Encoder) error {

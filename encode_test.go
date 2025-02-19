@@ -724,6 +724,14 @@ func TestEncoder(t *testing.T) {
 				yaml.UseSingleQuote(true),
 			},
 		},
+		// Forced string value quoting
+		{
+			`foo: "a b c"` + "\n",
+			map[string]string{"foo": "a b c"},
+			[]yaml.EncodeOption{
+				yaml.QuoteStringValues(true),
+			},
+		},
 	}
 	for _, test := range tests {
 		t.Run(test.source, func(t *testing.T) {

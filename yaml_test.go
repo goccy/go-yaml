@@ -1,6 +1,7 @@
 package yaml_test
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"reflect"
@@ -78,7 +79,7 @@ foo: bar # comment
 }
 
 func TestDecodeKeepAddress(t *testing.T) {
-	var data = `
+	data := `
 a: &a [_]
 b: &b [*a,*a]
 c: &c [*b,*b]
@@ -103,7 +104,7 @@ d: &d [*c,*c]
 }
 
 func TestSmartAnchor(t *testing.T) {
-	var data = `
+	data := `
 a: &a [_,_,_,_,_,_,_,_,_,_,_,_,_,_,_]
 b: &b [*a,*a,*a,*a,*a,*a,*a,*a,*a,*a]
 c: &c [*b,*b,*b,*b,*b,*b,*b,*b,*b,*b]
@@ -262,4 +263,92 @@ foo: 2
 			t.Fatalf("unexpected error message:\nexpected:\n%s\nbut got:\n%s", expected, got)
 		}
 	}
+}
+
+func checkRawValue[T any](t *testing.T, v yaml.RawMessage, expected T) {
+	t.Helper()
+
+	var actual T
+
+	if err := yaml.Unmarshal(v, &actual); err != nil {
+		t.Errorf("failed to unmarshal: %v", err)
+		return
+	}
+
+	if !reflect.DeepEqual(expected, actual) {
+		t.Errorf("expected %v, got %v", expected, actual)
+	}
+}
+
+func checkJSONRawValue[T any](t *testing.T, v json.RawMessage, expected T) {
+	t.Helper()
+
+	var actual T
+
+	if err := json.Unmarshal(v, &actual); err != nil {
+		t.Errorf("failed to unmarshal: %v", err)
+		return
+	}
+
+	if !reflect.DeepEqual(expected, actual) {
+		t.Errorf("expected %v, got %v", expected, actual)
+	}
+
+	checkRawValue(t, yaml.RawMessage(v), expected)
+}
+
+func TestRawMessage(t *testing.T) {
+	data := []byte(`
+a: 1
+b: "asdf"
+c:
+  foo: bar
+`)
+
+	var m map[string]yaml.RawMessage
+	if err := yaml.Unmarshal(data, &m); err != nil {
+		t.Fatal(err)
+	}
+
+	if len(m) != 3 {
+		t.Fatalf("failed to decode: %d", len(m))
+	}
+
+	checkRawValue(t, m["a"], 1)
+	checkRawValue(t, m["b"], "asdf")
+	checkRawValue(t, m["c"], map[string]string{"foo": "bar"})
+
+	dt, err := yaml.Marshal(m)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var m2 map[string]yaml.RawMessage
+	if err := yaml.Unmarshal(dt, &m2); err != nil {
+		t.Fatal(err)
+	}
+
+	checkRawValue(t, m2["a"], 1)
+	checkRawValue(t, m2["b"], "asdf")
+	checkRawValue(t, m2["c"], map[string]string{"foo": "bar"})
+
+	dt, err = json.Marshal(m2)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var m3 map[string]yaml.RawMessage
+	if err := yaml.Unmarshal(dt, &m3); err != nil {
+		t.Fatal(err)
+	}
+	checkRawValue(t, m3["a"], 1)
+	checkRawValue(t, m3["b"], "asdf")
+	checkRawValue(t, m3["c"], map[string]string{"foo": "bar"})
+
+	var m4 map[string]json.RawMessage
+	if err := json.Unmarshal(dt, &m4); err != nil {
+		t.Fatal(err)
+	}
+	checkJSONRawValue(t, m4["a"], 1)
+	checkJSONRawValue(t, m4["b"], "asdf")
+	checkJSONRawValue(t, m4["c"], map[string]string{"foo": "bar"})
 }

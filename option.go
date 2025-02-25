@@ -206,6 +206,15 @@ func CustomMarshaler[T any](marshaler func(T) ([]byte, error)) EncodeOption {
 	}
 }
 
+// AutoInt automatically converts floating-point numbers to integers when the fractional part is zero.
+// For example, a value of 1.0 will be encoded as 1.
+func AutoInt() EncodeOption {
+	return func(e *Encoder) error {
+		e.autoInt = true
+		return nil
+	}
+}
+
 // CommentPosition type of the position for comment.
 type CommentPosition int
 

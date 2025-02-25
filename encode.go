@@ -38,6 +38,7 @@ type Encoder struct {
 	anchorNameMap              map[string]struct{}
 	anchorCallback             func(*ast.AnchorNode, interface{}) error
 	customMarshalerMap         map[reflect.Type]func(interface{}) ([]byte, error)
+	autoInt                    bool
 	useLiteralStyleIfMultiline bool
 	commentMap                 map[*Path][]*Comment
 	written                    bool
@@ -547,6 +548,9 @@ func (e *Encoder) encodeFloat(v float64, bitSize int) ast.Node {
 	}
 	value := strconv.FormatFloat(v, 'g', -1, bitSize)
 	if !strings.Contains(value, ".") && !strings.Contains(value, "e") {
+		if e.autoInt {
+			return ast.Integer(token.New(value, value, e.pos(e.column)))
+		}
 		// append x.0 suffix to keep float value context
 		value = fmt.Sprintf("%s.0", value)
 	}

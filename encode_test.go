@@ -1283,6 +1283,54 @@ func TestEncoder_CustomMarshaler(t *testing.T) {
 	})
 }
 
+func TestEncoder_AutoInt(t *testing.T) {
+	for _, test := range []struct {
+		desc     string
+		input    any
+		expected string
+	}{
+		{
+			desc: "int-convertible float64",
+			input: map[string]float64{
+				"key": 1.0,
+			},
+			expected: "key: 1\n",
+		},
+		{
+			desc: "non int-convertible float64",
+			input: map[string]float64{
+				"key": 1.1,
+			},
+			expected: "key: 1.1\n",
+		},
+		{
+			desc: "int-convertible float32",
+			input: map[string]float32{
+				"key": 1.0,
+			},
+			expected: "key: 1\n",
+		},
+		{
+			desc: "non int-convertible float32",
+			input: map[string]float32{
+				"key": 1.1,
+			},
+			expected: "key: 1.1\n",
+		},
+	} {
+		t.Run(test.desc, func(t *testing.T) {
+			var buf bytes.Buffer
+			enc := yaml.NewEncoder(&buf, yaml.AutoInt())
+			if err := enc.Encode(test.input); err != nil {
+				t.Fatalf("failed to encode: %s", err)
+			}
+			if actual := buf.String(); actual != test.expected {
+				t.Errorf("expect:\n%s\nactual\n%s\n", test.expected, actual)
+			}
+		})
+	}
+}
+
 func TestEncoder_MultipleDocuments(t *testing.T) {
 	var buf bytes.Buffer
 	enc := yaml.NewEncoder(&buf)

@@ -2074,7 +2074,7 @@ func (n *CommentGroupNode) Read(p []byte) (int, error) {
 }
 
 // Type returns TagType
-func (n *CommentGroupNode) Type() NodeType { return CommentType }
+func (n *CommentGroupNode) Type() NodeType { return CommentGroupType }
 
 // GetToken returns token instance
 func (n *CommentGroupNode) GetToken() *token.Token {

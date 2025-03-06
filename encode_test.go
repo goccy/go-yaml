@@ -1345,6 +1345,56 @@ func TestEncoder_MultipleDocuments(t *testing.T) {
 	}
 }
 
+func TestEncoder_UnmarshallableTypes(t *testing.T) {
+	for _, test := range []struct {
+		desc        string
+		input       any
+		expectedErr string
+	}{
+		{
+			desc:        "map with channel",
+			input:       map[string]any{"key": make(chan int)},
+			expectedErr: "unknown value type chan int",
+		},
+		{
+			desc: "nested map with channel",
+			input: map[string]any{
+				"key": map[string]any{
+					"anotherkey": make(chan string),
+				},
+			},
+			expectedErr: "unknown value type chan string",
+		},
+		{
+			desc:        "slice with channel",
+			input:       []any{make(chan bool)},
+			expectedErr: "unknown value type chan bool",
+		},
+		{
+			desc:        "nested slice with channel",
+			input:       []any{[]any{make(chan any)}},
+			expectedErr: "unknown value type chan interface {}",
+		},
+		{
+			desc: "struct with channel",
+			input: struct {
+				Field chan int `yaml:"field"`
+			}{},
+			expectedErr: "unknown value type chan int",
+		},
+	} {
+		t.Run(test.desc, func(t *testing.T) {
+			var buf bytes.Buffer
+			err := yaml.NewEncoder(&buf).Encode(test.input)
+			if err == nil {
+				t.Errorf("expect error:\n%s\nbut got none\n", test.expectedErr)
+			} else if err.Error() != test.expectedErr {
+				t.Errorf("expect error:\n%s\nactual\n%s\n", test.expectedErr, err)
+			}
+		})
+	}
+}
+
 func ExampleMarshal_node() {
 	type T struct {
 		Text ast.Node `yaml:"text"`

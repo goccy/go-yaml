@@ -492,7 +492,7 @@ func (e *Encoder) encodeValue(ctx context.Context, v reflect.Value, column int) 
 		if value := e.encodePtrAnchor(v, column); value != nil {
 			return value, nil
 		}
-		return e.encodeMap(ctx, v, column), nil
+		return e.encodeMap(ctx, v, column)
 	default:
 		return nil, fmt.Errorf("unknown value type %s", v.Type().String())
 	}
@@ -684,7 +684,7 @@ func (e *Encoder) isTagAndMapNode(node ast.Node) bool {
 	return ok && e.isMapNode(tn.Value)
 }
 
-func (e *Encoder) encodeMap(ctx context.Context, value reflect.Value, column int) ast.Node {
+func (e *Encoder) encodeMap(ctx context.Context, value reflect.Value, column int) (ast.Node, error) {
 	node := ast.Mapping(token.New("", "", e.pos(column)), e.isFlowStyle)
 	keys := make([]interface{}, len(value.MapKeys()))
 	for i, k := range value.MapKeys() {
@@ -698,7 +698,7 @@ func (e *Encoder) encodeMap(ctx context.Context, value reflect.Value, column int
 		v := value.MapIndex(k)
 		value, err := e.encodeValue(ctx, v, column)
 		if err != nil {
-			return nil
+			return nil, err
 		}
 		if e.isMapNode(value) {
 			value.AddColumn(e.indentNum)
@@ -724,7 +724,7 @@ func (e *Encoder) encodeMap(ctx context.Context, value reflect.Value, column int
 		))
 		e.setSmartAnchor(vRef, keyText)
 	}
-	return node
+	return node, nil
 }
 
 // IsZeroer is used to check whether an object is zero to determine

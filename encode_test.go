@@ -11,6 +11,7 @@ import (
 	"strings"
 	"testing"
 	"time"
+	"unsafe"
 
 	"github.com/goccy/go-yaml"
 	"github.com/goccy/go-yaml/ast"
@@ -1342,6 +1343,81 @@ func TestEncoder_MultipleDocuments(t *testing.T) {
 	}
 	if actual, expect := buf.String(), "1\n---\n2\n"; actual != expect {
 		t.Errorf("expect:\n%s\nactual\n%s\n", expect, actual)
+	}
+}
+
+func TestEncoder_UnmarshallableTypes(t *testing.T) {
+	for _, test := range []struct {
+		desc        string
+		input       any
+		expectedErr string
+	}{
+		{
+			desc:        "channel",
+			input:       make(chan int),
+			expectedErr: "unknown value type chan int",
+		},
+		{
+			desc:        "function",
+			input:       func() {},
+			expectedErr: "unknown value type func()",
+		},
+		{
+			desc:        "complex number",
+			input:       complex(10, 11),
+			expectedErr: "unknown value type complex128",
+		},
+		{
+			desc:        "unsafe pointer",
+			input:       unsafe.Pointer(&struct{}{}),
+			expectedErr: "unknown value type unsafe.Pointer",
+		},
+		{
+			desc:        "uintptr",
+			input:       uintptr(0x1234),
+			expectedErr: "unknown value type uintptr",
+		},
+		{
+			desc:        "map with channel",
+			input:       map[string]any{"key": make(chan string)},
+			expectedErr: "unknown value type chan string",
+		},
+		{
+			desc: "nested map with func",
+			input: map[string]any{
+				"a": map[string]any{
+					"b": func(_ string) {},
+				},
+			},
+			expectedErr: "unknown value type func(string)",
+		},
+		{
+			desc:        "slice with channel",
+			input:       []any{make(chan bool)},
+			expectedErr: "unknown value type chan bool",
+		},
+		{
+			desc:        "nested slice with complex number",
+			input:       []any{[]any{complex(10, 11)}},
+			expectedErr: "unknown value type complex128",
+		},
+		{
+			desc: "struct with unsafe pointer",
+			input: struct {
+				Field unsafe.Pointer `yaml:"field"`
+			}{},
+			expectedErr: "unknown value type unsafe.Pointer",
+		},
+	} {
+		t.Run(test.desc, func(t *testing.T) {
+			var buf bytes.Buffer
+			err := yaml.NewEncoder(&buf).Encode(test.input)
+			if err == nil {
+				t.Errorf("expect error:\n%s\nbut got none\n", test.expectedErr)
+			} else if err.Error() != test.expectedErr {
+				t.Errorf("expect error:\n%s\nactual\n%s\n", test.expectedErr, err)
+			}
+		})
 	}
 }
 

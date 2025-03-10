@@ -3156,6 +3156,182 @@ func (mk *unmarshableMapKey) UnmarshalYAML(b []byte) error {
 	return nil
 }
 
+type testNodeUnmarshalerCtx struct {
+	outErr   error
+	received ast.Node
+}
+
+func (u *testNodeUnmarshalerCtx) UnmarshalYAML(ctx context.Context, node ast.Node) error {
+	if u.outErr != nil {
+		return u.outErr
+	}
+
+	if ctx == nil {
+		return errors.New("nil context")
+	}
+
+	u.received = node
+	return nil
+}
+
+func TestNodeUnmarshalerContext(t *testing.T) {
+	type testNodeUnmarshalerBody struct {
+		Root testNodeUnmarshalerCtx `yaml:"root"`
+	}
+
+	cases := []struct {
+		name      string
+		expectErr string
+		src       []string
+		body      testNodeUnmarshalerBody
+	}{
+		{
+			name: "should pass node",
+			src: []string{
+				"root:",
+				"  foo: bar",
+				"  fizz: buzz",
+			},
+		},
+		{
+			name: "should pass returned error",
+			body: testNodeUnmarshalerBody{
+				Root: testNodeUnmarshalerCtx{
+					outErr: errors.New("test error"),
+				},
+			},
+			expectErr: "test error",
+			src: []string{
+				"root:",
+				"  foo: bar",
+				"  fizz: buzz",
+			},
+		},
+	}
+
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			src := []byte(strings.Join(c.src, "\n"))
+			out := c.body
+			err := yaml.Unmarshal(src, &out)
+			if c.expectErr != "" {
+				if err == nil {
+					t.Fatal("expected error but got nil")
+					return
+				}
+
+				if !strings.Contains(err.Error(), c.expectErr) {
+					t.Fatalf("error message %q should contain %q", err.Error(), c.expectErr)
+				}
+				return
+			}
+
+			expect := struct {
+				Root ast.Node `yaml:"root"`
+			}{}
+			if err := yaml.UnmarshalContext(context.TODO(), src, &expect); err != nil {
+				t.Fatal("invalid test yaml:", err)
+				return
+			}
+
+			if err != nil {
+				t.Fatalf("unexpected error: %s", err)
+			}
+
+			if !reflect.DeepEqual(out.Root.received, expect.Root) {
+				t.Fatalf("expected:\n%#v\n but got:\n%#v", expect.Root, out.Root.received)
+			}
+		})
+	}
+
+}
+
+type testNodeUnmarshaler struct {
+	outErr   error
+	received ast.Node
+}
+
+func (u *testNodeUnmarshaler) UnmarshalYAML(node ast.Node) error {
+	if u.outErr != nil {
+		return u.outErr
+	}
+
+	u.received = node
+	return nil
+}
+
+func TestNodeUnmarshaler(t *testing.T) {
+	type testNodeUnmarshalerBody struct {
+		Root testNodeUnmarshaler `yaml:"root"`
+	}
+
+	cases := []struct {
+		name      string
+		expectErr string
+		src       []string
+		body      testNodeUnmarshalerBody
+	}{
+		{
+			name: "should pass node",
+			src: []string{
+				"root:",
+				"  foo: bar",
+				"  fizz: buzz",
+			},
+		},
+		{
+			name: "should pass returned error",
+			body: testNodeUnmarshalerBody{
+				Root: testNodeUnmarshaler{
+					outErr: errors.New("test error"),
+				},
+			},
+			expectErr: "test error",
+			src: []string{
+				"root:",
+				"  foo: bar",
+				"  fizz: buzz",
+			},
+		},
+	}
+
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			src := []byte(strings.Join(c.src, "\n"))
+			out := c.body
+			err := yaml.Unmarshal(src, &out)
+			if c.expectErr != "" {
+				if err == nil {
+					t.Fatal("expected error but got nil")
+					return
+				}
+
+				if !strings.Contains(err.Error(), c.expectErr) {
+					t.Fatalf("error message %q should contain %q", err.Error(), c.expectErr)
+				}
+				return
+			}
+
+			expect := struct {
+				Root ast.Node `yaml:"root"`
+			}{}
+			if err := yaml.Unmarshal(src, &expect); err != nil {
+				t.Fatal("invalid test yaml:", err)
+				return
+			}
+
+			if err != nil {
+				t.Fatalf("unexpected error: %s", err)
+			}
+
+			if !reflect.DeepEqual(out.Root.received, expect.Root) {
+				t.Fatalf("expected:\n%#v\n but got:\n%#v", expect.Root, out.Root.received)
+			}
+		})
+	}
+
+}
+
 func TestMapKeyCustomUnmarshaler(t *testing.T) {
 	var m map[unmarshableMapKey]string
 	if err := yaml.Unmarshal([]byte(`key: value`), &m); err != nil {

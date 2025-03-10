@@ -733,19 +733,15 @@ func (d *Decoder) canDecodeByUnmarshaler(dst reflect.Value) bool {
 	}
 	iface := ptrValue.Interface()
 	switch iface.(type) {
-	case BytesUnmarshalerContext:
-		return true
-	case BytesUnmarshaler:
-		return true
-	case InterfaceUnmarshalerContext:
-		return true
-	case InterfaceUnmarshaler:
-		return true
-	case *time.Time:
-		return true
-	case *time.Duration:
-		return true
-	case encoding.TextUnmarshaler:
+	case BytesUnmarshalerContext,
+		BytesUnmarshaler,
+		InterfaceUnmarshalerContext,
+		InterfaceUnmarshaler,
+		NodeUnmarshaler,
+		NodeUnmarshalerContext,
+		*time.Time,
+		*time.Duration,
+		encoding.TextUnmarshaler:
 		return true
 	case jsonUnmarshaler:
 		return d.useJSONUnmarshaler
@@ -818,6 +814,22 @@ func (d *Decoder) decodeByUnmarshaler(ctx context.Context, dst reflect.Value, sr
 		}); err != nil {
 			return err
 		}
+		return nil
+	}
+
+	if unmarshaler, ok := iface.(NodeUnmarshaler); ok {
+		if err := unmarshaler.UnmarshalYAML(src); err != nil {
+			return err
+		}
+
+		return nil
+	}
+
+	if unmarshaler, ok := iface.(NodeUnmarshalerContext); ok {
+		if err := unmarshaler.UnmarshalYAML(ctx, src); err != nil {
+			return err
+		}
+
 		return nil
 	}
 

@@ -98,6 +98,11 @@ func (s *Scanner) progressColumn(ctx *Context, num int) {
 	s.progress(ctx, num)
 }
 
+func (s *Scanner) progressOnly(ctx *Context, num int) {
+	s.offset += num
+	s.progress(ctx, num)
+}
+
 func (s *Scanner) progressLine(ctx *Context) {
 	s.prevLineIndentNum = s.indentNum
 	s.column = 1
@@ -1436,13 +1441,13 @@ func (s *Scanner) scan(ctx *Context) error {
 				// tab indent for plain text (yaml-test-suite's spec-example-7-12-plain-lines).
 				s.indentNum++
 				ctx.addOriginBuf(c)
-				s.progressColumn(ctx, 1)
+				s.progressOnly(ctx, 1)
 				continue
 			}
 			if s.lastDelimColumn < s.column {
 				s.indentNum++
 				ctx.addOriginBuf(c)
-				s.progressColumn(ctx, 1)
+				s.progressOnly(ctx, 1)
 				continue
 			}
 			if err := s.scanTab(ctx, c); err != nil {

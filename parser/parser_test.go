@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"path/filepath"
 	"reflect"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -143,13 +144,31 @@ foo: yyy
 ---
 foo: zzz
 `,
+		`
+v:
+  a	: 'a'
+  bb	: 'a'
+`,
+		`
+v:
+  a : 'x'
+  b	: 'y'
+`,
+		`
+v:
+  a	: 'x'
+  b	: 'y'
+  c		: 'z'
+`,
 	}
-	for _, src := range sources {
-		f, err := parser.Parse(lexer.Tokenize(src), 0)
-		if err != nil {
-			t.Fatalf("parse error: source [%s]: %+v", src, err)
-		}
-		_ = f.String() // ensure no panic
+	for idx, src := range sources {
+		t.Run(strconv.Itoa(idx), func(t *testing.T) {
+			f, err := parser.Parse(lexer.Tokenize(src), 0)
+			if err != nil {
+				t.Fatalf("parse error: source [%s]: %+v", src, err)
+			}
+			_ = f.String() // ensure no panic
+		})
 	}
 }
 

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"path/filepath"
 	"reflect"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -161,7 +162,7 @@ v:
 `,
 	}
 	for idx, src := range sources {
-		t.Run(fmt.Sprint(idx), func(t *testing.T) {
+		t.Run(strconv.Itoa(idx), func(t *testing.T) {
 			f, err := parser.Parse(lexer.Tokenize(src), 0)
 			if err != nil {
 				t.Fatalf("parse error: source [%s]: %+v", src, err)

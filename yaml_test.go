@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/goccy/go-yaml"
+	"github.com/goccy/go-yaml/parser"
 )
 
 func TestRoundTripWithComment(t *testing.T) {
@@ -227,5 +228,36 @@ i:
 `
 	if strings.TrimPrefix(expected, "\n") != string(got) {
 		t.Fatalf("failed to encode: %s", string(got))
+	}
+}
+
+func TestCustomErrorMessage(t *testing.T) {
+	data := `
+foo:
+  bar:
+    foo: 2
+  baz:
+    foo: 3
+foo: 2
+`
+	if _, err := parser.ParseBytes([]byte(data), 0); err == nil {
+		t.Fatalf("expected error")
+	} else {
+		yamlErr, ok := err.(yaml.Error)
+		if !ok {
+			t.Fatalf("failed to get yaml.Error from error: %T", err)
+		}
+		expected := `
+[7:1] custom message
+   4 |     foo: 2
+   5 |   baz:
+   6 |     foo: 3
+>  7 | foo: 2
+       ^
+`
+		got := "\n" + yaml.FormatErrorWithToken("custom message", yamlErr.GetToken(), false, true)
+		if expected != got {
+			t.Fatalf("unexpected error message:\nexpected:\n%s\nbut got:\n%s", expected, got)
+		}
 	}
 }

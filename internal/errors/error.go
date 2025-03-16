@@ -21,9 +21,21 @@ const (
 	defaultIncludeSource = true
 )
 
-type PrettyFormatError interface {
+type Error interface {
+	error
+	GetToken() *token.Token
+	GetMessage() string
 	FormatError(bool, bool) string
 }
+
+var (
+	_ Error = new(SyntaxError)
+	_ Error = new(TypeError)
+	_ Error = new(OverflowError)
+	_ Error = new(DuplicateKeyError)
+	_ Error = new(UnknownFieldError)
+	_ Error = new(UnexpectedNodeTypeError)
+)
 
 type SyntaxError struct {
 	Message string
@@ -109,12 +121,28 @@ func ErrUnexpectedNodeType(actual, expected ast.NodeType, tk *token.Token) *Unex
 	}
 }
 
+func (e *SyntaxError) GetMessage() string {
+	return e.Message
+}
+
+func (e *SyntaxError) GetToken() *token.Token {
+	return e.Token
+}
+
 func (e *SyntaxError) Error() string {
 	return e.FormatError(defaultFormatColor, defaultIncludeSource)
 }
 
 func (e *SyntaxError) FormatError(colored, inclSource bool) string {
-	return formatError(e.Message, e.Token, colored, inclSource)
+	return FormatError(e.Message, e.Token, colored, inclSource)
+}
+
+func (e *OverflowError) GetMessage() string {
+	return e.msg()
+}
+
+func (e *OverflowError) GetToken() *token.Token {
+	return e.Token
 }
 
 func (e *OverflowError) Error() string {
@@ -122,7 +150,11 @@ func (e *OverflowError) Error() string {
 }
 
 func (e *OverflowError) FormatError(colored, inclSource bool) string {
-	return formatError(fmt.Sprintf("cannot unmarshal %s into Go value of type %s ( overflow )", e.SrcNum, e.DstType), e.Token, colored, inclSource)
+	return FormatError(e.msg(), e.Token, colored, inclSource)
+}
+
+func (e *OverflowError) msg() string {
+	return fmt.Sprintf("cannot unmarshal %s into Go value of type %s ( overflow )", e.SrcNum, e.DstType)
 }
 
 func (e *TypeError) msg() string {
@@ -132,12 +164,28 @@ func (e *TypeError) msg() string {
 	return fmt.Sprintf("cannot unmarshal %s into Go value of type %s", e.SrcType, e.DstType)
 }
 
+func (e *TypeError) GetMessage() string {
+	return e.msg()
+}
+
+func (e *TypeError) GetToken() *token.Token {
+	return e.Token
+}
+
 func (e *TypeError) Error() string {
 	return e.FormatError(defaultFormatColor, defaultIncludeSource)
 }
 
 func (e *TypeError) FormatError(colored, inclSource bool) string {
-	return formatError(e.msg(), e.Token, colored, inclSource)
+	return FormatError(e.msg(), e.Token, colored, inclSource)
+}
+
+func (e *DuplicateKeyError) GetMessage() string {
+	return e.Message
+}
+
+func (e *DuplicateKeyError) GetToken() *token.Token {
+	return e.Token
 }
 
 func (e *DuplicateKeyError) Error() string {
@@ -145,7 +193,15 @@ func (e *DuplicateKeyError) Error() string {
 }
 
 func (e *DuplicateKeyError) FormatError(colored, inclSource bool) string {
-	return formatError(e.Message, e.Token, colored, inclSource)
+	return FormatError(e.Message, e.Token, colored, inclSource)
+}
+
+func (e *UnknownFieldError) GetMessage() string {
+	return e.Message
+}
+
+func (e *UnknownFieldError) GetToken() *token.Token {
+	return e.Token
 }
 
 func (e *UnknownFieldError) Error() string {
@@ -153,7 +209,15 @@ func (e *UnknownFieldError) Error() string {
 }
 
 func (e *UnknownFieldError) FormatError(colored, inclSource bool) string {
-	return formatError(e.Message, e.Token, colored, inclSource)
+	return FormatError(e.Message, e.Token, colored, inclSource)
+}
+
+func (e *UnexpectedNodeTypeError) GetMessage() string {
+	return e.msg()
+}
+
+func (e *UnexpectedNodeTypeError) GetToken() *token.Token {
+	return e.Token
 }
 
 func (e *UnexpectedNodeTypeError) Error() string {
@@ -161,10 +225,14 @@ func (e *UnexpectedNodeTypeError) Error() string {
 }
 
 func (e *UnexpectedNodeTypeError) FormatError(colored, inclSource bool) string {
-	return formatError(fmt.Sprintf("%s was used where %s is expected", e.Actual.YAMLName(), e.Expected.YAMLName()), e.Token, colored, inclSource)
+	return FormatError(e.msg(), e.Token, colored, inclSource)
 }
 
-func formatError(errMsg string, token *token.Token, colored, inclSource bool) string {
+func (e *UnexpectedNodeTypeError) msg() string {
+	return fmt.Sprintf("%s was used where %s is expected", e.Actual.YAMLName(), e.Expected.YAMLName())
+}
+
+func FormatError(errMsg string, token *token.Token, colored, inclSource bool) string {
 	var pp printer.Printer
 	pos := fmt.Sprintf("[%d:%d] ", token.Position.Line, token.Position.Column)
 	msg := pp.PrintErrorMessage(fmt.Sprintf("%s%s", pos, errMsg), colored)

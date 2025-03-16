@@ -16,6 +16,7 @@ var (
 	ErrInvalidCommentMapValue     = errors.New("invalid comment map value. it must be not nil value")
 	ErrDecodeRequiredPointerType  = errors.New("required pointer type value")
 	ErrExceededMaxDepth           = errors.New("exceeded max depth")
+	FormatErrorWithToken          = errors.FormatError
 )
 
 type (
@@ -25,6 +26,7 @@ type (
 	DuplicateKeyError       = errors.DuplicateKeyError
 	UnknownFieldError       = errors.UnknownFieldError
 	UnexpectedNodeTypeError = errors.UnexpectedNodeTypeError
+	Error                   = errors.Error
 )
 
 func ErrUnsupportedHeadPositionType(node ast.Node) error {

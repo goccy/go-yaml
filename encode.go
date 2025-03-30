@@ -706,6 +706,11 @@ func (e *Encoder) encodeMap(ctx context.Context, value reflect.Value, column int
 		if e.isTagAndMapNode(value) {
 			value.AddColumn(e.indentNum)
 		}
+		kn, err := e.encodeValue(ctx, reflect.ValueOf(key), column)
+		keyNode, ok := kn.(ast.MapKeyNode)
+		if !ok || err != nil {
+			keyNode = e.encodeString(fmt.Sprint(key), column)
+		}
 		keyText := fmt.Sprint(key)
 		vRef := e.toPointer(v)
 
@@ -719,7 +724,7 @@ func (e *Encoder) encodeMap(ctx context.Context, value reflect.Value, column int
 		}
 		node.Values = append(node.Values, ast.MappingValue(
 			nil,
-			e.encodeString(keyText, column),
+			keyNode,
 			value,
 		))
 		e.setSmartAnchor(vRef, keyText)

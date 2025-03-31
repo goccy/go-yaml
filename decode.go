@@ -1860,10 +1860,10 @@ func (d *Decoder) parse(ctx context.Context, bytes []byte) (*ast.File, error) {
 		}
 		if v != nil {
 			normalizedFile.Docs = append(normalizedFile.Docs, doc)
+			cm := CommentMap{}
+			maps.Copy(cm, d.toCommentMap)
+			d.commentMaps = append(d.commentMaps, cm)
 		}
-		cm := CommentMap{}
-		maps.Copy(cm, d.toCommentMap)
-		d.commentMaps = append(d.commentMaps, cm)
 		for k := range d.toCommentMap {
 			delete(d.toCommentMap, k)
 		}

@@ -36,6 +36,8 @@ key: value # line comment
 
 func TestStreamDecodingWithComment(t *testing.T) {
 	yml := `
+# comment
+---
 a:
   b:
     c: # comment

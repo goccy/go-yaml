@@ -335,12 +335,8 @@ func (f *Formatter) formatMergeKey(n *ast.MergeKeyNode) string {
 
 func (f *Formatter) formatMappingValue(n *ast.MappingValueNode) string {
 	return f.formatCommentGroup(n.Comment) +
-		f.formatMapKey(n.Key) + ":" + f.formatNode(n.Value) +
+		f.origin(n.Key.GetToken()) + ":" + f.formatCommentGroup(n.Key.GetComment()) + f.formatNode(n.Value) +
 		f.formatCommentGroup(n.FootComment)
-}
-
-func (f *Formatter) formatMapKey(n ast.MapKeyNode) string {
-	return f.formatCommentGroup(n.GetComment()) + f.formatNode(n)
 }
 
 func (f *Formatter) formatDirective(n *ast.DirectiveNode) string {
@@ -381,6 +377,10 @@ func (f *Formatter) formatSequence(n *ast.SequenceNode) string {
 	var ret string
 	if n.IsFlowStyle {
 		ret = f.origin(n.Start)
+	}
+	if n.Comment != nil {
+		// add head comment.
+		ret += f.formatCommentGroup(n.Comment)
 	}
 	for _, entry := range n.Entries {
 		ret += f.formatNode(entry)

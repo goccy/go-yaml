@@ -2223,6 +2223,42 @@ map: &map
 	})
 }
 
+func TestCommentWithCustomUnmarshaler(t *testing.T) {
+	type T struct{}
+
+	for idx, test := range []string{
+		`
+foo:
+  # comment
+  - a: b
+`,
+		`
+foo: # comment
+  bar: 1
+  baz: true
+`,
+	} {
+		t.Run(strconv.Itoa(idx), func(t *testing.T) {
+			m := yaml.CommentMap{}
+			var v T
+			if err := yaml.UnmarshalWithOptions(
+				[]byte(test),
+				&v,
+				yaml.CommentToMap(m),
+				yaml.CustomUnmarshaler[T](func(dst *T, b []byte) error {
+					expected := bytes.Trim([]byte(test), "\n")
+					if !bytes.Equal(b, expected) {
+						return fmt.Errorf("failed to decode: got\n%s", string(test))
+					}
+					return nil
+				}),
+			); err != nil {
+				t.Fatal(err)
+			}
+		})
+	}
+}
+
 func ExampleUnmarshal_jSONTags() {
 	yml := `---
 foo: 1

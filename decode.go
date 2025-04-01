@@ -1453,6 +1453,9 @@ func (d *Decoder) decodeStruct(ctx context.Context, dst reflect.Value, src ast.N
 					node, exists := keyToNodeMap[structField.RenderName]
 					if exists {
 						// TODO: to make FieldError message cutomizable
+						if node.Type() == ast.MappingType {
+							return errors.ErrSyntax(fmt.Sprintf("%s", err), node.GetToken().Prev.Prev)
+						}
 						return errors.ErrSyntax(fmt.Sprintf("%s", err), node.GetToken())
 					} else if t := src.GetToken(); t != nil && t.Prev != nil && t.Prev.Prev != nil {
 						// A missing required field will not be in the keyToNodeMap

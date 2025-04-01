@@ -174,6 +174,22 @@ lt10: 20
 				Inner `yaml:",inline"`
 			}{},
 		},
+		{
+			TestName: "Test map",
+			YAMLContent: `
+map:
+  hello: hello
+  hello2: hello`,
+			ExpectedErr: `[2:4] Key: 'Map' Error:Field validation for 'Map' failed on the 'eq' tag
+>  2 | map:
+          ^
+   3 |   hello: hello
+   4 |   hello2: hello`,
+			Instance: &struct {
+				// Make sure that this map is not set
+				Map map[string]string `yaml:"map" validate:"eq=0"`
+			}{},
+		},
 	}
 
 	for _, tc := range cases {

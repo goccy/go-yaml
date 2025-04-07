@@ -146,7 +146,11 @@ func (p *Printer) PrintTokens(tokens token.Tokens) string {
 
 // PrintNode create text from ast.Node
 func (p *Printer) PrintNode(node ast.Node) []byte {
+	if node == nil {
+		return []byte{'\n'}
+	}
 	return []byte(fmt.Sprintf("%+v\n", node))
+
 }
 
 func (p *Printer) setDefaultColorSet() {

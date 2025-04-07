@@ -1676,6 +1676,28 @@ func TestIssue687(t *testing.T) {
 	}
 }
 
+type ByteMarshaller []byte
+
+func (b ByteMarshaller) MarshalYAML() ([]byte, error) {
+	return b, nil
+}
+
+func TestIssue687NilValuesNodes(t *testing.T) {
+	test := ByteMarshaller{}
+	output, err := yaml.Marshal(&test)
+	if err != nil {
+		t.Fatalf("failed to marshal: %v", err)
+	}
+	roundtrip := ByteMarshaller{}
+	err = yaml.Unmarshal(output, &roundtrip)
+	if err != nil {
+		t.Fatalf("failed to unmarshal roundtrip: %v", err)
+	}
+	if !bytes.Equal(roundtrip, test) {
+		t.Fatalf("roundtrip failed:\nexpected:\n%v\ngot:\n%v\n", test, roundtrip)
+	}
+}
+
 func TestIssue356(t *testing.T) {
 	tests := map[string]struct {
 		in string

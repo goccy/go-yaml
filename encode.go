@@ -409,10 +409,9 @@ func (e *Encoder) encodeByMarshaler(ctx context.Context, v reflect.Value, column
 		if err != nil {
 			return nil, err
 		}
-		node, err := e.encodeDocument(doc)
-		if err != nil {
-			return nil, err
-		}
+		// MarshalText produces a text-encoding, which needs to become a YAML
+		// string literal.
+		node := e.encodeString(string(doc), 1)
 		return node, nil
 	}
 

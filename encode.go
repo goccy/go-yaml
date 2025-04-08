@@ -400,6 +400,15 @@ func (e *Encoder) encodeByMarshaler(ctx context.Context, v reflect.Value, column
 		return e.encodeTime(t, column), nil
 	}
 
+	// Interestingly, *time.Time does not satisfy (time.Time) but the same rule
+	// does not apply for *time.Duration.
+	if t, ok := iface.(*time.Time); ok {
+		if t == nil {
+			return e.encodeValue(ctx, reflect.ValueOf(t), column)
+		}
+		return e.encodeTime(*t, column), nil
+	}
+
 	if t, ok := iface.(time.Duration); ok {
 		return e.encodeDuration(t, column), nil
 	}

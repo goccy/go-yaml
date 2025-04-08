@@ -1628,7 +1628,7 @@ func ExampleMarshal() {
 	// a: Hello speed demon
 	// b: 100
 	//
-	// field: 13
+	// field: "13"
 }
 
 type TextMarshalerIssue687 struct {

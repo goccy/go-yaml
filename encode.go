@@ -38,6 +38,7 @@ type Encoder struct {
 	anchorNameMap              map[string]struct{}
 	anchorCallback             func(*ast.AnchorNode, interface{}) error
 	customMarshalerMap         map[reflect.Type]func(interface{}) ([]byte, error)
+	omitEmpty                  bool
 	autoInt                    bool
 	useLiteralStyleIfMultiline bool
 	commentMap                 map[*Path][]*Comment
@@ -824,7 +825,7 @@ func (e *Encoder) encodeStruct(ctx context.Context, value reflect.Value, column 
 		}
 		fieldValue := value.FieldByName(field.Name)
 		structField := structFieldMap[field.Name]
-		if structField.IsOmitEmpty && e.isZeroValue(fieldValue) {
+		if (e.omitEmpty || structField.IsOmitEmpty) && e.isZeroValue(fieldValue) {
 			// omit encoding
 			continue
 		}

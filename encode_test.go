@@ -465,7 +465,7 @@ func TestEncoder(t *testing.T) {
 			nil,
 		},
 
-		// Conditional flag
+		// Omitempty flag.
 		{
 			"a: 1\n",
 			struct {
@@ -482,7 +482,6 @@ func TestEncoder(t *testing.T) {
 			}{0, 0},
 			nil,
 		},
-
 		{
 			"a:\n  \"y\": \"\"\n",
 			struct {
@@ -496,7 +495,6 @@ func TestEncoder(t *testing.T) {
 			}{}},
 			nil,
 		},
-
 		{
 			"a: {}\n",
 			struct {
@@ -510,7 +508,6 @@ func TestEncoder(t *testing.T) {
 			}{}},
 			nil,
 		},
-
 		{
 			"a: {x: 1}\n",
 			struct {
@@ -518,7 +515,6 @@ func TestEncoder(t *testing.T) {
 			}{&struct{ X, y int }{1, 2}},
 			nil,
 		},
-
 		{
 			"{}\n",
 			struct {
@@ -526,7 +522,6 @@ func TestEncoder(t *testing.T) {
 			}{nil},
 			nil,
 		},
-
 		{
 			"a: {x: 0}\n",
 			struct {
@@ -534,7 +529,6 @@ func TestEncoder(t *testing.T) {
 			}{&struct{ X, y int }{}},
 			nil,
 		},
-
 		{
 			"a: {x: 1}\n",
 			struct {
@@ -567,8 +561,29 @@ func TestEncoder(t *testing.T) {
 			},
 			nil,
 		},
+		// OmitEmpty global option.
+		{
+			"a: 1\n",
+			struct {
+				A int
+				B int `yaml:"b,omitempty"`
+			}{1, 0},
+			[]yaml.EncodeOption{
+				yaml.OmitEmpty(),
+			},
+		},
+		{
+			"{}\n",
+			struct {
+				A int
+				B int `yaml:"b,omitempty"`
+			}{0, 0},
+			[]yaml.EncodeOption{
+				yaml.OmitEmpty(),
+			},
+		},
 
-		// Flow flag
+		// Flow flag.
 		{
 			"a: [1, 2]\n",
 			struct {

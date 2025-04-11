@@ -401,6 +401,15 @@ func (e *Encoder) encodeByMarshaler(ctx context.Context, v reflect.Value, column
 		return e.encodeTime(t, column), nil
 	}
 
+	// Interestingly, *time.Time does not satisfy (time.Time) but the same rule
+	// does not apply for *time.Duration.
+	if t, ok := iface.(*time.Time); ok {
+		if t == nil {
+			return e.encodeValue(ctx, reflect.ValueOf(t), column)
+		}
+		return e.encodeTime(*t, column), nil
+	}
+
 	if t, ok := iface.(time.Duration); ok {
 		return e.encodeDuration(t, column), nil
 	}
@@ -410,10 +419,9 @@ func (e *Encoder) encodeByMarshaler(ctx context.Context, v reflect.Value, column
 		if err != nil {
 			return nil, err
 		}
-		node, err := e.encodeDocument(doc)
-		if err != nil {
-			return nil, err
-		}
+		// MarshalText produces a text-encoding, which needs to become a YAML
+		// string literal.
+		node := e.encodeString(string(doc), 1)
 		return node, nil
 	}
 

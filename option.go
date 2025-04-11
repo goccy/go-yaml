@@ -215,6 +215,15 @@ func AutoInt() EncodeOption {
 	}
 }
 
+// OmitEmpty forces the encoder to assume an `omitempty` struct tag is
+// set on all the fields. See `Marshal` commentary for the `omitempty` tag logic.
+func OmitEmpty() EncodeOption {
+	return func(e *Encoder) error {
+		e.omitEmpty = true
+		return nil
+	}
+}
+
 // CommentPosition type of the position for comment.
 type CommentPosition int
 

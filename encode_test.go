@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"net/netip"
 	"reflect"
 	"strconv"
 	"strings"
@@ -561,6 +562,18 @@ func TestEncoder(t *testing.T) {
 			},
 			nil,
 		},
+		// Highlighting differences of go-yaml omitempty vs std encoding/json
+		// omitempty. Encoding/json will emit the following fields: https://go.dev/play/p/VvNpdM0GD4d
+		{
+			"{}\n",
+			struct {
+				// This type has a custom IsZero method.
+				A netip.Addr         `yaml:"a,omitempty"`
+				B struct{ X, y int } `yaml:"b,omitempty"`
+			}{},
+			nil,
+		},
+
 		// OmitEmpty global option.
 		{
 			"a: 1\n",

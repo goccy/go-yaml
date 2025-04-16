@@ -108,6 +108,9 @@ func (s MapSlice) ToMap() map[interface{}]interface{} {
 //	             fields are zero, unless they implement an IsZero
 //	             method (see the IsZeroer interface type), in which
 //	             case the field will be included if that method returns true.
+//	             Note that this definition is slightly different from the Go's
+//	             encoding/json 'omitempty' definition. It combines some elements
+//	             of 'omitempty' and 'omitzero'. See https://github.com/goccy/go-yaml/issues/695.
 //
 //	flow         Marshal using a flow style (useful for structs,
 //	             sequences and maps).

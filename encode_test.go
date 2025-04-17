@@ -1588,10 +1588,6 @@ type FastMarshaler struct {
 	A string
 	B int
 }
-type TextMarshaler int64
-type TextMarshalerContainer struct {
-	Field TextMarshaler `yaml:"field"`
-}
 
 func (v SlowMarshaler) MarshalYAML() ([]byte, error) {
 	var buf bytes.Buffer
@@ -1608,6 +1604,11 @@ func (v FastMarshaler) MarshalYAML() (interface{}, error) {
 		{"a", v.A},
 		{"b", v.B},
 	}, nil
+}
+
+type TextMarshaler int64
+type TextMarshalerContainer struct {
+	Field TextMarshaler `yaml:"field"`
 }
 
 func (t TextMarshaler) MarshalText() ([]byte, error) {
@@ -1655,7 +1656,74 @@ func ExampleMarshal() {
 	// a: Hello speed demon
 	// b: 100
 	//
-	// field: 13
+	// field: "13"
+}
+
+type TextMarshalerIssue687 struct {
+	Field string `yaml:"field"`
+}
+
+// UnmarshalText implements the encoding.TextUnmarshaler.
+func (t *TextMarshalerIssue687) UnmarshalText(text []byte) error {
+	if string(text) == "" {
+		t.Field = "OBVIOUS NULL VALUE PLACEHOLDER"
+	} else {
+		t.Field = string(text)
+	}
+	return nil
+}
+
+// MarshalText implements the encoding.TextMarshaler.
+func (t *TextMarshalerIssue687) MarshalText() ([]byte, error) {
+	if t.Field == "OBVIOUS NULL VALUE PLACEHOLDER" {
+		return []byte(""), nil
+	}
+	return []byte(t.Field), nil
+}
+
+func TestIssue687(t *testing.T) {
+	tests := []TextMarshalerIssue687{
+		{"OBVIOUS NULL VALUE PLACEHOLDER"},
+		{"string-like field"},
+		{"- yaml\n- like\n- field\n"},
+		{"{ \"json\": \"like\", \"field\": 1 }"},
+	}
+	for _, test := range tests {
+		output, err := yaml.Marshal(&test)
+		if err != nil {
+			t.Fatalf("failed to marshal: %v", err)
+		}
+		roundtrip := TextMarshalerIssue687{}
+		err = yaml.Unmarshal(output, &roundtrip)
+		if err != nil {
+			t.Fatalf("failed to unmarshal roundtrip: %v\noutput:\n%s", err, string(output))
+		}
+		if test.Field != roundtrip.Field {
+			t.Fatalf("textmarshaller roundtrip failed:\nexpected:\n%s\ngot:\n%s\noutput:\n%s", test.Field, roundtrip.Field, string(output))
+		}
+	}
+}
+
+type ByteMarshaller []byte
+
+func (b ByteMarshaller) MarshalYAML() ([]byte, error) {
+	return b, nil
+}
+
+func TestIssue687NilValuesNodes(t *testing.T) {
+	test := ByteMarshaller{}
+	output, err := yaml.Marshal(&test)
+	if err != nil {
+		t.Fatalf("failed to marshal: %v", err)
+	}
+	roundtrip := ByteMarshaller{}
+	err = yaml.Unmarshal(output, &roundtrip)
+	if err != nil {
+		t.Fatalf("failed to unmarshal roundtrip: %v", err)
+	}
+	if !bytes.Equal(roundtrip, test) {
+		t.Fatalf("roundtrip failed:\nexpected:\n%v\ngot:\n%v\n", test, roundtrip)
+	}
 }
 
 func TestIssue356(t *testing.T) {

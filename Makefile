@@ -6,6 +6,7 @@ $(LOCALBIN):
 	mkdir -p $(LOCALBIN)
 
 .PHONY: testmod
+testmod:
 	cp go.mod testdata/go_test.mod
 	go mod tidy -modfile=$(TESTMOD)
 

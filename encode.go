@@ -330,7 +330,7 @@ func (e *Encoder) canEncodeByMarshaler(v reflect.Value) bool {
 		return true
 	case InterfaceMarshaler:
 		return true
-	case time.Time:
+	case time.Time, *time.Time:
 		return true
 	case time.Duration:
 		return true
@@ -400,20 +400,21 @@ func (e *Encoder) encodeByMarshaler(ctx context.Context, v reflect.Value, column
 	if t, ok := iface.(time.Time); ok {
 		return e.encodeTime(t, column), nil
 	}
+	// Handle *time.Time explicitly since it implements TextMarshaler and shouldn't be treated as plain text
+	if t, ok := iface.(*time.Time); ok && t != nil {
+		return e.encodeTime(*t, column), nil
+	}
 
 	if t, ok := iface.(time.Duration); ok {
 		return e.encodeDuration(t, column), nil
 	}
 
 	if marshaler, ok := iface.(encoding.TextMarshaler); ok {
-		doc, err := marshaler.MarshalText()
+		text, err := marshaler.MarshalText()
 		if err != nil {
 			return nil, err
 		}
-		node, err := e.encodeDocument(doc)
-		if err != nil {
-			return nil, err
-		}
+		node := e.encodeString(string(text), column)
 		return node, nil
 	}
 

@@ -251,10 +251,7 @@ func (p *Printer) isNewLineLastChar(s string) bool {
 }
 
 func (p *Printer) printBeforeTokens(tk *token.Token, minLine, extLine int) token.Tokens {
-	for {
-		if tk.Prev == nil {
-			break
-		}
+	for tk.Prev != nil {
 		if tk.Prev.Position.Line < minLine {
 			break
 		}

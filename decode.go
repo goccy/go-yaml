@@ -295,7 +295,7 @@ func (d *Decoder) addSequenceNodeCommentToMap(node *ast.SequenceNode) {
 func (d *Decoder) addFootCommentToMap(node ast.Node) {
 	var (
 		footComment     *ast.CommentGroupNode
-		footCommentPath string = node.GetPath()
+		footCommentPath = node.GetPath()
 	)
 	switch n := node.(type) {
 	case *ast.SequenceNode:

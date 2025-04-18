@@ -49,11 +49,11 @@ fmt: golangci-lint ## Ensure consistent code style
 GOLANGCI_LINT ?= $(LOCALBIN)/golangci-lint
 
 ## Tool Versions
-GOLANGCI_VERSION := 1.61.0
+GOLANGCI_VERSION := 2.1.2
 
 .PHONY: golangci-lint
 .PHONY: $(GOLANGCI_LINT)
 golangci-lint: $(GOLANGCI_LINT) ## Download golangci-lint locally if necessary.
 $(GOLANGCI_LINT): $(LOCALBIN)
-	@test -s $(LOCALBIN)/golangci-lint && $(LOCALBIN)/golangci-lint version --format short | grep -q $(GOLANGCI_VERSION) || \
+	@test -s $(LOCALBIN)/golangci-lint && $(LOCALBIN)/golangci-lint version --short | grep -q $(GOLANGCI_VERSION) || \
 	curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(LOCALBIN) v$(GOLANGCI_VERSION)

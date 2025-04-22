@@ -44,7 +44,7 @@ func structField(field reflect.StructField) *StructField {
 			fieldName = options[0]
 		}
 	}
-	structField := &StructField{
+	sf := &StructField{
 		FieldName:  field.Name,
 		RenderName: fieldName,
 	}
@@ -52,30 +52,30 @@ func structField(field reflect.StructField) *StructField {
 		for _, opt := range options[1:] {
 			switch {
 			case opt == "omitempty":
-				structField.IsOmitEmpty = true
+				sf.IsOmitEmpty = true
 			case opt == "flow":
-				structField.IsFlow = true
+				sf.IsFlow = true
 			case opt == "inline":
-				structField.IsInline = true
+				sf.IsInline = true
 			case strings.HasPrefix(opt, "anchor"):
 				anchor := strings.Split(opt, "=")
 				if len(anchor) > 1 {
-					structField.AnchorName = anchor[1]
+					sf.AnchorName = anchor[1]
 				} else {
-					structField.IsAutoAnchor = true
+					sf.IsAutoAnchor = true
 				}
 			case strings.HasPrefix(opt, "alias"):
 				alias := strings.Split(opt, "=")
 				if len(alias) > 1 {
-					structField.AliasName = alias[1]
+					sf.AliasName = alias[1]
 				} else {
-					structField.IsAutoAlias = true
+					sf.IsAutoAlias = true
 				}
 			default:
 			}
 		}
 	}
-	return structField
+	return sf
 }
 
 func isIgnoredStructField(field reflect.StructField) bool {
@@ -107,19 +107,19 @@ func (m StructFieldMap) hasMergeProperty() bool {
 }
 
 func structFieldMap(structType reflect.Type) (StructFieldMap, error) {
-	structFieldMap := StructFieldMap{}
+	fieldMap := StructFieldMap{}
 	renderNameMap := map[string]struct{}{}
 	for i := 0; i < structType.NumField(); i++ {
 		field := structType.Field(i)
 		if isIgnoredStructField(field) {
 			continue
 		}
-		structField := structField(field)
-		if _, exists := renderNameMap[structField.RenderName]; exists {
-			return nil, fmt.Errorf("duplicated struct field name %s", structField.RenderName)
+		sf := structField(field)
+		if _, exists := renderNameMap[sf.RenderName]; exists {
+			return nil, fmt.Errorf("duplicated struct field name %s", sf.RenderName)
 		}
-		structFieldMap[structField.FieldName] = structField
-		renderNameMap[structField.RenderName] = struct{}{}
+		fieldMap[sf.FieldName] = sf
+		renderNameMap[sf.RenderName] = struct{}{}
 	}
-	return structFieldMap, nil
+	return fieldMap, nil
 }

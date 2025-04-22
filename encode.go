@@ -604,12 +604,8 @@ func (e *Encoder) encodeBool(v bool) *ast.BoolNode {
 func (e *Encoder) encodeSlice(ctx context.Context, value reflect.Value) (*ast.SequenceNode, error) {
 	if e.indentSequence {
 		e.column += e.indentNum
+		defer func() { e.column -= e.indentNum }()
 	}
-	defer func() {
-		if e.indentSequence {
-			e.column -= e.indentNum
-		}
-	}()
 	column := e.column
 	sequence := ast.Sequence(token.New("-", "-", e.pos(column)), e.isFlowStyle)
 	for i := 0; i < value.Len(); i++ {
@@ -625,12 +621,8 @@ func (e *Encoder) encodeSlice(ctx context.Context, value reflect.Value) (*ast.Se
 func (e *Encoder) encodeArray(ctx context.Context, value reflect.Value) (*ast.SequenceNode, error) {
 	if e.indentSequence {
 		e.column += e.indentNum
+		defer func() { e.column -= e.indentNum }()
 	}
-	defer func() {
-		if e.indentSequence {
-			e.column -= e.indentNum
-		}
-	}()
 	column := e.column
 	sequence := ast.Sequence(token.New("-", "-", e.pos(column)), e.isFlowStyle)
 	for i := 0; i < value.Len(); i++ {
@@ -666,11 +658,11 @@ func (e *Encoder) encodeMapItem(ctx context.Context, item MapItem, column int) (
 func (e *Encoder) encodeMapSlice(ctx context.Context, value MapSlice, column int) (*ast.MappingNode, error) {
 	node := ast.Mapping(token.New("", "", e.pos(column)), e.isFlowStyle)
 	for _, item := range value {
-		value, err := e.encodeMapItem(ctx, item, column)
+		encoded, err := e.encodeMapItem(ctx, item, column)
 		if err != nil {
 			return nil, err
 		}
-		node.Values = append(node.Values, value)
+		node.Values = append(node.Values, encoded)
 	}
 	return node, nil
 }
@@ -697,15 +689,15 @@ func (e *Encoder) encodeMap(ctx context.Context, value reflect.Value, column int
 	for _, key := range keys {
 		k := reflect.ValueOf(key)
 		v := value.MapIndex(k)
-		value, err := e.encodeValue(ctx, v, column)
+		encoded, err := e.encodeValue(ctx, v, column)
 		if err != nil {
 			return nil, err
 		}
-		if e.isMapNode(value) {
-			value.AddColumn(e.indentNum)
+		if e.isMapNode(encoded) {
+			encoded.AddColumn(e.indentNum)
 		}
-		if e.isTagAndMapNode(value) {
-			value.AddColumn(e.indentNum)
+		if e.isTagAndMapNode(encoded) {
+			encoded.AddColumn(e.indentNum)
 		}
 		keyText := fmt.Sprint(key)
 		vRef := e.toPointer(v)
@@ -715,13 +707,13 @@ func (e *Encoder) encodeMap(ctx context.Context, value reflect.Value, column int
 			anchorName := aliasName
 			anchorNode := ast.Anchor(token.New("&", "&", e.pos(column)))
 			anchorNode.Name = ast.String(token.New(anchorName, anchorName, e.pos(column)))
-			anchorNode.Value = value
-			value = anchorNode
+			anchorNode.Value = encoded
+			encoded = anchorNode
 		}
 		node.Values = append(node.Values, ast.MappingValue(
 			nil,
 			e.encodeString(keyText, column),
-			value,
+			encoded,
 		))
 		e.setSmartAnchor(vRef, keyText)
 	}
@@ -812,7 +804,7 @@ func (e *Encoder) encodeAnchor(anchorName string, value ast.Node, fieldValue ref
 func (e *Encoder) encodeStruct(ctx context.Context, value reflect.Value, column int) (ast.Node, error) {
 	node := ast.Mapping(token.New("", "", e.pos(column)), e.isFlowStyle)
 	structType := value.Type()
-	structFieldMap, err := structFieldMap(structType)
+	fieldMap, err := structFieldMap(structType)
 	if err != nil {
 		return nil, err
 	}
@@ -824,85 +816,85 @@ func (e *Encoder) encodeStruct(ctx context.Context, value reflect.Value, column 
 			continue
 		}
 		fieldValue := value.FieldByName(field.Name)
-		structField := structFieldMap[field.Name]
-		if (e.omitEmpty || structField.IsOmitEmpty) && e.isZeroValue(fieldValue) {
+		sf := fieldMap[field.Name]
+		if (e.omitEmpty || sf.IsOmitEmpty) && e.isZeroValue(fieldValue) {
 			// omit encoding
 			continue
 		}
 		ve := e
-		if !e.isFlowStyle && structField.IsFlow {
+		if !e.isFlowStyle && sf.IsFlow {
 			ve = &Encoder{}
 			*ve = *e
 			ve.isFlowStyle = true
 		}
-		value, err := ve.encodeValue(ctx, fieldValue, column)
+		encoded, err := ve.encodeValue(ctx, fieldValue, column)
 		if err != nil {
 			return nil, err
 		}
-		if e.isMapNode(value) {
-			value.AddColumn(e.indentNum)
+		if e.isMapNode(encoded) {
+			encoded.AddColumn(e.indentNum)
 		}
-		var key ast.MapKeyNode = e.encodeString(structField.RenderName, column)
+		var key ast.MapKeyNode = e.encodeString(sf.RenderName, column)
 		switch {
-		case value.Type() == ast.AliasType:
-			if aliasName := structField.AliasName; aliasName != "" {
-				alias, ok := value.(*ast.AliasNode)
+		case encoded.Type() == ast.AliasType:
+			if aliasName := sf.AliasName; aliasName != "" {
+				alias, ok := encoded.(*ast.AliasNode)
 				if !ok {
-					return nil, errors.ErrUnexpectedNodeType(value.Type(), ast.AliasType, value.GetToken())
+					return nil, errors.ErrUnexpectedNodeType(encoded.Type(), ast.AliasType, encoded.GetToken())
 				}
 				got := alias.Value.String()
 				if aliasName != got {
 					return nil, fmt.Errorf("expected alias name is %q but got %q", aliasName, got)
 				}
 			}
-			if structField.IsInline {
+			if sf.IsInline {
 				// if both used alias and inline, output `<<: *alias`
 				key = ast.MergeKey(token.New("<<", "<<", e.pos(column)))
 			}
-		case structField.AnchorName != "":
-			anchorNode, err := e.encodeAnchor(structField.AnchorName, value, fieldValue, column)
+		case sf.AnchorName != "":
+			anchorNode, err := e.encodeAnchor(sf.AnchorName, encoded, fieldValue, column)
 			if err != nil {
 				return nil, err
 			}
-			value = anchorNode
-		case structField.IsInline:
-			isAutoAnchor := structField.IsAutoAnchor
+			encoded = anchorNode
+		case sf.IsInline:
+			isAutoAnchor := sf.IsAutoAnchor
 			if !hasInlineAnchorField {
 				hasInlineAnchorField = isAutoAnchor
 			}
 			if isAutoAnchor {
 				inlineAnchorValue = fieldValue
 			}
-			mapNode, ok := value.(ast.MapNode)
+			mapNode, ok := encoded.(ast.MapNode)
 			if !ok {
 				// if an inline field is null, skip encoding it
-				if _, ok := value.(*ast.NullNode); ok {
+				if _, ok := encoded.(*ast.NullNode); ok {
 					continue
 				}
 				return nil, errors.New("inline value is must be map or struct type")
 			}
 			mapIter := mapNode.MapRange()
 			for mapIter.Next() {
-				key := mapIter.Key()
-				value := mapIter.Value()
-				keyName := key.GetToken().Value
-				if structFieldMap.isIncludedRenderName(keyName) {
-					// if declared same key name, skip encoding this field
+				mapKey := mapIter.Key()
+				mapValue := mapIter.Value()
+				keyName := mapKey.GetToken().Value
+				if fieldMap.isIncludedRenderName(keyName) {
+					// if declared the same key name, skip encoding this field
 					continue
 				}
-				key.AddColumn(-e.indentNum)
-				value.AddColumn(-e.indentNum)
-				node.Values = append(node.Values, ast.MappingValue(nil, key, value))
+				mapKey.AddColumn(-e.indentNum)
+				mapValue.AddColumn(-e.indentNum)
+				node.Values = append(node.Values, ast.MappingValue(nil, mapKey, mapValue))
 			}
 			continue
-		case structField.IsAutoAnchor:
-			anchorNode, err := e.encodeAnchor(structField.RenderName, value, fieldValue, column)
+		case sf.IsAutoAnchor:
+			anchorNode, err := e.encodeAnchor(sf.RenderName, encoded, fieldValue, column)
 			if err != nil {
 				return nil, err
 			}
-			value = anchorNode
+			encoded = anchorNode
 		}
-		node.Values = append(node.Values, ast.MappingValue(nil, key, value))
+		node.Values = append(node.Values, ast.MappingValue(nil, key, encoded))
 	}
 	if hasInlineAnchorField {
 		node.AddColumn(e.indentNum)

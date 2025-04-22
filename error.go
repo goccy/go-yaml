@@ -26,6 +26,7 @@ type (
 	DuplicateKeyError       = errors.DuplicateKeyError
 	UnknownFieldError       = errors.UnknownFieldError
 	UnexpectedNodeTypeError = errors.UnexpectedNodeTypeError
+	UnmarshalerError        = errors.UnmarshalerError
 	Error                   = errors.Error
 )
 

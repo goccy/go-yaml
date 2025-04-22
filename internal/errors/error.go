@@ -35,6 +35,7 @@ var (
 	_ Error = new(DuplicateKeyError)
 	_ Error = new(UnknownFieldError)
 	_ Error = new(UnexpectedNodeTypeError)
+	_ Error = new(UnmarshalerError)
 )
 
 type SyntaxError struct {
@@ -69,6 +70,12 @@ type UnexpectedNodeTypeError struct {
 	Actual   ast.NodeType
 	Expected ast.NodeType
 	Token    *token.Token
+}
+
+type UnmarshalerError struct {
+	Wrapped error
+	DstType reflect.Type
+	Token   *token.Token
 }
 
 // ErrSyntax create syntax error instance with message and token
@@ -118,6 +125,17 @@ func ErrUnexpectedNodeType(actual, expected ast.NodeType, tk *token.Token) *Unex
 		Actual:   actual,
 		Expected: expected,
 		Token:    tk,
+	}
+}
+
+func ErrUnmarshal(wrapped error, dstType reflect.Type, tk *token.Token) *UnmarshalerError {
+	if wrapped == nil {
+		return nil
+	}
+	return &UnmarshalerError{
+		Wrapped: wrapped,
+		DstType: dstType,
+		Token:   tk,
 	}
 }
 
@@ -230,6 +248,30 @@ func (e *UnexpectedNodeTypeError) FormatError(colored, inclSource bool) string {
 
 func (e *UnexpectedNodeTypeError) msg() string {
 	return fmt.Sprintf("%s was used where %s is expected", e.Actual.YAMLName(), e.Expected.YAMLName())
+}
+
+func (e *UnmarshalerError) GetMessage() string {
+	return e.msg()
+}
+
+func (e *UnmarshalerError) GetToken() *token.Token {
+	return e.Token
+}
+
+func (e *UnmarshalerError) Error() string {
+	return e.FormatError(defaultFormatColor, defaultIncludeSource)
+}
+
+func (e *UnmarshalerError) FormatError(colored, inclSource bool) string {
+	return FormatError(e.msg(), e.Token, colored, inclSource)
+}
+
+func (e *UnmarshalerError) Unwrap() error {
+	return e.Wrapped
+}
+
+func (e *UnmarshalerError) msg() string {
+	return fmt.Sprintf("cannot unmarshal into Go value of type %s: %s", e.DstType, e.Wrapped.Error())
 }
 
 func FormatError(errMsg string, token *token.Token, colored, inclSource bool) string {

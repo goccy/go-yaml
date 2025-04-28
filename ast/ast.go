@@ -262,13 +262,6 @@ func (n *BaseNode) SetComment(node *CommentGroupNode) error {
 	return nil
 }
 
-func min(a, b int) int {
-	if a < b {
-		return a
-	}
-	return b
-}
-
 func readNode(p []byte, node Node) (int, error) {
 	s := node.String()
 	readLen := node.readLen()
@@ -537,15 +530,12 @@ func (f *File) Read(p []byte) (int, error) {
 
 // String all documents to text
 func (f *File) String() string {
-	docs := []string{}
+	var docs strings.Builder
 	for _, doc := range f.Docs {
-		docs = append(docs, doc.String())
+		docs.WriteString(doc.String())
+		docs.WriteByte('\n')
 	}
-	if len(docs) > 0 {
-		return strings.Join(docs, "\n") + "\n"
-	} else {
-		return ""
-	}
+	return docs.String()
 }
 
 // DocumentNode type of Document
@@ -578,17 +568,23 @@ func (d *DocumentNode) AddColumn(col int) {
 
 // String document to text
 func (d *DocumentNode) String() string {
-	doc := []string{}
+	var doc strings.Builder
 	if d.Start != nil {
-		doc = append(doc, d.Start.Value)
+		doc.WriteString(d.Start.Value)
 	}
 	if d.Body != nil {
-		doc = append(doc, d.Body.String())
+		if d.Start != nil {
+			doc.WriteByte('\n')
+		}
+		doc.WriteString(d.Body.String())
 	}
 	if d.End != nil {
-		doc = append(doc, d.End.Value)
+		if d.Start != nil || d.Body != nil {
+			doc.WriteByte('\n')
+		}
+		doc.WriteString(d.End.Value)
 	}
-	return strings.Join(doc, "\n")
+	return doc.String()
 }
 
 // MarshalYAML encodes to a YAML text
@@ -825,7 +821,7 @@ func (n *StringNode) String() string {
 		header := token.LiteralBlockHeader(n.Value)
 		space := strings.Repeat(" ", n.Token.Position.Column-1)
 		indent := strings.Repeat(" ", n.Token.Position.IndentNum)
-		values := []string{}
+		values := make([]string, 0, len(n.Value))
 		for _, v := range strings.Split(n.Value, lbc) {
 			values = append(values, fmt.Sprintf("%s%s%s", space, indent, v))
 		}
@@ -857,7 +853,7 @@ func (n *StringNode) stringWithoutComment() string {
 		header := token.LiteralBlockHeader(n.Value)
 		space := strings.Repeat(" ", n.Token.Position.Column-1)
 		indent := strings.Repeat(" ", n.Token.Position.IndentNum)
-		values := []string{}
+		values := make([]string, 0, len(n.Value))
 		for _, v := range strings.Split(n.Value, lbc) {
 			values = append(values, fmt.Sprintf("%s%s%s", space, indent, v))
 		}
@@ -1239,25 +1235,26 @@ func (n *MappingNode) AddColumn(col int) {
 }
 
 func (n *MappingNode) flowStyleString(commentMode bool) string {
-	values := []string{}
-	for _, value := range n.Values {
-		values = append(values, strings.TrimLeft(value.String(), " "))
+	var mapText strings.Builder
+	mapText.WriteByte('{')
+	for i, value := range n.Values {
+		mapText.WriteString(strings.TrimLeft(value.String(), " "))
+		if i != len(n.Values)-1 {
+			mapText.WriteString(", ")
+		}
 	}
-	mapText := fmt.Sprintf("{%s}", strings.Join(values, ", "))
+	mapText.WriteByte('}')
 	if commentMode && n.Comment != nil {
-		return addCommentString(mapText, n.Comment)
+		mapText.WriteByte(' ')
+		mapText.WriteString(n.Comment.String())
 	}
-	return mapText
+	return mapText.String()
 }
 
 func (n *MappingNode) blockStyleString(commentMode bool) string {
-	values := []string{}
-	for _, value := range n.Values {
-		values = append(values, value.String())
-	}
-	mapText := strings.Join(values, "\n")
+	var mapText strings.Builder
 	if commentMode && n.Comment != nil {
-		value := values[0]
+		value := n.Values[0].String()
 		var spaceNum int
 		for i := 0; i < len(value); i++ {
 			if value[i] != ' ' {
@@ -1266,9 +1263,16 @@ func (n *MappingNode) blockStyleString(commentMode bool) string {
 			spaceNum++
 		}
 		comment := n.Comment.StringWithSpace(spaceNum)
-		return fmt.Sprintf("%s\n%s", comment, mapText)
+		mapText.WriteString(comment)
+		mapText.WriteByte('\n')
 	}
-	return mapText
+	for i, value := range n.Values {
+		mapText.WriteString(value.String())
+		if i != len(n.Values)-1 {
+			mapText.WriteByte('\n')
+		}
+	}
+	return mapText.String()
 }
 
 // String mapping values to text
@@ -1412,20 +1416,17 @@ func (n *MappingValueNode) SetIsFlowStyle(isFlow bool) {
 
 // String mapping value to text
 func (n *MappingValueNode) String() string {
-	var text string
+	var text strings.Builder
 	if n.Comment != nil {
-		text = fmt.Sprintf(
-			"%s\n%s",
-			n.Comment.StringWithSpace(n.Key.GetToken().Position.Column-1),
-			n.toString(),
-		)
-	} else {
-		text = n.toString()
+		text.WriteString(n.Comment.StringWithSpace(n.Key.GetToken().Position.Column - 1))
+		text.WriteByte('\n')
 	}
+	text.WriteString(n.toString())
 	if n.FootComment != nil {
-		text += fmt.Sprintf("\n%s", n.FootComment.StringWithSpace(n.Key.GetToken().Position.Column-1))
+		text.WriteByte('\n')
+		text.WriteString(n.FootComment.StringWithSpace(n.Key.GetToken().Position.Column - 1))
 	}
-	return text
+	return text.String()
 }
 
 func (n *MappingValueNode) toString() string {
@@ -1436,49 +1437,66 @@ func (n *MappingValueNode) toString() string {
 	keyIndentLevel := n.Key.GetToken().Position.IndentLevel
 	valueIndentLevel := n.Value.GetToken().Position.IndentLevel
 	keyComment := n.Key.GetComment()
-	if _, ok := n.Value.(ScalarNode); ok {
-		return fmt.Sprintf("%s%s: %s", space, n.Key.String(), n.Value.String())
-	} else if keyIndentLevel < valueIndentLevel && !n.IsFlowStyle {
-		if keyComment != nil {
-			return fmt.Sprintf(
-				"%s%s: %s\n%s",
-				space,
-				n.Key.stringWithoutComment(),
-				keyComment.String(),
-				n.Value.String(),
-			)
+
+	var text strings.Builder
+	text.WriteString(space)
+
+	switch v := n.Value.(type) {
+	case ScalarNode, *AnchorNode, *AliasNode, *TagNode:
+		text.WriteString(n.Key.String())
+		text.WriteString(": ")
+		text.WriteString(n.Value.String())
+		return text.String()
+	case *MappingNode:
+		if v.IsFlowStyle || len(v.Values) == 0 {
+			text.WriteString(n.Key.String())
+			text.WriteString(": ")
+			text.WriteString(n.Value.String())
+			return text.String()
 		}
-		return fmt.Sprintf("%s%s:\n%s", space, n.Key.String(), n.Value.String())
-	} else if m, ok := n.Value.(*MappingNode); ok && (m.IsFlowStyle || len(m.Values) == 0) {
-		return fmt.Sprintf("%s%s: %s", space, n.Key.String(), n.Value.String())
-	} else if s, ok := n.Value.(*SequenceNode); ok && (s.IsFlowStyle || len(s.Values) == 0) {
-		return fmt.Sprintf("%s%s: %s", space, n.Key.String(), n.Value.String())
-	} else if _, ok := n.Value.(*AnchorNode); ok {
-		return fmt.Sprintf("%s%s: %s", space, n.Key.String(), n.Value.String())
-	} else if _, ok := n.Value.(*AliasNode); ok {
-		return fmt.Sprintf("%s%s: %s", space, n.Key.String(), n.Value.String())
-	} else if _, ok := n.Value.(*TagNode); ok {
-		return fmt.Sprintf("%s%s: %s", space, n.Key.String(), n.Value.String())
+		if v.Comment != nil {
+			text.WriteString(n.Key.String())
+			text.WriteString(": ")
+			text.WriteString(strings.TrimLeft(n.Value.String(), " "))
+			return text.String()
+		}
+	case *SequenceNode:
+		if v.IsFlowStyle || len(v.Values) == 0 {
+			text.WriteString(n.Key.String())
+			text.WriteString(": ")
+			text.WriteString(n.Value.String())
+			return text.String()
+		}
+	}
+	if keyIndentLevel < valueIndentLevel && !n.IsFlowStyle {
+		if keyComment != nil {
+			text.WriteString(n.Key.stringWithoutComment())
+			text.WriteString(": ")
+			text.WriteString(keyComment.String())
+			text.WriteByte('\n')
+			text.WriteString(n.Value.String())
+			return text.String()
+		}
+
+		text.WriteString(n.Key.String())
+		text.WriteString(":\n")
+		text.WriteString(n.Value.String())
+		return text.String()
 	}
 
 	if keyComment != nil {
-		return fmt.Sprintf(
-			"%s%s: %s\n%s",
-			space,
-			n.Key.stringWithoutComment(),
-			keyComment.String(),
-			n.Value.String(),
-		)
+		text.WriteString(n.Key.stringWithoutComment())
+		text.WriteString(": ")
+		text.WriteString(keyComment.String())
+		text.WriteByte('\n')
+		text.WriteString(n.Value.String())
+		return text.String()
 	}
-	if m, ok := n.Value.(*MappingNode); ok && m.Comment != nil {
-		return fmt.Sprintf(
-			"%s%s: %s",
-			space,
-			n.Key.String(),
-			strings.TrimLeft(n.Value.String(), " "),
-		)
-	}
-	return fmt.Sprintf("%s%s:\n%s", space, n.Key.String(), n.Value.String())
+
+	text.WriteString(n.Key.String())
+	text.WriteString(":\n")
+	text.WriteString(n.Value.String())
+	return text.String()
 }
 
 // MapRange implements MapNode protocol
@@ -1599,11 +1617,16 @@ func (n *SequenceNode) AddColumn(col int) {
 }
 
 func (n *SequenceNode) flowStyleString() string {
-	values := []string{}
-	for _, value := range n.Values {
-		values = append(values, value.String())
+	var text strings.Builder
+	text.WriteByte('[')
+	for i, value := range n.Values {
+		text.WriteString(value.String())
+		if i != len(n.Values)-1 {
+			text.WriteString(", ")
+		}
 	}
-	return fmt.Sprintf("[%s]", strings.Join(values, ", "))
+	text.WriteByte(']')
+	return text.String()
 }
 
 func (n *SequenceNode) blockStyleString() string {
@@ -1937,11 +1960,13 @@ func (n *DirectiveNode) AddColumn(col int) {
 
 // String directive to text
 func (n *DirectiveNode) String() string {
-	values := make([]string, 0, len(n.Values))
+	var text strings.Builder
+	text.WriteString("%" + n.Name.String())
 	for _, val := range n.Values {
-		values = append(values, val.String())
+		text.WriteByte(' ')
+		text.WriteString(val.String())
 	}
-	return strings.Join(append([]string{"%" + n.Name.String()}, values...), " ")
+	return text.String()
 }
 
 // MarshalYAML encodes to a YAML text
@@ -2093,24 +2118,31 @@ func (n *CommentGroupNode) AddColumn(col int) {
 
 // String comment to text
 func (n *CommentGroupNode) String() string {
-	values := []string{}
-	for _, comment := range n.Comments {
-		values = append(values, comment.String())
+	var text strings.Builder
+	for i, comment := range n.Comments {
+		text.WriteString(comment.String())
+		if i != len(n.Comments)-1 {
+			text.WriteByte('\n')
+		}
 	}
-	return strings.Join(values, "\n")
+	return text.String()
 }
 
 func (n *CommentGroupNode) StringWithSpace(col int) string {
-	values := []string{}
+	var text strings.Builder
 	space := strings.Repeat(" ", col)
-	for _, comment := range n.Comments {
+	for i, comment := range n.Comments {
 		space := space
 		if checkLineBreak(comment.Token) {
 			space = fmt.Sprintf("%s%s", "\n", space)
 		}
-		values = append(values, space+comment.String())
+		text.WriteString(space)
+		text.WriteString(comment.String())
+		if i != len(n.Comments)-1 {
+			text.WriteByte('\n')
+		}
 	}
-	return strings.Join(values, "\n")
+	return text.String()
 }
 
 // MarshalYAML encodes to a YAML text

@@ -237,7 +237,7 @@ func (d *Decoder) addHeadOrLineCommentToMap(node ast.Node) {
 	if commentGroup == nil {
 		return
 	}
-	texts := []string{}
+	texts := make([]string, 0, len(commentGroup.Comments))
 	targetLine := node.GetToken().Position.Line
 	minCommentLine := math.MaxInt
 	for _, comment := range commentGroup.Comments {
@@ -317,7 +317,7 @@ func (d *Decoder) addFootCommentToMap(node ast.Node) {
 	if footComment == nil {
 		return
 	}
-	var texts []string
+	texts := make([]string, 0, len(footComment.Comments))
 	for _, comment := range footComment.Comments {
 		texts = append(texts, comment.Token.Value)
 	}

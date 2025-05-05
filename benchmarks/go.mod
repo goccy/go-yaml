@@ -1,8 +1,8 @@
-module benchmarks
+module github.com/goccy/go-yaml/benchmarks
 
-go 1.12
+go 1.21.0
 
-replace github.com/goccy/go-yaml => ../
+replace github.com/goccy/go-yaml => ..
 
 require (
 	github.com/goccy/go-yaml v0.0.0-00010101000000-000000000000

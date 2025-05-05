@@ -22,6 +22,16 @@ import (
 var zero = 0
 var emptyStr = ""
 
+type TestTextMarshaler string
+
+func (t TestTextMarshaler) MarshalText() ([]byte, error) {
+	return []byte(t), nil
+}
+
+type TestTextUnmarshalerContainer struct {
+	V TestTextMarshaler
+}
+
 func TestEncoder(t *testing.T) {
 	tests := []struct {
 		source  string
@@ -729,6 +739,31 @@ func TestEncoder(t *testing.T) {
 		{
 			"v: 30s\n",
 			map[string]time.Duration{"v": 30 * time.Second},
+			nil,
+		},
+		{
+			"v: 30s\n",
+			map[string]*time.Duration{"v": ptr(30 * time.Second)},
+			nil,
+		},
+		{
+			"v: null\n",
+			map[string]*time.Duration{"v": nil},
+			nil,
+		},
+		{
+			"v: test\n",
+			TestTextUnmarshalerContainer{V: "test"},
+			nil,
+		},
+		{
+			"v: \"1\"\n",
+			TestTextUnmarshalerContainer{V: "1"},
+			nil,
+		},
+		{
+			"v: \"#\"\n",
+			TestTextUnmarshalerContainer{V: "#"},
 			nil,
 		},
 		// Quote style
@@ -1655,7 +1690,7 @@ func ExampleMarshal() {
 	// a: Hello speed demon
 	// b: 100
 	//
-	// field: 13
+	// field: "13"
 }
 
 func TestIssue356(t *testing.T) {
@@ -1938,4 +1973,8 @@ a: &anc !mytag
 			}
 		})
 	}
+}
+
+func ptr[T any](v T) *T {
+	return &v
 }

@@ -1453,7 +1453,10 @@ func (d *Decoder) decodeStruct(ctx context.Context, dst reflect.Value, src ast.N
 					node, exists := keyToNodeMap[structField.RenderName]
 					if exists {
 						// TODO: to make FieldError message cutomizable
-						return errors.ErrSyntax(fmt.Sprintf("%s", err), node.GetToken())
+						return errors.ErrSyntax(
+							fmt.Sprintf("%s", err),
+							d.getParentMapTokenIfExistsForValidationError(node.Type(), node.GetToken()),
+						)
 					} else if t := src.GetToken(); t != nil && t.Prev != nil && t.Prev.Prev != nil {
 						// A missing required field will not be in the keyToNodeMap
 						// the error needs to be associated with the parent of the source node
@@ -1465,6 +1468,37 @@ func (d *Decoder) decodeStruct(ctx context.Context, dst reflect.Value, src ast.N
 		}
 	}
 	return nil
+}
+
+// getParentMapTokenIfExists if the NodeType is a container type such as MappingType or SequenceType,
+// it is necessary to return the parent MapNode's colon token to represent the entire container.
+func (d *Decoder) getParentMapTokenIfExistsForValidationError(typ ast.NodeType, tk *token.Token) *token.Token {
+	if tk == nil {
+		return nil
+	}
+	if typ == ast.MappingType {
+		// map:
+		//   key: value
+		//      ^ current token ( colon )
+		if tk.Prev == nil {
+			return tk
+		}
+		key := tk.Prev
+		if key.Prev == nil {
+			return tk
+		}
+		return key.Prev
+	}
+	if typ == ast.SequenceType {
+		// map:
+		//   - value
+		//   ^ current token ( sequence entry )
+		if tk.Prev == nil {
+			return tk
+		}
+		return tk.Prev
+	}
+	return tk
 }
 
 func (d *Decoder) decodeArray(ctx context.Context, dst reflect.Value, src ast.Node) error {

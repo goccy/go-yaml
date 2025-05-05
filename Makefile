@@ -5,17 +5,13 @@ TESTMOD := testdata/go_test.mod
 $(LOCALBIN):
 	mkdir -p $(LOCALBIN)
 
-.PHONY: testmod
-	cp go.mod testdata/go_test.mod
-	go mod tidy -modfile=$(TESTMOD)
-
 .PHONY: test
-test: testmod
+test:
 	go test -v -race ./...
 	go test -v -race ./testdata -modfile=$(TESTMOD)
 
 .PHONY: simple-test
-simple-test: testmod
+simple-test:
 	go test -v ./...
 	go test -v ./testdata -modfile=$(TESTMOD)
 
@@ -24,7 +20,7 @@ fuzz:
 	go test -fuzz=Fuzz -fuzztime 60s
 
 .PHONY: cover
-cover: testmod
+cover:
 	go test -coverpkg=.,./ast,./lexer,./parser,./printer,./scanner,./token -coverprofile=cover.out -modfile=$(TESTMOD) ./... ./testdata
 
 .PHONY: cover-html

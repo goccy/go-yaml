@@ -1414,6 +1414,8 @@ func (d *Decoder) decodeStruct(ctx context.Context, dst reflect.Value, src ast.N
 		if !exists {
 			if structField.IsRequired && foundErr == nil {
 				foundErr = errors.ErrRequiredField(fmt.Sprintf("%s.%s", structType.Name(), field.Name), src.GetToken())
+			} else if structField.IsNonEmpty && foundErr == nil {
+				foundErr = errors.ErrEmptyField(fmt.Sprintf("%s.%s", structType.Name(), field.Name), src.GetToken())
 			}
 			continue
 		}
@@ -1437,6 +1439,10 @@ func (d *Decoder) decodeStruct(ctx context.Context, dst reflect.Value, src ast.N
 			} else {
 				foundErr = err
 			}
+			continue
+		}
+		if structField.IsNonEmpty && isOmittedByOmitEmptyTag(newFieldValue) && foundErr == nil {
+			foundErr = errors.ErrEmptyField(fmt.Sprintf("%s.%s", structType.Name(), field.Name), src.GetToken())
 			continue
 		}
 		fieldValue.Set(newFieldValue)

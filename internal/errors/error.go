@@ -76,6 +76,11 @@ type RequiredFieldError struct {
 	Token           *token.Token
 }
 
+type EmptyFieldError struct {
+	StructFieldName *string
+	Token           *token.Token
+}
+
 // ErrSyntax create syntax error instance with message and token
 func ErrSyntax(msg string, tk *token.Token) *SyntaxError {
 	return &SyntaxError{
@@ -128,6 +133,13 @@ func ErrUnexpectedNodeType(actual, expected ast.NodeType, tk *token.Token) *Unex
 
 func ErrRequiredField(structFieldName string, tk *token.Token) *RequiredFieldError {
 	return &RequiredFieldError{
+		StructFieldName: &structFieldName,
+		Token:           tk,
+	}
+}
+
+func ErrEmptyField(structFieldName string, tk *token.Token) *EmptyFieldError {
+	return &EmptyFieldError{
 		StructFieldName: &structFieldName,
 		Token:           tk,
 	}
@@ -257,6 +269,22 @@ func (e *RequiredFieldError) Error() string {
 }
 
 func (e *RequiredFieldError) FormatError(colored, inclSource bool) string {
+	return FormatError(e.GetMessage(), e.Token, colored, inclSource)
+}
+
+func (e *EmptyFieldError) GetMessage() string {
+	return fmt.Sprintf("nonempty field %s is empty", *e.StructFieldName)
+}
+
+func (e *EmptyFieldError) GetToken() *token.Token {
+	return e.Token
+}
+
+func (e *EmptyFieldError) Error() string {
+	return e.FormatError(defaultFormatColor, defaultIncludeSource)
+}
+
+func (e *EmptyFieldError) FormatError(colored, inclSource bool) string {
 	return FormatError(e.GetMessage(), e.Token, colored, inclSource)
 }
 

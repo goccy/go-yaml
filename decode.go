@@ -1412,6 +1412,9 @@ func (d *Decoder) decodeStruct(ctx context.Context, dst reflect.Value, src ast.N
 		}
 		v, exists := keyToNodeMap[structField.RenderName]
 		if !exists {
+			if structField.IsRequired && foundErr == nil {
+				foundErr = errors.ErrRequiredField(fmt.Sprintf("%s.%s", structType.Name(), field.Name), src.GetToken())
+			}
 			continue
 		}
 		delete(unknownFields, structField.RenderName)

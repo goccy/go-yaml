@@ -2971,8 +2971,8 @@ func TestDecoder_LiteralWithNewLine(t *testing.T) {
 
 func TestDecoder_TabCharacterAtRight(t *testing.T) {
 	yml := `
-- a: [2 , 2] 			
-  b: [2 , 2] 			
+- a: [2 , 2]
+  b: [2 , 2]
   c: [2 , 2]`
 	var v []map[string][]int
 	if err := yaml.Unmarshal([]byte(yml), &v); err != nil {
@@ -3767,5 +3767,25 @@ func TestSetNullValue(t *testing.T) {
 				}
 			})
 		})
+	}
+}
+
+func TestRequiredFieldDecode(t *testing.T) {
+	yml := `a: 0`
+	var v struct {
+		A int `yaml:"a,required"`
+	}
+	if err := yaml.Unmarshal([]byte(yml), &v); err != nil {
+		t.Fatal(err)
+	}
+
+	yml = `{}`
+	err := yaml.Unmarshal([]byte(yml), &v)
+	if err == nil {
+		t.Fatalf("expect error, but got nil")
+	}
+	msg := err.Error()
+	if !strings.Contains(msg, "required field .A is missing") {
+		t.Fatalf("expect error message to contain %q, but got %q", "required field .A is missing", msg)
 	}
 }

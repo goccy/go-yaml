@@ -400,7 +400,11 @@ func (p *parser) parseFlowMap(ctx *context) (*ast.MappingNode, error) {
 			}
 		default:
 			if !p.isFlowMapDelim(ctx.nextToken()) {
-				return nil, errors.ErrSyntax("could not find flow map content", mapKeyTk.RawToken())
+				errTk := mapKeyTk
+				if errTk == nil {
+					errTk = tk
+				}
+				return nil, errors.ErrSyntax("could not find flow map content", errTk.RawToken())
 			}
 			key, err := p.parseScalarValue(ctx, mapKeyTk)
 			if err != nil {

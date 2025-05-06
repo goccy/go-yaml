@@ -234,6 +234,9 @@ func (e *UnexpectedNodeTypeError) msg() string {
 
 func FormatError(errMsg string, token *token.Token, colored, inclSource bool) string {
 	var pp printer.Printer
+	if token == nil {
+		return pp.PrintErrorMessage(errMsg, colored)
+	}
 	pos := fmt.Sprintf("[%d:%d] ", token.Position.Line, token.Position.Column)
 	msg := pp.PrintErrorMessage(fmt.Sprintf("%s%s", pos, errMsg), colored)
 	if inclSource {

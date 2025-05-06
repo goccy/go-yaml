@@ -1426,6 +1426,14 @@ foo:
            ^
 `,
 		},
+		{
+			`{"000":0000A,`,
+			`
+[1:13] could not find flow map content
+>  1 | {"000":0000A,
+                   ^
+`,
+		},
 	}
 	for _, test := range tests {
 		t.Run(test.source, func(t *testing.T) {

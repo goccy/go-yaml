@@ -34,6 +34,8 @@ verified: true
 		"0\n0\n0\n0\n0\n0",
 		"0\n0\n0\n0\n0\n0\n",
 		"",
+		"00A: 0000A",
+		"{\"000\":0000A,",
 	}
 
 	f.Add([]byte(validYAML))
@@ -47,6 +49,8 @@ verified: true
 
 	f.Fuzz(func(t *testing.T, src []byte) {
 		v := map[string]any{}
-		_ = yaml.Unmarshal(src, &v)
+		if err := yaml.Unmarshal(src, &v); err != nil {
+			t.Log(err.Error())
+		}
 	})
 }

@@ -23,6 +23,7 @@ type StructField struct {
 	IsFlow       bool
 	IsInline     bool
 	IsRequired   bool
+	IsNonZero    bool
 }
 
 func getTag(field reflect.StructField) string {
@@ -74,6 +75,8 @@ func structField(field reflect.StructField) *StructField {
 				}
 			case opt == "required":
 				sf.IsRequired = true
+			case opt == "nonzero":
+				sf.IsNonZero = true
 			default:
 			}
 		}

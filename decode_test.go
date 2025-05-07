@@ -1024,6 +1024,10 @@ merge:
 			},
 		},
 		{
+			`{a: &a c, *a : b}`,
+			map[string]string{"a": "c", "c": "b"},
+		},
+		{
 			"tags:\n- hello-world\na: foo",
 			struct {
 				Tags []string

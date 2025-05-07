@@ -705,7 +705,7 @@ func (p *parser) mapKeyText(n ast.Node) string {
 	case *ast.AnchorNode:
 		return p.mapKeyText(nn.Value)
 	case *ast.AliasNode:
-		return p.mapKeyText(nn.Value)
+		return ""
 	}
 	return n.GetToken().Value
 }

@@ -3685,3 +3685,42 @@ releases:
 		t.Fatal(err)
 	}
 }
+
+func TestSetNullValue(t *testing.T) {
+	tests := []struct {
+		name string
+		src  string
+	}{
+		{
+			name: "empty document",
+			src:  "",
+		},
+		{
+			name: "null value",
+			src:  "null",
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			t.Run("set null", func(t *testing.T) {
+				var v any
+				v = 0x1
+				if err := yaml.Unmarshal([]byte(test.src), &v); err != nil {
+					t.Fatal(err)
+				}
+				if v != nil {
+					t.Fatal("failed to set nil value")
+				}
+			})
+			t.Run("invalid value", func(t *testing.T) {
+				var v *struct{}
+				if err := yaml.Unmarshal([]byte(test.src), v); err != nil {
+					t.Fatal(err)
+				}
+				if v != nil {
+					t.Fatal("failed to set nil value")
+				}
+			})
+		})
+	}
+}

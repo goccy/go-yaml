@@ -882,6 +882,9 @@ func (d *Decoder) decodeValue(ctx context.Context, dst reflect.Value, src ast.No
 	if d.isExceededMaxDepth() {
 		return ErrExceededMaxDepth
 	}
+	if !dst.IsValid() {
+		return nil
+	}
 
 	if src.Type() == ast.AnchorType {
 		anchor, _ := src.(*ast.AnchorNode)
@@ -930,6 +933,8 @@ func (d *Decoder) decodeValue(ctx context.Context, dst reflect.Value, src ast.No
 		v := reflect.ValueOf(srcVal)
 		if v.IsValid() {
 			dst.Set(v)
+		} else {
+			dst.Set(reflect.Zero(valueType))
 		}
 	case reflect.Map:
 		return d.decodeMap(ctx, dst, src)
@@ -1930,6 +1935,13 @@ func (d *Decoder) decodeInit(ctx context.Context) error {
 func (d *Decoder) decode(ctx context.Context, v reflect.Value) error {
 	d.decodeDepth = 0
 	d.anchorValueMap = make(map[string]reflect.Value)
+	if len(d.parsedFile.Docs) == 0 {
+		// empty document.
+		dst := v.Elem()
+		if dst.IsValid() {
+			dst.Set(reflect.Zero(dst.Type()))
+		}
+	}
 	if len(d.parsedFile.Docs) <= d.streamIndex {
 		return io.EOF
 	}
@@ -1960,14 +1972,11 @@ func (d *Decoder) Decode(v interface{}) error {
 // and stores it in the value pointed to by v with context.Context.
 func (d *Decoder) DecodeContext(ctx context.Context, v interface{}) error {
 	rv := reflect.ValueOf(v)
-	if rv.Type().Kind() != reflect.Ptr {
+	if !rv.IsValid() || rv.Type().Kind() != reflect.Ptr {
 		return ErrDecodeRequiredPointerType
 	}
 	if d.isInitialized() {
 		if err := d.decode(ctx, rv); err != nil {
-			if err == io.EOF {
-				return err
-			}
 			return err
 		}
 		return nil
@@ -1976,9 +1985,6 @@ func (d *Decoder) DecodeContext(ctx context.Context, v interface{}) error {
 		return err
 	}
 	if err := d.decode(ctx, rv); err != nil {
-		if err == io.EOF {
-			return err
-		}
 		return err
 	}
 	return nil

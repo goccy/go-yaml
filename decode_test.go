@@ -29,578 +29,584 @@ func TestDecoder(t *testing.T) {
 	tests := []struct {
 		source string
 		value  interface{}
+		eof    bool
 	}{
 		{
-			"null\n",
-			(*struct{})(nil),
+			source: "v: hi\n",
+			value:  map[string]string{"v": "hi"},
 		},
 		{
-			"v: hi\n",
-			map[string]string{"v": "hi"},
+			source: "v: \"true\"\n",
+			value:  map[string]string{"v": "true"},
 		},
 		{
-			"v: \"true\"\n",
-			map[string]string{"v": "true"},
+			source: "v: \"false\"\n",
+			value:  map[string]string{"v": "false"},
 		},
 		{
-			"v: \"false\"\n",
-			map[string]string{"v": "false"},
+			source: "v: true\n",
+			value:  map[string]interface{}{"v": true},
 		},
 		{
-			"v: true\n",
-			map[string]interface{}{"v": true},
+			source: "v: true\n",
+			value:  map[string]string{"v": "true"},
 		},
 		{
-			"v: true\n",
-			map[string]string{"v": "true"},
+			source: "v: 10\n",
+			value:  map[string]string{"v": "10"},
 		},
 		{
-			"v: 10\n",
-			map[string]string{"v": "10"},
+			source: "v: -10\n",
+			value:  map[string]string{"v": "-10"},
 		},
 		{
-			"v: -10\n",
-			map[string]string{"v": "-10"},
+			source: "v: 1.234\n",
+			value:  map[string]string{"v": "1.234"},
 		},
 		{
-			"v: 1.234\n",
-			map[string]string{"v": "1.234"},
+			source: "v: \" foo\"\n",
+			value:  map[string]string{"v": " foo"},
 		},
 		{
-			"v: \" foo\"\n",
-			map[string]string{"v": " foo"},
+			source: "v: \"foo \"\n",
+			value:  map[string]string{"v": "foo "},
 		},
 		{
-			"v: \"foo \"\n",
-			map[string]string{"v": "foo "},
+			source: "v: \" foo \"\n",
+			value:  map[string]string{"v": " foo "},
 		},
 		{
-			"v: \" foo \"\n",
-			map[string]string{"v": " foo "},
+			source: "v: false\n",
+			value:  map[string]bool{"v": false},
 		},
 		{
-			"v: false\n",
-			map[string]bool{"v": false},
+			source: "v: 10\n",
+			value:  map[string]int{"v": 10},
 		},
 		{
-			"v: 10\n",
-			map[string]int{"v": 10},
+			source: "v: 10",
+			value:  map[string]interface{}{"v": 10},
 		},
 		{
-			"v: 10",
-			map[string]interface{}{"v": 10},
+			source: "v: 0b10",
+			value:  map[string]interface{}{"v": 2},
 		},
 		{
-			"v: 0b10",
-			map[string]interface{}{"v": 2},
+			source: "v: -0b101010",
+			value:  map[string]interface{}{"v": -42},
 		},
 		{
-			"v: -0b101010",
-			map[string]interface{}{"v": -42},
+			source: "v: -0b1000000000000000000000000000000000000000000000000000000000000000",
+			value:  map[string]interface{}{"v": int64(-9223372036854775808)},
 		},
 		{
-			"v: -0b1000000000000000000000000000000000000000000000000000000000000000",
-			map[string]interface{}{"v": int64(-9223372036854775808)},
+			source: "v: 0xA",
+			value:  map[string]interface{}{"v": 10},
 		},
 		{
-			"v: 0xA",
-			map[string]interface{}{"v": 10},
+			source: "v: .1",
+			value:  map[string]interface{}{"v": 0.1},
 		},
 		{
-			"v: .1",
-			map[string]interface{}{"v": 0.1},
+			source: "v: -.1",
+			value:  map[string]interface{}{"v": -0.1},
 		},
 		{
-			"v: -.1",
-			map[string]interface{}{"v": -0.1},
+			source: "v: -10\n",
+			value:  map[string]int{"v": -10},
 		},
 		{
-			"v: -10\n",
-			map[string]int{"v": -10},
+			source: "v: 4294967296\n",
+			value:  map[string]int64{"v": int64(4294967296)},
 		},
 		{
-			"v: 4294967296\n",
-			map[string]int64{"v": int64(4294967296)},
+			source: "v: 0.1\n",
+			value:  map[string]interface{}{"v": 0.1},
 		},
 		{
-			"v: 0.1\n",
-			map[string]interface{}{"v": 0.1},
+			source: "v: 0.99\n",
+			value:  map[string]float32{"v": 0.99},
 		},
 		{
-			"v: 0.99\n",
-			map[string]float32{"v": 0.99},
+			source: "v: -0.1\n",
+			value:  map[string]float64{"v": -0.1},
 		},
 		{
-			"v: -0.1\n",
-			map[string]float64{"v": -0.1},
+			source: "v: 6.8523e+5",
+			value:  map[string]interface{}{"v": 6.8523e+5},
 		},
 		{
-			"v: 6.8523e+5",
-			map[string]interface{}{"v": 6.8523e+5},
+			source: "v: 685.230_15e+03",
+			value:  map[string]interface{}{"v": 685.23015e+03},
 		},
 		{
-			"v: 685.230_15e+03",
-			map[string]interface{}{"v": 685.23015e+03},
+			source: "v: 685_230.15",
+			value:  map[string]interface{}{"v": 685230.15},
 		},
 		{
-			"v: 685_230.15",
-			map[string]interface{}{"v": 685230.15},
+			source: "v: 685_230.15",
+			value:  map[string]float64{"v": 685230.15},
 		},
 		{
-			"v: 685_230.15",
-			map[string]float64{"v": 685230.15},
+			source: "v: 685230",
+			value:  map[string]interface{}{"v": 685230},
 		},
 		{
-			"v: 685230",
-			map[string]interface{}{"v": 685230},
+			source: "v: +685_230",
+			value:  map[string]interface{}{"v": 685230},
 		},
 		{
-			"v: +685_230",
-			map[string]interface{}{"v": 685230},
+			source: "v: 02472256",
+			value:  map[string]interface{}{"v": 685230},
 		},
 		{
-			"v: 02472256",
-			map[string]interface{}{"v": 685230},
+			source: "v: 0x_0A_74_AE",
+			value:  map[string]interface{}{"v": 685230},
 		},
 		{
-			"v: 0x_0A_74_AE",
-			map[string]interface{}{"v": 685230},
+			source: "v: 0b1010_0111_0100_1010_1110",
+			value:  map[string]interface{}{"v": 685230},
 		},
 		{
-			"v: 0b1010_0111_0100_1010_1110",
-			map[string]interface{}{"v": 685230},
-		},
-		{
-			"v: +685_230",
-			map[string]int{"v": 685230},
+			source: "v: +685_230",
+			value:  map[string]int{"v": 685230},
 		},
 
 		// Bools from spec
 		{
-			"v: True",
-			map[string]interface{}{"v": true},
+			source: "v: True",
+			value:  map[string]interface{}{"v": true},
 		},
 		{
-			"v: TRUE",
-			map[string]interface{}{"v": true},
+			source: "v: TRUE",
+			value:  map[string]interface{}{"v": true},
 		},
 		{
-			"v: False",
-			map[string]interface{}{"v": false},
+			source: "v: False",
+			value:  map[string]interface{}{"v": false},
 		},
 		{
-			"v: FALSE",
-			map[string]interface{}{"v": false},
+			source: "v: FALSE",
+			value:  map[string]interface{}{"v": false},
 		},
 		{
-			"v: y",
-			map[string]interface{}{"v": "y"}, // y or yes or Yes is string
+			source: "v: y",
+			value:  map[string]interface{}{"v": "y"}, // y or yes or Yes is string
 		},
 		{
-			"v: NO",
-			map[string]interface{}{"v": "NO"}, // no or No or NO is string
+			source: "v: NO",
+			value:  map[string]interface{}{"v": "NO"}, // no or No or NO is string
 		},
 		{
-			"v: on",
-			map[string]interface{}{"v": "on"}, // on is string
+			source: "v: on",
+			value:  map[string]interface{}{"v": "on"}, // on is string
 		},
 
 		// Some cross type conversions
 		{
-			"v: 42",
-			map[string]uint{"v": 42},
-		}, {
-			"v: 4294967296",
-			map[string]uint64{"v": uint64(4294967296)},
+			source: "v: 42",
+			value:  map[string]uint{"v": 42},
+		},
+		{
+			source: "v: 4294967296",
+			value:  map[string]uint64{"v": uint64(4294967296)},
 		},
 
 		// int
 		{
-			"v: 2147483647",
-			map[string]int{"v": math.MaxInt32},
+			source: "v: 2147483647",
+			value:  map[string]int{"v": math.MaxInt32},
 		},
 		{
-			"v: -2147483648",
-			map[string]int{"v": math.MinInt32},
+			source: "v: -2147483648",
+			value:  map[string]int{"v": math.MinInt32},
 		},
 
 		// int64
 		{
-			"v: 9223372036854775807",
-			map[string]int64{"v": math.MaxInt64},
+			source: "v: 9223372036854775807",
+			value:  map[string]int64{"v": math.MaxInt64},
 		},
 		{
-			"v: 0b111111111111111111111111111111111111111111111111111111111111111",
-			map[string]int64{"v": math.MaxInt64},
+			source: "v: 0b111111111111111111111111111111111111111111111111111111111111111",
+			value:  map[string]int64{"v": math.MaxInt64},
 		},
 		{
-			"v: -9223372036854775808",
-			map[string]int64{"v": math.MinInt64},
+			source: "v: -9223372036854775808",
+			value:  map[string]int64{"v": math.MinInt64},
 		},
 		{
-			"v: -0b111111111111111111111111111111111111111111111111111111111111111",
-			map[string]int64{"v": -math.MaxInt64},
+			source: "v: -0b111111111111111111111111111111111111111111111111111111111111111",
+			value:  map[string]int64{"v": -math.MaxInt64},
 		},
 
 		// uint
 		{
-			"v: 0",
-			map[string]uint{"v": 0},
+			source: "v: 0",
+			value:  map[string]uint{"v": 0},
 		},
 		{
-			"v: 4294967295",
-			map[string]uint{"v": math.MaxUint32},
+			source: "v: 4294967295",
+			value:  map[string]uint{"v": math.MaxUint32},
 		},
 		{
-			"v: 1e3",
-			map[string]uint{"v": 1000},
+			source: "v: 1e3",
+			value:  map[string]uint{"v": 1000},
 		},
 
 		// uint64
 		{
-			"v: 0",
-			map[string]uint{"v": 0},
+			source: "v: 0",
+			value:  map[string]uint{"v": 0},
 		},
 		{
-			"v: 18446744073709551615",
-			map[string]uint64{"v": math.MaxUint64},
+			source: "v: 18446744073709551615",
+			value:  map[string]uint64{"v": math.MaxUint64},
 		},
 		{
-			"v: 0b1111111111111111111111111111111111111111111111111111111111111111",
-			map[string]uint64{"v": math.MaxUint64},
+			source: "v: 0b1111111111111111111111111111111111111111111111111111111111111111",
+			value:  map[string]uint64{"v": math.MaxUint64},
 		},
 		{
-			"v: 9223372036854775807",
-			map[string]uint64{"v": math.MaxInt64},
+			source: "v: 9223372036854775807",
+			value:  map[string]uint64{"v": math.MaxInt64},
 		},
 		{
-			"v: 1e3",
-			map[string]uint64{"v": 1000},
+			source: "v: 1e3",
+			value:  map[string]uint64{"v": 1000},
 		},
 
 		// float32
 		{
-			"v: 3.40282346638528859811704183484516925440e+38",
-			map[string]float32{"v": math.MaxFloat32},
+			source: "v: 3.40282346638528859811704183484516925440e+38",
+			value:  map[string]float32{"v": math.MaxFloat32},
 		},
 		{
-			"v: 1.401298464324817070923729583289916131280e-45",
-			map[string]float32{"v": math.SmallestNonzeroFloat32},
+			source: "v: 1.401298464324817070923729583289916131280e-45",
+			value:  map[string]float32{"v": math.SmallestNonzeroFloat32},
 		},
 		{
-			"v: 18446744073709551615",
-			map[string]float32{"v": float32(math.MaxUint64)},
+			source: "v: 18446744073709551615",
+			value:  map[string]float32{"v": float32(math.MaxUint64)},
 		},
 		{
-			"v: 18446744073709551616",
-			map[string]float32{"v": float32(math.MaxUint64 + 1)},
+			source: "v: 18446744073709551616",
+			value:  map[string]float32{"v": float32(math.MaxUint64 + 1)},
 		},
 		{
-			"v: 1e-06",
-			map[string]float32{"v": 1e-6},
+			source: "v: 1e-06",
+			value:  map[string]float32{"v": 1e-6},
 		},
 
 		// float64
 		{
-			"v: 1.797693134862315708145274237317043567981e+308",
-			map[string]float64{"v": math.MaxFloat64},
+			source: "v: 1.797693134862315708145274237317043567981e+308",
+			value:  map[string]float64{"v": math.MaxFloat64},
 		},
 		{
-			"v: 4.940656458412465441765687928682213723651e-324",
-			map[string]float64{"v": math.SmallestNonzeroFloat64},
+			source: "v: 4.940656458412465441765687928682213723651e-324",
+			value:  map[string]float64{"v": math.SmallestNonzeroFloat64},
 		},
 		{
-			"v: 18446744073709551615",
-			map[string]float64{"v": float64(math.MaxUint64)},
+			source: "v: 18446744073709551615",
+			value:  map[string]float64{"v": float64(math.MaxUint64)},
 		},
 		{
-			"v: 18446744073709551616",
-			map[string]float64{"v": float64(math.MaxUint64 + 1)},
+			source: "v: 18446744073709551616",
+			value:  map[string]float64{"v": float64(math.MaxUint64 + 1)},
 		},
 		{
-			"v: 1e-06",
-			map[string]float64{"v": 1e-06},
+			source: "v: 1e-06",
+			value:  map[string]float64{"v": 1e-06},
 		},
 
 		// Timestamps
 		{
 			// Date only.
-			"v: 2015-01-01\n",
-			map[string]time.Time{"v": time.Date(2015, 1, 1, 0, 0, 0, 0, time.UTC)},
+			source: "v: 2015-01-01\n",
+			value:  map[string]time.Time{"v": time.Date(2015, 1, 1, 0, 0, 0, 0, time.UTC)},
 		},
 		{
 			// RFC3339
-			"v: 2015-02-24T18:19:39.12Z\n",
-			map[string]time.Time{"v": time.Date(2015, 2, 24, 18, 19, 39, .12e9, time.UTC)},
+			source: "v: 2015-02-24T18:19:39.12Z\n",
+			value:  map[string]time.Time{"v": time.Date(2015, 2, 24, 18, 19, 39, .12e9, time.UTC)},
 		},
 		{
 			// RFC3339 with short dates.
-			"v: 2015-2-3T3:4:5Z",
-			map[string]time.Time{"v": time.Date(2015, 2, 3, 3, 4, 5, 0, time.UTC)},
+			source: "v: 2015-2-3T3:4:5Z",
+			value:  map[string]time.Time{"v": time.Date(2015, 2, 3, 3, 4, 5, 0, time.UTC)},
 		},
 		{
 			// ISO8601 lower case t
-			"v: 2015-02-24t18:19:39Z\n",
-			map[string]time.Time{"v": time.Date(2015, 2, 24, 18, 19, 39, 0, time.UTC)},
+			source: "v: 2015-02-24t18:19:39Z\n",
+			value:  map[string]time.Time{"v": time.Date(2015, 2, 24, 18, 19, 39, 0, time.UTC)},
 		},
 		{
 			// space separate, no time zone
-			"v: 2015-02-24 18:19:39\n",
-			map[string]time.Time{"v": time.Date(2015, 2, 24, 18, 19, 39, 0, time.UTC)},
+			source: "v: 2015-02-24 18:19:39\n",
+			value:  map[string]time.Time{"v": time.Date(2015, 2, 24, 18, 19, 39, 0, time.UTC)},
 		},
 		{
-			"v: 60s\n",
-			map[string]time.Duration{"v": time.Minute},
+			source: "v: 60s\n",
+			value:  map[string]time.Duration{"v": time.Minute},
 		},
 		{
-			"v: -0.5h\n",
-			map[string]time.Duration{"v": -30 * time.Minute},
+			source: "v: -0.5h\n",
+			value:  map[string]time.Duration{"v": -30 * time.Minute},
 		},
 
 		// Single Quoted values.
 		{
-			`'1': '2'`,
-			map[interface{}]interface{}{"1": `2`},
+			source: `'1': '2'`,
+			value:  map[interface{}]interface{}{"1": `2`},
 		},
 		{
-			`'1': '"2"'`,
-			map[interface{}]interface{}{"1": `"2"`},
+			source: `'1': '"2"'`,
+			value:  map[interface{}]interface{}{"1": `"2"`},
 		},
 		{
-			`'1': ''''`,
-			map[interface{}]interface{}{"1": `'`},
+			source: `'1': ''''`,
+			value:  map[interface{}]interface{}{"1": `'`},
 		},
 		{
-			`'1': '''2'''`,
-			map[interface{}]interface{}{"1": `'2'`},
+			source: `'1': '''2'''`,
+			value:  map[interface{}]interface{}{"1": `'2'`},
 		},
 		{
-			`'1': 'B''z'`,
-			map[interface{}]interface{}{"1": `B'z`},
+			source: `'1': 'B''z'`,
+			value:  map[interface{}]interface{}{"1": `B'z`},
 		},
 		{
-			`'1': '\'`,
-			map[interface{}]interface{}{"1": `\`},
+			source: `'1': '\'`,
+			value:  map[interface{}]interface{}{"1": `\`},
 		},
 		{
-			`'1': '\\'`,
-			map[interface{}]interface{}{"1": `\\`},
+			source: `'1': '\\'`,
+			value:  map[interface{}]interface{}{"1": `\\`},
 		},
 		{
-			`'1': '\"2\"'`,
-			map[interface{}]interface{}{"1": `\"2\"`},
+			source: `'1': '\"2\"'`,
+			value:  map[interface{}]interface{}{"1": `\"2\"`},
 		},
 		{
-			`'1': '\\"2\\"'`,
-			map[interface{}]interface{}{"1": `\\"2\\"`},
+			source: `'1': '\\"2\\"'`,
+			value:  map[interface{}]interface{}{"1": `\\"2\\"`},
 		},
 		{
-			"'1': '   1\n    2\n    3'",
-			map[interface{}]interface{}{"1": "   1 2 3"},
+			source: "'1': '   1\n    2\n    3'",
+			value:  map[interface{}]interface{}{"1": "   1 2 3"},
 		},
 		{
-			"'1': '\n    2\n    3'",
-			map[interface{}]interface{}{"1": " 2 3"},
+			source: "'1': '\n    2\n    3'",
+			value:  map[interface{}]interface{}{"1": " 2 3"},
 		},
 
 		// Double Quoted values.
 		{
-			`"1": "2"`,
-			map[interface{}]interface{}{"1": `2`},
+			source: `"1": "2"`,
+			value:  map[interface{}]interface{}{"1": `2`},
 		},
 		{
-			`"1": "\"2\""`,
-			map[interface{}]interface{}{"1": `"2"`},
+			source: `"1": "\"2\""`,
+			value:  map[interface{}]interface{}{"1": `"2"`},
 		},
 		{
-			`"1": "\""`,
-			map[interface{}]interface{}{"1": `"`},
+			source: `"1": "\""`,
+			value:  map[interface{}]interface{}{"1": `"`},
 		},
 		{
-			`"1": "X\"z"`,
-			map[interface{}]interface{}{"1": `X"z`},
+			source: `"1": "X\"z"`,
+			value:  map[interface{}]interface{}{"1": `X"z`},
 		},
 		{
-			`"1": "\\"`,
-			map[interface{}]interface{}{"1": `\`},
+			source: `"1": "\\"`,
+			value:  map[interface{}]interface{}{"1": `\`},
 		},
 		{
-			`"1": "\\\\"`,
-			map[interface{}]interface{}{"1": `\\`},
+			source: `"1": "\\\\"`,
+			value:  map[interface{}]interface{}{"1": `\\`},
 		},
 		{
-			`"1": "\\\"2\\\""`,
-			map[interface{}]interface{}{"1": `\"2\"`},
+			source: `"1": "\\\"2\\\""`,
+			value:  map[interface{}]interface{}{"1": `\"2\"`},
 		},
 		{
-			"'1': \"   1\n    2\n    3\"",
-			map[interface{}]interface{}{"1": "   1 2 3"},
+			source: "'1': \"   1\n    2\n    3\"",
+			value:  map[interface{}]interface{}{"1": "   1 2 3"},
 		},
 		{
-			"'1': \"\n    2\n    3\"",
-			map[interface{}]interface{}{"1": " 2 3"},
+			source: "'1': \"\n    2\n    3\"",
+			value:  map[interface{}]interface{}{"1": " 2 3"},
 		},
 		{
-			`"1": "a\x2Fb"`,
-			map[interface{}]interface{}{"1": `a/b`},
+			source: `"1": "a\x2Fb"`,
+			value:  map[interface{}]interface{}{"1": `a/b`},
 		},
 		{
-			`"1": "a\u002Fb"`,
-			map[interface{}]interface{}{"1": `a/b`},
+			source: `"1": "a\u002Fb"`,
+			value:  map[interface{}]interface{}{"1": `a/b`},
 		},
 		{
-			`"1": "a\x2Fb\u002Fc\U0000002Fd"`,
-			map[interface{}]interface{}{"1": `a/b/c/d`},
+			source: `"1": "a\x2Fb\u002Fc\U0000002Fd"`,
+			value:  map[interface{}]interface{}{"1": `a/b/c/d`},
 		},
 		{
-			"'1': \"2\\n3\"",
-			map[interface{}]interface{}{"1": "2\n3"},
+			source: "'1': \"2\\n3\"",
+			value:  map[interface{}]interface{}{"1": "2\n3"},
 		},
 		{
-			"'1': \"2\\r\\n3\"",
-			map[interface{}]interface{}{"1": "2\r\n3"},
+			source: "'1': \"2\\r\\n3\"",
+			value:  map[interface{}]interface{}{"1": "2\r\n3"},
 		},
 
 		{
-			"a: -b_c",
-			map[string]interface{}{"a": "-b_c"},
+			source: "a: -b_c",
+			value:  map[string]interface{}{"a": "-b_c"},
 		},
 		{
-			"a: +b_c",
-			map[string]interface{}{"a": "+b_c"},
+			source: "a: +b_c",
+			value:  map[string]interface{}{"a": "+b_c"},
 		},
 		{
-			"a: 50cent_of_dollar",
-			map[string]interface{}{"a": "50cent_of_dollar"},
+			source: "a: 50cent_of_dollar",
+			value:  map[string]interface{}{"a": "50cent_of_dollar"},
 		},
 
 		// Nulls
 		{
-			"v:",
-			map[string]interface{}{"v": nil},
+			source: "null",
+			value:  (*struct{})(nil),
 		},
 		{
-			"v: ~",
-			map[string]interface{}{"v": nil},
+			source: "~",
+			value:  (*struct{})(nil),
 		},
 		{
-			"~: null key",
-			map[interface{}]string{nil: "null key"},
+			source: "v:",
+			value:  map[string]interface{}{"v": nil},
 		},
 		{
-			"v:",
-			map[string]*bool{"v": nil},
+			source: "v: ~",
+			value:  map[string]interface{}{"v": nil},
 		},
 		{
-			"v: null",
-			map[string]*string{"v": nil},
+			source: "~: null key",
+			value:  map[interface{}]string{nil: "null key"},
 		},
 		{
-			"v: null",
-			map[string]string{"v": ""},
+			source: "v:",
+			value:  map[string]*bool{"v": nil},
 		},
 		{
-			"v: null",
-			map[string]interface{}{"v": nil},
+			source: "v: null",
+			value:  map[string]*string{"v": nil},
 		},
 		{
-			"v: Null",
-			map[string]interface{}{"v": nil},
+			source: "v: null",
+			value:  map[string]string{"v": ""},
 		},
 		{
-			"v: NULL",
-			map[string]interface{}{"v": nil},
+			source: "v: null",
+			value:  map[string]interface{}{"v": nil},
 		},
 		{
-			"v: ~",
-			map[string]*string{"v": nil},
+			source: "v: Null",
+			value:  map[string]interface{}{"v": nil},
 		},
 		{
-			"v: ~",
-			map[string]string{"v": ""},
+			source: "v: NULL",
+			value:  map[string]interface{}{"v": nil},
+		},
+		{
+			source: "v: ~",
+			value:  map[string]*string{"v": nil},
+		},
+		{
+			source: "v: ~",
+			value:  map[string]string{"v": ""},
 		},
 
 		{
-			"v: .inf\n",
-			map[string]interface{}{"v": math.Inf(0)},
+			source: "v: .inf\n",
+			value:  map[string]interface{}{"v": math.Inf(0)},
 		},
 		{
-			"v: .Inf\n",
-			map[string]interface{}{"v": math.Inf(0)},
+			source: "v: .Inf\n",
+			value:  map[string]interface{}{"v": math.Inf(0)},
 		},
 		{
-			"v: .INF\n",
-			map[string]interface{}{"v": math.Inf(0)},
+			source: "v: .INF\n",
+			value:  map[string]interface{}{"v": math.Inf(0)},
 		},
 		{
-			"v: -.inf\n",
-			map[string]interface{}{"v": math.Inf(-1)},
+			source: "v: -.inf\n",
+			value:  map[string]interface{}{"v": math.Inf(-1)},
 		},
 		{
-			"v: -.Inf\n",
-			map[string]interface{}{"v": math.Inf(-1)},
+			source: "v: -.Inf\n",
+			value:  map[string]interface{}{"v": math.Inf(-1)},
 		},
 		{
-			"v: -.INF\n",
-			map[string]interface{}{"v": math.Inf(-1)},
+			source: "v: -.INF\n",
+			value:  map[string]interface{}{"v": math.Inf(-1)},
 		},
 		{
-			"v: .nan\n",
-			map[string]interface{}{"v": math.NaN()},
+			source: "v: .nan\n",
+			value:  map[string]interface{}{"v": math.NaN()},
 		},
 		{
-			"v: .NaN\n",
-			map[string]interface{}{"v": math.NaN()},
+			source: "v: .NaN\n",
+			value:  map[string]interface{}{"v": math.NaN()},
 		},
 		{
-			"v: .NAN\n",
-			map[string]interface{}{"v": math.NaN()},
+			source: "v: .NAN\n",
+			value:  map[string]interface{}{"v": math.NaN()},
 		},
 
 		// Explicit tags.
 		{
-			"v: !!float '1.1'",
-			map[string]interface{}{"v": 1.1},
+			source: "v: !!float '1.1'",
+			value:  map[string]interface{}{"v": 1.1},
 		},
 		{
-			"v: !!float 0",
-			map[string]interface{}{"v": float64(0)},
+			source: "v: !!float 0",
+			value:  map[string]interface{}{"v": float64(0)},
 		},
 		{
-			"v: !!float -1",
-			map[string]interface{}{"v": float64(-1)},
+			source: "v: !!float -1",
+			value:  map[string]interface{}{"v": float64(-1)},
 		},
 		{
-			"v: !!null ''",
-			map[string]interface{}{"v": nil},
+			source: "v: !!null ''",
+			value:  map[string]interface{}{"v": nil},
 		},
 		{
-			"v: !!timestamp \"2015-01-01\"",
-			map[string]time.Time{"v": time.Date(2015, 1, 1, 0, 0, 0, 0, time.UTC)},
+			source: "v: !!timestamp \"2015-01-01\"",
+			value:  map[string]time.Time{"v": time.Date(2015, 1, 1, 0, 0, 0, 0, time.UTC)},
 		},
 		{
-			"v: !!timestamp 2015-01-01",
-			map[string]time.Time{"v": time.Date(2015, 1, 1, 0, 0, 0, 0, time.UTC)},
+			source: "v: !!timestamp 2015-01-01",
+			value:  map[string]time.Time{"v": time.Date(2015, 1, 1, 0, 0, 0, 0, time.UTC)},
 		},
 		{
-			"v: !!bool yes",
-			map[string]bool{"v": true},
+			source: "v: !!bool yes",
+			value:  map[string]bool{"v": true},
 		},
 		{
-			"v: !!bool False",
-			map[string]bool{"v": false},
+			source: "v: !!bool False",
+			value:  map[string]bool{"v": false},
 		},
 		{
-			`
+			source: `
 !!merge <<: { a: 1, b: 2 }
 c: 3
 `,
-			map[string]any{"a": 1, "b": 2, "c": 3},
+			value: map[string]any{"a": 1, "b": 2, "c": 3},
 		},
 
 		// merge
 		{
-			`
+			source: `
 a: &a
  foo: 1
 b: &b
@@ -608,14 +614,14 @@ b: &b
 merge:
  <<: [*a, *b]
 `,
-			map[string]map[string]any{
+			value: map[string]map[string]any{
 				"a":     {"foo": 1},
 				"b":     {"bar": 2},
 				"merge": {"foo": 1, "bar": 2},
 			},
 		},
 		{
-			`
+			source: `
 a: &a
  foo: 1
 b: &b
@@ -623,7 +629,7 @@ b: &b
 merge:
  <<: [*a, *b]
 `,
-			map[string]yaml.MapSlice{
+			value: map[string]yaml.MapSlice{
 				"a":     {{Key: "foo", Value: 1}},
 				"b":     {{Key: "bar", Value: 2}},
 				"merge": {{Key: "foo", Value: 1}, {Key: "bar", Value: 2}},
@@ -632,31 +638,31 @@ merge:
 
 		// Flow sequence
 		{
-			"v: [A,B]",
-			map[string]interface{}{"v": []interface{}{"A", "B"}},
+			source: "v: [A,B]",
+			value:  map[string]interface{}{"v": []interface{}{"A", "B"}},
 		},
 		{
-			"v: [A,B,C,]",
-			map[string][]string{"v": {"A", "B", "C"}},
+			source: "v: [A,B,C,]",
+			value:  map[string][]string{"v": {"A", "B", "C"}},
 		},
 		{
-			"v: [A,1,C]",
-			map[string][]string{"v": {"A", "1", "C"}},
+			source: "v: [A,1,C]",
+			value:  map[string][]string{"v": {"A", "1", "C"}},
 		},
 		{
-			"v: [A,1,C]",
-			map[string]interface{}{"v": []interface{}{"A", 1, "C"}},
+			source: "v: [A,1,C]",
+			value:  map[string]interface{}{"v": []interface{}{"A", 1, "C"}},
 		},
 		{
-			"v: [a: b, c: d]",
-			map[string]any{"v": []any{
+			source: "v: [a: b, c: d]",
+			value: map[string]any{"v": []any{
 				map[string]any{"a": "b"},
 				map[string]any{"c": "d"},
 			}},
 		},
 		{
-			"v: [{a: b}, {c: d, e: f}]",
-			map[string]any{"v": []any{
+			source: "v: [{a: b}, {c: d, e: f}]",
+			value: map[string]any{"v": []any{
 				map[string]any{"a": "b"},
 				map[string]any{
 					"c": "d",
@@ -667,124 +673,124 @@ merge:
 
 		// Block sequence
 		{
-			"v:\n - A\n - B",
-			map[string]interface{}{"v": []interface{}{"A", "B"}},
+			source: "v:\n - A\n - B",
+			value:  map[string]interface{}{"v": []interface{}{"A", "B"}},
 		},
 		{
-			"v:\n - A\n - B\n - C",
-			map[string][]string{"v": {"A", "B", "C"}},
+			source: "v:\n - A\n - B\n - C",
+			value:  map[string][]string{"v": {"A", "B", "C"}},
 		},
 		{
-			"v:\n - A\n - 1\n - C",
-			map[string][]string{"v": {"A", "1", "C"}},
+			source: "v:\n - A\n - 1\n - C",
+			value:  map[string][]string{"v": {"A", "1", "C"}},
 		},
 		{
-			"v:\n - A\n - 1\n - C",
-			map[string]interface{}{"v": []interface{}{"A", 1, "C"}},
+			source: "v:\n - A\n - 1\n - C",
+			value:  map[string]interface{}{"v": []interface{}{"A", 1, "C"}},
 		},
 
 		// Map inside interface with no type hints.
 		{
-			"a: {b: c}",
-			map[interface{}]interface{}{"a": map[interface{}]interface{}{"b": "c"}},
+			source: "a: {b: c}",
+			value:  map[interface{}]interface{}{"a": map[interface{}]interface{}{"b": "c"}},
 		},
 
 		{
-			"v: \"\"\n",
-			map[string]string{"v": ""},
+			source: "v: \"\"\n",
+			value:  map[string]string{"v": ""},
 		},
 		{
-			"v:\n- A\n- B\n",
-			map[string][]string{"v": {"A", "B"}},
+			source: "v:\n- A\n- B\n",
+			value:  map[string][]string{"v": {"A", "B"}},
 		},
 		{
-			"a: '-'\n",
-			map[string]string{"a": "-"},
+			source: "a: '-'\n",
+			value:  map[string]string{"a": "-"},
 		},
 		{
-			"123\n",
-			123,
+			source: "123\n",
+			value:  123,
 		},
 		{
-			"hello: world\n",
-			map[string]string{"hello": "world"},
+			source: "hello: world\n",
+			value:  map[string]string{"hello": "world"},
 		},
 		{
-			"hello: world\r\n",
-			map[string]string{"hello": "world"},
+			source: "hello: world\r\n",
+			value:  map[string]string{"hello": "world"},
 		},
 		{
-			"hello: world\rGo: Gopher",
-			map[string]string{"hello": "world", "Go": "Gopher"},
+			source: "hello: world\rGo: Gopher",
+			value:  map[string]string{"hello": "world", "Go": "Gopher"},
 		},
 
 		// Structs and type conversions.
 		{
-			"hello: world",
-			struct{ Hello string }{"world"},
+			source: "hello: world",
+			value:  struct{ Hello string }{"world"},
 		},
 		{
-			"a: {b: c}",
-			struct{ A struct{ B string } }{struct{ B string }{"c"}},
+			source: "a: {b: c}",
+			value:  struct{ A struct{ B string } }{struct{ B string }{"c"}},
 		},
 		{
-			"a: {b: c}",
-			struct{ A map[string]string }{map[string]string{"b": "c"}},
+			source: "a: {b: c}",
+			value:  struct{ A map[string]string }{map[string]string{"b": "c"}},
 		},
 		{
-			"a:",
-			struct{ A map[string]string }{},
+			source: "a:",
+			value:  struct{ A map[string]string }{},
 		},
 		{
-			"a: 1",
-			struct{ A int }{1},
+			source: "a: 1",
+			value:  struct{ A int }{1},
 		},
 		{
-			"a: 1",
-			struct{ A float64 }{1},
+			source: "a: 1",
+			value:  struct{ A float64 }{1},
 		},
 		{
-			"a: 1.0",
-			struct{ A int }{1},
+			source: "a: 1.0",
+			value:  struct{ A int }{1},
 		},
 		{
-			"a: 1.0",
-			struct{ A uint }{1},
+			source: "a: 1.0",
+			value:  struct{ A uint }{1},
 		},
 		{
-			"a: [1, 2]",
-			struct{ A []int }{[]int{1, 2}},
+			source: "a: [1, 2]",
+			value:  struct{ A []int }{[]int{1, 2}},
 		},
 		{
-			"a: [1, 2]",
-			struct{ A [2]int }{[2]int{1, 2}},
+			source: "a: [1, 2]",
+			value:  struct{ A [2]int }{[2]int{1, 2}},
 		},
 		{
-			"a: 1",
-			struct{ B int }{0},
+			source: "a: 1",
+			value:  struct{ B int }{0},
 		},
 		{
-			"a: 1",
-			struct {
+			source: "a: 1",
+			value: struct {
 				B int `yaml:"a"`
 			}{1},
 		},
 
 		{
-			"a: 1\n",
-			yaml.MapItem{Key: "a", Value: 1},
+			source: "a: 1\n",
+			value:  yaml.MapItem{Key: "a", Value: 1},
 		},
 		{
-			"a: 1\nb: 2\nc: 3\n",
-			yaml.MapSlice{
+			source: "a: 1\nb: 2\nc: 3\n",
+			value: yaml.MapSlice{
 				{Key: "a", Value: 1},
 				{Key: "b", Value: 2},
 				{Key: "c", Value: 3},
 			},
 		},
 		{
-			"v:\n- A\n- 1\n- B:\n  - 2\n  - 3\n",
-			map[string]interface{}{
+			source: "v:\n- A\n- 1\n- B:\n  - 2\n  - 3\n",
+			value: map[string]interface{}{
 				"v": []interface{}{
 					"A",
 					1,
@@ -795,37 +801,37 @@ merge:
 			},
 		},
 		{
-			"a:\n  b: c\n",
-			map[string]interface{}{
+			source: "a:\n  b: c\n",
+			value: map[string]interface{}{
 				"a": map[string]string{
 					"b": "c",
 				},
 			},
 		},
 		{
-			"a: {x: 1}\n",
-			map[string]map[string]int{
+			source: "a: {x: 1}\n",
+			value: map[string]map[string]int{
 				"a": {
 					"x": 1,
 				},
 			},
 		},
 		{
-			"t2: 2018-01-09T10:40:47Z\nt4: 2098-01-09T10:40:47Z\n",
-			map[string]string{
+			source: "t2: 2018-01-09T10:40:47Z\nt4: 2098-01-09T10:40:47Z\n",
+			value: map[string]string{
 				"t2": "2018-01-09T10:40:47Z",
 				"t4": "2098-01-09T10:40:47Z",
 			},
 		},
 		{
-			"a: [1, 2]\n",
-			map[string][]int{
+			source: "a: [1, 2]\n",
+			value: map[string][]int{
 				"a": {1, 2},
 			},
 		},
 		{
-			"a: {b: c, d: e}\n",
-			map[string]interface{}{
+			source: "a: {b: c, d: e}\n",
+			value: map[string]interface{}{
 				"a": map[string]string{
 					"b": "c",
 					"d": "e",
@@ -833,44 +839,44 @@ merge:
 			},
 		},
 		{
-			"a: 3s\n",
-			map[string]string{
+			source: "a: 3s\n",
+			value: map[string]string{
 				"a": "3s",
 			},
 		},
 		{
-			"a: <foo>\n",
-			map[string]string{"a": "<foo>"},
+			source: "a: <foo>\n",
+			value:  map[string]string{"a": "<foo>"},
 		},
 		{
-			"a: \"1:1\"\n",
-			map[string]string{"a": "1:1"},
+			source: "a: \"1:1\"\n",
+			value:  map[string]string{"a": "1:1"},
 		},
 		{
-			"a: 1.2.3.4\n",
-			map[string]string{"a": "1.2.3.4"},
+			source: "a: 1.2.3.4\n",
+			value:  map[string]string{"a": "1.2.3.4"},
 		},
 		{
-			"a: 'b: c'\n",
-			map[string]string{"a": "b: c"},
+			source: "a: 'b: c'\n",
+			value:  map[string]string{"a": "b: c"},
 		},
 		{
-			"a: 'Hello #comment'\n",
-			map[string]string{"a": "Hello #comment"},
+			source: "a: 'Hello #comment'\n",
+			value:  map[string]string{"a": "Hello #comment"},
 		},
 		{
-			"a: 100.5\n",
-			map[string]interface{}{
+			source: "a: 100.5\n",
+			value: map[string]interface{}{
 				"a": 100.5,
 			},
 		},
 		{
-			"a: \"\\0\"\n",
-			map[string]string{"a": "\x00"},
+			source: "a: \"\\0\"\n",
+			value:  map[string]string{"a": "\x00"},
 		},
 		{
-			"b: 2\na: 1\nd: 4\nc: 3\nsub:\n  e: 5\n",
-			map[string]interface{}{
+			source: "b: 2\na: 1\nd: 4\nc: 3\nsub:\n  e: 5\n",
+			value: map[string]interface{}{
 				"b": 2,
 				"a": 1,
 				"d": 4,
@@ -881,91 +887,94 @@ merge:
 			},
 		},
 		{
-			"       a       :          b        \n",
-			map[string]string{"a": "b"},
+			source: "       a       :          b        \n",
+			value:  map[string]string{"a": "b"},
 		},
 		{
-			"a: b # comment\nb: c\n",
-			map[string]string{
+			source: "a: b # comment\nb: c\n",
+			value: map[string]string{
 				"a": "b",
 				"b": "c",
 			},
 		},
 		{
-			"---\na: b\n",
-			map[string]string{"a": "b"},
+			source: "---\na: b\n",
+			value:  map[string]string{"a": "b"},
 		},
 		{
-			"a: b\n...\n",
-			map[string]string{"a": "b"},
+			source: "a: b\n...\n",
+			value:  map[string]string{"a": "b"},
 		},
 		{
-			"%YAML 1.2\n---\n",
-			(*struct{})(nil),
+			source: "%YAML 1.2\n---\n",
+			value:  (*struct{})(nil),
+			eof:    true,
 		},
 		{
-			"---\n",
-			(*struct{})(nil),
+			source: "---\n",
+			value:  (*struct{})(nil),
+			eof:    true,
 		},
 		{
-			"...",
-			(*struct{})(nil),
+			source: "...",
+			value:  (*struct{})(nil),
+			eof:    true,
 		},
 		{
-			"v: go test ./...",
-			map[string]string{"v": "go test ./..."},
+			source: "v: go test ./...",
+			value:  map[string]string{"v": "go test ./..."},
 		},
 		{
-			"v: echo ---",
-			map[string]string{"v": "echo ---"},
+			source: "v: echo ---",
+			value:  map[string]string{"v": "echo ---"},
 		},
 		{
-			"v: |\n  hello\n  ...\n  world\n",
-			map[string]string{"v": "hello\n...\nworld\n"},
+			source: "v: |\n  hello\n  ...\n  world\n",
+			value:  map[string]string{"v": "hello\n...\nworld\n"},
 		},
 		{
-			"a: !!binary gIGC\n",
-			map[string]string{"a": "\x80\x81\x82"},
+			source: "a: !!binary gIGC\n",
+			value:  map[string]string{"a": "\x80\x81\x82"},
 		},
 		{
-			"a: !!binary |\n  " + strings.Repeat("kJCQ", 17) + "kJ\n  CQ\n",
-			map[string]string{"a": strings.Repeat("\x90", 54)},
+			source: "a: !!binary |\n  " + strings.Repeat("kJCQ", 17) + "kJ\n  CQ\n",
+			value:  map[string]string{"a": strings.Repeat("\x90", 54)},
 		},
 		{
-			"v:\n- A\n- |-\n  B\n  C\n",
-			map[string][]string{
+			source: "v:\n- A\n- |-\n  B\n  C\n",
+			value: map[string][]string{
 				"v": {
 					"A", "B\nC",
 				},
 			},
 		},
 		{
-			"v:\n- A\n- |-\n  B\n  C\n\n\n",
-			map[string][]string{
+			source: "v:\n- A\n- |-\n  B\n  C\n\n\n",
+			value: map[string][]string{
 				"v": {
 					"A", "B\nC",
 				},
 			},
 		},
 		{
-			"v:\n- A\n- >-\n  B\n  C\n",
-			map[string][]string{
+			source: "v:\n- A\n- >-\n  B\n  C\n",
+			value: map[string][]string{
 				"v": {
 					"A", "B C",
 				},
 			},
 		},
 		{
-			"v:\n- A\n- >-\n  B\n  C\n\n\n",
-			map[string][]string{
+			source: "v:\n- A\n- >-\n  B\n  C\n\n\n",
+			value: map[string][]string{
 				"v": {
 					"A", "B C",
 				},
 			},
 		},
 		{
-			"a: b\nc: d\n",
-			struct {
+			source: "a: b\nc: d\n",
+			value: struct {
 				A string
 				C string `yaml:"c"`
 			}{
@@ -973,8 +982,8 @@ merge:
 			},
 		},
 		{
-			"a: 1\nb: 2\n",
-			struct {
+			source: "a: 1\nb: 2\n",
+			value: struct {
 				A int
 				B int `yaml:"-"`
 			}{
@@ -982,8 +991,8 @@ merge:
 			},
 		},
 		{
-			"a: 1\nb: 2\n",
-			struct {
+			source: "a: 1\nb: 2\n",
+			value: struct {
 				A     int
 				Child `yaml:",inline"`
 			}{
@@ -997,24 +1006,24 @@ merge:
 
 		// Anchors and aliases.
 		{
-			"a: &x 1\nb: &y 2\nc: *x\nd: *y\n",
-			struct{ A, B, C, D int }{1, 2, 1, 2},
+			source: "a: &x 1\nb: &y 2\nc: *x\nd: *y\n",
+			value:  struct{ A, B, C, D int }{1, 2, 1, 2},
 		},
 		{
-			"a: &a {c: 1}\nb: *a\n",
-			struct {
+			source: "a: &a {c: 1}\nb: *a\n",
+			value: struct {
 				A, B struct {
 					C int
 				}
 			}{struct{ C int }{1}, struct{ C int }{1}},
 		},
 		{
-			"a: &a [1, 2]\nb: *a\n",
-			struct{ B []int }{[]int{1, 2}},
+			source: "a: &a [1, 2]\nb: *a\n",
+			value:  struct{ B []int }{[]int{1, 2}},
 		},
 		{
-			"key1: &anchor\n  subkey: *anchor\nkey2: *anchor\n",
-			map[string]any{
+			source: "key1: &anchor\n  subkey: *anchor\nkey2: *anchor\n",
+			value: map[string]any{
 				"key1": map[string]any{
 					"subkey": nil,
 				},
@@ -1024,42 +1033,44 @@ merge:
 			},
 		},
 		{
-			`{a: &a c, *a : b}`,
-			map[string]string{"a": "c", "c": "b"},
+			source: `{a: &a c, *a : b}`,
+			value:  map[string]string{"a": "c", "c": "b"},
 		},
 		{
-			"tags:\n- hello-world\na: foo",
-			struct {
+			source: "tags:\n- hello-world\na: foo",
+			value: struct {
 				Tags []string
 				A    string
 			}{Tags: []string{"hello-world"}, A: "foo"},
 		},
 		{
-			"",
-			(*struct{})(nil),
+			source: "",
+			value:  (*struct{})(nil),
+			eof:    true,
 		},
 		{
-			"{}", struct{}{},
+			source: "{}",
+			value:  struct{}{},
 		},
 		{
-			"{a: , b: c}",
-			map[string]any{"a": nil, "b": "c"},
+			source: "{a: , b: c}",
+			value:  map[string]any{"a": nil, "b": "c"},
 		},
 		{
-			"v: /a/{b}",
-			map[string]string{"v": "/a/{b}"},
+			source: "v: /a/{b}",
+			value:  map[string]string{"v": "/a/{b}"},
 		},
 		{
-			"v: 1[]{},!%?&*",
-			map[string]string{"v": "1[]{},!%?&*"},
+			source: "v: 1[]{},!%?&*",
+			value:  map[string]string{"v": "1[]{},!%?&*"},
 		},
 		{
-			"v: user's item",
-			map[string]string{"v": "user's item"},
+			source: "v: user's item",
+			value:  map[string]string{"v": "user's item"},
 		},
 		{
-			"v: [1,[2,[3,[4,5],6],7],8]",
-			map[string]interface{}{
+			source: "v: [1,[2,[3,[4,5],6],7],8]",
+			value: map[string]interface{}{
 				"v": []interface{}{
 					1,
 					[]interface{}{
@@ -1076,8 +1087,8 @@ merge:
 			},
 		},
 		{
-			"v: {a: {b: {c: {d: e},f: g},h: i},j: k}",
-			map[string]interface{}{
+			source: "v: {a: {b: {c: {d: e},f: g},h: i},j: k}",
+			value: map[string]interface{}{
 				"v": map[string]interface{}{
 					"a": map[string]interface{}{
 						"b": map[string]interface{}{
@@ -1093,12 +1104,12 @@ merge:
 			},
 		},
 		{
-			`---
+			source: `---
 - a:
     b:
 - c: d
 `,
-			[]map[string]interface{}{
+			value: []map[string]interface{}{
 				{
 					"a": map[string]interface{}{
 						"b": nil,
@@ -1110,12 +1121,12 @@ merge:
 			},
 		},
 		{
-			`---
+			source: `---
 a:
   b:
 c: d
 `,
-			map[string]interface{}{
+			value: map[string]interface{}{
 				"a": map[string]interface{}{
 					"b": nil,
 				},
@@ -1123,31 +1134,31 @@ c: d
 			},
 		},
 		{
-			`---
+			source: `---
 a:
 b:
 c:
 `,
-			map[string]interface{}{
+			value: map[string]interface{}{
 				"a": nil,
 				"b": nil,
 				"c": nil,
 			},
 		},
 		{
-			`---
+			source: `---
 a: go test ./...
 b:
 c:
 `,
-			map[string]interface{}{
+			value: map[string]interface{}{
 				"a": "go test ./...",
 				"b": nil,
 				"c": nil,
 			},
 		},
 		{
-			`---
+			source: `---
 a: |
   hello
   ...
@@ -1155,7 +1166,7 @@ a: |
 b:
 c:
 `,
-			map[string]interface{}{
+			value: map[string]interface{}{
 				"a": "hello\n...\nworld\n",
 				"b": nil,
 				"c": nil,
@@ -1164,30 +1175,30 @@ c:
 
 		// Multi bytes
 		{
-			"v: あいうえお\nv2: かきくけこ",
-			map[string]string{"v": "あいうえお", "v2": "かきくけこ"},
+			source: "v: あいうえお\nv2: かきくけこ",
+			value:  map[string]string{"v": "あいうえお", "v2": "かきくけこ"},
 		},
 		{
-			`
+			source: `
 - "Fun with \\"
 - "\" \a \b \e \f"
 - "\n \r \t \v \0"
 - "\  \_ \N \L \P \
   \x41 \u0041 \U00000041"
 `,
-			[]string{"Fun with \\", "\" \u0007 \b \u001b \f", "\n \r \t \u000b \u0000", "\u0020 \u00a0 \u0085 \u2028 \u2029 A A A"},
+			value: []string{"Fun with \\", "\" \u0007 \b \u001b \f", "\n \r \t \u000b \u0000", "\u0020 \u00a0 \u0085 \u2028 \u2029 A A A"},
 		},
 		{
-			`"\ud83e\udd23"`,
-			"🤣",
+			source: `"\ud83e\udd23"`,
+			value:  "🤣",
 		},
 		{
-			`"\uD83D\uDE00\uD83D\uDE01"`,
-			"😀😁",
+			source: `"\uD83D\uDE00\uD83D\uDE01"`,
+			value:  "😀😁",
 		},
 		{
-			`"\uD83D\uDE00a\uD83D\uDE01"`,
-			"😀a😁",
+			source: `"\uD83D\uDE00a\uD83D\uDE01"`,
+			value:  "😀a😁",
 		},
 	}
 	for _, test := range tests {
@@ -1197,10 +1208,13 @@ c:
 			typ := reflect.ValueOf(test.value).Type()
 			value := reflect.New(typ)
 			if err := dec.Decode(value.Interface()); err != nil {
-				if err == io.EOF {
+				if test.eof && err == io.EOF {
 					return
 				}
 				t.Fatalf("%s: %+v", test.source, err)
+			}
+			if test.eof {
+				t.Fatal("expected EOF but got no error")
 			}
 			actual := fmt.Sprintf("%+v", value.Elem().Interface())
 			expect := fmt.Sprintf("%+v", test.value)
@@ -1769,7 +1783,7 @@ c: true
 		t.Fatalf("expected error")
 	}
 
-	//TODO: properly check if errors are colored/have source
+	// TODO: properly check if errors are colored/have source
 	t.Logf("%s", err)
 	t.Logf("%s", yaml.FormatError(err, true, false))
 	t.Logf("%s", yaml.FormatError(err, false, true))
@@ -1796,7 +1810,7 @@ a:
 		t.Fatal(`err.Error() should match yaml.FormatError(err, false, true)`)
 	}
 
-	//TODO: properly check if errors are colored/have source
+	// TODO: properly check if errors are colored/have source
 	t.Logf("%s", err)
 	t.Logf("%s", yaml.FormatError(err, true, false))
 	t.Logf("%s", yaml.FormatError(err, false, true))

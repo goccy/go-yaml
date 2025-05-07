@@ -1892,7 +1892,7 @@ func (d *Decoder) parse(ctx context.Context, bytes []byte) (*ast.File, error) {
 		if err != nil {
 			return nil, err
 		}
-		if v != nil {
+		if v != nil || (doc.Body != nil && doc.Body.Type() == ast.NullType) {
 			normalizedFile.Docs = append(normalizedFile.Docs, doc)
 			cm := CommentMap{}
 			maps.Copy(cm, d.toCommentMap)

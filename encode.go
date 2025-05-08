@@ -358,8 +358,9 @@ func (e *Encoder) encodeByMarshaler(ctx context.Context, v reflect.Value, column
 		return node, nil
 	}
 
-	if marshaler, ok := iface.(BytesMarshalerContext); ok {
-		doc, err := marshaler.MarshalYAML(ctx)
+	switch v := iface.(type) {
+	case BytesMarshalerContext:
+		doc, err := v.MarshalYAML(ctx)
 		if err != nil {
 			return nil, err
 		}
@@ -368,10 +369,8 @@ func (e *Encoder) encodeByMarshaler(ctx context.Context, v reflect.Value, column
 			return nil, err
 		}
 		return node, nil
-	}
-
-	if marshaler, ok := iface.(BytesMarshaler); ok {
-		doc, err := marshaler.MarshalYAML()
+	case BytesMarshaler:
+		doc, err := v.MarshalYAML()
 		if err != nil {
 			return nil, err
 		}
@@ -380,48 +379,35 @@ func (e *Encoder) encodeByMarshaler(ctx context.Context, v reflect.Value, column
 			return nil, err
 		}
 		return node, nil
-	}
-
-	if marshaler, ok := iface.(InterfaceMarshalerContext); ok {
-		marshalV, err := marshaler.MarshalYAML(ctx)
+	case InterfaceMarshalerContext:
+		marshalV, err := v.MarshalYAML(ctx)
 		if err != nil {
 			return nil, err
 		}
 		return e.encodeValue(ctx, reflect.ValueOf(marshalV), column)
-	}
-
-	if marshaler, ok := iface.(InterfaceMarshaler); ok {
-		marshalV, err := marshaler.MarshalYAML()
+	case InterfaceMarshaler:
+		marshalV, err := v.MarshalYAML()
 		if err != nil {
 			return nil, err
 		}
 		return e.encodeValue(ctx, reflect.ValueOf(marshalV), column)
-	}
-
-	if t, ok := iface.(time.Time); ok {
-		return e.encodeTime(t, column), nil
-	}
-	// Handle *time.Time explicitly since it implements TextMarshaler and shouldn't be treated as plain text
-	if t, ok := iface.(*time.Time); ok && t != nil {
-		return e.encodeTime(*t, column), nil
-	}
-
-	if t, ok := iface.(time.Duration); ok {
-		return e.encodeDuration(t, column), nil
-	}
-
-	if marshaler, ok := iface.(encoding.TextMarshaler); ok {
-		text, err := marshaler.MarshalText()
+	case time.Time:
+		return e.encodeTime(v, column), nil
+	case *time.Time:
+		// Handle *time.Time explicitly since it implements TextMarshaler and shouldn't be treated as plain text
+		return e.encodeTime(*v, column), nil
+	case time.Duration:
+		return e.encodeDuration(v, column), nil
+	case encoding.TextMarshaler:
+		text, err := v.MarshalText()
 		if err != nil {
 			return nil, err
 		}
 		node := e.encodeString(string(text), column)
 		return node, nil
-	}
-
-	if e.useJSONMarshaler {
-		if marshaler, ok := iface.(jsonMarshaler); ok {
-			jsonBytes, err := marshaler.MarshalJSON()
+	case jsonMarshaler:
+		if e.useJSONMarshaler {
+			jsonBytes, err := v.MarshalJSON()
 			if err != nil {
 				return nil, err
 			}

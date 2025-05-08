@@ -1417,8 +1417,8 @@ func (d *Decoder) decodeStruct(ctx context.Context, dst reflect.Value, src ast.N
 			if foundErr != nil {
 				continue
 			}
-			var te *errors.TypeError
-			if errors.As(err, &te) {
+			// We should mangle only the immediate error, and not a wrapped TypeError.
+			if te, ok := err.(*errors.TypeError); ok {
 				fieldName := fmt.Sprintf("%s.%s", structType.Name(), field.Name)
 				te.StructFieldName = &fieldName
 				foundErr = te

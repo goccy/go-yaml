@@ -1403,6 +1403,12 @@ func (d *Decoder) decodeStruct(ctx context.Context, dst reflect.Value, src ast.N
 		}
 		v, exists := keyToNodeMap[structField.RenderName]
 		if !exists {
+			if structField.IsRequired {
+				foundErr = errors.ErrRequiredField(fmt.Sprintf("%s.%s", structType.Name(), field.Name), src.GetToken())
+			}
+			if structField.IsNonZero {
+				foundErr = errors.ErrZeroField(fmt.Sprintf("%s.%s", structType.Name(), field.Name), src.GetToken())
+			}
 			continue
 		}
 		delete(unknownFields, structField.RenderName)
@@ -1425,6 +1431,10 @@ func (d *Decoder) decodeStruct(ctx context.Context, dst reflect.Value, src ast.N
 			} else {
 				foundErr = err
 			}
+			continue
+		}
+		if structField.IsNonZero && isZeroValue(newFieldValue) && foundErr == nil {
+			foundErr = errors.ErrZeroField(fmt.Sprintf("%s.%s", structType.Name(), field.Name), v.GetToken())
 			continue
 		}
 		fieldValue.Set(newFieldValue)

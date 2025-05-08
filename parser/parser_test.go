@@ -311,7 +311,7 @@ a: 0 - 1
 - a:
    b: c
    d: e
-- f: null
+- f:
   g: h
 `,
 		},
@@ -351,7 +351,7 @@ a:
 -     a     :
       b: c
 `, `
-- a: null
+- a:
   b: c
 `,
 		},
@@ -740,8 +740,8 @@ d: e
 `,
 			`
 a:
- b: &anchor null
- c: &anchor2 null
+ b: &anchor
+ c: &anchor2
 d: e
 `,
 		},
@@ -1567,7 +1567,7 @@ foo:
 `
 		expected := `
 foo:
-  bar: null # comment
+  bar: # comment
   baz: 1`
 		f, err := parser.ParseBytes([]byte(content), parser.ParseComments)
 		if err != nil {
@@ -1590,7 +1590,7 @@ foo:
 `
 		expected := `
 foo:
-  bar: null
+  bar:
   # comment
   baz: 1`
 		f, err := parser.ParseBytes([]byte(content), parser.ParseComments)
@@ -1620,7 +1620,7 @@ baz: 1`
 		}
 		expected := `
 foo:
-  bar: null
+  bar:
 # comment
 baz: 1`
 		got := f.Docs[0].String()

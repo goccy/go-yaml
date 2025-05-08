@@ -317,7 +317,7 @@ func checkLineBreak(t *token.Token) bool {
 			//  bar: null # comment
 			//
 			//  baz: 1
-			if prev.Type == token.NullType {
+			if prev.Type == token.NullType || prev.Type == token.ImplicitNullType {
 				return strings.Count(prev.Origin, lbc) > 0
 			}
 			if lineDiff-adjustment > 0 {
@@ -627,6 +627,12 @@ func (n *NullNode) GetValue() interface{} {
 
 // String returns `null` text
 func (n *NullNode) String() string {
+	if n.Token.Type == token.ImplicitNullType {
+		if n.Comment != nil {
+			return n.Comment.String()
+		}
+		return ""
+	}
 	if n.Comment != nil {
 		return addCommentString("null", n.Comment)
 	}
@@ -1437,7 +1443,12 @@ func (n *MappingValueNode) toString() string {
 	valueIndentLevel := n.Value.GetToken().Position.IndentLevel
 	keyComment := n.Key.GetComment()
 	if _, ok := n.Value.(ScalarNode); ok {
-		return fmt.Sprintf("%s%s: %s", space, n.Key.String(), n.Value.String())
+		value := n.Value.String()
+		if value == "" {
+			// implicit null value.
+			return fmt.Sprintf("%s%s:", space, n.Key.String())
+		}
+		return fmt.Sprintf("%s%s: %s", space, n.Key.String(), value)
 	} else if keyIndentLevel < valueIndentLevel && !n.IsFlowStyle {
 		if keyComment != nil {
 			return fmt.Sprintf(
@@ -1812,13 +1823,18 @@ func (n *AnchorNode) AddColumn(col int) {
 
 // String anchor to text
 func (n *AnchorNode) String() string {
+	anchor := "&" + n.Name.String()
 	value := n.Value.String()
 	if s, ok := n.Value.(*SequenceNode); ok && !s.IsFlowStyle {
-		return fmt.Sprintf("&%s\n%s", n.Name.String(), value)
+		return fmt.Sprintf("%s\n%s", anchor, value)
 	} else if m, ok := n.Value.(*MappingNode); ok && !m.IsFlowStyle {
-		return fmt.Sprintf("&%s\n%s", n.Name.String(), value)
+		return fmt.Sprintf("%s\n%s", anchor, value)
 	}
-	return fmt.Sprintf("&%s %s", n.Name.String(), value)
+	if value == "" {
+		// implicit null value.
+		return anchor
+	}
+	return fmt.Sprintf("%s %s", anchor, value)
 }
 
 // MarshalYAML encodes to a YAML text

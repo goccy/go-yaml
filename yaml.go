@@ -116,20 +116,20 @@ func (s MapSlice) ToMap() map[interface{}]interface{} {
 //	              1) If the field type has an "IsZero() bool" method, that will be used to determine whether the value is zero.
 //	              2) Otherwise, the value is zero if it is the zero value for its type.
 //
-//			flow         Marshal using a flow style (useful for structs,
-//			             sequences and maps).
+//	flow         Marshal using a flow style (useful for structs,
+//	             sequences and maps).
 //
-//			inline       Inline the field, which must be a struct or a map,
-//			             causing all of its fields or keys to be processed as if
-//			             they were part of the outer struct. For maps, keys must
-//			             not conflict with the yaml keys of other struct fields.
+//	inline       Inline the field, which must be a struct or a map,
+//	             causing all of its fields or keys to be processed as if
+//	             they were part of the outer struct. For maps, keys must
+//	             not conflict with the yaml keys of other struct fields.
 //
-//			anchor       Marshal with anchor. If want to define anchor name explicitly, use anchor=name style.
-//			             Otherwise, if used 'anchor' name only, used the field name lowercased as the anchor name
+//	anchor       Marshal with anchor. If want to define anchor name explicitly, use anchor=name style.
+//	             Otherwise, if used 'anchor' name only, used the field name lowercased as the anchor name
 //
-//			alias        Marshal with alias. If want to define alias name explicitly, use alias=name style.
-//			             Otherwise, If omitted alias name and the field type is pointer type,
-//			             assigned anchor name automatically from same pointer address.
+//	alias        Marshal with alias. If want to define alias name explicitly, use alias=name style.
+//	             Otherwise, If omitted alias name and the field type is pointer type,
+//	             assigned anchor name automatically from same pointer address.
 //
 // In addition, if the key is "-", the field is ignored.
 //

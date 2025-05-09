@@ -112,6 +112,10 @@ func (s MapSlice) ToMap() map[interface{}]interface{} {
 //	             encoding/json 'omitempty' definition. It combines some elements
 //	             of 'omitempty' and 'omitzero'. See https://github.com/goccy/go-yaml/issues/695.
 //
+//	omitzero      The omitzero tag behaves in the same way as the interpretation of the omitzero tag in the encoding/json library.
+//	              1) If the field type has an "IsZero() bool" method, that will be used to determine whether the value is zero.
+//	              2) Otherwise, the value is zero if it is the zero value for its type.
+//
 //	flow         Marshal using a flow style (useful for structs,
 //	             sequences and maps).
 //

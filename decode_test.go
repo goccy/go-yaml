@@ -3794,3 +3794,33 @@ func TestRequiredFieldDecode(t *testing.T) {
 		t.Fatalf("expect error message to contain %q, but got %q", "required field .A is missing", msg)
 	}
 }
+
+func TestRequiredNonZeroFieldDecode(t *testing.T) {
+	yml := `a: "existing"`
+	var v struct {
+		A string `yaml:"a,required,nonzero"`
+	}
+	if err := yaml.Unmarshal([]byte(yml), &v); err != nil {
+		t.Fatal(err)
+	}
+
+	yml = `a: ""` // empty string is a zero value of string type
+	err := yaml.Unmarshal([]byte(yml), &v)
+	if err == nil {
+		t.Fatalf("expect error because the field is set to nonzero, but got nil")
+	}
+	msg := err.Error()
+	if !strings.Contains(msg, "nonzero field .A is set to the zero value of its type") {
+		t.Fatalf("expect error message to contain %q, but got %q", "nonzero field .A is set to the zero value of its type", msg)
+	}
+
+	yml = `{}` // empty object is missing a entirely but a is required
+	err = yaml.Unmarshal([]byte(yml), &v)
+	if err == nil {
+		t.Fatalf("expect error because the field is set to required, but got nil")
+	}
+	msg = err.Error()
+	if !strings.Contains(msg, "required field .A is missing") {
+		t.Fatalf("expect error message to contain %q, but got %q", "required field .A is missing", msg)
+	}
+}

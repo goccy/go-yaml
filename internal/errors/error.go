@@ -71,6 +71,16 @@ type UnexpectedNodeTypeError struct {
 	Token    *token.Token
 }
 
+type RequiredFieldError struct {
+	StructFieldName *string
+	Token           *token.Token
+}
+
+type ZeroFieldError struct {
+	StructFieldName *string
+	Token           *token.Token
+}
+
 // ErrSyntax create syntax error instance with message and token
 func ErrSyntax(msg string, tk *token.Token) *SyntaxError {
 	return &SyntaxError{
@@ -118,6 +128,20 @@ func ErrUnexpectedNodeType(actual, expected ast.NodeType, tk *token.Token) *Unex
 		Actual:   actual,
 		Expected: expected,
 		Token:    tk,
+	}
+}
+
+func ErrRequiredField(structFieldName string, tk *token.Token) *RequiredFieldError {
+	return &RequiredFieldError{
+		StructFieldName: &structFieldName,
+		Token:           tk,
+	}
+}
+
+func ErrZeroField(structFieldName string, tk *token.Token) *ZeroFieldError {
+	return &ZeroFieldError{
+		StructFieldName: &structFieldName,
+		Token:           tk,
 	}
 }
 
@@ -230,6 +254,38 @@ func (e *UnexpectedNodeTypeError) FormatError(colored, inclSource bool) string {
 
 func (e *UnexpectedNodeTypeError) msg() string {
 	return fmt.Sprintf("%s was used where %s is expected", e.Actual.YAMLName(), e.Expected.YAMLName())
+}
+
+func (e *RequiredFieldError) GetMessage() string {
+	return fmt.Sprintf("required field %s is missing", *e.StructFieldName)
+}
+
+func (e *RequiredFieldError) GetToken() *token.Token {
+	return e.Token
+}
+
+func (e *RequiredFieldError) Error() string {
+	return e.FormatError(defaultFormatColor, defaultIncludeSource)
+}
+
+func (e *RequiredFieldError) FormatError(colored, inclSource bool) string {
+	return FormatError(e.GetMessage(), e.Token, colored, inclSource)
+}
+
+func (e *ZeroFieldError) GetMessage() string {
+	return fmt.Sprintf("nonzero field %s is set to the zero value of its type", *e.StructFieldName)
+}
+
+func (e *ZeroFieldError) GetToken() *token.Token {
+	return e.Token
+}
+
+func (e *ZeroFieldError) Error() string {
+	return e.FormatError(defaultFormatColor, defaultIncludeSource)
+}
+
+func (e *ZeroFieldError) FormatError(colored, inclSource bool) string {
+	return FormatError(e.GetMessage(), e.Token, colored, inclSource)
 }
 
 func FormatError(errMsg string, token *token.Token, colored, inclSource bool) string {

@@ -2926,8 +2926,8 @@ func TestDecoder_LiteralWithNewLine(t *testing.T) {
 
 func TestDecoder_TabCharacterAtRight(t *testing.T) {
 	yml := `
-- a: [2 , 2] 			
-  b: [2 , 2] 			
+- a: [2 , 2]
+  b: [2 , 2]
   c: [2 , 2]`
 	var v []map[string][]int
 	if err := yaml.Unmarshal([]byte(yml), &v); err != nil {
@@ -3722,5 +3722,105 @@ func TestSetNullValue(t *testing.T) {
 				}
 			})
 		})
+	}
+}
+
+func TestZeroFieldDecode(t *testing.T) {
+	yml := `s: "hello"`
+	var v struct {
+		S string `yaml:"s,nonzero"`
+	}
+	if err := yaml.Unmarshal([]byte(yml), &v); err != nil {
+		t.Fatal(err)
+	}
+
+	yml = `s: ""`
+	err := yaml.Unmarshal([]byte(yml), &v)
+	if err == nil {
+		t.Fatalf("expect error, but got nil")
+	}
+	msg := err.Error()
+	if !strings.Contains(msg, "nonzero field .S is set to the zero value of its type") {
+		t.Fatalf("expect error message to contain %q, but got %q", "nonzero field .S is set to the zero value of its type", msg)
+	}
+
+	// This is a nonempty list with the zero value of its element type, but the list itself is nonempty and thus nonzero
+	yml = `a: [0]`
+	var w struct {
+		A []int `yaml:"a,nonzero"`
+	}
+	if err := yaml.Unmarshal([]byte(yml), &w); err != nil {
+		t.Fatal(err)
+	}
+
+	yml = `a: []`
+	err = yaml.Unmarshal([]byte(yml), &w)
+	if err == nil {
+		t.Fatalf("expect error, but got nil")
+	}
+	msg = err.Error()
+	if !strings.Contains(msg, "nonzero field .A is set to the zero value of its type") {
+		t.Fatalf("expect error message to contain %q, but got %q", "nonzero field .A is set to the zero value of its type", msg)
+	}
+
+	// The yaml object is here but the field is not set and therefore is zero
+	yml = `{}`
+	err = yaml.Unmarshal([]byte(yml), &w)
+	if err == nil {
+		t.Fatalf("expect error, but got nil")
+	}
+	msg = err.Error()
+	if !strings.Contains(msg, "nonzero field .A is set to the zero value of its type") {
+		t.Fatalf("expect error message to contain %q, but got %q", "nonzero field .A is set to the zero value of its type", msg)
+	}
+}
+
+func TestRequiredFieldDecode(t *testing.T) {
+	yml := `a: 0`
+	var v struct {
+		A int `yaml:"a,required"`
+	}
+	if err := yaml.Unmarshal([]byte(yml), &v); err != nil {
+		t.Fatal(err)
+	}
+
+	yml = `{}`
+	err := yaml.Unmarshal([]byte(yml), &v)
+	if err == nil {
+		t.Fatalf("expect error, but got nil")
+	}
+	msg := err.Error()
+	if !strings.Contains(msg, "required field .A is missing") {
+		t.Fatalf("expect error message to contain %q, but got %q", "required field .A is missing", msg)
+	}
+}
+
+func TestRequiredNonZeroFieldDecode(t *testing.T) {
+	yml := `a: "existing"`
+	var v struct {
+		A string `yaml:"a,required,nonzero"`
+	}
+	if err := yaml.Unmarshal([]byte(yml), &v); err != nil {
+		t.Fatal(err)
+	}
+
+	yml = `a: ""` // empty string is a zero value of string type
+	err := yaml.Unmarshal([]byte(yml), &v)
+	if err == nil {
+		t.Fatalf("expect error because the field is set to nonzero, but got nil")
+	}
+	msg := err.Error()
+	if !strings.Contains(msg, "nonzero field .A is set to the zero value of its type") {
+		t.Fatalf("expect error message to contain %q, but got %q", "nonzero field .A is set to the zero value of its type", msg)
+	}
+
+	yml = `{}` // empty object is missing a entirely but a is required
+	err = yaml.Unmarshal([]byte(yml), &v)
+	if err == nil {
+		t.Fatalf("expect error because the field is set to required, but got nil")
+	}
+	msg = err.Error()
+	if !strings.Contains(msg, "required field .A is missing") {
+		t.Fatalf("expect error message to contain %q, but got %q", "required field .A is missing", msg)
 	}
 }

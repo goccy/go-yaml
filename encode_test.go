@@ -1975,6 +1975,48 @@ a: &anc !mytag
 	}
 }
 
+func TestZeroFieldEncode(t *testing.T) {
+	var buf bytes.Buffer
+	enc := yaml.NewEncoder(&buf)
+	type T struct {
+		I int `yaml:"i,nonzero"`
+	}
+	v := &T{I: 1}
+	if err := enc.Encode(v); err != nil {
+		t.Fatalf("%+v", err)
+	}
+	expect := "i: 1\n"
+	if expect != buf.String() {
+		t.Fatalf("expect = [%s], actual = [%s]", expect, buf.String())
+	}
+
+	v = &T{I: 0}
+	buf.Reset()
+	err := enc.Encode(v)
+	if err == nil {
+		t.Fatalf("expect error, but got nil")
+	}
+	msg := err.Error()
+	if !strings.Contains(msg, "nonzero field I is set to the zero value of its type") {
+		t.Fatalf("expect error message to contain %q, but got %q", "nonzero field I is set to the zero value of its type", msg)
+	}
+
+	buf.Reset()
+	type U struct {
+		List []int `yaml:"list,nonzero"`
+	}
+	var nilArray []int
+	u := &U{List: nilArray}
+	err = enc.Encode(u)
+	if err == nil {
+		t.Fatalf("expect error, but got nil")
+	}
+	msg = err.Error()
+	if !strings.Contains(msg, "nonzero field List is set to the zero value of its type") {
+		t.Fatalf("expect error message to contain %q, but got %q", "nonzero field List is set to the zero value of its type", msg)
+	}
+}
+
 func ptr[T any](v T) *T {
 	return &v
 }

@@ -184,32 +184,19 @@ func getFirstToken(n ast.Node) *token.Token {
 }
 
 type Formatter struct {
-	existsComment    bool
-	tokenToOriginMap map[*token.Token]string
-	anchorNodeMap    map[string]ast.Node
+	existsComment bool
+	firstToken    *token.Token
+	anchorNodeMap map[string]ast.Node
 }
 
 func newFormatter(tk *token.Token, existsComment bool) *Formatter {
-	tokenToOriginMap := make(map[*token.Token]string)
-	for tk.Prev != nil {
-		tk = tk.Prev
-	}
-	tokenToOriginMap[tk] = tk.Origin
-
-	var origin string
-	for tk.Next != nil {
-		tk = tk.Next
-		if tk.Type == token.CommentType {
-			origin += strings.Repeat("\n", strings.Count(normalizeNewLineChars(tk.Origin), "\n"))
-			continue
-		}
-		origin += tk.Origin
-		tokenToOriginMap[tk] = origin
-		origin = ""
+	firstToken := tk
+	for firstToken.Prev != nil {
+		firstToken = firstToken.Prev
 	}
 	return &Formatter{
-		existsComment:    existsComment,
-		tokenToOriginMap: tokenToOriginMap,
+		existsComment: existsComment,
+		firstToken:    firstToken,
 	}
 }
 
@@ -290,7 +277,21 @@ func (f *Formatter) origin(tk *token.Token) string {
 	if f.existsComment {
 		return tk.Origin
 	}
-	return f.tokenToOriginMap[tk]
+	// find the matching token in the linked list
+	t := f.firstToken
+	for ; t != tk && t.Next != nil; t = t.Next {
+	}
+	if t != tk {
+		return ""
+	}
+	// build the origin string prepending by newline characters for each comments'
+	// line
+	prevNewLines := 0
+	origin := t.Origin
+	for t := t.Prev; t != nil && t.Type == token.CommentType; t = t.Prev {
+		prevNewLines += countNewLineChars(t.Origin)
+	}
+	return strings.Repeat("\n", prevNewLines) + origin
 }
 
 func (f *Formatter) formatDocument(n *ast.DocumentNode) string {
@@ -536,4 +537,23 @@ func (f *Formatter) addIndentSpace(indentNum int, v string, isIgnoredFirstLine b
 // normalizeNewLineChars normalize CRLF and CR to LF.
 func normalizeNewLineChars(v string) string {
 	return strings.ReplaceAll(strings.ReplaceAll(v, "\r\n", "\n"), "\r", "\n")
+}
+
+// countNewLineChars counts the number of newline characters in the string.
+// CRLF and CR are counted as a single newline character.
+func countNewLineChars(v string) int {
+	cnt := 0
+	for i := 0; i < len(v); i++ {
+		r := v[i]
+		switch {
+		case r == '\n':
+			cnt++
+		case r == '\r':
+			cnt++
+			if i+1 < len(v) && v[i+1] == '\n' {
+				i++
+			}
+		}
+	}
+	return cnt
 }

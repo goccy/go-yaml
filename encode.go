@@ -729,7 +729,7 @@ type IsZeroer interface {
 	IsZero() bool
 }
 
-func (e *Encoder) isZeroValueByOmitZero(v reflect.Value) bool {
+func (e *Encoder) isOmittedByOmitZero(v reflect.Value) bool {
 	kind := v.Kind()
 	if z, ok := v.Interface().(IsZeroer); ok {
 		if (kind == reflect.Ptr || kind == reflect.Interface) && v.IsNil() {
@@ -756,7 +756,7 @@ func (e *Encoder) isZeroValueByOmitZero(v reflect.Value) bool {
 			if vt.Field(i).PkgPath != "" {
 				continue // private field
 			}
-			if !e.isZeroValueByOmitZero(v.Field(i)) {
+			if !e.isOmittedByOmitZero(v.Field(i)) {
 				return false
 			}
 		}
@@ -765,7 +765,7 @@ func (e *Encoder) isZeroValueByOmitZero(v reflect.Value) bool {
 	return false
 }
 
-func (e *Encoder) isZeroValueByOmitEmptyOption(v reflect.Value) bool {
+func (e *Encoder) isOmittedByOmitEmptyOption(v reflect.Value) bool {
 	switch v.Kind() {
 	case reflect.String:
 		return len(v.String()) == 0
@@ -792,7 +792,7 @@ func (e *Encoder) isZeroValueByOmitEmptyOption(v reflect.Value) bool {
 // if a type implements IsZero, that implementation will be used.
 // Furthermore, for non-pointer structs, if all fields are eligible for exclusion,
 // the struct itself will also be excluded. These behaviors are originally the functionality of omitzero.
-func (e *Encoder) isZeroValueByOmitEmptyTag(v reflect.Value) bool {
+func (e *Encoder) isOmittedByOmitEmptyTag(v reflect.Value) bool {
 	kind := v.Kind()
 	if z, ok := v.Interface().(IsZeroer); ok {
 		if (kind == reflect.Ptr || kind == reflect.Interface) && v.IsNil() {
@@ -821,7 +821,7 @@ func (e *Encoder) isZeroValueByOmitEmptyTag(v reflect.Value) bool {
 			if vt.Field(i).PkgPath != "" {
 				continue // private field
 			}
-			if !e.isZeroValueByOmitEmptyTag(v.Field(i)) {
+			if !e.isOmittedByOmitEmptyTag(v.Field(i)) {
 				return false
 			}
 		}
@@ -880,15 +880,15 @@ func (e *Encoder) encodeStruct(ctx context.Context, value reflect.Value, column 
 		}
 		fieldValue := value.FieldByName(field.Name)
 		sf := fieldMap[field.Name]
-		if (e.omitZero || sf.IsOmitZero) && e.isZeroValueByOmitZero(fieldValue) {
+		if (e.omitZero || sf.IsOmitZero) && e.isOmittedByOmitZero(fieldValue) {
 			// omit encoding by omitzero tag or OmitZero option.
 			continue
 		}
-		if e.omitEmpty && e.isZeroValueByOmitEmptyOption(fieldValue) {
+		if e.omitEmpty && e.isOmittedByOmitEmptyOption(fieldValue) {
 			// omit encoding by OmitEmpty option.
 			continue
 		}
-		if sf.IsOmitEmpty && e.isZeroValueByOmitEmptyTag(fieldValue) {
+		if sf.IsOmitEmpty && e.isOmittedByOmitEmptyTag(fieldValue) {
 			// omit encoding by omitempty tag.
 			continue
 		}

@@ -1442,13 +1442,7 @@ func (d *Decoder) decodeStruct(ctx context.Context, dst reflect.Value, src ast.N
 	}
 
 	if d.validator != nil {
-		var err error
-		if dst.CanAddr() {
-			err = d.validator.Struct(dst.Addr().Interface())
-		} else {
-			err = d.validator.Struct(dst.Interface())
-		}
-		if err != nil {
+		if err := d.validator.Struct(dst.Addr().Interface()); err != nil {
 			ev := reflect.ValueOf(err)
 			if ev.Type().Kind() == reflect.Slice {
 				for i := 0; i < ev.Len(); i++ {

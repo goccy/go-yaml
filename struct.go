@@ -20,6 +20,7 @@ type StructField struct {
 	IsAutoAnchor bool
 	IsAutoAlias  bool
 	IsOmitEmpty  bool
+	IsOmitZero   bool
 	IsFlow       bool
 	IsInline     bool
 }
@@ -53,6 +54,8 @@ func structField(field reflect.StructField) *StructField {
 			switch {
 			case opt == "omitempty":
 				sf.IsOmitEmpty = true
+			case opt == "omitzero":
+				sf.IsOmitZero = true
 			case opt == "flow":
 				sf.IsFlow = true
 			case opt == "inline":

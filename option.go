@@ -215,11 +215,22 @@ func AutoInt() EncodeOption {
 	}
 }
 
-// OmitEmpty forces the encoder to assume an `omitempty` struct tag is
-// set on all the fields. See `Marshal` commentary for the `omitempty` tag logic.
+// OmitEmpty behaves in the same way as the interpretation of the omitempty tag in the encoding/json library.
+// set on all the fields.
+// In the current implementation, the omitempty tag is not implemented in the same way as encoding/json,
+// so please specify this option if you expect the same behavior.
 func OmitEmpty() EncodeOption {
 	return func(e *Encoder) error {
 		e.omitEmpty = true
+		return nil
+	}
+}
+
+// OmitZero forces the encoder to assume an `omitzero` struct tag is
+// set on all the fields. See `Marshal` commentary for the `omitzero` tag logic.
+func OmitZero() EncodeOption {
+	return func(e *Encoder) error {
+		e.omitZero = true
 		return nil
 	}
 }

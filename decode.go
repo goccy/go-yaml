@@ -872,9 +872,7 @@ func (d *Decoder) decodeByUnmarshaler(ctx context.Context, dst reflect.Value, sr
 	return errors.New("does not implemented Unmarshaler")
 }
 
-var (
-	astNodeType = reflect.TypeOf((*ast.Node)(nil)).Elem()
-)
+var astNodeType = reflect.TypeOf((*ast.Node)(nil)).Elem()
 
 func (d *Decoder) decodeValue(ctx context.Context, dst reflect.Value, src ast.Node) error {
 	d.stepIn()
@@ -896,7 +894,10 @@ func (d *Decoder) decodeValue(ctx context.Context, dst reflect.Value, src ast.No
 		return nil
 	}
 	if d.canDecodeByUnmarshaler(dst) {
-		return d.decodeByUnmarshaler(ctx, dst, src)
+		if err := d.decodeByUnmarshaler(ctx, dst, src); err != nil {
+			return err
+		}
+		return nil
 	}
 	valueType := dst.Type()
 	switch valueType.Kind() {
@@ -1723,7 +1724,7 @@ func (d *Decoder) decodeMap(ctx context.Context, dst reflect.Value, src ast.Node
 		k := d.createDecodableValue(keyType)
 		if d.canDecodeByUnmarshaler(k) {
 			if err := d.decodeByUnmarshaler(ctx, k, key); err != nil {
-				return errors.ErrUnmarshaler(err, keyType, src.GetToken())
+				return err
 			}
 		} else {
 			keyVal, err := d.nodeToValue(ctx, key)

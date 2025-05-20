@@ -703,7 +703,7 @@ func IsNeedQuoted(value string) bool {
 	}
 	for i, c := range value {
 		switch c {
-		case '#', '\\':
+		case '#':
 			return true
 		case ':', '-':
 			if i+1 < len(value) && value[i+1] == ' ' {

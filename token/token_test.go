@@ -91,7 +91,6 @@ func TestIsNeedQuoted(t *testing.T) {
 		"2001-12-15 2:59:43.10",
 		"2002-12-14",
 		"hoge # comment",
-		"\\0",
 		"#a b",
 		"*a b",
 		"&a b",

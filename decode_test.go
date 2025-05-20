@@ -2531,6 +2531,9 @@ func TestUnmarshalablePtrString(t *testing.T) {
 type unmarshalableIntValue int
 
 func (v *unmarshalableIntValue) UnmarshalYAML(raw []byte) error {
+	if string(raw) == "yamlerr" {
+		return yaml.Unmarshal(raw, (*int)(v))
+	}
 	i, err := strconv.Atoi(string(raw))
 	if err != nil {
 		return err
@@ -2600,6 +2603,38 @@ func TestUnmarshalablePtrInt(t *testing.T) {
 		}
 		if container.V != (*int)(nil) {
 			t.Fatalf("expected nil, but %q is set", *container.V)
+		}
+	})
+}
+
+func TestUnmarshalableErrors(t *testing.T) {
+	t.Run("wrapped error", func(t *testing.T) {
+		t.Parallel()
+		var container unmarshalableIntContainer
+		err := yaml.Unmarshal([]byte(`value: atoierr`), &container)
+		if err == nil {
+			t.Fatal("expected to error")
+		}
+		var unmarshalerErr *errors.UnmarshalerError
+		if !errors.As(err, &unmarshalerErr) {
+			t.Fatalf("expected UnmarshalerError but got: %s", err)
+		}
+		expectedErr := `yaml_test.unmarshalableIntValue: strconv.Atoi: parsing "atoierr": invalid syntax`
+		if !strings.Contains(err.Error(), expectedErr) {
+			t.Fatalf("expected error message: %s to contain: %s", err.Error(), expectedErr)
+		}
+	})
+
+	t.Run("nested yaml decode error", func(t *testing.T) {
+		t.Parallel()
+		var container unmarshalableIntContainer
+		err := yaml.Unmarshal([]byte(`value: yamlerr`), &container)
+		if err == nil {
+			t.Fatal("expected to error")
+		}
+		expectedErr := `cannot unmarshal into Go value of type yaml_test.unmarshalableIntValue: cannot unmarshal string into Go value of type int`
+		if !strings.Contains(err.Error(), expectedErr) {
+			t.Fatalf("expected error message: %s to contain: %s", err.Error(), expectedErr)
 		}
 	})
 }
@@ -3206,6 +3241,9 @@ type unmarshableMapKey struct {
 }
 
 func (mk *unmarshableMapKey) UnmarshalYAML(b []byte) error {
+	if string(b) == "errkey" {
+		return errors.New("invalid map key")
+	}
 	mk.Key = string(b)
 	return nil
 }
@@ -3400,6 +3438,15 @@ func TestMapKeyCustomUnmarshaler(t *testing.T) {
 	}
 	if val != "value" {
 		t.Fatalf("expected to have value \"value\", but got %q", val)
+	}
+
+	expectErr := "invalid map key"
+	err := yaml.Unmarshal([]byte(`errkey: value`), &m)
+	if err == nil {
+		t.Fatal("expected error but got nil")
+	}
+	if !strings.Contains(err.Error(), expectErr) {
+		t.Fatalf("error message %q should contain %q", err.Error(), expectErr)
 	}
 }
 

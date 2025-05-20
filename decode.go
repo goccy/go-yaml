@@ -757,7 +757,7 @@ func (d *Decoder) decodeByUnmarshaler(ctx context.Context, dst reflect.Value, sr
 			return err
 		}
 		if err := unmarshaler(ptrValue.Interface(), b); err != nil {
-			return err
+			return errors.ErrUnmarshaler(err, dst.Type(), src.GetToken())
 		}
 		return nil
 	}
@@ -769,7 +769,7 @@ func (d *Decoder) decodeByUnmarshaler(ctx context.Context, dst reflect.Value, sr
 			return err
 		}
 		if err := unmarshaler.UnmarshalYAML(ctx, b); err != nil {
-			return err
+			return errors.ErrUnmarshaler(err, dst.Type(), src.GetToken())
 		}
 		return nil
 	}
@@ -780,7 +780,7 @@ func (d *Decoder) decodeByUnmarshaler(ctx context.Context, dst reflect.Value, sr
 			return err
 		}
 		if err := unmarshaler.UnmarshalYAML(b); err != nil {
-			return err
+			return errors.ErrUnmarshaler(err, dst.Type(), src.GetToken())
 		}
 		return nil
 	}
@@ -796,7 +796,7 @@ func (d *Decoder) decodeByUnmarshaler(ctx context.Context, dst reflect.Value, sr
 			}
 			return nil
 		}); err != nil {
-			return err
+			return errors.ErrUnmarshaler(err, dst.Type(), src.GetToken())
 		}
 		return nil
 	}
@@ -812,14 +812,14 @@ func (d *Decoder) decodeByUnmarshaler(ctx context.Context, dst reflect.Value, sr
 			}
 			return nil
 		}); err != nil {
-			return err
+			return errors.ErrUnmarshaler(err, dst.Type(), src.GetToken())
 		}
 		return nil
 	}
 
 	if unmarshaler, ok := iface.(NodeUnmarshaler); ok {
 		if err := unmarshaler.UnmarshalYAML(src); err != nil {
-			return err
+			return errors.ErrUnmarshaler(err, dst.Type(), src.GetToken())
 		}
 
 		return nil
@@ -827,7 +827,7 @@ func (d *Decoder) decodeByUnmarshaler(ctx context.Context, dst reflect.Value, sr
 
 	if unmarshaler, ok := iface.(NodeUnmarshalerContext); ok {
 		if err := unmarshaler.UnmarshalYAML(ctx, src); err != nil {
-			return err
+			return errors.ErrUnmarshaler(err, dst.Type(), src.GetToken())
 		}
 
 		return nil
@@ -845,7 +845,7 @@ func (d *Decoder) decodeByUnmarshaler(ctx context.Context, dst reflect.Value, sr
 		b, ok := d.unmarshalableText(src)
 		if ok {
 			if err := unmarshaler.UnmarshalText(b); err != nil {
-				return err
+				return errors.ErrUnmarshaler(err, dst.Type(), src.GetToken())
 			}
 			return nil
 		}
@@ -863,7 +863,7 @@ func (d *Decoder) decodeByUnmarshaler(ctx context.Context, dst reflect.Value, sr
 			}
 			jsonBytes = bytes.TrimRight(jsonBytes, "\n")
 			if err := unmarshaler.UnmarshalJSON(jsonBytes); err != nil {
-				return err
+				return errors.ErrUnmarshaler(err, dst.Type(), src.GetToken())
 			}
 			return nil
 		}
@@ -896,10 +896,7 @@ func (d *Decoder) decodeValue(ctx context.Context, dst reflect.Value, src ast.No
 		return nil
 	}
 	if d.canDecodeByUnmarshaler(dst) {
-		if err := d.decodeByUnmarshaler(ctx, dst, src); err != nil {
-			return errors.ErrUnmarshal(err, dst.Type(), src.GetToken())
-		}
-		return nil
+		return d.decodeByUnmarshaler(ctx, dst, src)
 	}
 	valueType := dst.Type()
 	switch valueType.Kind() {
@@ -1381,8 +1378,7 @@ func (d *Decoder) decodeStruct(ctx context.Context, dst reflect.Value, src ast.N
 				if foundErr != nil {
 					continue
 				}
-				var te *errors.TypeError
-				if errors.As(err, &te) {
+				if te, ok := err.(*errors.TypeError); ok {
 					if te.StructFieldName != nil {
 						fieldName := fmt.Sprintf("%s.%s", structType.Name(), *te.StructFieldName)
 						te.StructFieldName = &fieldName
@@ -1417,7 +1413,6 @@ func (d *Decoder) decodeStruct(ctx context.Context, dst reflect.Value, src ast.N
 			if foundErr != nil {
 				continue
 			}
-			// We should mangle only the immediate error, and not a wrapped TypeError.
 			if te, ok := err.(*errors.TypeError); ok {
 				fieldName := fmt.Sprintf("%s.%s", structType.Name(), field.Name)
 				te.StructFieldName = &fieldName
@@ -1728,7 +1723,7 @@ func (d *Decoder) decodeMap(ctx context.Context, dst reflect.Value, src ast.Node
 		k := d.createDecodableValue(keyType)
 		if d.canDecodeByUnmarshaler(k) {
 			if err := d.decodeByUnmarshaler(ctx, k, key); err != nil {
-				return errors.ErrUnmarshal(err, dst.Type(), src.GetToken())
+				return errors.ErrUnmarshaler(err, keyType, src.GetToken())
 			}
 		} else {
 			keyVal, err := d.nodeToValue(ctx, key)

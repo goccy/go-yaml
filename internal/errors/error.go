@@ -128,12 +128,16 @@ func ErrUnexpectedNodeType(actual, expected ast.NodeType, tk *token.Token) *Unex
 	}
 }
 
-func ErrUnmarshal(wrapped error, dstType reflect.Type, tk *token.Token) error {
+func ErrUnmarshaler(wrapped error, dstType reflect.Type, tk *token.Token) error {
 	if wrapped == nil {
 		return nil
 	}
 	if yamlErr, ok := wrapped.(Error); ok {
-		return yamlErr
+		return &UnmarshalerError{
+			Wrapped: errors.New(yamlErr.GetMessage()),
+			DstType: dstType,
+			Token:   tk,
+		}
 	}
 	return &UnmarshalerError{
 		Wrapped: wrapped,

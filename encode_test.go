@@ -584,6 +584,111 @@ func TestEncoder(t *testing.T) {
 			nil,
 		},
 
+		// omitzero flag.
+		{
+			"a: 1\n",
+			struct {
+				A int `yaml:"a,omitzero"`
+				B int `yaml:"b,omitzero"`
+			}{1, 0},
+			nil,
+		},
+		{
+			"{}\n",
+			struct {
+				A int `yaml:"a,omitzero"`
+				B int `yaml:"b,omitzero"`
+			}{0, 0},
+			nil,
+		},
+		{
+			"a:\n  \"y\": \"\"\n",
+			struct {
+				A *struct {
+					X string `yaml:"x,omitzero"`
+					Y string
+				}
+			}{&struct {
+				X string `yaml:"x,omitzero"`
+				Y string
+			}{}},
+			nil,
+		},
+		{
+			"a: {}\n",
+			struct {
+				A *struct {
+					X string `yaml:"x,omitzero"`
+					Y string `yaml:"y,omitzero"`
+				}
+			}{&struct {
+				X string `yaml:"x,omitzero"`
+				Y string `yaml:"y,omitzero"`
+			}{}},
+			nil,
+		},
+		{
+			"a: {x: 1}\n",
+			struct {
+				A *struct{ X, y int } `yaml:"a,omitzero,flow"`
+			}{&struct{ X, y int }{1, 2}},
+			nil,
+		},
+		{
+			"{}\n",
+			struct {
+				A *struct{ X, y int } `yaml:"a,omitzero,flow"`
+			}{nil},
+			nil,
+		},
+		{
+			"a: {x: 0}\n",
+			struct {
+				A *struct{ X, y int } `yaml:"a,omitzero,flow"`
+			}{&struct{ X, y int }{}},
+			nil,
+		},
+		{
+			"a: {x: 1}\n",
+			struct {
+				A struct{ X, y int } `yaml:"a,omitzero,flow"`
+			}{struct{ X, y int }{1, 2}},
+			nil,
+		},
+		{
+			"{}\n",
+			struct {
+				A struct{ X, y int } `yaml:"a,omitzero,flow"`
+			}{struct{ X, y int }{0, 1}},
+			nil,
+		},
+		{
+			"a: 1.0\n",
+			struct {
+				A float64 `yaml:"a,omitzero"`
+				B float64 `yaml:"b,omitzero"`
+			}{1, 0},
+			nil,
+		},
+		{
+			"a: 1\nb: []\n",
+			struct {
+				A int
+				B []string `yaml:"b,omitzero"`
+			}{
+				1, []string{},
+			},
+			nil,
+		},
+		{
+			"{}\n",
+			struct {
+				A netip.Addr         `yaml:"a,omitzero"`
+				B struct{ X, y int } `yaml:"b,omitzero"`
+			}{},
+			nil,
+		},
+
 		// OmitEmpty global option.
 		{
 			"a: 1\n",
@@ -603,6 +708,48 @@ func TestEncoder(t *testing.T) {
 			}{0, 0},
 			[]yaml.EncodeOption{
 				yaml.OmitEmpty(),
+			},
+		},
+		{
+			"a: \"\"\nb: {}\n",
+			struct {
+				A netip.Addr         `yaml:"a"`
+				B struct{ X, y int } `yaml:"b"`
+			}{},
+			[]yaml.EncodeOption{
+				yaml.OmitEmpty(),
+			},
+		},
+
+		// OmitZero global option.
+		{
+			"a: 1\n",
+			struct {
+				A int
+				B int
+			}{1, 0},
+			[]yaml.EncodeOption{
+				yaml.OmitZero(),
+			},
+		},
+		{
+			"{}\n",
+			struct {
+				A int
+				B int
+			}{0, 0},
+			[]yaml.EncodeOption{
+				yaml.OmitZero(),
+			},
+		},
+		{
+			"{}\n",
+			struct {
+				A netip.Addr         `yaml:"a"`
+				B struct{ X, y int } `yaml:"b"`
+			}{},
+			[]yaml.EncodeOption{
+				yaml.OmitZero(),
 			},
 		},
 

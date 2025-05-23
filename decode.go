@@ -763,30 +763,27 @@ func (d *Decoder) decodeByUnmarshaler(ctx context.Context, dst reflect.Value, sr
 	}
 	iface := ptrValue.Interface()
 
-	if unmarshaler, ok := iface.(BytesUnmarshalerContext); ok {
+	switch v := iface.(type) {
+	case BytesUnmarshalerContext:
 		b, err := d.unmarshalableDocument(src)
 		if err != nil {
 			return err
 		}
-		if err := unmarshaler.UnmarshalYAML(ctx, b); err != nil {
+		if err := v.UnmarshalYAML(ctx, b); err != nil {
 			return err
 		}
 		return nil
-	}
-
-	if unmarshaler, ok := iface.(BytesUnmarshaler); ok {
+	case BytesUnmarshaler:
 		b, err := d.unmarshalableDocument(src)
 		if err != nil {
 			return err
 		}
-		if err := unmarshaler.UnmarshalYAML(b); err != nil {
+		if err := v.UnmarshalYAML(b); err != nil {
 			return err
 		}
 		return nil
-	}
-
-	if unmarshaler, ok := iface.(InterfaceUnmarshalerContext); ok {
-		if err := unmarshaler.UnmarshalYAML(ctx, func(v interface{}) error {
+	case InterfaceUnmarshalerContext:
+		if err := v.UnmarshalYAML(ctx, func(v any) error {
 			rv := reflect.ValueOf(v)
 			if rv.Type().Kind() != reflect.Ptr {
 				return ErrDecodeRequiredPointerType
@@ -799,10 +796,8 @@ func (d *Decoder) decodeByUnmarshaler(ctx context.Context, dst reflect.Value, sr
 			return err
 		}
 		return nil
-	}
-
-	if unmarshaler, ok := iface.(InterfaceUnmarshaler); ok {
-		if err := unmarshaler.UnmarshalYAML(func(v interface{}) error {
+	case InterfaceUnmarshaler:
+		if err := v.UnmarshalYAML(func(v any) error {
 			rv := reflect.ValueOf(v)
 			if rv.Type().Kind() != reflect.Ptr {
 				return ErrDecodeRequiredPointerType
@@ -815,44 +810,29 @@ func (d *Decoder) decodeByUnmarshaler(ctx context.Context, dst reflect.Value, sr
 			return err
 		}
 		return nil
-	}
-
-	if unmarshaler, ok := iface.(NodeUnmarshaler); ok {
-		if err := unmarshaler.UnmarshalYAML(src); err != nil {
+	case NodeUnmarshaler:
+		if err := v.UnmarshalYAML(src); err != nil {
 			return err
 		}
-
 		return nil
-	}
-
-	if unmarshaler, ok := iface.(NodeUnmarshalerContext); ok {
-		if err := unmarshaler.UnmarshalYAML(ctx, src); err != nil {
+	case NodeUnmarshalerContext:
+		if err := v.UnmarshalYAML(ctx, src); err != nil {
 			return err
 		}
-
 		return nil
-	}
-
-	if _, ok := iface.(*time.Time); ok {
+	case *time.Time:
 		return d.decodeTime(ctx, dst, src)
-	}
-
-	if _, ok := iface.(*time.Duration); ok {
+	case *time.Duration:
 		return d.decodeDuration(ctx, dst, src)
-	}
-
-	if unmarshaler, isText := iface.(encoding.TextUnmarshaler); isText {
-		b, ok := d.unmarshalableText(src)
-		if ok {
-			if err := unmarshaler.UnmarshalText(b); err != nil {
+	case encoding.TextUnmarshaler:
+		if b, ok := d.unmarshalableText(src); ok {
+			if err := v.UnmarshalText(b); err != nil {
 				return err
 			}
 			return nil
 		}
-	}
-
-	if d.useJSONUnmarshaler {
-		if unmarshaler, ok := iface.(jsonUnmarshaler); ok {
+	case jsonUnmarshaler:
+		if d.useJSONUnmarshaler {
 			b, err := d.unmarshalableDocument(src)
 			if err != nil {
 				return err
@@ -862,7 +842,7 @@ func (d *Decoder) decodeByUnmarshaler(ctx context.Context, dst reflect.Value, sr
 				return err
 			}
 			jsonBytes = bytes.TrimRight(jsonBytes, "\n")
-			if err := unmarshaler.UnmarshalJSON(jsonBytes); err != nil {
+			if err := v.UnmarshalJSON(jsonBytes); err != nil {
 				return err
 			}
 			return nil

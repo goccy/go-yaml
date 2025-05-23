@@ -25,6 +25,8 @@ type Child struct {
 	C int `yaml:"-"`
 }
 
+type TestString string
+
 func TestDecoder(t *testing.T) {
 	tests := []struct {
 		source string
@@ -34,6 +36,10 @@ func TestDecoder(t *testing.T) {
 		{
 			source: "v: hi\n",
 			value:  map[string]string{"v": "hi"},
+		},
+		{
+			source: "v: hi\n",
+			value:  map[string]TestString{"v": "hi"},
 		},
 		{
 			source: "v: \"true\"\n",
@@ -54,6 +60,10 @@ func TestDecoder(t *testing.T) {
 		{
 			source: "v: 10\n",
 			value:  map[string]string{"v": "10"},
+		},
+		{
+			source: "v: 10\n",
+			value:  map[string]TestString{"v": "10"},
 		},
 		{
 			source: "v: -10\n",

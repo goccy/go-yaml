@@ -637,20 +637,29 @@ func (d *Decoder) convertValue(v reflect.Value, typ reflect.Type, src ast.Node) 
 		return v.Convert(typ), nil
 	}
 	// cast value to string
+	var strVal string
 	switch v.Type().Kind() {
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-		return reflect.ValueOf(strconv.FormatInt(v.Int(), 10)), nil
+		strVal = strconv.FormatInt(v.Int(), 10)
 	case reflect.Float32, reflect.Float64:
-		return reflect.ValueOf(fmt.Sprint(v.Float())), nil
+		strVal = fmt.Sprint(v.Float())
 	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr:
-		return reflect.ValueOf(strconv.FormatUint(v.Uint(), 10)), nil
+		strVal = strconv.FormatUint(v.Uint(), 10)
 	case reflect.Bool:
-		return reflect.ValueOf(strconv.FormatBool(v.Bool())), nil
+		strVal = strconv.FormatBool(v.Bool())
+	default:
+		if !v.Type().ConvertibleTo(typ) {
+			return reflect.Zero(typ), errors.ErrTypeMismatch(typ, v.Type(), src.GetToken())
+		}
+		return v.Convert(typ), nil
 	}
-	if !v.Type().ConvertibleTo(typ) {
-		return reflect.Zero(typ), errors.ErrTypeMismatch(typ, v.Type(), src.GetToken())
+
+	val := reflect.ValueOf(strVal)
+	if val.Type() != typ {
+		// Handle named types, e.g., `type MyString string`
+		val = val.Convert(typ)
 	}
-	return v.Convert(typ), nil
+	return val, nil
 }
 
 func (d *Decoder) deleteStructKeys(structType reflect.Type, unknownFields map[string]ast.Node) error {

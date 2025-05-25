@@ -458,6 +458,18 @@ func TestDecoder(t *testing.T) {
 			source: "'1': \"2\\r\\n3\"",
 			value:  map[interface{}]interface{}{"1": "2\r\n3"},
 		},
+		{
+			source: "'1': \"a\\\nb\\\nc\"",
+			value:  map[interface{}]interface{}{"1": "abc"},
+		},
+		{
+			source: "'1': \"a\\\r\nb\\\r\nc\"",
+			value:  map[interface{}]interface{}{"1": "abc"},
+		},
+		{
+			source: "'1': \"a\\\rb\\\rc\"",
+			value:  map[interface{}]interface{}{"1": "abc"},
+		},
 
 		{
 			source: "a: -b_c",

@@ -522,6 +522,17 @@ func (s *Scanner) scanDoubleQuote(ctx *Context) (*token.Token, error) {
 				s.progressLine(ctx)
 				idx++
 				continue
+			case '\r':
+				isFirstLineChar = true
+				isNewLine = true
+				ctx.addOriginBuf(nextChar)
+				s.progressLine(ctx)
+				progress = 1
+				// Skip \n after \r in CRLF sequences
+				if idx+2 < size && src[idx+2] == '\n' {
+					ctx.addOriginBuf('\n')
+					progress = 2
+				}
 			case '\t':
 				progress = 1
 				ctx.addOriginBuf(nextChar)

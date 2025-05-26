@@ -766,7 +766,7 @@ func (d *Decoder) decodeByUnmarshaler(ctx context.Context, dst reflect.Value, sr
 			return err
 		}
 		if err := unmarshaler(ptrValue.Interface(), b); err != nil {
-			return err
+			return errors.ErrUnmarshaler(err, dst.Type(), src.GetToken())
 		}
 		return nil
 	}
@@ -778,7 +778,7 @@ func (d *Decoder) decodeByUnmarshaler(ctx context.Context, dst reflect.Value, sr
 			return err
 		}
 		if err := unmarshaler.UnmarshalYAML(ctx, b); err != nil {
-			return err
+			return errors.ErrUnmarshaler(err, dst.Type(), src.GetToken())
 		}
 		return nil
 	}
@@ -789,7 +789,7 @@ func (d *Decoder) decodeByUnmarshaler(ctx context.Context, dst reflect.Value, sr
 			return err
 		}
 		if err := unmarshaler.UnmarshalYAML(b); err != nil {
-			return err
+			return errors.ErrUnmarshaler(err, dst.Type(), src.GetToken())
 		}
 		return nil
 	}
@@ -805,7 +805,7 @@ func (d *Decoder) decodeByUnmarshaler(ctx context.Context, dst reflect.Value, sr
 			}
 			return nil
 		}); err != nil {
-			return err
+			return errors.ErrUnmarshaler(err, dst.Type(), src.GetToken())
 		}
 		return nil
 	}
@@ -821,14 +821,14 @@ func (d *Decoder) decodeByUnmarshaler(ctx context.Context, dst reflect.Value, sr
 			}
 			return nil
 		}); err != nil {
-			return err
+			return errors.ErrUnmarshaler(err, dst.Type(), src.GetToken())
 		}
 		return nil
 	}
 
 	if unmarshaler, ok := iface.(NodeUnmarshaler); ok {
 		if err := unmarshaler.UnmarshalYAML(src); err != nil {
-			return err
+			return errors.ErrUnmarshaler(err, dst.Type(), src.GetToken())
 		}
 
 		return nil
@@ -836,7 +836,7 @@ func (d *Decoder) decodeByUnmarshaler(ctx context.Context, dst reflect.Value, sr
 
 	if unmarshaler, ok := iface.(NodeUnmarshalerContext); ok {
 		if err := unmarshaler.UnmarshalYAML(ctx, src); err != nil {
-			return err
+			return errors.ErrUnmarshaler(err, dst.Type(), src.GetToken())
 		}
 
 		return nil
@@ -854,7 +854,7 @@ func (d *Decoder) decodeByUnmarshaler(ctx context.Context, dst reflect.Value, sr
 		b, ok := d.unmarshalableText(src)
 		if ok {
 			if err := unmarshaler.UnmarshalText(b); err != nil {
-				return err
+				return errors.ErrUnmarshaler(err, dst.Type(), src.GetToken())
 			}
 			return nil
 		}
@@ -872,7 +872,7 @@ func (d *Decoder) decodeByUnmarshaler(ctx context.Context, dst reflect.Value, sr
 			}
 			jsonBytes = bytes.TrimRight(jsonBytes, "\n")
 			if err := unmarshaler.UnmarshalJSON(jsonBytes); err != nil {
-				return err
+				return errors.ErrUnmarshaler(err, dst.Type(), src.GetToken())
 			}
 			return nil
 		}
@@ -881,9 +881,7 @@ func (d *Decoder) decodeByUnmarshaler(ctx context.Context, dst reflect.Value, sr
 	return errors.New("does not implemented Unmarshaler")
 }
 
-var (
-	astNodeType = reflect.TypeOf((*ast.Node)(nil)).Elem()
-)
+var astNodeType = reflect.TypeOf((*ast.Node)(nil)).Elem()
 
 func (d *Decoder) decodeValue(ctx context.Context, dst reflect.Value, src ast.Node) error {
 	d.stepIn()
@@ -1390,8 +1388,7 @@ func (d *Decoder) decodeStruct(ctx context.Context, dst reflect.Value, src ast.N
 				if foundErr != nil {
 					continue
 				}
-				var te *errors.TypeError
-				if errors.As(err, &te) {
+				if te, ok := err.(*errors.TypeError); ok {
 					if te.StructFieldName != nil {
 						fieldName := fmt.Sprintf("%s.%s", structType.Name(), *te.StructFieldName)
 						te.StructFieldName = &fieldName
@@ -1426,8 +1423,7 @@ func (d *Decoder) decodeStruct(ctx context.Context, dst reflect.Value, src ast.N
 			if foundErr != nil {
 				continue
 			}
-			var te *errors.TypeError
-			if errors.As(err, &te) {
+			if te, ok := err.(*errors.TypeError); ok {
 				fieldName := fmt.Sprintf("%s.%s", structType.Name(), field.Name)
 				te.StructFieldName = &fieldName
 				foundErr = te

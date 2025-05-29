@@ -3769,3 +3769,23 @@ func TestSetNullValue(t *testing.T) {
 		})
 	}
 }
+
+func TestBackslash(t *testing.T) {
+	yml := `
+test:
+ path: C:\Users\foo
+`
+	type Test struct {
+		Path string `yaml:"path"`
+	}
+	type Value struct {
+		Test Test `yaml:"test"`
+	}
+	var v Value
+	if err := yaml.Unmarshal([]byte(yml), &v); err != nil {
+		t.Fatal(err)
+	}
+	if v.Test.Path != "C:\\Users\\foo" {
+		t.Fatalf("path: unexpected value %s", v.Test.Path)
+	}
+}

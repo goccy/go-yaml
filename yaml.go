@@ -266,8 +266,8 @@ func JSONToYAML(bytes []byte) ([]byte, error) {
 var (
 	globalCustomMarshalerMu    sync.Mutex
 	globalCustomUnmarshalerMu  sync.Mutex
-	globalCustomMarshalerMap   = map[reflect.Type]func(interface{}) ([]byte, error){}
-	globalCustomUnmarshalerMap = map[reflect.Type]func(interface{}, []byte) error{}
+	globalCustomMarshalerMap   = map[reflect.Type]func(context.Context, interface{}) ([]byte, error){}
+	globalCustomUnmarshalerMap = map[reflect.Type]func(context.Context, interface{}, []byte) error{}
 )
 
 // RegisterCustomMarshaler overrides any encoding process for the type specified in generics.
@@ -281,8 +281,20 @@ func RegisterCustomMarshaler[T any](marshaler func(T) ([]byte, error)) {
 	defer globalCustomMarshalerMu.Unlock()
 
 	var typ T
-	globalCustomMarshalerMap[reflect.TypeOf(typ)] = func(v interface{}) ([]byte, error) {
+	globalCustomMarshalerMap[reflect.TypeOf(typ)] = func(ctx context.Context, v interface{}) ([]byte, error) {
 		return marshaler(v.(T))
+	}
+}
+
+// RegisterCustomMarshalerContext overrides any encoding process for the type specified in generics.
+// Similar to RegisterCustomMarshalerContext, but allows passing a context to the unmarshaler function.
+func RegisterCustomMarshalerContext[T any](marshaler func(context.Context, T) ([]byte, error)) {
+	globalCustomMarshalerMu.Lock()
+	defer globalCustomMarshalerMu.Unlock()
+
+	var typ T
+	globalCustomMarshalerMap[reflect.TypeOf(typ)] = func(ctx context.Context, v interface{}) ([]byte, error) {
+		return marshaler(ctx, v.(T))
 	}
 }
 
@@ -296,7 +308,19 @@ func RegisterCustomUnmarshaler[T any](unmarshaler func(*T, []byte) error) {
 	defer globalCustomUnmarshalerMu.Unlock()
 
 	var typ *T
-	globalCustomUnmarshalerMap[reflect.TypeOf(typ)] = func(v interface{}, b []byte) error {
+	globalCustomUnmarshalerMap[reflect.TypeOf(typ)] = func(ctx context.Context, v interface{}, b []byte) error {
 		return unmarshaler(v.(*T), b)
+	}
+}
+
+// RegisterCustomUnmarshalerContext overrides any decoding process for the type specified in generics.
+// Similar to RegisterCustomUnmarshalerContext, but allows passing a context to the unmarshaler function.
+func RegisterCustomUnmarshalerContext[T any](unmarshaler func(context.Context, *T, []byte) error) {
+	globalCustomUnmarshalerMu.Lock()
+	defer globalCustomUnmarshalerMu.Unlock()
+
+	var typ *T
+	globalCustomUnmarshalerMap[reflect.TypeOf(typ)] = func(ctx context.Context, v interface{}, b []byte) error {
+		return unmarshaler(ctx, v.(*T), b)
 	}
 }

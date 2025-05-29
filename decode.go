@@ -30,7 +30,7 @@ type Decoder struct {
 	referenceReaders     []io.Reader
 	anchorNodeMap        map[string]ast.Node
 	anchorValueMap       map[string]reflect.Value
-	customUnmarshalerMap map[reflect.Type]func(interface{}, []byte) error
+	customUnmarshalerMap map[reflect.Type]func(context.Context, interface{}, []byte) error
 	commentMaps          []CommentMap
 	toCommentMap         CommentMap
 	opts                 []DecodeOption
@@ -54,7 +54,7 @@ func NewDecoder(r io.Reader, opts ...DecodeOption) *Decoder {
 		reader:               r,
 		anchorNodeMap:        map[string]ast.Node{},
 		anchorValueMap:       map[string]reflect.Value{},
-		customUnmarshalerMap: map[reflect.Type]func(interface{}, []byte) error{},
+		customUnmarshalerMap: map[reflect.Type]func(context.Context, interface{}, []byte) error{},
 		opts:                 opts,
 		referenceReaders:     []io.Reader{},
 		referenceFiles:       []string{},
@@ -722,7 +722,7 @@ func (d *Decoder) existsTypeInCustomUnmarshalerMap(t reflect.Type) bool {
 	return false
 }
 
-func (d *Decoder) unmarshalerFromCustomUnmarshalerMap(t reflect.Type) (func(interface{}, []byte) error, bool) {
+func (d *Decoder) unmarshalerFromCustomUnmarshalerMap(t reflect.Type) (func(context.Context, interface{}, []byte) error, bool) {
 	if unmarshaler, exists := d.customUnmarshalerMap[t]; exists {
 		return unmarshaler, exists
 	}
@@ -765,7 +765,7 @@ func (d *Decoder) decodeByUnmarshaler(ctx context.Context, dst reflect.Value, sr
 		if err != nil {
 			return err
 		}
-		if err := unmarshaler(ptrValue.Interface(), b); err != nil {
+		if err := unmarshaler(ctx, ptrValue.Interface(), b); err != nil {
 			return err
 		}
 		return nil

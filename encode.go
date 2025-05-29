@@ -37,7 +37,7 @@ type Encoder struct {
 	anchorRefToName            map[uintptr]string
 	anchorNameMap              map[string]struct{}
 	anchorCallback             func(*ast.AnchorNode, interface{}) error
-	customMarshalerMap         map[reflect.Type]func(interface{}) ([]byte, error)
+	customMarshalerMap         map[reflect.Type]func(context.Context, interface{}) ([]byte, error)
 	omitZero                   bool
 	omitEmpty                  bool
 	autoInt                    bool
@@ -64,7 +64,7 @@ func NewEncoder(w io.Writer, opts ...EncodeOption) *Encoder {
 	return &Encoder{
 		writer:             w,
 		opts:               opts,
-		customMarshalerMap: map[reflect.Type]func(interface{}) ([]byte, error){},
+		customMarshalerMap: map[reflect.Type]func(context.Context, interface{}) ([]byte, error){},
 		line:               1,
 		column:             1,
 		offset:             0,
@@ -306,7 +306,7 @@ func (e *Encoder) existsTypeInCustomMarshalerMap(t reflect.Type) bool {
 	return false
 }
 
-func (e *Encoder) marshalerFromCustomMarshalerMap(t reflect.Type) (func(interface{}) ([]byte, error), bool) {
+func (e *Encoder) marshalerFromCustomMarshalerMap(t reflect.Type) (func(context.Context, interface{}) ([]byte, error), bool) {
 	if marshaler, exists := e.customMarshalerMap[t]; exists {
 		return marshaler, exists
 	}
@@ -352,7 +352,7 @@ func (e *Encoder) encodeByMarshaler(ctx context.Context, v reflect.Value, column
 	iface := v.Interface()
 
 	if marshaler, exists := e.marshalerFromCustomMarshalerMap(v.Type()); exists {
-		doc, err := marshaler(iface)
+		doc, err := marshaler(ctx, iface)
 		if err != nil {
 			return nil, err
 		}

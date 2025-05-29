@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"io"
 	"reflect"
-
 	"github.com/goccy/go-yaml/ast"
 )
 
@@ -102,8 +101,20 @@ func UseJSONUnmarshaler() DecodeOption {
 func CustomUnmarshaler[T any](unmarshaler func(*T, []byte) error) DecodeOption {
 	return func(d *Decoder) error {
 		var typ *T
-		d.customUnmarshalerMap[reflect.TypeOf(typ)] = func(v interface{}, b []byte) error {
+		d.customUnmarshalerMap[reflect.TypeOf(typ)] = func(ctx context.Context, v interface{}, b []byte) error {
 			return unmarshaler(v.(*T), b)
+		}
+		return nil
+	}
+}
+
+// CustomUnmarshalerContext overrides any decoding process for the type specified in generics.
+// Similar to CustomUnmarshaler, but allows passing a context to the unmarshaler function.
+func CustomUnmarshalerContext[T any](unmarshaler func(context.Context, *T, []byte) error) DecodeOption {
+	return func(d *Decoder) error {
+		var typ *T
+		d.customUnmarshalerMap[reflect.TypeOf(typ)] = func(ctx context.Context, v interface{}, b []byte) error {
+			return unmarshaler(ctx, v.(*T), b)
 		}
 		return nil
 	}
@@ -200,8 +211,20 @@ func UseJSONMarshaler() EncodeOption {
 func CustomMarshaler[T any](marshaler func(T) ([]byte, error)) EncodeOption {
 	return func(e *Encoder) error {
 		var typ T
-		e.customMarshalerMap[reflect.TypeOf(typ)] = func(v interface{}) ([]byte, error) {
+		e.customMarshalerMap[reflect.TypeOf(typ)] = func(ctx context.Context, v interface{}) ([]byte, error) {
 			return marshaler(v.(T))
+		}
+		return nil
+	}
+}
+
+// CustomMarshalerContext overrides any encoding process for the type specified in generics.
+// Similar to CustomMarshaler, but allows passing a context to the marshaler function.
+func CustomMarshalerContext[T any](marshaler func(context.Context, T) ([]byte, error)) EncodeOption {
+	return func(e *Encoder) error {
+		var typ T
+		e.customMarshalerMap[reflect.TypeOf(typ)] = func(ctx context.Context, v interface{}) ([]byte, error) {
+			return marshaler(ctx, v.(T))
 		}
 		return nil
 	}

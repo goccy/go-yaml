@@ -1452,8 +1452,9 @@ foo:
 
 func TestComment(t *testing.T) {
 	tests := []struct {
-		name string
-		yaml string
+		name     string
+		yaml     string
+		expected string
 	}{
 		{
 			name: "map with comment",
@@ -1543,6 +1544,52 @@ foo: > # comment
 a: b
 `,
 		},
+		{
+			name: "map with misaligned indentation in comments",
+			yaml: `
+ # commentA
+a:  #commentB
+   # commentC
+  b: c  # commentD
+    # commentE
+  d: e  # commentF
+ # commentG
+`,
+			expected: `
+# commentA
+a: #commentB
+  # commentC
+  b: c # commentD
+  # commentE
+  d: e # commentF
+# commentG
+`,
+		},
+		{
+			name: "sequence with misaligned indentation in comments",
+			yaml: `
+ # commentA
+- a  # commentB
+ # commentC
+- b:   # commentD
+   # commentE
+  - d  # commentF
+    # commentG
+  - e  # commentG
+ # commentH
+`,
+			expected: `
+# commentA
+- a # commentB
+# commentC
+- b: # commentD
+  # commentE
+  - d # commentF
+  # commentG
+  - e # commentG
+# commentH
+`,
+		},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
@@ -1551,8 +1598,12 @@ a: b
 				t.Fatalf("%+v", err)
 			}
 			got := "\n" + f.String()
-			if test.yaml != got {
-				t.Fatalf("expected:%s\ngot:%s", test.yaml, got)
+			expected := test.yaml
+			if test.expected != "" {
+				expected = test.expected
+			}
+			if expected != got {
+				t.Fatalf("expected:%s\ngot:%s", expected, got)
 			}
 		})
 	}

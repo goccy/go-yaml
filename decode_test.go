@@ -2173,6 +2173,29 @@ func TestDecoder_CustomUnmarshaler(t *testing.T) {
 			t.Fatalf("failed to switch to custom unmarshaler. got: %q", v.Foo)
 		}
 	})
+	t.Run("override bytes type with context", func(t *testing.T) {
+		type T struct {
+			Foo []byte `yaml:"foo"`
+		}
+		src := []byte(`foo: "bar"`)
+		var v T
+		ctx := context.WithValue(context.Background(), "plop", uint(42))
+		if err := yaml.UnmarshalContext(ctx, src, &v, yaml.CustomUnmarshalerContext[[]byte](func(ctx context.Context, dst *[]byte, b []byte) error {
+			if !bytes.Equal(b, []byte(`"bar"`)) {
+				t.Fatalf("failed to get target buffer: %q", b)
+			}
+			if ctx.Value("plop") != uint(42) {
+				t.Fatalf("context value is not correct")
+			}
+			*dst = []byte("bazbaz")
+			return nil
+		})); err != nil {
+			t.Fatal(err)
+		}
+		if !bytes.Equal(v.Foo, []byte("bazbaz")) {
+			t.Fatalf("failed to switch to custom unmarshaler. got: %q", v.Foo)
+		}
+	})
 }
 
 type unmarshalContext struct {

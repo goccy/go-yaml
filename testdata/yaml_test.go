@@ -2,6 +2,7 @@ package yaml_test
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"strings"
 	"testing"
@@ -1084,6 +1085,26 @@ func TestRegisterCustomMarshaler(t *testing.T) {
 	}
 }
 
+func TestRegisterCustomMarshalerContext(t *testing.T) {
+	type T struct {
+		Foo []byte `yaml:"foo"`
+	}
+	yaml.RegisterCustomMarshalerContext[T](func(ctx context.Context, _ T) ([]byte, error) {
+		if ctx.Value("plop") != uint(42) {
+			t.Fatalf("context value is not correct")
+		}
+		return []byte(`"override"`), nil
+	})
+	ctx := context.WithValue(context.Background(), "plop", uint(42))
+	b, err := yaml.MarshalContext(ctx, &T{Foo: []byte("bar")})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(b, []byte("\"override\"\n")) {
+		t.Fatalf("failed to register custom marshaler. got: %q", b)
+	}
+}
+
 func TestRegisterCustomUnmarshaler(t *testing.T) {
 	type T struct {
 		Foo []byte `yaml:"foo"`
@@ -1094,6 +1115,27 @@ func TestRegisterCustomUnmarshaler(t *testing.T) {
 	})
 	var v T
 	if err := yaml.Unmarshal([]byte(`"foo": "bar"`), &v); err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(v.Foo, []byte("override")) {
+		t.Fatalf("failed to decode. got %q", v.Foo)
+	}
+}
+
+func TestRegisterCustomUnmarshalerContext(t *testing.T) {
+	type T struct {
+		Foo []byte `yaml:"foo"`
+	}
+	yaml.RegisterCustomUnmarshalerContext[T](func(ctx context.Context, v *T, _ []byte) error {
+		if ctx.Value("plop") != uint(42) {
+			t.Fatalf("context value is not correct")
+		}
+		v.Foo = []byte("override")
+		return nil
+	})
+	var v T
+	ctx := context.WithValue(context.Background(), "plop", uint(42))
+	if err := yaml.UnmarshalContext(ctx, []byte(`"foo": "bar"`), &v); err != nil {
 		t.Fatal(err)
 	}
 	if !bytes.Equal(v.Foo, []byte("override")) {

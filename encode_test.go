@@ -1492,6 +1492,27 @@ func TestEncoder_CustomMarshaler(t *testing.T) {
 			t.Fatalf("failed to switch to custom marshaler. got: %q", b)
 		}
 	})
+	t.Run("override bytes type with context", func(t *testing.T) {
+		type T struct {
+			Foo []byte `yaml:"foo"`
+		}
+		ctx := context.WithValue(context.Background(), "plop", uint(42))
+		b, err := yaml.MarshalContext(ctx, &T{Foo: []byte("bar")}, yaml.CustomMarshalerContext[[]byte](func(ctx context.Context, v []byte) ([]byte, error) {
+			if !bytes.Equal(v, []byte("bar")) {
+				t.Fatalf("failed to get src buffer: %q", v)
+			}
+			if ctx.Value("plop") != uint(42) {
+				t.Fatalf("context value is not correct")
+			}
+			return []byte(`override`), nil
+		}))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !bytes.Equal(b, []byte("foo: override\n")) {
+			t.Fatalf("failed to switch to custom marshaler. got: %q", b)
+		}
+	})
 }
 
 func TestEncoder_AutoInt(t *testing.T) {

@@ -1,6 +1,7 @@
 package yaml
 
 import (
+	"fmt"
 	"io"
 	"reflect"
 
@@ -313,6 +314,26 @@ func CommentToMap(cm CommentMap) DecodeOption {
 			return ErrInvalidCommentMapValue
 		}
 		d.toCommentMap = cm
+		return nil
+	}
+}
+
+// InlineAfterDepth enables inline formatting when nesting depth exceeds the specified level.
+// When the nesting depth of structures/maps exceeds the given depth, they will be formatted
+// in flow style (inline) to improve readability and reduce vertical space.
+//
+// Example:
+//
+//	yaml.Marshal(data, yaml.InlineAfterDepth(2))
+//
+// This will format structures nested deeper than 2 levels in inline style.
+func InlineAfterDepth(depth int) EncodeOption {
+	return func(e *Encoder) error {
+		if depth < 0 {
+			return fmt.Errorf("inline depth must be non-negative, got %d", depth)
+		}
+		e.inlineAfterDepth = depth
+		e.enableDepthBasedInline = true
 		return nil
 	}
 }

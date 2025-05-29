@@ -45,6 +45,11 @@ type Encoder struct {
 	commentMap                 map[*Path][]*Comment
 	written                    bool
 
+	// Depth-based inline formatting fields
+	inlineAfterDepth       int  // The depth threshold for enabling inline formatting
+	enableDepthBasedInline bool // Whether depth-based inline formatting is enabled
+	currentDepth           int  // Current nesting depth during encoding
+
 	line           int
 	column         int
 	offset         int
@@ -451,6 +456,11 @@ func (e *Encoder) encodeValue(ctx context.Context, v reflect.Value, column int) 
 		}
 		return node, nil
 	}
+
+	// Check if we should use inline formatting for complex types
+	shouldUseInline := e.enableDepthBasedInline && e.currentDepth > e.inlineAfterDepth
+	originalFlowStyle := e.isFlowStyle
+
 	switch v.Type().Kind() {
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
 		return e.encodeInt(v.Int()), nil
@@ -473,13 +483,37 @@ func (e *Encoder) encodeValue(ctx context.Context, v reflect.Value, column int) 
 		return e.encodeBool(v.Bool()), nil
 	case reflect.Slice:
 		if mapSlice, ok := v.Interface().(MapSlice); ok {
+			// Track depth for complex types
+			e.currentDepth++
+			defer func() { e.currentDepth-- }()
+
+			if shouldUseInline && !originalFlowStyle {
+				e.isFlowStyle = true
+				defer func() { e.isFlowStyle = originalFlowStyle }()
+			}
 			return e.encodeMapSlice(ctx, mapSlice, column)
 		}
 		if value := e.encodePtrAnchor(v, column); value != nil {
 			return value, nil
 		}
+		// Track depth for arrays/slices
+		e.currentDepth++
+		defer func() { e.currentDepth-- }()
+
+		if shouldUseInline && !originalFlowStyle {
+			e.isFlowStyle = true
+			defer func() { e.isFlowStyle = originalFlowStyle }()
+		}
 		return e.encodeSlice(ctx, v)
 	case reflect.Array:
+		// Track depth for arrays
+		e.currentDepth++
+		defer func() { e.currentDepth-- }()
+
+		if shouldUseInline && !originalFlowStyle {
+			e.isFlowStyle = true
+			defer func() { e.isFlowStyle = originalFlowStyle }()
+		}
 		return e.encodeArray(ctx, v)
 	case reflect.Struct:
 		if v.CanInterface() {
@@ -490,10 +524,26 @@ func (e *Encoder) encodeValue(ctx context.Context, v reflect.Value, column int) 
 				return e.encodeTime(t, column), nil
 			}
 		}
+		// Track depth for structs
+		e.currentDepth++
+		defer func() { e.currentDepth-- }()
+
+		if shouldUseInline && !originalFlowStyle {
+			e.isFlowStyle = true
+			defer func() { e.isFlowStyle = originalFlowStyle }()
+		}
 		return e.encodeStruct(ctx, v, column)
 	case reflect.Map:
 		if value := e.encodePtrAnchor(v, column); value != nil {
 			return value, nil
+		}
+		// Track depth for maps
+		e.currentDepth++
+		defer func() { e.currentDepth-- }()
+
+		if shouldUseInline && !originalFlowStyle {
+			e.isFlowStyle = true
+			defer func() { e.isFlowStyle = originalFlowStyle }()
 		}
 		return e.encodeMap(ctx, v, column)
 	default:
@@ -702,22 +752,11 @@ func (e *Encoder) encodeMap(ctx context.Context, value reflect.Value, column int
 			encoded.AddColumn(e.indentNum)
 		}
 		keyText := fmt.Sprint(key)
-		vRef := e.toPointer(v)
-
-		// during the second encoding, an anchor is assigned if it is found to be used by an alias.
-		if aliasName, exists := e.getSmartAlias(vRef); exists {
-			anchorName := aliasName
-			anchorNode := ast.Anchor(token.New("&", "&", e.pos(column)))
-			anchorNode.Name = ast.String(token.New(anchorName, anchorName, e.pos(column)))
-			anchorNode.Value = encoded
-			encoded = anchorNode
-		}
 		node.Values = append(node.Values, ast.MappingValue(
 			nil,
 			e.encodeString(keyText, column),
 			encoded,
 		))
-		e.setSmartAnchor(vRef, keyText)
 	}
 	return node, nil
 }
@@ -1015,11 +1054,16 @@ func (e *Encoder) clearSmartAnchorRef() {
 	e.anchorNameMap = make(map[string]struct{})
 }
 
-func (e *Encoder) setSmartAnchor(ptr uintptr, name string) {
+func (e *Encoder) setSmartAlias(name string, ref uintptr) {
 	if !e.enableSmartAnchor {
 		return
 	}
-	e.setAnchor(ptr, e.generateAnchorName(name))
+	e.aliasRefToName[ref] = name
+}
+
+func (e *Encoder) getAnchor(ref uintptr) (string, bool) {
+	anchorName, exists := e.anchorRefToName[ref]
+	return anchorName, exists
 }
 
 func (e *Encoder) setAnchor(ptr uintptr, name string) {
@@ -1045,18 +1089,6 @@ func (e *Encoder) generateAnchorName(base string) string {
 		return name
 	}
 	return ""
-}
-
-func (e *Encoder) getAnchor(ref uintptr) (string, bool) {
-	anchorName, exists := e.anchorRefToName[ref]
-	return anchorName, exists
-}
-
-func (e *Encoder) setSmartAlias(name string, ref uintptr) {
-	if !e.enableSmartAnchor {
-		return
-	}
-	e.aliasRefToName[ref] = name
 }
 
 func (e *Encoder) getSmartAlias(ref uintptr) (string, bool) {

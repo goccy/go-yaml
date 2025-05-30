@@ -1244,25 +1244,25 @@ func (n *MappingNode) AddColumn(col int) {
 	}
 }
 
-func (n *MappingNode) flowStyleString(commentMode bool) string {
+func (n *MappingNode) flowStyleString() string {
 	values := []string{}
 	for _, value := range n.Values {
 		values = append(values, strings.TrimLeft(value.String(), " "))
 	}
 	mapText := fmt.Sprintf("{%s}", strings.Join(values, ", "))
-	if commentMode && n.Comment != nil {
+	if n.Comment != nil {
 		return addCommentString(mapText, n.Comment)
 	}
 	return mapText
 }
 
-func (n *MappingNode) blockStyleString(commentMode bool) string {
+func (n *MappingNode) blockStyleString() string {
 	values := []string{}
 	for _, value := range n.Values {
 		values = append(values, value.String())
 	}
 	mapText := strings.Join(values, "\n")
-	if commentMode && n.Comment != nil {
+	if n.Comment != nil {
 		value := values[0]
 		var spaceNum int
 		for i := 0; i < len(value); i++ {
@@ -1286,11 +1286,10 @@ func (n *MappingNode) String() string {
 		return "{}"
 	}
 
-	commentMode := true
 	if n.IsFlowStyle || len(n.Values) == 0 {
-		return n.flowStyleString(commentMode)
+		return n.flowStyleString()
 	}
-	return n.blockStyleString(commentMode)
+	return n.blockStyleString()
 }
 
 // MapRange implements MapNode protocol

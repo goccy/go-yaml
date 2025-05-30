@@ -14,8 +14,13 @@ import (
 type Mode uint
 
 const (
-	ParseComments Mode = 1 << iota // parse comments and add them to AST
+	ParseComments          Mode = 1 << iota // parse comments and add them to AST
+	PreserveCommentIndents                  // preserve original comment indentation
 )
+
+func (m Mode) Has(mode Mode) bool {
+	return (m & mode) != 0
+}
 
 // ParseBytes parse from byte slice, and returns ast.File
 func ParseBytes(bytes []byte, mode Mode, opts ...Option) (*ast.File, error) {
@@ -74,16 +79,17 @@ var yamlVersionMap = map[string]YAMLVersion{
 }
 
 type parser struct {
-	tokens                []*Token
-	pathMap               map[string]ast.Node
-	yamlVersion           YAMLVersion
-	allowDuplicateMapKey  bool
-	secondaryTagDirective *ast.DirectiveNode
+	tokens                 []*Token
+	pathMap                map[string]ast.Node
+	yamlVersion            YAMLVersion
+	allowDuplicateMapKey   bool
+	secondaryTagDirective  *ast.DirectiveNode
+	preserveCommentIndents bool
 }
 
 func newParser(tokens token.Tokens, mode Mode, opts []Option) (*parser, error) {
 	filteredTokens := []*token.Token{}
-	if mode&ParseComments != 0 {
+	if mode.Has(ParseComments) {
 		filteredTokens = tokens
 	} else {
 		for _, tk := range tokens {
@@ -100,8 +106,9 @@ func newParser(tokens token.Tokens, mode Mode, opts []Option) (*parser, error) {
 		return nil, err
 	}
 	p := &parser{
-		tokens:  tks,
-		pathMap: make(map[string]ast.Node),
+		tokens:                 tks,
+		pathMap:                make(map[string]ast.Node),
+		preserveCommentIndents: mode.Has(PreserveCommentIndents),
 	}
 	for _, opt := range opts {
 		opt(p)
@@ -1304,7 +1311,7 @@ func (p *parser) parseHeadComment(ctx *context) *ast.CommentGroupNode {
 	if len(tks) == 0 {
 		return nil
 	}
-	return ast.CommentGroup(tks)
+	return ast.CommentGroup(tks, p.preserveCommentIndents)
 }
 
 func (p *parser) parseFootComment(ctx *context, col int) *ast.CommentGroupNode {
@@ -1316,5 +1323,5 @@ func (p *parser) parseFootComment(ctx *context, col int) *ast.CommentGroupNode {
 	if len(tks) == 0 {
 		return nil
 	}
-	return ast.CommentGroup(tks)
+	return ast.CommentGroup(tks, p.preserveCommentIndents)
 }

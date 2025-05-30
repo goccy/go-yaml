@@ -3801,12 +3801,8 @@ func TestNonEmptyFieldDecode(t *testing.T) {
 
 	yml = `s: ""`
 	err := yaml.Unmarshal([]byte(yml), &v)
-	if err == nil {
-		t.Fatalf("expect error, but got nil")
-	}
-	msg := err.Error()
-	if !strings.Contains(msg, "nonempty field .S is empty") {
-		t.Fatalf("expect error message to contain %q, but got %q", "nonempty field .S is empty", msg)
+	if _, ok := err.(*errors.EmptyFieldError); !ok {
+		t.Fatalf("expect EmptyFieldError, but got %v", err)
 	}
 
 	// This is a nonempty list with an empty value of its element type, but the list itself is nonempty
@@ -3820,23 +3816,15 @@ func TestNonEmptyFieldDecode(t *testing.T) {
 
 	yml = `a: []`
 	err = yaml.Unmarshal([]byte(yml), &w)
-	if err == nil {
-		t.Fatalf("expect error, but got nil")
-	}
-	msg = err.Error()
-	if !strings.Contains(msg, "nonempty field .A is empty") {
-		t.Fatalf("expect error message to contain %q, but got %q", "nonempty field .A is empty", msg)
+	if _, ok := err.(*errors.EmptyFieldError); !ok {
+		t.Fatalf("expect EmptyFieldError, but got %v", err)
 	}
 
 	// The yaml object is here but the field is not set and therefore is empty
 	yml = `{}`
 	err = yaml.Unmarshal([]byte(yml), &w)
-	if err == nil {
-		t.Fatalf("expect error, but got nil")
-	}
-	msg = err.Error()
-	if !strings.Contains(msg, "nonempty field .A is empty") {
-		t.Fatalf("expect error message to contain %q, but got %q", "nonempty field .A is empty", msg)
+	if _, ok := err.(*errors.EmptyFieldError); !ok {
+		t.Fatalf("expect EmptyFieldError, but got %v", err)
 	}
 }
 
@@ -3851,21 +3839,87 @@ func TestRequiredAndNonEmptyFieldDecode(t *testing.T) {
 
 	yml = `a: ""`
 	err := yaml.Unmarshal([]byte(yml), &v)
-	if err == nil {
-		t.Fatalf("expect error because the field is set to nonempty, but got nil")
-	}
-	msg := err.Error()
-	if !strings.Contains(msg, "nonempty field .A is empty") {
-		t.Fatalf("expect error message to contain %q, but got %q", "nonempty field .A is empty", msg)
+	if _, ok := err.(*errors.EmptyFieldError); !ok {
+		t.Fatalf("expect EmptyFieldError, but got %v", err)
 	}
 
 	yml = `{}` // empty object is missing `a` entirely but `a` is required
 	err = yaml.Unmarshal([]byte(yml), &v)
-	if err == nil {
-		t.Fatalf("expect error because the field is set to required and nonempty, but got nil")
+	if _, ok := err.(*errors.RequiredFieldError); !ok {
+		t.Fatalf("expect RequiredFieldError, but got %v", err)
 	}
-	msg = err.Error()
-	if !strings.Contains(msg, "required field .A is missing") {
-		t.Fatalf("expect error message to contain %q, but got %q", "required field .A is missing", msg)
+}
+
+func TestNonZeroFieldDecode(t *testing.T) {
+	yml := `s: "hello"`
+	var v struct {
+		S string `yaml:"s,nonzero"`
+	}
+	if err := yaml.Unmarshal([]byte(yml), &v); err != nil {
+		t.Fatal(err)
+	}
+
+	yml = `s: ""`
+	err := yaml.Unmarshal([]byte(yml), &v)
+	if _, ok := err.(*errors.ZeroFieldError); !ok {
+		t.Fatalf("expect ZeroFieldError, but got %v", err)
+	}
+
+	yml = `a: [0]`
+	var w struct {
+		A []int `yaml:"a,nonzero"`
+	}
+	if err := yaml.Unmarshal([]byte(yml), &w); err != nil {
+		t.Fatal(err)
+	}
+
+	yml = `a: []`
+	if err = yaml.Unmarshal([]byte(yml), &w); err != nil {
+		t.Fatalf("expect no error, but got %v", err)
+	}
+
+	yml = `{}`
+	if err := yaml.Unmarshal([]byte(yml), &w); err != nil {
+		t.Fatalf("expect no error, but got %v", err)
+	}
+}
+
+func TestNonemptyAndNonzeroFieldDecode(t *testing.T) {
+	yml := `s: "hello"`
+	var v struct {
+		S string `yaml:"s,nonempty,nonzero"`
+	}
+	if err := yaml.Unmarshal([]byte(yml), &v); err != nil {
+		t.Fatal(err)
+	}
+
+	// A value which is zero will always also be empty, we prefer the zero error to distinguish the two cases
+	yml = `s: ""`
+	err := yaml.Unmarshal([]byte(yml), &v)
+	if _, ok := err.(*errors.ZeroFieldError); !ok {
+		t.Fatalf("expect ZeroFieldError, but got %v", err)
+	}
+
+	// This is a nonempty list with a zero value of its element type, but the list itself is nonempty and nonzero
+	yml = `a: [0]`
+	var w struct {
+		A []int `yaml:"a,nonempty,nonzero"`
+	}
+	if err := yaml.Unmarshal([]byte(yml), &w); err != nil {
+		t.Fatal(err)
+	}
+
+	// The yaml array is here and is empty, therefore it is empty but not zero
+	yml = `a: []`
+	err = yaml.Unmarshal([]byte(yml), &w)
+	if _, ok := err.(*errors.EmptyFieldError); !ok {
+		t.Fatalf("expect EmptyFieldError, but got %v", err)
+	}
+
+	// The yaml object is here but the field is not set and therefore it is empty but not zero
+	yml = `{}`
+	err = yaml.Unmarshal([]byte(yml), &w)
+	if _, ok := err.(*errors.EmptyFieldError); !ok {
+		t.Fatalf("expect EmptyFieldError, but got %v", err)
 	}
 }

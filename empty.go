@@ -9,7 +9,7 @@ type IsZeroer interface {
 	IsZero() bool
 }
 
-func isOmittedByOmitZero(v reflect.Value) bool {
+func isZero(v reflect.Value) bool {
 	kind := v.Kind()
 	if z, ok := v.Interface().(IsZeroer); ok {
 		if (kind == reflect.Ptr || kind == reflect.Interface) && v.IsNil() {
@@ -36,7 +36,7 @@ func isOmittedByOmitZero(v reflect.Value) bool {
 			if vt.Field(i).PkgPath != "" {
 				continue // private field
 			}
-			if !isOmittedByOmitZero(v.Field(i)) {
+			if !isZero(v.Field(i)) {
 				return false
 			}
 		}
@@ -45,7 +45,7 @@ func isOmittedByOmitZero(v reflect.Value) bool {
 	return false
 }
 
-func isOmittedByOmitEmptyOption(v reflect.Value) bool {
+func isEmptyForOption(v reflect.Value) bool {
 	switch v.Kind() {
 	case reflect.String:
 		return len(v.String()) == 0
@@ -72,7 +72,7 @@ func isOmittedByOmitEmptyOption(v reflect.Value) bool {
 // if a type implements IsZero, that implementation will be used.
 // Furthermore, for non-pointer structs, if all fields are eligible for exclusion,
 // the struct itself will also be excluded. These behaviors are originally the functionality of omitzero.
-func isOmittedByOmitEmptyTag(v reflect.Value) bool {
+func isEmptyForTag(v reflect.Value) bool {
 	kind := v.Kind()
 	if z, ok := v.Interface().(IsZeroer); ok {
 		if (kind == reflect.Ptr || kind == reflect.Interface) && v.IsNil() {
@@ -101,7 +101,7 @@ func isOmittedByOmitEmptyTag(v reflect.Value) bool {
 			if vt.Field(i).PkgPath != "" {
 				continue // private field
 			}
-			if !isOmittedByOmitEmptyTag(v.Field(i)) {
+			if !isEmptyForTag(v.Field(i)) {
 				return false
 			}
 		}

@@ -81,6 +81,11 @@ type EmptyFieldError struct {
 	Token           *token.Token
 }
 
+type ZeroFieldError struct {
+	StructFieldName *string
+	Token           *token.Token
+}
+
 // ErrSyntax create syntax error instance with message and token
 func ErrSyntax(msg string, tk *token.Token) *SyntaxError {
 	return &SyntaxError{
@@ -140,6 +145,13 @@ func ErrRequiredField(structFieldName string, tk *token.Token) *RequiredFieldErr
 
 func ErrEmptyField(structFieldName string, tk *token.Token) *EmptyFieldError {
 	return &EmptyFieldError{
+		StructFieldName: &structFieldName,
+		Token:           tk,
+	}
+}
+
+func ErrZeroField(structFieldName string, tk *token.Token) *ZeroFieldError {
+	return &ZeroFieldError{
 		StructFieldName: &structFieldName,
 		Token:           tk,
 	}
@@ -285,6 +297,22 @@ func (e *EmptyFieldError) Error() string {
 }
 
 func (e *EmptyFieldError) FormatError(colored, inclSource bool) string {
+	return FormatError(e.GetMessage(), e.Token, colored, inclSource)
+}
+
+func (e *ZeroFieldError) GetMessage() string {
+	return fmt.Sprintf("nonzero field %s is zero", *e.StructFieldName)
+}
+
+func (e *ZeroFieldError) GetToken() *token.Token {
+	return e.Token
+}
+
+func (e *ZeroFieldError) Error() string {
+	return e.FormatError(defaultFormatColor, defaultIncludeSource)
+}
+
+func (e *ZeroFieldError) FormatError(colored, inclSource bool) string {
 	return FormatError(e.GetMessage(), e.Token, colored, inclSource)
 }
 

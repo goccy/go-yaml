@@ -772,7 +772,15 @@ func (e *Encoder) encodeStruct(ctx context.Context, value reflect.Value, column 
 		}
 		fieldValue := value.FieldByName(field.Name)
 		sf := fieldMap[field.Name]
-		if sf.IsNonEmpty && isOmittedByOmitEmptyTag(fieldValue) {
+		if sf.IsNonZero && isZero(fieldValue) {
+			// We can safely use e without considering structField.IsFlow because zero values never change their representation whether IsFlow or not
+			value, err := e.encodeValue(ctx, fieldValue, column)
+			if err != nil {
+				return nil, err
+			}
+			return nil, errors.ErrZeroField(field.Name, value.GetToken())
+		}
+		if sf.IsNonEmpty && isEmptyForTag(fieldValue) {
 			// We can safely use e without considering structField.IsFlow because empty values never change their representation whether IsFlow or not
 			value, err := e.encodeValue(ctx, fieldValue, column)
 			if err != nil {
@@ -780,15 +788,15 @@ func (e *Encoder) encodeStruct(ctx context.Context, value reflect.Value, column 
 			}
 			return nil, errors.ErrEmptyField(field.Name, value.GetToken())
 		}
-		if (e.omitZero || sf.IsOmitZero) && isOmittedByOmitZero(fieldValue) {
+		if (e.omitZero || sf.IsOmitZero) && isZero(fieldValue) {
 			// omit encoding by omitzero tag or OmitZero option.
 			continue
 		}
-		if e.omitEmpty && isOmittedByOmitEmptyOption(fieldValue) {
+		if e.omitEmpty && isEmptyForOption(fieldValue) {
 			// omit encoding by OmitEmpty option.
 			continue
 		}
-		if sf.IsOmitEmpty && isOmittedByOmitEmptyTag(fieldValue) {
+		if sf.IsOmitEmpty && isEmptyForTag(fieldValue) {
 			// omit encoding by omitempty tag.
 			continue
 		}

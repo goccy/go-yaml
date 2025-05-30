@@ -1441,7 +1441,11 @@ func (d *Decoder) decodeStruct(ctx context.Context, dst reflect.Value, src ast.N
 			}
 			continue
 		}
-		if structField.IsNonEmpty && isOmittedByOmitEmptyTag(newFieldValue) && foundErr == nil {
+		if structField.IsNonZero && isZero(newFieldValue) && foundErr == nil {
+			foundErr = errors.ErrZeroField(fmt.Sprintf("%s.%s", structType.Name(), field.Name), src.GetToken())
+			continue
+		}
+		if structField.IsNonEmpty && isEmptyForTag(newFieldValue) && foundErr == nil {
 			foundErr = errors.ErrEmptyField(fmt.Sprintf("%s.%s", structType.Name(), field.Name), src.GetToken())
 			continue
 		}

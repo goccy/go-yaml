@@ -183,7 +183,7 @@ type Node interface {
 	AddColumn(int)
 	// SetComment set comment token to node
 	SetComment(*CommentGroupNode) error
-	// Comment returns comment token instance
+	// GetComment returns comment token instance
 	GetComment() *CommentGroupNode
 	// GetPath returns YAMLPath for the current node
 	GetPath() string

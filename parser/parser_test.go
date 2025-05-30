@@ -1794,6 +1794,70 @@ multiple:
 	}
 }
 
+func TestCommentWithOddIndents(t *testing.T) {
+	tests := []struct {
+		name     string
+		yaml     string
+		expected string
+	}{
+		{
+			name: "most basic example",
+			yaml: `
+  # comment about the next attribute
+someField: true
+`,
+		},
+		{
+			name: "most basic example with extra line spaces", // already works
+			yaml: `
+topLevelGroup:
+
+  # comment about the next attribute
+  someOtherField: true
+zeeLastField: "zed"
+`,
+		},
+		{
+			name: "most basic example with extra line spaces and odd indents",
+			yaml: `
+topLevelGroup:
+
+    # comment about the next attribute
+  someOtherField: true
+zeeLastField: "zed"
+`,
+		},
+		{
+			name: "commented values.yaml with uneven indentation",
+			yaml: `
+topLevelNode:
+  attribute: true
+  # comment about the next attribute
+  # someOptInFeature: true
+  allGoodSoFar: true
+    # until this breaks it
+  despair: true
+`,
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			f, err := parser.ParseBytes([]byte(test.yaml), parser.ParseComments)
+			if err != nil {
+				t.Fatalf("%+v", err)
+			}
+			got := "\n" + f.String()
+			expected := test.yaml
+			if test.expected != "" {
+				expected = test.expected
+			}
+			if expected != got {
+				t.Fatalf("expected:%s\ngot:%s", expected, got)
+			}
+		})
+	}
+}
+
 func TestInFlowStyle(t *testing.T) {
 	type inFlowStyle interface {
 		SetIsFlowStyle(bool)

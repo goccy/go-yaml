@@ -230,7 +230,7 @@ func setLineComment(ctx *context, node ast.Node, tk *Token) error {
 	if tk == nil || tk.LineComment == nil {
 		return nil
 	}
-	comment := ast.CommentGroup([]*token.Token{tk.LineComment})
+	comment := ast.CommentGroup([]*token.Token{tk.LineComment}, false)
 	comment.SetPath(ctx.path)
 	if err := node.SetComment(comment); err != nil {
 		return err

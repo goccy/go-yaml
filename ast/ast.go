@@ -415,14 +415,15 @@ func Comment(tk *token.Token) *CommentNode {
 	}
 }
 
-func CommentGroup(comments []*token.Token) *CommentGroupNode {
+func CommentGroup(comments []*token.Token, preserveIndent bool) *CommentGroupNode {
 	nodes := []*CommentNode{}
 	for _, comment := range comments {
 		nodes = append(nodes, Comment(comment))
 	}
 	return &CommentGroupNode{
-		BaseNode: &BaseNode{},
-		Comments: nodes,
+		BaseNode:        &BaseNode{},
+		Comments:        nodes,
+		PreserveIndents: preserveIndent,
 	}
 }
 
@@ -2080,7 +2081,8 @@ func (n *CommentNode) MarshalYAML() ([]byte, error) {
 // CommentGroupNode type of comment node
 type CommentGroupNode struct {
 	*BaseNode
-	Comments []*CommentNode
+	Comments        []*CommentNode
+	PreserveIndents bool
 }
 
 // Read implements (io.Reader).Read
@@ -2119,11 +2121,18 @@ func (n *CommentGroupNode) StringWithSpace(col int) string {
 	values := []string{}
 	space := strings.Repeat(" ", col)
 	for _, comment := range n.Comments {
-		space := space
+		prefix := ""
 		if checkLineBreak(comment.Token) {
-			space = fmt.Sprintf("%s%s", "\n", space)
+			prefix = "\n"
 		}
-		values = append(values, space+comment.String())
+
+		if n.PreserveIndents {
+			indent := strings.Repeat(" ", comment.Token.Position.Column-1)
+			prefix += indent
+		} else {
+			prefix += space
+		}
+		values = append(values, prefix+comment.String())
 	}
 	return strings.Join(values, "\n")
 }

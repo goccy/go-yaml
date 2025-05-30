@@ -1842,7 +1842,7 @@ topLevelNode:
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			f, err := parser.ParseBytes([]byte(test.yaml), parser.ParseComments)
+			f, err := parser.ParseBytes([]byte(test.yaml), parser.ParseComments|parser.PreserveCommentIndents)
 			if err != nil {
 				t.Fatalf("%+v", err)
 			}

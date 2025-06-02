@@ -955,6 +955,14 @@ merge:
 			value:  map[string]string{"v": "hello\n...\nworld\n"},
 		},
 		{
+			source: "v: |\r\n  hello\r\n  ...\r\n  world\r\n",
+			value:  map[string]string{"v": "hello\n...\nworld\n"},
+		},
+		{
+			source: "v: |\r  hello\r  ...\r  world\r",
+			value:  map[string]string{"v": "hello\n...\nworld\n"},
+		},
+		{
 			source: "a: !!binary gIGC\n",
 			value:  map[string]string{"a": "\x80\x81\x82"},
 		},
@@ -971,6 +979,22 @@ merge:
 			},
 		},
 		{
+			source: "v:\r\n- A\r\n- |-\r\n  B\r\n  C\r\n",
+			value: map[string][]string{
+				"v": {
+					"A", "B\nC",
+				},
+			},
+		},
+		{
+			source: "v:\r- A\r- |-\r  B\r  C\r",
+			value: map[string][]string{
+				"v": {
+					"A", "B\nC",
+				},
+			},
+		},
+		{
 			source: "v:\n- A\n- |-\n  B\n  C\n\n\n",
 			value: map[string][]string{
 				"v": {
@@ -980,6 +1004,22 @@ merge:
 		},
 		{
 			source: "v:\n- A\n- >-\n  B\n  C\n",
+			value: map[string][]string{
+				"v": {
+					"A", "B C",
+				},
+			},
+		},
+		{
+			source: "v:\r\n- A\r\n- >-\r\n  B\r\n  C\r\n",
+			value: map[string][]string{
+				"v": {
+					"A", "B C",
+				},
+			},
+		},
+		{
+			source: "v:\r- A\r- >-\r  B\r  C\r",
 			value: map[string][]string{
 				"v": {
 					"A", "B C",

@@ -188,6 +188,40 @@ func TestEncoder(t *testing.T) {
 			nil,
 		},
 		{
+			"1: v\n",
+			map[int]string{1: "v"},
+			nil,
+		},
+		{
+			"1.1: v\n",
+			map[float64]string{1.1: "v"},
+			nil,
+		},
+		{
+			"true: v\n",
+			map[bool]string{true: "v"},
+			nil,
+		},
+		{
+			"true: v\n",
+			map[bool]string{true: "v"},
+			nil,
+		},
+		{
+			"\"[1 2]\": v\n",
+			map[any]string{
+				[2]int{1, 2}: "v",
+			},
+			nil,
+		},
+		{
+			"\"{a b}\": v\n",
+			map[any]string{
+				struct{ A, B string }{A: "a", B: "b"}: "v",
+			},
+			nil,
+		},
+		{
 			"123\n",
 			123,
 			nil,

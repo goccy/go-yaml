@@ -1652,6 +1652,77 @@ func TestEncoder_UnmarshallableTypes(t *testing.T) {
 	}
 }
 
+// errorWriter is a writer that always returns an error
+type errorWriter struct {
+	writeCount int
+	failAfter  int
+}
+
+func (w *errorWriter) Write(p []byte) (n int, err error) {
+	w.writeCount++
+	if w.writeCount > w.failAfter {
+		return 0, fmt.Errorf("write error: %s", p)
+	}
+	return len(p), nil
+}
+
+func TestEncoder_WriteErrors(t *testing.T) {
+	tests := []struct {
+		name      string
+		failAfter int
+		encode    func(*yaml.Encoder) error
+		wantErr   string
+	}{
+		{
+			name:      "first document write error",
+			failAfter: 0,
+			encode: func(enc *yaml.Encoder) error {
+				return enc.Encode(map[string]string{"key": "value"})
+			},
+			wantErr: "write error: key: value\n",
+		},
+		{
+			name:      "document separator write error",
+			failAfter: 1,
+			encode: func(enc *yaml.Encoder) error {
+				if err := enc.Encode(map[string]string{"key": "value"}); err != nil {
+					return err
+				}
+				// Second encode should fail when writing document separator
+				return enc.Encode(map[string]string{"key2": "value2"})
+			},
+			wantErr: "write error: ---\n",
+		},
+		{
+			name:      "second document write error",
+			failAfter: 2,
+			encode: func(enc *yaml.Encoder) error {
+				if err := enc.Encode(map[string]string{"key": "value"}); err != nil {
+					return err
+				}
+				// Second encode should fail when writing the actual document
+				return enc.Encode(map[string]string{"key2": "value2"})
+			},
+			wantErr: "write error: key2: value2\n",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			writer := &errorWriter{failAfter: tt.failAfter}
+			enc := yaml.NewEncoder(writer)
+
+			err := tt.encode(enc)
+			if err == nil {
+				t.Fatal("expected error but got none")
+			}
+			if err.Error() != tt.wantErr {
+				t.Fatalf("expected error %q but got %q", tt.wantErr, err.Error())
+			}
+		})
+	}
+}
+
 func ExampleMarshal_node() {
 	type T struct {
 		Text ast.Node `yaml:"text"`

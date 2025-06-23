@@ -444,6 +444,12 @@ func (e *Encoder) encodeValue(ctx context.Context, v reflect.Value, column int) 
 	if e.isInvalidValue(v) {
 		return e.encodeNil(), nil
 	}
+	if v.CanInterface() {
+		iface := v.Interface()
+		if node, ok := iface.(ast.Node); ok {
+			return node, nil
+		}
+	}
 	if e.canEncodeByMarshaler(v) {
 		node, err := e.encodeByMarshaler(ctx, v, column)
 		if err != nil {

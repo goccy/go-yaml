@@ -38,8 +38,8 @@ By the way, libraries such as [ghodss/yaml](https://github.com/ghodss/yaml) and 
   - The main maintainer is [@goccy](https://github.com/goccy), but we are also building a system to develop as a team with trusted developers
   - Since it is written from scratch, the code is easy to read for Gophers
 - An API structure that allows the use of not only `Encoder`/`Decoder` but also `Tokenizer` and `Parser` functionalities.
-  - [lexer.Tokenize](https://pkg.go.dev/github.com/goccy/go-yaml@v1.15.4/lexer#Tokenize)
-  - [parser.Parse](https://pkg.go.dev/github.com/goccy/go-yaml@v1.15.4/parser#Parse)
+  - [lexer.Tokenize](https://pkg.go.dev/github.com/goccy/go-yaml@v1.16.0/lexer#Tokenize)
+  - [parser.Parse](https://pkg.go.dev/github.com/goccy/go-yaml@v1.16.0/parser#Parse)
 - Filtering, replacing, and merging YAML content using YAML Path
 - Reversible transformation without using the AST for YAML that includes Anchors, Aliases, and Comments
 - Customize the Marshal/Unmarshal behavior for primitive types and third-party library types ([RegisterCustomMarshaler](https://pkg.go.dev/github.com/goccy/go-yaml#RegisterCustomMarshaler), [RegisterCustomUnmarshaler](https://pkg.go.dev/github.com/goccy/go-yaml#RegisterCustomUnmarshaler))

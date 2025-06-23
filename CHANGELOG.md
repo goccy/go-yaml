@@ -1,3 +1,9 @@
+# 1.16.0 - 2025-06-23
+
+### New Features
+
+- Preserve layout with ParseWithComments, FormatFile, and MergeYAML helpers
+
 # 1.11.2 - 2023-09-15
 
 ### Fix bugs

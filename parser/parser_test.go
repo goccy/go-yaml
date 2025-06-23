@@ -725,6 +725,20 @@ a:
 d: e
 `,
 		},
+		{
+			`
+a: b
+---
+---
+c: d
+`,
+			`
+a: b
+---
+---
+c: d
+`,
+		},
 	}
 
 	for _, test := range tests {
@@ -1789,6 +1803,9 @@ func (c *pathCapturer) Visit(node ast.Node) ast.Visitor {
 type Visitor struct{}
 
 func (v *Visitor) Visit(node ast.Node) ast.Visitor {
+	if node == nil {
+		return nil
+	}
 	tk := node.GetToken()
 	tk.Prev = nil
 	tk.Next = nil

@@ -389,6 +389,24 @@ output result is the following:
 
 <img src="https://user-images.githubusercontent.com/209884/84148813-7aca8680-aa9a-11ea-8fc9-37dece2ebdac.png"></img>
 
+### 5.2 Merge YAML while preserving layout
+
+Use `MergeYAML` when you need to add data to an existing document without losing the original order or blank lines.
+
+```go
+base := []byte(`a: 1\n\nb: 2\n`)
+patch := []byte(`c: 3`)
+out, err := yaml.MergeYAML(base, patch)
+if err != nil {
+    panic(err)
+}
+fmt.Println(string(out))
+// a: 1
+//
+// b: 2
+// c: 3
+```
+
 
 # Tools
 

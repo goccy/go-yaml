@@ -587,16 +587,40 @@ func TestDecoder(t *testing.T) {
 
 		// Explicit tags.
 		{
+			source: "v: !!int 'not-an-int'",
+			value:  map[string]int{"v": 0},
+		},
+		{
+			source: "v: !!int '000'",
+			value:  map[string]int{"v": 0},
+		},
+		{
+			source: "v: !!int '007'",
+			value:  map[string]int{"v": 7},
+		},
+		{
+			source: "v: !!int '-007'",
+			value:  map[string]int{"v": -7},
+		},
+		{
+			source: "v: !!int 0xff",
+			value:  map[string]int{"v": 255},
+		},
+		{
+			source: "v: !!int 0o10",
+			value:  map[string]int{"v": 8},
+		},
+		{
 			source: "v: !!float '1.1'",
-			value:  map[string]interface{}{"v": 1.1},
+			value:  map[string]float64{"v": 1.1},
 		},
 		{
 			source: "v: !!float 0",
-			value:  map[string]interface{}{"v": float64(0)},
+			value:  map[string]float64{"v": 0},
 		},
 		{
 			source: "v: !!float -1",
-			value:  map[string]interface{}{"v": float64(-1)},
+			value:  map[string]float64{"v": -1},
 		},
 		{
 			source: "v: !!null ''",

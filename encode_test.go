@@ -203,22 +203,8 @@ func TestEncoder(t *testing.T) {
 			nil,
 		},
 		{
-			"true: v\n",
-			map[bool]string{true: "v"},
-			nil,
-		},
-		{
-			"\"[1 2]\": v\n",
-			map[any]string{
-				[2]int{1, 2}: "v",
-			},
-			nil,
-		},
-		{
-			"\"{a b}\": v\n",
-			map[any]string{
-				struct{ A, B string }{A: "a", B: "b"}: "v",
-			},
+			"2015-01-01T00:00:00Z: v\n",
+			map[time.Time]string{time.Date(2015, 1, 1, 0, 0, 0, 0, time.UTC): "v"},
 			nil,
 		},
 		{

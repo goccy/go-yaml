@@ -352,3 +352,160 @@ c:
 	checkJSONRawValue(t, m4["b"], "asdf")
 	checkJSONRawValue(t, m4["c"], map[string]string{"foo": "bar"})
 }
+
+type rawYAMLWrapper struct {
+	StaticField  string          `json:"staticField" yaml:"staticField"`
+	DynamicField yaml.RawMessage `json:"dynamicField" yaml:"dynamicField"`
+}
+
+type rawJSONWrapper struct {
+	StaticField  string          `json:"staticField" yaml:"staticField"`
+	DynamicField json.RawMessage `json:"dynamicField" yaml:"dynamicField"`
+}
+
+func (w rawJSONWrapper) Equals(o *rawJSONWrapper) bool {
+	if w.StaticField != o.StaticField {
+		return false
+	}
+	return reflect.DeepEqual(w.DynamicField, o.DynamicField)
+}
+
+type dynamicField struct {
+	A int               `json:"a" yaml:"a"`
+	B string            `json:"b" yaml:"b"`
+	C map[string]string `json:"c" yaml:"c"`
+}
+
+func (t dynamicField) Equals(o *dynamicField) bool {
+	if t.A != o.A {
+		return false
+	}
+	if t.B != o.B {
+		return false
+	}
+	if len(t.C) != len(o.C) {
+		return false
+	}
+	for k, v := range t.C {
+		ov, exists := o.C[k]
+		if !exists {
+			return false
+		}
+		if v != ov {
+			return false
+		}
+	}
+	return true
+}
+
+func TestRawMessageJSONCompatibility(t *testing.T) {
+	rawData := []byte(`staticField: value
+dynamicField:
+  a: 1
+  b: abcd
+  c:
+    foo: bar
+    something: else
+`)
+
+	expectedDynamicFieldValue := &dynamicField{
+		A: 1,
+		B: "abcd",
+		C: map[string]string{
+			"foo":       "bar",
+			"something": "else",
+		},
+	}
+
+	t.Run("UseJSONUnmarshaler and json.RawMessage", func(t *testing.T) {
+		var wrapper rawJSONWrapper
+		if err := yaml.UnmarshalWithOptions(rawData, &wrapper, yaml.UseJSONUnmarshaler()); err != nil {
+			t.Fatal(err)
+		}
+		if wrapper.StaticField != "value" {
+			t.Fatalf("unexpected wrapper static field value: %s", wrapper.StaticField)
+		}
+		var dynamicFieldValue dynamicField
+		if err := yaml.Unmarshal(wrapper.DynamicField, &dynamicFieldValue); err != nil {
+			t.Fatal(err)
+		}
+		if !dynamicFieldValue.Equals(expectedDynamicFieldValue) {
+			t.Fatalf("unexpected dynamic field value: %v", dynamicFieldValue)
+		}
+	})
+
+	t.Run("UseJSONUnmarshaler and yaml.RawMessage", func(t *testing.T) {
+		var wrapper rawYAMLWrapper
+		if err := yaml.UnmarshalWithOptions(rawData, &wrapper, yaml.UseJSONUnmarshaler()); err != nil {
+			t.Fatal(err)
+		}
+		if wrapper.StaticField != "value" {
+			t.Fatalf("unexpected wrapper static field value: %s", wrapper.StaticField)
+		}
+		var dynamicFieldValue dynamicField
+		if err := yaml.Unmarshal(wrapper.DynamicField, &dynamicFieldValue); err != nil {
+			t.Fatal(err)
+		}
+		if !dynamicFieldValue.Equals(expectedDynamicFieldValue) {
+			t.Fatalf("unexpected dynamic field value: %v", dynamicFieldValue)
+		}
+	})
+
+	t.Run("UseJSONMarshaler and json.RawMessage", func(t *testing.T) {
+		dynamicFieldBytes, err := yaml.Marshal(expectedDynamicFieldValue)
+		if err != nil {
+			t.Fatal(err)
+		}
+		wrapper := rawJSONWrapper{
+			StaticField:  "value",
+			DynamicField: json.RawMessage(dynamicFieldBytes),
+		}
+		wrapperBytes, err := yaml.MarshalWithOptions(&wrapper, yaml.UseJSONMarshaler())
+		if err != nil {
+			t.Fatal(err)
+		}
+		var unmarshaledWrapper rawJSONWrapper
+		if err := yaml.UnmarshalWithOptions(wrapperBytes, &unmarshaledWrapper, yaml.UseJSONUnmarshaler()); err != nil {
+			t.Fatal(err)
+		}
+		if unmarshaledWrapper.StaticField != wrapper.StaticField {
+			t.Fatalf("unexpected unmarshaled static field value: %s", unmarshaledWrapper.StaticField)
+		}
+		var unmarshaledDynamicFieldValue dynamicField
+		if err := yaml.UnmarshalWithOptions(unmarshaledWrapper.DynamicField, &unmarshaledDynamicFieldValue, yaml.UseJSONUnmarshaler()); err != nil {
+			t.Fatal(err)
+		}
+		if !unmarshaledDynamicFieldValue.Equals(expectedDynamicFieldValue) {
+			t.Fatalf("unexpected unmarshaled dynamic field value: %v", unmarshaledDynamicFieldValue)
+		}
+	})
+
+	t.Run("UseJSONMarshaler and yaml.RawMessage", func(t *testing.T) {
+		dynamicFieldBytes, err := yaml.Marshal(expectedDynamicFieldValue)
+		if err != nil {
+			t.Fatal(err)
+		}
+		wrapper := rawYAMLWrapper{
+			StaticField:  "value",
+			DynamicField: yaml.RawMessage(dynamicFieldBytes),
+		}
+		wrapperBytes, err := yaml.MarshalWithOptions(&wrapper, yaml.UseJSONMarshaler())
+		if err != nil {
+			t.Fatal(err)
+		}
+		var unmarshaledWrapper rawYAMLWrapper
+		if err := yaml.UnmarshalWithOptions(wrapperBytes, &unmarshaledWrapper, yaml.UseJSONUnmarshaler()); err != nil {
+			t.Fatal(err)
+		}
+		if unmarshaledWrapper.StaticField != wrapper.StaticField {
+			t.Fatalf("unexpected unmarshaled static field value: %s", unmarshaledWrapper.StaticField)
+		}
+		var unmarshaledDynamicFieldValue dynamicField
+		if err := yaml.UnmarshalWithOptions(unmarshaledWrapper.DynamicField, &unmarshaledDynamicFieldValue, yaml.UseJSONUnmarshaler()); err != nil {
+			t.Fatal(err)
+		}
+		if !unmarshaledDynamicFieldValue.Equals(expectedDynamicFieldValue) {
+			t.Fatalf("unexpected unmarshaled dynamic field value: %v", unmarshaledDynamicFieldValue)
+		}
+	})
+}

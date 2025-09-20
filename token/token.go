@@ -690,12 +690,12 @@ func IsNeedQuoted(value string) bool {
 	}
 	first := value[0]
 	switch first {
-	case '*', '&', '[', '{', '}', ']', ',', '!', '|', '>', '%', '\'', '"', '@', ' ', '`':
+	case '*', '&', '[', '{', '}', ']', ',', '!', '|', '>', '%', '\'', '"', '@', ' ', '\t', '`':
 		return true
 	}
 	last := value[len(value)-1]
 	switch last {
-	case ':', ' ':
+	case ':', ' ', '\t':
 		return true
 	}
 	if isTimestamp(value) {

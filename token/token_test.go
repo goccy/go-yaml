@@ -129,6 +129,8 @@ func TestIsNeedQuoted(t *testing.T) {
 		" a",
 		" a ",
 		"a ",
+		"\ta",
+		"a\t",
 		"null",
 		"Null",
 		"NULL",

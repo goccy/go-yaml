@@ -40,6 +40,7 @@ type Decoder struct {
 	isResolvedReference  bool
 	validator            StructValidator
 	disallowUnknownField bool
+	allowedFieldPrefixes []string
 	allowDuplicateMapKey bool
 	useOrderedMap        bool
 	useJSONUnmarshaler   bool
@@ -1446,7 +1447,16 @@ func (d *Decoder) decodeStruct(ctx context.Context, dst reflect.Value, src ast.N
 	// Unknown fields are expected (they could be fields from the parent struct).
 	if len(unknownFields) != 0 && d.disallowUnknownField && src.GetToken() != nil {
 		for key, node := range unknownFields {
-			return errors.ErrUnknownField(fmt.Sprintf(`unknown field "%s"`, key), node.GetToken())
+			var ok bool
+			for _, prefix := range d.allowedFieldPrefixes {
+				if strings.HasPrefix(key, prefix) {
+					ok = true
+					break
+				}
+			}
+			if !ok {
+				return errors.ErrUnknownField(fmt.Sprintf(`unknown field "%s"`, key), node.GetToken())
+			}
 		}
 	}
 

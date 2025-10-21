@@ -494,6 +494,24 @@ func TestDecoder(t *testing.T) {
 			value:  map[string]interface{}{"a": "50cent_of_dollar"},
 		},
 
+		// Unconventional keys
+		{
+			source: "1: v\n",
+			value:  map[int]string{1: "v"},
+		},
+		{
+			source: "1.1: v\n",
+			value:  map[float64]string{1.1: "v"},
+		},
+		{
+			source: "true: v\n",
+			value:  map[bool]string{true: "v"},
+		},
+		{
+			source: "2015-01-01T00:00:00Z: v\n",
+			value:  map[time.Time]string{time.Date(2015, 1, 1, 0, 0, 0, 0, time.UTC): "v"},
+		},
+
 		// Nulls
 		{
 			source: "null",

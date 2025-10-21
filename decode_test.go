@@ -1933,6 +1933,32 @@ children:
 			t.Fatalf(`v.Children[1].B should be 2, got %d`, v.Children[1].B)
 		}
 	})
+
+	t.Run("with allowed prefixes", func(t *testing.T) {
+		var v struct {
+			A string `yaml:"a"`
+		}
+		yml := `---
+a: a_value
+x-some-extra-thing: b_value
+`
+
+		if err := yaml.NewDecoder(strings.NewReader(yml), yaml.DisallowUnknownField(), yaml.AllowFieldPrefixes("x-")).Decode(&v); err != nil {
+			t.Fatalf(`parsing should succeed: %s`, err)
+		}
+
+		yml = `---
+a: a_value
+b: b_value
+x-some-extra-thing: b_value
+`
+
+		err := yaml.NewDecoder(strings.NewReader(yml), yaml.DisallowUnknownField(), yaml.AllowFieldPrefixes("x-")).Decode(&v)
+		if err == nil {
+			t.Fatal("expected error")
+		}
+	})
+
 }
 
 func TestDecoder_AllowDuplicateMapKey(t *testing.T) {

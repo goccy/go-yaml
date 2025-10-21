@@ -17,6 +17,7 @@ import (
 	"github.com/goccy/go-yaml"
 	"github.com/goccy/go-yaml/ast"
 	"github.com/goccy/go-yaml/parser"
+	"github.com/goccy/go-yaml/token"
 )
 
 var zero = 0
@@ -2145,4 +2146,24 @@ a: &anc !mytag
 
 func ptr[T any](v T) *T {
 	return &v
+}
+
+type customNodeMarshaler struct {
+	Node ast.Node
+}
+
+func (c *customNodeMarshaler) MarshalYAML() (interface{}, error) {
+	return c.Node, nil
+}
+
+func TestCustomNodeMarshaler(t *testing.T) {
+	n := ast.String(token.String("custom", "", &token.Position{}))
+	b, err := yaml.Marshal(&customNodeMarshaler{Node: n})
+	if err != nil {
+		t.Fatal(err)
+	}
+	expected := "custom\n"
+	if string(b) != expected {
+		t.Fatalf("failed to encode. expected %s but got %s", expected, string(b))
+	}
 }

@@ -7,6 +7,8 @@
 
 <img width="300px" src="https://user-images.githubusercontent.com/209884/67159116-64d94b80-f37b-11e9-9b28-f8379636a43c.png"></img>
 
+**Language**: English | [中文](README_zh.md)
+
 ## This library has **NO** relation to the go-yaml/yaml library
 
 > [!IMPORTANT]
@@ -29,7 +31,7 @@ By the way, libraries such as [ghodss/yaml](https://github.com/ghodss/yaml) and 
 # Features
 
 - No dependencies
-- A better parser than `go-yaml/yaml`. 
+- A better parser than `go-yaml/yaml`.
   - [Support recursive processing](https://github.com/apple/device-management/blob/release/docs/schema.yaml)
   - Higher coverage in the [YAML Test Suite](https://github.com/yaml/yaml-test-suite?tab=readme-ov-file)
     - YAML Test Suite consists of 402 cases in total, of which `gopkg.in/yaml.v3` passes `295`. In addition to passing all those test cases, `goccy/go-yaml` successfully passes nearly 60 additional test cases ( 2024/12/15 )
@@ -57,16 +59,16 @@ By the way, libraries such as [ghodss/yaml](https://github.com/ghodss/yaml) and 
 
 The repositories that use goccy/go-yaml are listed here.
 
-- https://github.com/goccy/go-yaml/wiki/Users
+- <https://github.com/goccy/go-yaml/wiki/Users>
 
-The source data is [here](https://github.com/goccy/go-yaml/network/dependents). 
+The source data is [here](https://github.com/goccy/go-yaml/network/dependents).
 It is already being used in many repositories. Now it's your turn 😄
 
 # Playground
 
 The Playground visualizes how go-yaml processes YAML text. Use it to assist with your debugging or issue reporting.
 
-https://goccy.github.io/go-yaml
+<https://goccy.github.io/go-yaml>
 
 # Installation
 
@@ -82,47 +84,47 @@ Has an interface like `go-yaml/yaml` using `reflect`
 
 ```go
 var v struct {
-	A int
-	B string
+ A int
+ B string
 }
 v.A = 1
 v.B = "hello"
 bytes, err := yaml.Marshal(v)
 if err != nil {
-	//...
+ //...
 }
 fmt.Println(string(bytes)) // "a: 1\nb: hello\n"
 ```
 
 ```go
-	yml := `
+ yml := `
 %YAML 1.2
 ---
 a: 1
 b: c
 `
 var v struct {
-	A int
-	B string
+ A int
+ B string
 }
 if err := yaml.Unmarshal([]byte(yml), &v); err != nil {
-	//...
+ //...
 }
 ```
 
 To control marshal/unmarshal behavior, you can use the `yaml` tag.
 
 ```go
-	yml := `---
+ yml := `---
 foo: 1
 bar: c
 `
 var v struct {
-	A int    `yaml:"foo"`
-	B string `yaml:"bar"`
+ A int    `yaml:"foo"`
+ B string `yaml:"bar"`
 }
 if err := yaml.Unmarshal([]byte(yml), &v); err != nil {
-	//...
+ //...
 }
 ```
 
@@ -131,16 +133,16 @@ the `json` tag will have significance when parsing YAML documents. If both
 tags exist, `yaml` tag will take precedence.
 
 ```go
-	yml := `---
+ yml := `---
 foo: 1
 bar: c
 `
 var v struct {
-	A int    `json:"foo"`
-	B string `json:"bar"`
+ A int    `json:"foo"`
+ B string `json:"bar"`
 }
 if err := yaml.Unmarshal([]byte(yml), &v); err != nil {
-	//...
+ //...
 }
 ```
 
@@ -170,20 +172,20 @@ a: &a
   c: hello
 ```
 
-Then, if `yaml.ReferenceDirs("testdata")` option is passed to `yaml.Decoder`, 
+Then, if `yaml.ReferenceDirs("testdata")` option is passed to `yaml.Decoder`,
  `Decoder` tries to find the anchor definition from YAML files the under `testdata` directory.
- 
+
 ```go
 buf := bytes.NewBufferString("a: *a\n")
 dec := yaml.NewDecoder(buf, yaml.ReferenceDirs("testdata"))
 var v struct {
-	A struct {
-		B int
-		C string
-	}
+ A struct {
+  B int
+  C string
+ }
 }
 if err := dec.Decode(&v); err != nil {
-	//...
+ //...
 }
 fmt.Printf("%+v\n", v) // {A:{B:1 C:hello}}
 ```
@@ -228,14 +230,14 @@ If the value specified for an anchor is a pointer type and the same address as t
 
 ```go
 type T struct {
-	I int
-	S string
+ I int
+ S string
 }
 var v struct {
-	A *T `yaml:"a,anchor"`
-	B *T `yaml:"b,anchor"`
-	C *T `yaml:"c"`
-	D *T `yaml:"d"`
+ A *T `yaml:"a,anchor"`
+ B *T `yaml:"b,anchor"`
+ C *T `yaml:"c"`
+ D *T `yaml:"d"`
 }
 v.A = &T{I: 1, S: "hello"}
 v.B = &T{I: 2, S: "world"}
@@ -243,7 +245,7 @@ v.C = v.A // C has same pointer address to A
 v.D = v.B // D has same pointer address to B
 bytes, err := yaml.Marshal(v)
 if err != nil {
-	//...
+ //...
 }
 fmt.Println(string(bytes)) 
 /*
@@ -264,33 +266,33 @@ Merge key and alias ( `<<: *alias` ) can be used by embedding a structure with t
 
 ```go
 type Person struct {
-	*Person `yaml:",omitempty,inline,alias"` // embed Person type for default value
-	Name    string `yaml:",omitempty"`
-	Age     int    `yaml:",omitempty"`
+ *Person `yaml:",omitempty,inline,alias"` // embed Person type for default value
+ Name    string `yaml:",omitempty"`
+ Age     int    `yaml:",omitempty"`
 }
 defaultPerson := &Person{
-	Name: "John Smith",
-	Age:  20,
+ Name: "John Smith",
+ Age:  20,
 }
 people := []*Person{
-	{
-		Person: defaultPerson, // assign default value
-		Name:   "Ken",         // override Name property
-		Age:    10,            // override Age property
-	},
-	{
-		Person: defaultPerson, // assign default value only
-	},
+ {
+  Person: defaultPerson, // assign default value
+  Name:   "Ken",         // override Name property
+  Age:    10,            // override Age property
+ },
+ {
+  Person: defaultPerson, // assign default value only
+ },
 }
 var doc struct {
-	Default *Person   `yaml:"default,anchor"`
-	People  []*Person `yaml:"people"`
+ Default *Person   `yaml:"default,anchor"`
+ People  []*Person `yaml:"people"`
 }
 doc.Default = defaultPerson
 doc.People = people
 bytes, err := yaml.Marshal(doc)
 if err != nil {
-	//...
+ //...
 }
 fmt.Println(string(bytes))
 /*
@@ -389,7 +391,6 @@ output result is the following:
 
 <img src="https://user-images.githubusercontent.com/209884/84148813-7aca8680-aa9a-11ea-8fc9-37dece2ebdac.png"></img>
 
-
 # Tools
 
 ## ycat
@@ -404,7 +405,6 @@ print yaml file with color
 git clone https://github.com/goccy/go-yaml.git
 cd go-yaml/cmd/ycat && go install .
 ```
-
 
 # For Developers
 

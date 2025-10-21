@@ -214,6 +214,82 @@ store:
 	})
 }
 
+func TestPath_FilterFile(t *testing.T) {
+	tests := []struct {
+		name        string
+		path        string
+		src         string
+		expected    any
+		expectedErr string
+	}{
+		{
+			name:     "simple key",
+			path:     "$.key",
+			src:      `key: value`,
+			expected: "value",
+		},
+		{
+			name: "with directive",
+			path: "$.key",
+			src: `%YAML 1.2
+---
+key: value`,
+			expected: "value",
+		},
+		{
+			name: "multiple docs",
+			path: "$.key2",
+			src: `key1: value1
+---
+key2: value2
+`,
+			expected: "value2",
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			path, err := yaml.PathString(test.path)
+			if err != nil {
+				t.Fatalf("unexpected error during path parsing: %+v", err)
+			}
+
+			file, err := parser.ParseBytes([]byte(test.src), 0)
+			if err != nil {
+				t.Fatalf("failed to parse YAML: %+v", err)
+			}
+
+			node, err := path.FilterFile(file)
+			if test.expectedErr != "" {
+				if err == nil {
+					t.Fatal("expected error but got none")
+				}
+				if !strings.Contains(err.Error(), test.expectedErr) {
+					t.Fatalf("expected error containing %q but got %q", test.expectedErr, err.Error())
+				}
+				return
+			}
+
+			if err != nil {
+				t.Fatalf("unexpected error: %+v", err)
+			}
+
+			if node == nil {
+				t.Fatal("expected node but got nil")
+			}
+
+			var actual any
+			if err := yaml.Unmarshal([]byte(node.String()), &actual); err != nil {
+				t.Fatalf("failed to unmarshal result: %+v", err)
+			}
+
+			if !reflect.DeepEqual(test.expected, actual) {
+				t.Fatalf("expected %v(%T) but got %v(%T)", test.expected, test.expected, actual, actual)
+			}
+		})
+	}
+}
+
 func TestPath_ReservedKeyword(t *testing.T) {
 	tests := []struct {
 		name     string
@@ -603,6 +679,22 @@ b: 2
 `,
 			src: `3`,
 			expected: `
+a: 3
+b: 2
+`,
+		},
+		{
+			path: "$.a",
+			dst: `
+%YAML 1.2
+---
+a: 1
+b: 2
+`,
+			src: `3`,
+			expected: `
+%YAML 1.2
+---
 a: 3
 b: 2
 `,

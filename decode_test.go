@@ -657,6 +657,63 @@ merge:
 				"merge": {{Key: "foo", Value: 1}, {Key: "bar", Value: 2}},
 			},
 		},
+		// Issue #776
+		{
+			source: `
+a: &a
+  value: 100
+
+b: &b
+  unit: "m/s"
+
+c:
+  <<: [*a, *b]
+  d: var_x
+`,
+			value: struct {
+				C struct {
+					Value int    `yaml:"value"`
+					Unit  string `yaml:"unit"`
+					D     string `yaml:"d"`
+				} `yaml:"c"`
+			}{
+				C: struct {
+					Value int    `yaml:"value"`
+					Unit  string `yaml:"unit"`
+					D     string `yaml:"d"`
+				}{
+					Value: 100,
+					Unit:  "m/s",
+					D:     "var_x",
+				},
+			},
+		},
+		{
+			source: `
+a: &a
+  value: 100
+
+b: &b
+  unit: "m/s"
+
+c:
+  <<: [*a, *b]
+  d: var_x
+`,
+			value: map[string]any{
+				"c": map[string]any{
+					"value": 100,
+					"unit":  "m/s",
+					"d":     "var_x",
+				},
+				"a": map[string]any{
+					"value": 100,
+				},
+				"b": map[string]any{
+					"unit": "m/s",
+				},
+			},
+		},
 
 		// Flow sequence
 		{

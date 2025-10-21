@@ -1118,14 +1118,14 @@ func (d *Decoder) createDecodedNewValue(
 	return d.castToAssignableValue(newValue, typ, node)
 }
 
-func (d *Decoder) keyToNodeMap(ctx context.Context, node ast.Node, ignoreMergeKey bool, getKeyOrValueNode func(*ast.MapNodeIter) ast.Node) (map[string]ast.Node, error) {
+func (d *Decoder) _keyToNodeMap(ctx context.Context, node ast.Node, ignoreMergeKey bool, isMerge bool, getKeyOrValueNode func(*ast.MapNodeIter) ast.Node) (map[string]ast.Node, error) {
 	d.stepIn()
 	defer d.stepOut()
 	if d.isExceededMaxDepth() {
 		return nil, ErrExceededMaxDepth
 	}
 
-	mapNode, err := d.getMapNode(node, false)
+	mapNode, err := d.getMapNode(node, isMerge)
 	if err != nil {
 		return nil, err
 	}
@@ -1138,7 +1138,7 @@ func (d *Decoder) keyToNodeMap(ctx context.Context, node ast.Node, ignoreMergeKe
 			if ignoreMergeKey {
 				continue
 			}
-			mergeMap, err := d.keyToNodeMap(ctx, mapIter.Value(), ignoreMergeKey, getKeyOrValueNode)
+			mergeMap, err := d._keyToNodeMap(ctx, mapIter.Value(), ignoreMergeKey, true, getKeyOrValueNode)
 			if err != nil {
 				return nil, err
 			}
@@ -1164,6 +1164,10 @@ func (d *Decoder) keyToNodeMap(ctx context.Context, node ast.Node, ignoreMergeKe
 		}
 	}
 	return keyToNodeMap, nil
+}
+
+func (d *Decoder) keyToNodeMap(ctx context.Context, node ast.Node, ignoreMergeKey bool, getKeyOrValueNode func(*ast.MapNodeIter) ast.Node) (map[string]ast.Node, error) {
+	return d._keyToNodeMap(ctx, node, ignoreMergeKey, false, getKeyOrValueNode)
 }
 
 func (d *Decoder) keyToKeyNodeMap(ctx context.Context, node ast.Node, ignoreMergeKey bool) (map[string]ast.Node, error) {

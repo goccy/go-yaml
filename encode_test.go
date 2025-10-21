@@ -352,6 +352,16 @@ func TestEncoder(t *testing.T) {
 			nil,
 		},
 		{
+			"a: \"\\tb\"\n",
+			map[string]string{"a": "\tb"},
+			nil,
+		},
+		{
+			"a: \"b\\t\"\n",
+			map[string]string{"a": "b\t"},
+			nil,
+		},
+		{
 			"a: \"`b` c\"\n",
 			map[string]string{"a": "`b` c"},
 			nil,

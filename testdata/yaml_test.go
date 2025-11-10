@@ -953,7 +953,7 @@ hoge:
 			},
 		},
 		{
-			name: "flow style comments (issue #608)",
+			name: "flow style comments",
 			yml: `
 key1: [] # comment1
 key2: [ # comment2
@@ -1004,7 +1004,36 @@ block:
 			},
 		},
 		{
-			name: "tags - all positions",
+			name: "flow style nested and complex",
+			yml: `
+# head comment for nested
+nested: [[a, # inner[0]
+          b], # inner end
+         c] # outer end
+mixed: {
+  list: [1, 2], # comment on list value
+  map: {x: y} # comment on nested map
+} # comment on mixed
+outer: {inner: value} # flow map with line comment
+deeply: {a: {b: {c: d}}} # deeply nested`,
+			expected: []struct {
+				path     string
+				comments []*yaml.Comment
+			}{
+				{"$.nested", []*yaml.Comment{yaml.HeadComment(" head comment for nested"), yaml.FootComment(" outer end")}},
+				{"$.nested[0]", []*yaml.Comment{yaml.FootComment(" inner end")}},
+				{"$.nested[0][0]", []*yaml.Comment{yaml.LineComment(" inner[0]")}},
+				{"$.nested[0][1]", []*yaml.Comment{yaml.LineComment(" inner end")}},
+				{"$.nested[1]", []*yaml.Comment{yaml.LineComment(" outer end")}},
+				{"$.mixed", []*yaml.Comment{yaml.FootComment(" comment on mixed")}},
+				{"$.mixed.list", []*yaml.Comment{yaml.LineComment(" comment on list value")}},
+				{"$.mixed.map", []*yaml.Comment{yaml.FootComment(" comment on nested map")}},
+				{"$.outer", []*yaml.Comment{yaml.FootComment(" flow map with line comment")}},
+				{"$.deeply", []*yaml.Comment{yaml.FootComment(" deeply nested")}},
+			},
+		},
+		{
+			name: "tags all positions",
 			yml: `
 tag_inline: !!str value # tag inline comment
 tag_after: !!str # tag after type

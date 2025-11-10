@@ -899,6 +899,14 @@ func (p *parser) parseAlias(ctx *context) (*ast.AliasNode, error) {
 		return nil, errors.ErrSyntax("unexpected alias. alias name is not scalar value", ctx.currentToken().RawToken())
 	}
 	alias.Value = aliasName
+
+	// Propagate comment from alias name to alias node
+	if aliasName.GetComment() != nil {
+		if err := alias.SetComment(aliasName.GetComment()); err != nil {
+			return nil, err
+		}
+	}
+
 	return alias, nil
 }
 

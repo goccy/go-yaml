@@ -452,18 +452,17 @@ func (d *Decoder) nodeToValue(ctx context.Context, node ast.Node) (any, error) {
 		d.anchorValueMap[anchorName] = reflect.ValueOf(anchorValue)
 		return anchorValue, nil
 	case *ast.AliasNode:
-		text := n.Value.String()
-		if _, exists := getAnchorMap(ctx)[text]; exists {
+		aliasName := n.Value.GetToken().Value
+		if _, exists := getAnchorMap(ctx)[aliasName]; exists {
 			// self recursion.
 			return nil, nil
 		}
-		if v, exists := d.anchorValueMap[text]; exists {
+		if v, exists := d.anchorValueMap[aliasName]; exists {
 			if !v.IsValid() {
 				return nil, nil
 			}
 			return v.Interface(), nil
 		}
-		aliasName := n.Value.GetToken().Value
 		return nil, errors.ErrSyntax(fmt.Sprintf("could not find alias %q", aliasName), n.Value.GetToken())
 	case *ast.LiteralNode:
 		return n.Value.GetValue(), nil

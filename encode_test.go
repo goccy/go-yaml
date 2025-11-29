@@ -188,6 +188,26 @@ func TestEncoder(t *testing.T) {
 			nil,
 		},
 		{
+			"1: v\n",
+			map[int]string{1: "v"},
+			nil,
+		},
+		{
+			"1.1: v\n",
+			map[float64]string{1.1: "v"},
+			nil,
+		},
+		{
+			"true: v\n",
+			map[bool]string{true: "v"},
+			nil,
+		},
+		{
+			"2015-01-01T00:00:00Z: v\n",
+			map[time.Time]string{time.Date(2015, 1, 1, 0, 0, 0, 0, time.UTC): "v"},
+			nil,
+		},
+		{
 			"123\n",
 			123,
 			nil,

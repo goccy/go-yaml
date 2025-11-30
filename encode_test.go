@@ -16,6 +16,7 @@ import (
 
 	"github.com/goccy/go-yaml"
 	"github.com/goccy/go-yaml/ast"
+	errs "github.com/goccy/go-yaml/internal/errors"
 	"github.com/goccy/go-yaml/parser"
 )
 
@@ -2160,6 +2161,138 @@ a: &anc !mytag
 				t.Fatalf("input is not equal to output.\n\nexpected:\n%v\n actual:\n%v", expected, output)
 			}
 		})
+	}
+}
+
+func TestNonemptyFieldEncode(t *testing.T) {
+	var buf bytes.Buffer
+	enc := yaml.NewEncoder(&buf)
+	type T struct {
+		I int `yaml:"i,nonempty"`
+	}
+	v := &T{I: 1}
+	if err := enc.Encode(v); err != nil {
+		t.Fatalf("%+v", err)
+	}
+	expect := "i: 1\n"
+	if expect != buf.String() {
+		t.Fatalf("expect = [%s], actual = [%s]", expect, buf.String())
+	}
+
+	v = &T{I: 0}
+	buf.Reset()
+	err := enc.Encode(v)
+	if _, ok := err.(*errs.EmptyFieldError); !ok {
+		t.Fatalf("expect EmptyFieldError, but got %v", err)
+	}
+
+	buf.Reset()
+	type U struct {
+		List []int `yaml:"list,nonempty"`
+	}
+	var nilArray []int
+	u := &U{List: nilArray}
+	err = enc.Encode(u)
+	if _, ok := err.(*errs.EmptyFieldError); !ok {
+		t.Fatalf("expect EmptyFieldError, but got %v", err)
+	}
+
+	buf.Reset()
+	emptyArray := []int{}
+	u = &U{List: emptyArray}
+	err = enc.Encode(u)
+	if _, ok := err.(*errs.EmptyFieldError); !ok {
+		t.Fatalf("expect EmptyFieldError, but got %v", err)
+	}
+}
+
+func TestNonzeroFieldEncode(t *testing.T) {
+	var buf bytes.Buffer
+	enc := yaml.NewEncoder(&buf)
+	type T struct {
+		I int `yaml:"i,nonzero"`
+	}
+	v := &T{I: 1}
+	if err := enc.Encode(v); err != nil {
+		t.Fatalf("%+v", err)
+	}
+	expect := "i: 1\n"
+	if expect != buf.String() {
+		t.Fatalf("expect = [%s], actual = [%s]", expect, buf.String())
+	}
+
+	v = &T{I: 0}
+	buf.Reset()
+	err := enc.Encode(v)
+	if _, ok := err.(*errs.ZeroFieldError); !ok {
+		t.Fatalf("expect ZeroFieldError, but got %v", err)
+	}
+
+	buf.Reset()
+	type U struct {
+		List []int `yaml:"list,nonzero"`
+	}
+	var nilArray []int
+	u := &U{List: nilArray}
+	err = enc.Encode(u)
+	if _, ok := err.(*errs.ZeroFieldError); !ok {
+		t.Fatalf("expect ZeroFieldError, but got %v", err)
+	}
+
+	buf.Reset()
+	emptyArray := []int{}
+	u = &U{List: emptyArray}
+	if err := enc.Encode(u); err != nil {
+		t.Fatalf("expect no error, but got %v", err)
+	}
+	expect = `---
+list: []
+`
+	if expect != buf.String() {
+		t.Fatalf("expect = [%s], actual = [%s]", expect, buf.String())
+	}
+}
+
+func TestNonzeroAndNonempty(t *testing.T) {
+	var buf bytes.Buffer
+	enc := yaml.NewEncoder(&buf)
+	type T struct {
+		I int `yaml:"i,nonzero,nonempty"`
+	}
+	v := &T{I: 1}
+	if err := enc.Encode(v); err != nil {
+		t.Fatalf("%+v", err)
+	}
+	expect := "i: 1\n"
+	if expect != buf.String() {
+		t.Fatalf("expect = [%s], actual = [%s]", expect, buf.String())
+	}
+
+	v = &T{I: 0}
+	buf.Reset()
+	err := enc.Encode(v)
+	if _, ok := err.(*errs.ZeroFieldError); !ok {
+		t.Fatalf("expect ZeroFieldError, but got %v", err)
+	}
+
+	buf.Reset()
+	type U struct {
+		List []int `yaml:"list,nonzero,nonempty"`
+	}
+	var nilArray []int
+	u := &U{List: nilArray}
+	err = enc.Encode(u)
+	// A value which is zero will always also be empty, we prefer the zero error to distinguish the two cases
+	if _, ok := err.(*errs.ZeroFieldError); !ok {
+		t.Fatalf("expect ZeroFieldError, but got %v", err)
+	}
+
+	buf.Reset()
+	emptyArray := []int{}
+	u = &U{List: emptyArray}
+	err = enc.Encode(u)
+	if _, ok := err.(*errs.EmptyFieldError); !ok {
+		t.Fatalf("expect EmptyFieldError, but got %v", err)
 	}
 }
 

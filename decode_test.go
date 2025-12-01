@@ -1280,6 +1280,14 @@ c:
 			source: `"\uD83D\uDE00a\uD83D\uDE01"`,
 			value:  "😀a😁",
 		},
+		{
+			source: "42: 100",
+			value:  map[string]any{"42": 100},
+		},
+		{
+			source: "42: 100",
+			value:  map[int]any{42: 100},
+		},
 	}
 	for _, test := range tests {
 		t.Run(test.source, func(t *testing.T) {

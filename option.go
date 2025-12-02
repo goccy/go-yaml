@@ -6,6 +6,8 @@ import (
 	"reflect"
 
 	"github.com/goccy/go-yaml/ast"
+	"github.com/goccy/go-yaml/internal/errors"
+	"github.com/goccy/go-yaml/token"
 )
 
 // DecodeOption functional option type for Decoder
@@ -347,6 +349,75 @@ func CommentToMap(cm CommentMap) DecodeOption {
 			return ErrInvalidCommentMapValue
 		}
 		d.toCommentMap = cm
+		return nil
+	}
+}
+
+// Initializes a value before parsing. This is especially useful when using default values ​​for structures, initializing slices, or the like.
+type Initer = func(ctx context.Context, d *Decoder, node interface{}, t reflect.Type, dst reflect.Value) (interface{}, error)
+
+func DefaultInitier(ctx context.Context, d *Decoder, node interface{}, t reflect.Type, dst reflect.Value) (interface{}, error) {
+	switch t.Kind() {
+	case reflect.Slice:
+		var l int
+		switch n := node.(type) {
+		case *ast.SequenceNode:
+			l = len(n.Values)
+		case ast.ArrayNode:
+			iter := n.ArrayRange()
+			if iter != nil {
+				l = iter.Len()
+			}
+
+		}
+
+		return reflect.MakeSlice(t, 0, l).Interface(), nil
+	case reflect.Map:
+		if d.UseOrderedMap() {
+			var l int
+			if n, ok := node.(*ast.MappingNode); ok {
+				l = len(n.Values)
+			}
+
+			return make(MapSlice, 0, l), nil
+		}
+
+		return reflect.MakeMap(t).Interface(), nil
+	case reflect.Struct:
+		return dst.Interface(), nil
+	case reflect.Ptr:
+		el := dst.Elem()
+		res, err := d.initer(ctx, d, node, el.Type(), el)
+		if err != nil {
+			return nil, err
+		}
+
+		vOf := reflect.ValueOf(res)
+		if vOf.Type() != el.Type() {
+			var token *token.Token
+			if n, ok := node.(ast.Node); ok {
+				token = n.GetToken()
+			}
+
+			return nil, errors.ErrTypeMismatch(el.Type(), vOf.Type(), token)
+		}
+
+		el.Set(vOf)
+
+		return dst.Interface(), nil
+	}
+
+	return reflect.New(t).Elem().Interface(), nil
+}
+
+func WithIniter(i Initer) DecodeOption {
+	return func(d *Decoder) error {
+		if i == nil {
+			i = DefaultInitier
+		}
+
+		d.initer = i
+
 		return nil
 	}
 }

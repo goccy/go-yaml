@@ -1573,6 +1573,32 @@ elem1:
 `,
 		},
 		{
+			name: "flow sequence with line comment",
+			yaml: `
+elem1:
+  - elem2: [a, b, c, d] # comment
+    empty: [] # empty
+`,
+			expected: `
+elem1:
+  - elem2: [a, b, c, d] # comment
+    empty: [] # empty
+`,
+		},
+		{
+			name: "flow map with line comment",
+			yaml: `
+elem1:
+  - elem2: {a: b, c: d} # comment
+    empty: {} # empty
+`,
+			expected: `
+elem1:
+  - elem2: {a: b, c: d} # comment
+    empty: {} # empty
+`,
+		},
+		{
 			name: "literal",
 			yaml: `
 foo: | # comment

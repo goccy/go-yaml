@@ -426,6 +426,9 @@ func (p *parser) parseFlowMap(ctx *context) (*ast.MappingNode, error) {
 	if node.End == nil {
 		return nil, errors.ErrSyntax("could not find flow mapping end token '}'", node.Start)
 	}
+	if err := setLineComment(ctx, node, ctx.currentToken()); err != nil {
+		return nil, err
+	}
 	ctx.goNext() // skip mapping end token.
 	return node, nil
 }
@@ -1065,6 +1068,9 @@ func (p *parser) parseFlowSequence(ctx *context) (*ast.SequenceNode, error) {
 	}
 	if node.End == nil {
 		return nil, errors.ErrSyntax("sequence end token ']' not found", node.Start)
+	}
+	if err := setLineComment(ctx, node, ctx.currentToken()); err != nil {
+		return nil, err
 	}
 	ctx.goNext() // skip sequence end token.
 	return node, nil

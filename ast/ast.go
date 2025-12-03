@@ -1279,13 +1279,6 @@ func (n *MappingNode) blockStyleString(commentMode bool) string {
 
 // String mapping values to text
 func (n *MappingNode) String() string {
-	if len(n.Values) == 0 {
-		if n.Comment != nil {
-			return addCommentString("{}", n.Comment)
-		}
-		return "{}"
-	}
-
 	commentMode := true
 	if n.IsFlowStyle || len(n.Values) == 0 {
 		return n.flowStyleString(commentMode)
@@ -1623,7 +1616,11 @@ func (n *SequenceNode) flowStyleString() string {
 	for _, value := range n.Values {
 		values = append(values, value.String())
 	}
-	return fmt.Sprintf("[%s]", strings.Join(values, ", "))
+	seqText := fmt.Sprintf("[%s]", strings.Join(values, ", "))
+	if n.Comment != nil {
+		return addCommentString(seqText, n.Comment)
+	}
+	return seqText
 }
 
 func (n *SequenceNode) blockStyleString() string {

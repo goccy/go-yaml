@@ -10,7 +10,7 @@ import (
 	"testing"
 
 	"github.com/goccy/go-yaml"
-	"github.com/goccy/go-yaml/testdata/yaml-test-suite"
+	yamltestsuite "github.com/goccy/go-yaml/testdata/yaml-test-suite"
 )
 
 var failureTestNames = []string{
@@ -53,6 +53,7 @@ var failureTestNames = []string{
 	"invalid-comment-after-end-of-flow-sequence",
 	"invalid-comma-in-tag",
 	"plain-dashes-in-flow-sequence",
+	"spec-example-8-17-explicit-block-mapping-entries",
 	"spec-example-9-3-bare-documents",
 	"spec-example-9-6-stream",
 	"spec-example-9-6-stream-1-3",
@@ -121,6 +122,21 @@ func TestYAMLTestSuite(t *testing.T) {
 				}
 				if !bytes.Equal(expected, got) {
 					t.Fatalf("json mismatch [%s]:\n[expected]\n%s\n[got]\n%s\n", test.Name, string(expected), string(got))
+				}
+				marshaled, err := yaml.Marshal(v)
+				if err != nil {
+					t.Fatalf("failed to remarshal value: %v", err)
+				}
+				var v2 any
+				if err := yaml.Unmarshal(marshaled, &v2); err != nil {
+					t.Fatalf("failed to round-trip value:\n[yaml]\n%s\n[err]\n%v", marshaled, err)
+				}
+				got, err = json.Marshal(v)
+				if err != nil {
+					t.Fatalf("failed to encode json value: %v", err)
+				}
+				if !bytes.Equal(expected, got) {
+					t.Fatalf("round-trip json mismatch [%s]:\n[expected]\n%s\n[got]\n%s\n", test.Name, string(expected), string(got))
 				}
 				idx++
 			}

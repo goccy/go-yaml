@@ -183,7 +183,7 @@ type Node interface {
 	AddColumn(int)
 	// SetComment set comment token to node
 	SetComment(*CommentGroupNode) error
-	// Comment returns comment token instance
+	// GetComment returns comment token instance
 	GetComment() *CommentGroupNode
 	// GetPath returns YAMLPath for the current node
 	GetPath() string
@@ -415,14 +415,15 @@ func Comment(tk *token.Token) *CommentNode {
 	}
 }
 
-func CommentGroup(comments []*token.Token) *CommentGroupNode {
+func CommentGroup(comments []*token.Token, preserveIndent bool) *CommentGroupNode {
 	nodes := []*CommentNode{}
 	for _, comment := range comments {
 		nodes = append(nodes, Comment(comment))
 	}
 	return &CommentGroupNode{
-		BaseNode: &BaseNode{},
-		Comments: nodes,
+		BaseNode:        &BaseNode{},
+		Comments:        nodes,
+		PreserveIndents: preserveIndent,
 	}
 }
 
@@ -1244,25 +1245,25 @@ func (n *MappingNode) AddColumn(col int) {
 	}
 }
 
-func (n *MappingNode) flowStyleString(commentMode bool) string {
+func (n *MappingNode) flowStyleString() string {
 	values := []string{}
 	for _, value := range n.Values {
 		values = append(values, strings.TrimLeft(value.String(), " "))
 	}
 	mapText := fmt.Sprintf("{%s}", strings.Join(values, ", "))
-	if commentMode && n.Comment != nil {
+	if n.Comment != nil {
 		return addCommentString(mapText, n.Comment)
 	}
 	return mapText
 }
 
-func (n *MappingNode) blockStyleString(commentMode bool) string {
+func (n *MappingNode) blockStyleString() string {
 	values := []string{}
 	for _, value := range n.Values {
 		values = append(values, value.String())
 	}
 	mapText := strings.Join(values, "\n")
-	if commentMode && n.Comment != nil {
+	if n.Comment != nil {
 		value := values[0]
 		var spaceNum int
 		for i := 0; i < len(value); i++ {
@@ -1286,11 +1287,10 @@ func (n *MappingNode) String() string {
 		return "{}"
 	}
 
-	commentMode := true
 	if n.IsFlowStyle || len(n.Values) == 0 {
-		return n.flowStyleString(commentMode)
+		return n.flowStyleString()
 	}
-	return n.blockStyleString(commentMode)
+	return n.blockStyleString()
 }
 
 // MapRange implements MapNode protocol
@@ -2090,7 +2090,8 @@ func (n *CommentNode) MarshalYAML() ([]byte, error) {
 // CommentGroupNode type of comment node
 type CommentGroupNode struct {
 	*BaseNode
-	Comments []*CommentNode
+	Comments        []*CommentNode
+	PreserveIndents bool
 }
 
 // Read implements (io.Reader).Read
@@ -2129,11 +2130,18 @@ func (n *CommentGroupNode) StringWithSpace(col int) string {
 	values := []string{}
 	space := strings.Repeat(" ", col)
 	for _, comment := range n.Comments {
-		space := space
+		prefix := ""
 		if checkLineBreak(comment.Token) {
-			space = fmt.Sprintf("%s%s", "\n", space)
+			prefix = "\n"
 		}
-		values = append(values, space+comment.String())
+
+		if n.PreserveIndents {
+			indent := strings.Repeat(" ", comment.Token.Position.Column-1)
+			prefix += indent
+		} else {
+			prefix += space
+		}
+		values = append(values, prefix+comment.String())
 	}
 	return strings.Join(values, "\n")
 }

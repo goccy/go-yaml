@@ -288,7 +288,9 @@ func (d *Decoder) addSequenceNodeCommentToMap(node *ast.SequenceNode) {
 			texts = append(texts, comment.Token.Value)
 		}
 		if len(texts) != 0 {
-			d.addCommentToMap(node.Values[0].GetPath(), HeadComment(texts...))
+			if len(node.Values) != 0 {
+				d.addCommentToMap(node.Values[0].GetPath(), HeadComment(texts...))
+			}
 		}
 	}
 }

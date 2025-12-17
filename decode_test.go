@@ -181,6 +181,15 @@ func TestDecoder(t *testing.T) {
 			source: "v: +685_230",
 			value:  map[string]int{"v": 685230},
 		},
+		{
+			source: `v: +685_230
+t: +685_230`,
+			value: map[*string]int{ptr("v"): 685230, ptr("t"): 685230},
+		},
+		{
+			source: "v: +685_230",
+			value:  map[**string]int{ptr(ptr("v")): 685230},
+		},
 
 		// Bools from spec
 		{
@@ -1307,10 +1316,49 @@ c:
 			actual := fmt.Sprintf("%+v", value.Elem().Interface())
 			expect := fmt.Sprintf("%+v", test.value)
 			if actual != expect {
+				if deepMapEqual(reflect.ValueOf(test.value), value.Elem()) {
+					return
+				}
 				t.Fatalf("failed to test [%s], actual=[%s], expect=[%s]", test.source, actual, expect)
 			}
 		})
 	}
+}
+
+// deepMapEqual recursively compares two reflect.Value objects.
+// It first checks if both values are of the same kind.
+// Then it compares it by checking pointers value for keys and values.
+func deepMapEqual(v1, v2 reflect.Value) bool {
+	if v1.Kind() != v2.Kind() || v1.Kind() != reflect.Map || v1.Len() != v2.Len() {
+		return false
+	}
+	for _, k1 := range v1.MapKeys() {
+		found := false
+		for _, k2 := range v2.MapKeys() {
+			if fromPtr(k1) == fromPtr(k2) {
+				if fromPtr(v1.MapIndex(k1)) != fromPtr(v2.MapIndex(k2)) {
+					return false
+				}
+				found = true
+				break
+			}
+		}
+		if !found {
+			return false
+		}
+	}
+	return true
+}
+
+func fromPtr(v reflect.Value) any {
+	for {
+		if v.Kind() == reflect.Ptr {
+			v = v.Elem()
+			continue
+		}
+		break
+	}
+	return v.Interface()
 }
 
 func TestDecoder_Invalid(t *testing.T) {

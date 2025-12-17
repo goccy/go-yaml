@@ -1623,7 +1623,11 @@ func (n *SequenceNode) flowStyleString() string {
 	for _, value := range n.Values {
 		values = append(values, value.String())
 	}
-	return fmt.Sprintf("[%s]", strings.Join(values, ", "))
+	seqText := fmt.Sprintf("[%s]", strings.Join(values, ", "))
+	if n.Comment != nil {
+		return addCommentString(seqText, n.Comment)
+	}
+	return seqText
 }
 
 func (n *SequenceNode) blockStyleString() string {

@@ -1573,6 +1573,22 @@ elem1:
 `,
 		},
 		{
+			name: "flow map with inline value comment",
+			yaml: `
+a:
+  b: {} # comment
+c: d
+`,
+		},
+		{
+			name: "flow array with inline value comment",
+			yaml: `
+a:
+  b: [] # comment
+c: d
+`,
+		},
+		{
 			name: "literal",
 			yaml: `
 foo: | # comment

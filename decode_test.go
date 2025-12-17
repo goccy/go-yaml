@@ -2955,7 +2955,10 @@ func (u *unmarshalList) UnmarshalYAML(b []byte) error {
 
     hello
   f: g
-- h: i`
+- h: i
+- j: [] # comment
+- k: {} # comment
+`
 	actual := "\n" + string(b)
 	if expected != actual {
 		return fmt.Errorf("unexpected bytes: expected [%q] but got [%q]", expected, actual)
@@ -3007,6 +3010,8 @@ a:
      hello
    f: g
  - h: i
+ - j: [] # comment
+ - k: {} # comment
 `
 	var v struct {
 		A unmarshalList
@@ -3015,7 +3020,7 @@ a:
 	if err := yaml.UnmarshalWithOptions([]byte(yml), &v, yaml.CommentToMap(cm)); err != nil {
 		t.Fatal(err)
 	}
-	if len(v.A.v) != 2 {
+	if len(v.A.v) != 4 {
 		t.Fatalf("failed to unmarshal %+v", v)
 	}
 	if len(v.A.v[0]) != 3 {

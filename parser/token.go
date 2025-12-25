@@ -230,7 +230,7 @@ func CreateGroupedTokens(tokens token.Tokens) ([]*Token, error) {
 	if err != nil {
 		return nil, err
 	}
-	tks, err = createDocumentTokens(tks)
+	tks, err = createDocumentTokens(tks, true)
 	if err != nil {
 		return nil, err
 	}
@@ -614,27 +614,19 @@ func createDirectiveTokenGroups(tokens []*Token) ([]*Token, error) {
 	return ret, nil
 }
 
-func createDocumentTokens(tokens []*Token) ([]*Token, error) {
+func createDocumentTokens(tokens []*Token, ignoreHeaderIfAtFirst bool) ([]*Token, error) {
 	var ret []*Token
 	for i := 0; i < len(tokens); i++ {
 		tk := tokens[i]
 		switch tk.Type() {
 		case token.DocumentHeaderType:
-			if i != 0 {
+			if i != 0 || !ignoreHeaderIfAtFirst {
 				ret = append(ret, &Token{
 					Group: &TokenGroup{Tokens: tokens[:i]},
 				})
 			}
 			if i+1 == len(tokens) {
 				// if current token is last token, add DocumentHeader only tokens to ret.
-				return append(ret, &Token{
-					Group: &TokenGroup{
-						Type:   TokenGroupDocument,
-						Tokens: []*Token{tk},
-					},
-				}), nil
-			}
-			if tokens[i+1].Type() == token.DocumentHeaderType {
 				return append(ret, &Token{
 					Group: &TokenGroup{
 						Type:   TokenGroupDocument,
@@ -652,7 +644,7 @@ func createDocumentTokens(tokens []*Token) ([]*Token, error) {
 					return nil, errors.ErrSyntax("value cannot be placed after document separator", tokens[i+1].RawToken())
 				}
 			}
-			tks, err := createDocumentTokens(tokens[i+1:])
+			tks, err := createDocumentTokens(tokens[i+1:], false)
 			if err != nil {
 				return nil, err
 			}
@@ -683,7 +675,7 @@ func createDocumentTokens(tokens []*Token) ([]*Token, error) {
 				return nil, errors.ErrSyntax("unexpected end content", tokens[i+1].RawToken())
 			}
 
-			tks, err := createDocumentTokens(tokens[i+1:])
+			tks, err := createDocumentTokens(tokens[i+1:], true)
 			if err != nil {
 				return nil, err
 			}

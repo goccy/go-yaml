@@ -690,7 +690,7 @@ func IsNeedQuoted(value string) bool {
 	}
 	first := value[0]
 	switch first {
-	case '*', '&', '[', '{', '}', ']', ',', '!', '|', '>', '%', '\'', '"', '@', ' ', '`':
+	case '*', '&', '[', '{', '}', ']', ',', '!', '|', '>', '%', '\'', '"', '@', ' ', '`', ':':
 		return true
 	}
 	last := value[len(value)-1]

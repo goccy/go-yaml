@@ -99,10 +99,14 @@ func (e *Encoder) EncodeContext(ctx context.Context, v interface{}) error {
 		e.written = true
 	} else {
 		// write document separator
-		_, _ = e.writer.Write([]byte("---\n"))
+		if _, err := e.writer.Write([]byte("---\n")); err != nil {
+			return err
+		}
 	}
 	var p printer.Printer
-	_, _ = e.writer.Write(p.PrintNode(node))
+	if _, err := e.writer.Write(p.PrintNode(node)); err != nil {
+		return err
+	}
 	return nil
 }
 

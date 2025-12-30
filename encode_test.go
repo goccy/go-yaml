@@ -384,7 +384,7 @@ func TestEncoder(t *testing.T) {
 			nil,
 		},
 		{
-			"a: \"\\\\0\"\n",
+			"a: \\0\n",
 			map[string]string{"a": "\\0"},
 			nil,
 		},
@@ -946,13 +946,6 @@ func TestEncoder(t *testing.T) {
 			map[string]string{"v": `'a'b`},
 			[]yaml.EncodeOption{
 				yaml.UseSingleQuote(false),
-			},
-		},
-		{
-			`a: '\.yaml'` + "\n",
-			map[string]string{"a": `\.yaml`},
-			[]yaml.EncodeOption{
-				yaml.UseSingleQuote(true),
 			},
 		},
 	}

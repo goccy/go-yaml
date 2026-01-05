@@ -338,6 +338,9 @@ func (p *parser) parseFlowMap(ctx *context) (*ast.MappingNode, error) {
 		tk := ctx.currentToken()
 		if tk.Type() == token.MappingEndType {
 			node.End = tk.RawToken()
+			if err := setLineComment(ctx, node, tk); err != nil {
+				return nil, err
+			}
 			break
 		}
 
@@ -353,6 +356,9 @@ func (p *parser) parseFlowMap(ctx *context) (*ast.MappingNode, error) {
 			// this case is here: "{ elem, }".
 			// In this case, ignore the last element and break mapping parsing.
 			node.End = tk.RawToken()
+			if err := setLineComment(ctx, node, tk); err != nil {
+				return nil, err
+			}
 			break
 		}
 
@@ -904,6 +910,14 @@ func (p *parser) parseAlias(ctx *context) (*ast.AliasNode, error) {
 		return nil, errors.ErrSyntax("unexpected alias. alias name is not scalar value", ctx.currentToken().RawToken())
 	}
 	alias.Value = aliasName
+
+	// Propagate comment from alias name to alias node
+	if aliasName.GetComment() != nil {
+		if err := alias.SetComment(aliasName.GetComment()); err != nil {
+			return nil, err
+		}
+	}
+
 	return alias, nil
 }
 
@@ -1028,6 +1042,9 @@ func (p *parser) parseFlowSequence(ctx *context) (*ast.SequenceNode, error) {
 		tk := ctx.currentToken()
 		if tk.Type() == token.SequenceEndType {
 			node.End = tk.RawToken()
+			if err := setLineComment(ctx, node, tk); err != nil {
+				return nil, err
+			}
 			break
 		}
 
@@ -1046,6 +1063,9 @@ func (p *parser) parseFlowSequence(ctx *context) (*ast.SequenceNode, error) {
 			// this case is here: "[ elem, ]".
 			// In this case, ignore the last element and break sequence parsing.
 			node.End = tk.RawToken()
+			if err := setLineComment(ctx, node, tk); err != nil {
+				return nil, err
+			}
 			break
 		}
 

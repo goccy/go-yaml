@@ -952,6 +952,29 @@ hoge:
 				{"$.hoge.moga", []*yaml.Comment{yaml.LineComment(" moga line comment"), yaml.FootComment(" moga foot comment")}},
 			},
 		},
+		{
+			name: "anchors and aliases with comments",
+			yml: `
+root:
+  anchor_value: &anc1 value1 # anchor comment
+  alias_value: *anc1 # alias comment
+  anchor_flow: &anc2 [a, b] # anchor flow comment
+  alias_flow: *anc2 # alias flow comment
+  anchor_map: &anc3 {x: 1} # anchor map comment
+  alias_map: *anc3 # alias map comment
+`,
+			expected: []struct {
+				path     string
+				comments []*yaml.Comment
+			}{
+				{"$.root.anchor_value", []*yaml.Comment{yaml.LineComment(" anchor comment")}},
+				{"$.root.alias_value", []*yaml.Comment{yaml.LineComment(" alias comment")}},
+				{"$.root.anchor_flow", []*yaml.Comment{yaml.LineComment(" anchor flow comment")}},
+				{"$.root.alias_flow", []*yaml.Comment{yaml.LineComment(" alias flow comment")}},
+				{"$.root.anchor_map", []*yaml.Comment{yaml.LineComment(" anchor map comment")}},
+				{"$.root.alias_map", []*yaml.Comment{yaml.LineComment(" alias map comment")}},
+			},
+		},
 	}
 
 	for _, tc := range tests {

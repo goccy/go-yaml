@@ -281,17 +281,28 @@ func (d *Decoder) addSequenceNodeCommentToMap(node *ast.SequenceNode) {
 			}
 		}
 	}
-	firstElemHeadComment := node.GetComment()
-	if firstElemHeadComment != nil {
-		texts := make([]string, 0, len(firstElemHeadComment.Comments))
-		for _, comment := range firstElemHeadComment.Comments {
-			texts = append(texts, comment.Token.Value)
+	commentGroup := node.GetComment()
+	if commentGroup == nil {
+		return
+	}
+	texts := make([]string, 0, len(commentGroup.Comments))
+	targetLine := node.GetToken().Position.Line
+	minCommentLine := math.MaxInt
+	for _, comment := range commentGroup.Comments {
+		if minCommentLine > comment.Token.Position.Line {
+			minCommentLine = comment.Token.Position.Line
 		}
-		if len(texts) != 0 {
-			if len(node.Values) != 0 {
-				d.addCommentToMap(node.Values[0].GetPath(), HeadComment(texts...))
-			}
-		}
+		texts = append(texts, comment.Token.Value)
+	}
+	if len(texts) == 0 {
+		return
+	}
+	if minCommentLine < targetLine && len(node.Values) != 0 {
+		// Head comment - attach to first element
+		d.addCommentToMap(node.Values[0].GetPath(), HeadComment(texts...))
+	} else {
+		// Line comment - attach to sequence's path
+		d.addCommentToMap(node.GetPath(), LineComment(texts[0]))
 	}
 }
 
@@ -454,18 +465,17 @@ func (d *Decoder) nodeToValue(ctx context.Context, node ast.Node) (any, error) {
 		d.anchorValueMap[anchorName] = reflect.ValueOf(anchorValue)
 		return anchorValue, nil
 	case *ast.AliasNode:
-		text := n.Value.String()
-		if _, exists := getAnchorMap(ctx)[text]; exists {
+		aliasName := n.Value.GetToken().Value
+		if _, exists := getAnchorMap(ctx)[aliasName]; exists {
 			// self recursion.
 			return nil, nil
 		}
-		if v, exists := d.anchorValueMap[text]; exists {
+		if v, exists := d.anchorValueMap[aliasName]; exists {
 			if !v.IsValid() {
 				return nil, nil
 			}
 			return v.Interface(), nil
 		}
-		aliasName := n.Value.GetToken().Value
 		return nil, errors.ErrSyntax(fmt.Sprintf("could not find alias %q", aliasName), n.Value.GetToken())
 	case *ast.LiteralNode:
 		return n.Value.GetValue(), nil

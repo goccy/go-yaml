@@ -494,6 +494,24 @@ func TestDecoder(t *testing.T) {
 			value:  map[string]interface{}{"a": "50cent_of_dollar"},
 		},
 
+		// Unconventional keys
+		{
+			source: "1: v\n",
+			value:  map[int]string{1: "v"},
+		},
+		{
+			source: "1.1: v\n",
+			value:  map[float64]string{1.1: "v"},
+		},
+		{
+			source: "true: v\n",
+			value:  map[bool]string{true: "v"},
+		},
+		{
+			source: "2015-01-01T00:00:00Z: v\n",
+			value:  map[time.Time]string{time.Date(2015, 1, 1, 0, 0, 0, 0, time.UTC): "v"},
+		},
+
 		// Nulls
 		{
 			source: "null",
@@ -955,6 +973,14 @@ merge:
 			value:  map[string]string{"v": "hello\n...\nworld\n"},
 		},
 		{
+			source: "v: |\r\n  hello\r\n  ...\r\n  world\r\n",
+			value:  map[string]string{"v": "hello\n...\nworld\n"},
+		},
+		{
+			source: "v: |\r  hello\r  ...\r  world\r",
+			value:  map[string]string{"v": "hello\n...\nworld\n"},
+		},
+		{
 			source: "a: !!binary gIGC\n",
 			value:  map[string]string{"a": "\x80\x81\x82"},
 		},
@@ -971,6 +997,22 @@ merge:
 			},
 		},
 		{
+			source: "v:\r\n- A\r\n- |-\r\n  B\r\n  C\r\n",
+			value: map[string][]string{
+				"v": {
+					"A", "B\nC",
+				},
+			},
+		},
+		{
+			source: "v:\r- A\r- |-\r  B\r  C\r",
+			value: map[string][]string{
+				"v": {
+					"A", "B\nC",
+				},
+			},
+		},
+		{
 			source: "v:\n- A\n- |-\n  B\n  C\n\n\n",
 			value: map[string][]string{
 				"v": {
@@ -980,6 +1022,22 @@ merge:
 		},
 		{
 			source: "v:\n- A\n- >-\n  B\n  C\n",
+			value: map[string][]string{
+				"v": {
+					"A", "B C",
+				},
+			},
+		},
+		{
+			source: "v:\r\n- A\r\n- >-\r\n  B\r\n  C\r\n",
+			value: map[string][]string{
+				"v": {
+					"A", "B C",
+				},
+			},
+		},
+		{
+			source: "v:\r- A\r- >-\r  B\r  C\r",
 			value: map[string][]string{
 				"v": {
 					"A", "B C",
@@ -1221,6 +1279,14 @@ c:
 		{
 			source: `"\uD83D\uDE00a\uD83D\uDE01"`,
 			value:  "😀a😁",
+		},
+		{
+			source: "42: 100",
+			value:  map[string]any{"42": 100},
+		},
+		{
+			source: "42: 100",
+			value:  map[int]any{42: 100},
 		},
 	}
 	for _, test := range tests {
@@ -2889,7 +2955,10 @@ func (u *unmarshalList) UnmarshalYAML(b []byte) error {
 
     hello
   f: g
-- h: i`
+- h: i
+- j: [] # comment
+- k: {} # comment
+`
 	actual := "\n" + string(b)
 	if expected != actual {
 		return fmt.Errorf("unexpected bytes: expected [%q] but got [%q]", expected, actual)
@@ -2941,6 +3010,8 @@ a:
      hello
    f: g
  - h: i
+ - j: [] # comment
+ - k: {} # comment
 `
 	var v struct {
 		A unmarshalList
@@ -2949,7 +3020,7 @@ a:
 	if err := yaml.UnmarshalWithOptions([]byte(yml), &v, yaml.CommentToMap(cm)); err != nil {
 		t.Fatal(err)
 	}
-	if len(v.A.v) != 2 {
+	if len(v.A.v) != 4 {
 		t.Fatalf("failed to unmarshal %+v", v)
 	}
 	if len(v.A.v[0]) != 3 {

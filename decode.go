@@ -281,15 +281,28 @@ func (d *Decoder) addSequenceNodeCommentToMap(node *ast.SequenceNode) {
 			}
 		}
 	}
-	firstElemHeadComment := node.GetComment()
-	if firstElemHeadComment != nil {
-		texts := make([]string, 0, len(firstElemHeadComment.Comments))
-		for _, comment := range firstElemHeadComment.Comments {
-			texts = append(texts, comment.Token.Value)
+	commentGroup := node.GetComment()
+	if commentGroup == nil {
+		return
+	}
+	texts := make([]string, 0, len(commentGroup.Comments))
+	targetLine := node.GetToken().Position.Line
+	minCommentLine := math.MaxInt
+	for _, comment := range commentGroup.Comments {
+		if minCommentLine > comment.Token.Position.Line {
+			minCommentLine = comment.Token.Position.Line
 		}
-		if len(texts) != 0 {
-			d.addCommentToMap(node.Values[0].GetPath(), HeadComment(texts...))
-		}
+		texts = append(texts, comment.Token.Value)
+	}
+	if len(texts) == 0 {
+		return
+	}
+	if minCommentLine < targetLine && len(node.Values) != 0 {
+		// Head comment - attach to first element
+		d.addCommentToMap(node.Values[0].GetPath(), HeadComment(texts...))
+	} else {
+		// Line comment - attach to sequence's path
+		d.addCommentToMap(node.GetPath(), LineComment(texts[0]))
 	}
 }
 

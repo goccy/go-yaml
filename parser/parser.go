@@ -338,6 +338,9 @@ func (p *parser) parseFlowMap(ctx *context) (*ast.MappingNode, error) {
 		tk := ctx.currentToken()
 		if tk.Type() == token.MappingEndType {
 			node.End = tk.RawToken()
+			if err := setLineComment(ctx, node, tk); err != nil {
+				return nil, err
+			}
 			break
 		}
 
@@ -353,6 +356,9 @@ func (p *parser) parseFlowMap(ctx *context) (*ast.MappingNode, error) {
 			// this case is here: "{ elem, }".
 			// In this case, ignore the last element and break mapping parsing.
 			node.End = tk.RawToken()
+			if err := setLineComment(ctx, node, tk); err != nil {
+				return nil, err
+			}
 			break
 		}
 
@@ -1031,6 +1037,9 @@ func (p *parser) parseFlowSequence(ctx *context) (*ast.SequenceNode, error) {
 		tk := ctx.currentToken()
 		if tk.Type() == token.SequenceEndType {
 			node.End = tk.RawToken()
+			if err := setLineComment(ctx, node, tk); err != nil {
+				return nil, err
+			}
 			break
 		}
 
@@ -1049,6 +1058,9 @@ func (p *parser) parseFlowSequence(ctx *context) (*ast.SequenceNode, error) {
 			// this case is here: "[ elem, ]".
 			// In this case, ignore the last element and break sequence parsing.
 			node.End = tk.RawToken()
+			if err := setLineComment(ctx, node, tk); err != nil {
+				return nil, err
+			}
 			break
 		}
 

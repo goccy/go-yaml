@@ -969,7 +969,9 @@ root:
 			}{
 				{"$.root.anchor_value", []*yaml.Comment{yaml.LineComment(" anchor comment")}},
 				{"$.root.alias_value", []*yaml.Comment{yaml.LineComment(" alias comment")}},
+				{"$.root.anchor_flow", []*yaml.Comment{yaml.LineComment(" anchor flow comment")}},
 				{"$.root.alias_flow", []*yaml.Comment{yaml.LineComment(" alias flow comment")}},
+				{"$.root.anchor_map", []*yaml.Comment{yaml.LineComment(" anchor map comment")}},
 				{"$.root.alias_map", []*yaml.Comment{yaml.LineComment(" alias map comment")}},
 			},
 		},

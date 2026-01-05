@@ -262,7 +262,12 @@ func (d *Decoder) addHeadOrLineCommentToMap(node ast.Node) {
 		}
 		d.addCommentToMap(commentPath, HeadComment(texts...))
 	} else {
-		d.addCommentToMap(commentPath, LineComment(texts[0]))
+		// For MappingNode with flow style, line comment is for the mapping itself
+		if mapping, ok := node.(*ast.MappingNode); ok && mapping.IsFlowStyle {
+			d.addCommentToMap(node.GetPath(), LineComment(texts[0]))
+		} else {
+			d.addCommentToMap(commentPath, LineComment(texts[0]))
+		}
 	}
 }
 
@@ -281,14 +286,32 @@ func (d *Decoder) addSequenceNodeCommentToMap(node *ast.SequenceNode) {
 			}
 		}
 	}
-	firstElemHeadComment := node.GetComment()
-	if firstElemHeadComment != nil {
-		texts := make([]string, 0, len(firstElemHeadComment.Comments))
-		for _, comment := range firstElemHeadComment.Comments {
+	// Handle line comments from Entries (used in flow sequences)
+	if node.IsFlowStyle && len(node.Entries) != 0 {
+		for _, entry := range node.Entries {
+			if commentGroup := entry.GetComment(); commentGroup != nil && len(commentGroup.Comments) > 0 {
+				d.addCommentToMap(entry.GetPath(), LineComment(commentGroup.Comments[0].Token.Value))
+			}
+		}
+	}
+	// Handle line comment on the sequence node itself (e.g., for flow style)
+	commentGroup := node.GetComment()
+	if commentGroup != nil {
+		texts := make([]string, 0, len(commentGroup.Comments))
+		targetLine := node.GetToken().Position.Line
+		minCommentLine := math.MaxInt
+		for _, comment := range commentGroup.Comments {
+			if minCommentLine > comment.Token.Position.Line {
+				minCommentLine = comment.Token.Position.Line
+			}
 			texts = append(texts, comment.Token.Value)
 		}
 		if len(texts) != 0 {
-			if len(node.Values) != 0 {
+			// If comment is on the same line as sequence start, it's a line comment for the sequence
+			// Otherwise, if we have values, it's a head comment for the first element
+			if minCommentLine == targetLine {
+				d.addCommentToMap(node.GetPath(), LineComment(texts[0]))
+			} else if len(node.Values) > 0 {
 				d.addCommentToMap(node.Values[0].GetPath(), HeadComment(texts...))
 			}
 		}

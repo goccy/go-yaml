@@ -334,14 +334,16 @@ func (p *parser) parseFlowMap(ctx *context) (*ast.MappingNode, error) {
 	ctx.goNext() // skip MappingStart token
 
 	isFirst := true
+	var endTk *Token
+	var entryTk *Token
 	for ctx.next() {
 		tk := ctx.currentToken()
 		if tk.Type() == token.MappingEndType {
 			node.End = tk.RawToken()
+			endTk = tk
 			break
 		}
 
-		var entryTk *Token
 		if tk.Type() == token.CollectEntryType {
 			entryTk = tk
 			ctx.goNext()
@@ -353,13 +355,30 @@ func (p *parser) parseFlowMap(ctx *context) (*ast.MappingNode, error) {
 			// this case is here: "{ elem, }".
 			// In this case, ignore the last element and break mapping parsing.
 			node.End = tk.RawToken()
+			endTk = tk
 			break
+		}
+
+		// In flow maps, entryTk comment belongs to PREVIOUS element, not current
+		// So we set it on the previous value if it exists
+		if !isFirst && len(node.Values) > 0 && entryTk != nil && entryTk.LineComment != nil {
+			prevValue := node.Values[len(node.Values)-1]
+			// Set comment on the value/key based on line position
+			if prevValue.Key.GetToken().Position.Line == prevValue.Value.GetToken().Position.Line {
+				if err := setLineComment(ctx, prevValue.Value, entryTk); err != nil {
+					return nil, err
+				}
+			} else {
+				if err := setLineComment(ctx, prevValue.Key, entryTk); err != nil {
+					return nil, err
+				}
+			}
 		}
 
 		mapKeyTk := ctx.currentToken()
 		switch mapKeyTk.GroupType() {
 		case TokenGroupMapKeyValue:
-			value, err := p.parseMapKeyValue(ctx.withGroup(mapKeyTk.Group), mapKeyTk.Group, entryTk)
+			value, err := p.parseMapKeyValue(ctx.withGroup(mapKeyTk.Group), mapKeyTk.Group)
 			if err != nil {
 				return nil, err
 			}
@@ -377,7 +396,7 @@ func (p *parser) parseFlowMap(ctx *context) (*ast.MappingNode, error) {
 				if err != nil {
 					return nil, err
 				}
-				mapValue, err := newMappingValueNode(ctx, colonTk, entryTk, key, value)
+				mapValue, err := newMappingValueNode(ctx, colonTk, nil, key, value)
 				if err != nil {
 					return nil, err
 				}
@@ -392,7 +411,7 @@ func (p *parser) parseFlowMap(ctx *context) (*ast.MappingNode, error) {
 				if err != nil {
 					return nil, err
 				}
-				mapValue, err := newMappingValueNode(ctx, colonTk, entryTk, key, value)
+				mapValue, err := newMappingValueNode(ctx, colonTk, nil, key, value)
 				if err != nil {
 					return nil, err
 				}
@@ -421,15 +440,29 @@ func (p *parser) parseFlowMap(ctx *context) (*ast.MappingNode, error) {
 			node.Values = append(node.Values, mapValue)
 			ctx.goNext()
 		}
+		// Reset entryTk after processing element so it's not reused incorrectly
+		entryTk = nil
 		isFirst = false
 	}
 	if node.End == nil {
 		return nil, errors.ErrSyntax("could not find flow mapping end token '}'", node.Start)
 	}
-
-	// set line comment if exists. e.g.) } # comment
-	if err := setLineComment(ctx, node, ctx.currentToken()); err != nil {
-		return nil, err
+	// Handle trailing comma comment for last element
+	if entryTk != nil && len(node.Values) > 0 {
+		lastValue := node.Values[len(node.Values)-1]
+		if lastValue.Key.GetToken().Position.Line == lastValue.Value.GetToken().Position.Line {
+			if err := setLineComment(ctx, lastValue.Value, entryTk); err != nil {
+				return nil, err
+			}
+		} else {
+			if err := setLineComment(ctx, lastValue.Key, entryTk); err != nil {
+				return nil, err
+			}
+		}
+	}
+	// Set line comment from end token as foot comment
+	if endTk != nil && endTk.LineComment != nil {
+		node.FootComment = newCommentGroup(endTk.LineComment, ctx.path)
 	}
 	ctx.goNext() // skip mapping end token.
 	return node, nil
@@ -446,7 +479,7 @@ func (p *parser) parseMap(ctx *context) (*ast.MappingNode, error) {
 	}
 	var keyValueNode *ast.MappingValueNode
 	if keyTk.GroupType() == TokenGroupMapKeyValue {
-		node, err := p.parseMapKeyValue(ctx.withGroup(keyTk.Group), keyTk.Group, nil)
+		node, err := p.parseMapKeyValue(ctx.withGroup(keyTk.Group), keyTk.Group)
 		if err != nil {
 			return nil, err
 		}
@@ -563,7 +596,7 @@ func (p *parser) isMapToken(tk *Token) bool {
 	return g.Type == TokenGroupMapKey || g.Type == TokenGroupMapKeyValue
 }
 
-func (p *parser) parseMapKeyValue(ctx *context, g *TokenGroup, entryTk *Token) (*ast.MappingValueNode, error) {
+func (p *parser) parseMapKeyValue(ctx *context, g *TokenGroup) (*ast.MappingValueNode, error) {
 	if g.Type != TokenGroupMapKeyValue {
 		return nil, errors.ErrSyntax("unexpected map key-value pair", g.RawToken())
 	}
@@ -581,7 +614,7 @@ func (p *parser) parseMapKeyValue(ctx *context, g *TokenGroup, entryTk *Token) (
 	if err != nil {
 		return nil, err
 	}
-	return newMappingValueNode(c, keyGroup.Last(), entryTk, key, value)
+	return newMappingValueNode(c, keyGroup.Last(), nil, key, value)
 }
 
 func (p *parser) parseMapKey(ctx *context, g *TokenGroup) (ast.MapKeyNode, error) {
@@ -1024,14 +1057,16 @@ func (p *parser) parseFlowSequence(ctx *context) (*ast.SequenceNode, error) {
 	ctx.goNext() // skip SequenceStart token
 
 	isFirst := true
+	var endTk *Token
+	var entryTk *Token
 	for ctx.next() {
 		tk := ctx.currentToken()
 		if tk.Type() == token.SequenceEndType {
 			node.End = tk.RawToken()
+			endTk = tk
 			break
 		}
 
-		var entryTk *Token
 		if tk.Type() == token.CollectEntryType {
 			if isFirst {
 				return nil, errors.ErrSyntax("expected sequence element, but found ','", tk.RawToken())
@@ -1046,11 +1081,37 @@ func (p *parser) parseFlowSequence(ctx *context) (*ast.SequenceNode, error) {
 			// this case is here: "[ elem, ]".
 			// In this case, ignore the last element and break sequence parsing.
 			node.End = tk.RawToken()
+			endTk = tk
 			break
 		}
 
 		if ctx.isTokenNotFound() {
 			break
+		}
+
+		// In flow sequences, entryTk comment belongs to PREVIOUS element, not current
+		// So we set it on the previous entry if it exists
+		if !isFirst && len(node.Entries) > 0 && entryTk != nil && entryTk.LineComment != nil {
+			prevValue := node.Values[len(node.Values)-1]
+			// If the previous value is a flow structure (seq/map), the comma comment
+			// is actually the FootComment of that structure, not a comment on the entry
+			switch v := prevValue.(type) {
+			case *ast.SequenceNode:
+				if v.IsFlowStyle && v.FootComment == nil {
+					v.FootComment = newCommentGroup(entryTk.LineComment, v.GetPath())
+					setCommentOnLastSequenceEntry(v, entryTk.LineComment)
+				}
+			case *ast.MappingNode:
+				if v.IsFlowStyle && v.FootComment == nil {
+					v.FootComment = newCommentGroup(entryTk.LineComment, v.GetPath())
+				}
+			default:
+				// For non-flow structures, set as line comment on the entry
+				prevEntry := node.Entries[len(node.Entries)-1]
+				if err := setLineComment(ctx, prevEntry, entryTk); err != nil {
+					return nil, err
+				}
+			}
 		}
 
 		ctx := ctx.withIndex(uint(len(node.Values)))
@@ -1060,21 +1121,31 @@ func (p *parser) parseFlowSequence(ctx *context) (*ast.SequenceNode, error) {
 		}
 		node.Values = append(node.Values, value)
 		seqEntry := ast.SequenceEntry(entryTk.RawToken(), value, nil)
-		if err := setLineComment(ctx, seqEntry, entryTk); err != nil {
-			return nil, err
-		}
 		seqEntry.SetPath(ctx.path)
 		node.Entries = append(node.Entries, seqEntry)
 
+		// Reset entryTk after processing element so it's not reused incorrectly
+		entryTk = nil
 		isFirst = false
 	}
 	if node.End == nil {
 		return nil, errors.ErrSyntax("sequence end token ']' not found", node.Start)
 	}
-
-	// set line comment if exists. e.g.) ] # comment
-	if err := setLineComment(ctx, node, ctx.currentToken()); err != nil {
-		return nil, err
+	// Handle trailing comma comment for last element
+	if entryTk != nil && len(node.Entries) > 0 {
+		lastEntry := node.Entries[len(node.Entries)-1]
+		if err := setLineComment(ctx, lastEntry, entryTk); err != nil {
+			return nil, err
+		}
+	}
+	// Set line comment from end token as foot comment
+	if endTk != nil && endTk.LineComment != nil {
+		node.FootComment = newCommentGroup(endTk.LineComment, ctx.path)
+		// Also set as line comment on the last entry if the sequence spans multiple lines
+		// and the last value is not a flow structure (this handles nested sequences like [[a, b], c])
+		if node.Start != nil && node.End != nil && node.Start.Position.Line != node.End.Position.Line {
+			setCommentOnLastSequenceEntry(node, endTk.LineComment)
+		}
 	}
 	ctx.goNext() // skip sequence end token.
 	return node, nil

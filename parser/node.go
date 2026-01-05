@@ -255,3 +255,37 @@ func setHeadComment(cm *ast.CommentGroupNode, value ast.Node) error {
 	cm.SetPath(value.GetPath())
 	return value.SetComment(cm)
 }
+
+// isFlowStructure checks if a node is a flow-style sequence or mapping
+func isFlowStructure(node ast.Node) bool {
+	switch v := node.(type) {
+	case *ast.SequenceNode:
+		return v.IsFlowStyle
+	case *ast.MappingNode:
+		return v.IsFlowStyle
+	}
+	return false
+}
+
+// newCommentGroup creates a new comment group with the given token and path
+func newCommentGroup(tk *token.Token, path string) *ast.CommentGroupNode {
+	comment := ast.CommentGroup([]*token.Token{tk})
+	comment.SetPath(path)
+	return comment
+}
+
+// setCommentOnLastSequenceEntry sets a line comment on the last entry of a sequence
+// if the entry doesn't already have a line comment
+func setCommentOnLastSequenceEntry(seq *ast.SequenceNode, tk *token.Token) {
+	if len(seq.Entries) == 0 || len(seq.Values) == 0 {
+		return
+	}
+	// Only set if the last value is not itself a flow structure
+	if isFlowStructure(seq.Values[len(seq.Values)-1]) {
+		return
+	}
+	lastEntry := seq.Entries[len(seq.Entries)-1]
+	if lastEntry.LineComment == nil {
+		lastEntry.LineComment = newCommentGroup(tk, lastEntry.GetPath())
+	}
+}

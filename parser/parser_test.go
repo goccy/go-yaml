@@ -294,6 +294,30 @@ r: s
 		},
 		{
 			`
+elem1:
+  - elem2:
+      {a: b, c: d}
+`,
+			`
+elem1:
+  - elem2:
+      {a: b, c: d}
+`,
+		},
+		{
+			`
+elem1:
+  - elem2:
+      [a, b, c, d]
+`,
+			`
+elem1:
+  - elem2:
+      [a, b, c, d]
+`,
+		},
+		{
+			`
 a: 0 - 1
 `,
 			`
@@ -1520,6 +1544,48 @@ foo2: &anchor text # anchor comment
 # foo3 comment
 # foo3 comment2
 foo3: *anchor # alias comment
+`,
+		},
+		{
+			name: "flow map with inline key comment",
+			yaml: `
+elem1:
+  - elem2: # comment
+      {a: b, c: d}
+`,
+			expected: `
+elem1:
+  - elem2: # comment
+      {a: b, c: d}
+`,
+		},
+		{
+			name: "flow sequence with inline key comment",
+			yaml: `
+elem1:
+  - elem2: # comment
+      [a, b, c, d]
+`,
+			expected: `
+elem1:
+  - elem2: # comment
+      [a, b, c, d]
+`,
+		},
+		{
+			name: "flow map with inline value comment",
+			yaml: `
+a:
+  b: {} # comment
+c: d
+`,
+		},
+		{
+			name: "flow array with inline value comment",
+			yaml: `
+a:
+  b: [] # comment
+c: d
 `,
 		},
 		{

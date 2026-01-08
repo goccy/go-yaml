@@ -465,11 +465,10 @@ func (d *Decoder) nodeToValue(ctx context.Context, node ast.Node) (any, error) {
 			}
 			return v.Interface(), nil
 		}
-		aliasName := n.Value.GetToken().Value
-		if node, exists := d.anchorNodeMap[aliasName]; exists {
+		if node, exists := d.anchorNodeMap[text]; exists {
 			return d.nodeToValue(ctx, node)
 		}
-		return nil, errors.ErrSyntax(fmt.Sprintf("could not find alias %q", aliasName), n.Value.GetToken())
+		return nil, errors.ErrSyntax(fmt.Sprintf("could not find alias %q", text), n.Value.GetToken())
 	case *ast.LiteralNode:
 		return n.Value.GetValue(), nil
 	case *ast.MappingKeyNode:

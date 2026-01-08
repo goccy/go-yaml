@@ -3866,3 +3866,63 @@ func TestSetNullValue(t *testing.T) {
 		})
 	}
 }
+
+func TestDecoder_AnchorInUnmappedField(t *testing.T) {
+	// Test that anchors defined in fields not mapped to struct
+	// can be referenced using aliases (regression test for v1.16.0)
+	type Config struct {
+		Name string `yaml:"name"`
+		Jobs []struct {
+			Name     string `yaml:"name"`
+			Defaults any    `yaml:"defaults"`
+		} `yaml:"jobs"`
+	}
+
+	yml := `
+shared:
+  endpoint: &base_url "http://example.com"
+
+name: Test Config
+jobs:
+- name: Job1
+  defaults:
+    http:
+      url: *base_url
+`
+
+	var config Config
+	if err := yaml.Unmarshal([]byte(yml), &config); err != nil {
+		t.Fatalf("failed to decode: %v", err)
+	}
+
+	if config.Name != "Test Config" {
+		t.Fatalf("unexpected name: %v", config.Name)
+	}
+
+	if len(config.Jobs) != 1 {
+		t.Fatalf("unexpected jobs length: %d", len(config.Jobs))
+	}
+
+	job := config.Jobs[0]
+	if job.Name != "Job1" {
+		t.Fatalf("unexpected job name: %v", job.Name)
+	}
+
+	defaults, ok := job.Defaults.(map[string]any)
+	if !ok {
+		t.Fatalf("defaults is not a map: %T", job.Defaults)
+	}
+
+	http, ok := defaults["http"].(map[string]any)
+	if !ok {
+		t.Fatalf("http is not a map: %T", defaults["http"])
+	}
+
+	url, ok := http["url"].(string)
+	if !ok {
+		t.Fatalf("url is not a string: %T", http["url"])
+	}
+	if url != "http://example.com" {
+		t.Fatalf("unexpected url: %v", url)
+	}
+}

@@ -149,7 +149,7 @@ func (e *Encoder) setCommentByCommentMap(node ast.Node) error {
 			for _, text := range comment.Texts {
 				commentTokens = append(commentTokens, token.New(text, text, nil))
 			}
-			commentGroup := ast.CommentGroup(commentTokens)
+			commentGroup := ast.CommentGroup(commentTokens, false)
 			switch comment.Position {
 			case CommentHeadPosition:
 				if err := e.setHeadComment(node, n, commentGroup); err != nil {

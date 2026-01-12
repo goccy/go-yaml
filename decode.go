@@ -47,6 +47,7 @@ type Decoder struct {
 	parsedFile           *ast.File
 	streamIndex          int
 	decodeDepth          int
+	initer               Initer
 }
 
 // NewDecoder returns a new decoder that reads from r.
@@ -65,6 +66,7 @@ func NewDecoder(r io.Reader, opts ...DecodeOption) *Decoder {
 		disallowUnknownField: false,
 		allowDuplicateMapKey: false,
 		useOrderedMap:        false,
+		initer:               DefaultInitier,
 	}
 }
 
@@ -481,21 +483,44 @@ func (d *Decoder) nodeToValue(ctx context.Context, node ast.Node) (any, error) {
 			}
 			iter := value.MapRange()
 			if d.useOrderedMap {
-				m := MapSlice{}
+				t := reflect.TypeOf(MapSlice{})
+				m, err := d.initer(ctx, d, n, t, reflect.Zero(t))
+				if err != nil {
+					return nil, err
+				}
+
+				mc, ok := m.(MapSlice)
+				if !ok {
+					return nil, errors.ErrTypeMismatch(t, reflect.TypeOf(m), n.GetToken())
+				}
+
 				for iter.Next() {
-					if err := d.setToOrderedMapValue(ctx, iter.KeyValue(), &m); err != nil {
+					if err := d.setToOrderedMapValue(ctx, iter.KeyValue(), &mc); err != nil {
 						return nil, err
 					}
 				}
-				return m, nil
+
+				return mc, nil
 			}
-			m := make(map[string]any)
+
+			t := reflect.TypeOf(map[string]interface{}{})
+			m, err := d.initer(ctx, d, n, t, reflect.Zero(t))
+			if err != nil {
+				return nil, err
+			}
+
+			mc, ok := m.(map[string]interface{})
+			if !ok {
+				return nil, errors.ErrTypeMismatch(t, reflect.TypeOf(m), n.GetToken())
+			}
+
 			for iter.Next() {
-				if err := d.setToMapValue(ctx, iter.KeyValue(), m); err != nil {
+				if err := d.setToMapValue(ctx, iter.KeyValue(), mc); err != nil {
 					return nil, err
 				}
 			}
-			return m, nil
+
+			return mc, nil
 		}
 		key, err := d.mapKeyNodeToString(ctx, n.Key)
 		if err != nil {
@@ -506,40 +531,101 @@ func (d *Decoder) nodeToValue(ctx context.Context, node ast.Node) (any, error) {
 			if err != nil {
 				return nil, err
 			}
-			return MapSlice{{Key: key, Value: v}}, nil
+
+			t := reflect.TypeOf(MapSlice{})
+			m, err := d.initer(ctx, d, n, t, reflect.Zero(t))
+			if err != nil {
+				return nil, err
+			}
+
+			mc, ok := m.(MapSlice)
+			if !ok {
+				return nil, errors.ErrTypeMismatch(t, reflect.TypeOf(m), n.GetToken())
+			}
+
+			return append(mc, MapItem{Key: key, Value: v}), nil
 		}
+
 		v, err := d.nodeToValue(ctx, n.Value)
 		if err != nil {
 			return nil, err
 		}
-		return map[string]interface{}{key: v}, nil
+
+		t := reflect.TypeOf(map[string]interface{}{})
+		m, err := d.initer(ctx, d, n, t, reflect.Zero(t))
+		if err != nil {
+			return nil, err
+		}
+
+		mc, ok := m.(map[string]interface{})
+		if !ok {
+			return nil, errors.ErrTypeMismatch(t, reflect.TypeOf(m), n.GetToken())
+		}
+
+		mc[key] = v
+
+		return mc, nil
 	case *ast.MappingNode:
 		if d.useOrderedMap {
-			m := make(MapSlice, 0, len(n.Values))
+			t := reflect.TypeOf(MapSlice{})
+			m, err := d.initer(ctx, d, n, t, reflect.Zero(t))
+			if err != nil {
+				return nil, err
+			}
+
+			mc, ok := m.(MapSlice)
+			if !ok {
+				return nil, errors.ErrTypeMismatch(t, reflect.TypeOf(m), n.GetToken())
+			}
+
 			for _, value := range n.Values {
-				if err := d.setToOrderedMapValue(ctx, value, &m); err != nil {
+				if err := d.setToOrderedMapValue(ctx, value, &mc); err != nil {
 					return nil, err
 				}
 			}
-			return m, nil
+
+			return mc, nil
 		}
-		m := make(map[string]interface{}, len(n.Values))
+
+		t := reflect.TypeOf(map[string]interface{}{})
+		m, err := d.initer(ctx, d, n, t, reflect.Zero(t))
+		if err != nil {
+			return nil, err
+		}
+
+		mc, ok := m.(map[string]interface{})
+		if !ok {
+			return nil, errors.ErrTypeMismatch(t, reflect.TypeOf(m), n.GetToken())
+		}
+
 		for _, value := range n.Values {
-			if err := d.setToMapValue(ctx, value, m); err != nil {
+			if err := d.setToMapValue(ctx, value, mc); err != nil {
 				return nil, err
 			}
 		}
-		return m, nil
+
+		return mc, nil
 	case *ast.SequenceNode:
-		v := make([]interface{}, 0, len(n.Values))
+		t := reflect.TypeOf([]interface{}{})
+		v, err := d.initer(ctx, d, n, t, reflect.Zero(t))
+		if err != nil {
+			return nil, err
+		}
+
+		vc, ok := v.([]interface{})
+		if !ok {
+			return nil, errors.ErrTypeMismatch(t, reflect.TypeOf(v), n.GetToken())
+		}
+
 		for _, value := range n.Values {
 			vv, err := d.nodeToValue(ctx, value)
 			if err != nil {
 				return nil, err
 			}
-			v = append(v, vv)
+			vc = append(vc, vv)
 		}
-		return v, nil
+
+		return vc, nil
 	}
 	return nil, nil
 }
@@ -898,6 +984,22 @@ func (d *Decoder) decodeValue(ctx context.Context, dst reflect.Value, src ast.No
 	}
 	if !dst.IsValid() {
 		return nil
+	}
+
+	if !dst.IsZero() {
+		val, err := d.initer(ctx, d, src, dst.Type(), dst)
+		if err != nil {
+			return err
+		}
+
+		vOf := reflect.ValueOf(val)
+		if val != nil {
+			if vOf.Type() != dst.Type() {
+				return errors.ErrTypeMismatch(dst.Type(), vOf.Type(), src.GetToken())
+			}
+
+			dst.Set(vOf)
+		}
 	}
 
 	if src.Type() == ast.AnchorType {
@@ -1330,6 +1432,11 @@ func (d *Decoder) decodeStruct(ctx context.Context, dst reflect.Value, src ast.N
 		dst.Set(srcValue)
 		return nil
 	}
+	c, err := d.initer(ctx, d, src, structType, dst)
+	if err != nil {
+		return err
+	}
+	dst.Set(reflect.ValueOf(c))
 	structFieldMap, err := structFieldMap(structType)
 	if err != nil {
 		return err
@@ -1588,9 +1695,19 @@ func (d *Decoder) decodeSlice(ctx context.Context, dst reflect.Value, src ast.No
 	if arrayNode == nil {
 		return nil
 	}
-	iter := arrayNode.ArrayRange()
+
 	sliceType := dst.Type()
-	sliceValue := reflect.MakeSlice(sliceType, 0, iter.Len())
+	v, err := d.initer(ctx, d, arrayNode, sliceType, dst)
+	if err != nil {
+		return err
+	}
+
+	sliceValue := reflect.ValueOf(v)
+	if sliceValue.Type() != sliceType {
+		return errors.ErrTypeMismatch(sliceType, sliceValue.Type(), src.GetToken())
+	}
+
+	iter := arrayNode.ArrayRange()
 	elemType := sliceType.Elem()
 
 	var foundErr error
@@ -1725,7 +1842,17 @@ func (d *Decoder) decodeMap(ctx context.Context, dst reflect.Value, src ast.Node
 		return err
 	}
 	mapType := dst.Type()
-	mapValue := reflect.MakeMap(mapType)
+
+	v, err := d.initer(ctx, d, mapNode, mapType, dst)
+	if err != nil {
+		return err
+	}
+
+	mapValue := reflect.ValueOf(v)
+	if mapValue.Type() != mapType {
+		return errors.ErrTypeMismatch(mapType, mapValue.Type(), src.GetToken())
+	}
+
 	keyType := mapValue.Type().Key()
 	valueType := mapValue.Type().Elem()
 	mapIter := mapNode.MapRange()
@@ -2034,4 +2161,44 @@ func (d *Decoder) DecodeFromNodeContext(ctx context.Context, node ast.Node, v in
 		return err
 	}
 	return nil
+}
+
+func (d *Decoder) IsRecursiveDir() bool {
+	return d.isRecursiveDir
+}
+
+func (d *Decoder) IsResolvedReference() bool {
+	return d.isResolvedReference
+}
+
+func (d *Decoder) Validator() StructValidator {
+	return d.validator
+}
+
+func (d *Decoder) DisallowUnknownField() bool {
+	return d.disallowUnknownField
+}
+
+func (d *Decoder) AllowDuplicateMapKey() bool {
+	return d.allowDuplicateMapKey
+}
+
+func (d *Decoder) UseOrderedMap() bool {
+	return d.useOrderedMap
+}
+
+func (d *Decoder) UseJSONUnmarshaler() bool {
+	return d.useJSONUnmarshaler
+}
+
+func (d *Decoder) ParsedFileName() string {
+	return d.parsedFile.Name
+}
+
+func (d *Decoder) StreamIndex() int {
+	return d.streamIndex
+}
+
+func (d *Decoder) DecodeDepth() int {
+	return d.decodeDepth
 }

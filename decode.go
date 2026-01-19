@@ -1782,6 +1782,14 @@ func (d *Decoder) decodeMap(ctx context.Context, dst reflect.Value, src ast.Node
 			mapValue.SetMapIndex(d.createDecodableValue(keyType), dstValue)
 			continue
 		}
+
+		// transform to map key pointer
+		for kt := keyType; kt.Kind() == reflect.Ptr; kt = kt.Elem() {
+			kk := reflect.New(k.Type())
+			kk.Elem().Set(k)
+			k = kk
+		}
+
 		if keyType.Kind() != k.Kind() {
 			return errors.ErrSyntax(
 				fmt.Sprintf("cannot convert %q type to %q type", k.Kind(), keyType.Kind()),

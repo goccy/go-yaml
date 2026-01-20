@@ -161,6 +161,7 @@ v:
   c		: 'z'
 `,
 		`{a: &a c, *a : b}`,
+		`a: !b !c d`,
 	}
 	for idx, src := range sources {
 		t.Run(strconv.Itoa(idx), func(t *testing.T) {

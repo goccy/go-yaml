@@ -426,6 +426,11 @@ func createScalarTagTokenGroups(tokens []*Token) ([]*Token, error) {
 				ret = append(ret, tk)
 				continue
 			}
+			if tokens[i+1].Type() == token.TagType {
+				ret = append(ret, tk)
+				continue
+			}
+
 			if isFlowType(tokens[i+1]) {
 				ret = append(ret, tk)
 				continue

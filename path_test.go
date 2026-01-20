@@ -50,6 +50,23 @@ func TestPathBuilder(t *testing.T) {
 	}
 }
 
+func TestPathBuilderNoChain(t *testing.T) {
+	// See PR #420.
+	builder := yaml.PathBuilder{}
+	builder.Root()
+	builder.Child("a")
+	builder.Child("b")
+	builder.Index(0)
+	path := builder.Build()
+
+	expected := `$.a.b[0]`
+	got := path.String()
+
+	if expected != got {
+		t.Fatalf("failed to build path. expected:[%q] but got:[%q]", expected, got)
+	}
+}
+
 func TestPath(t *testing.T) {
 	yml := `
 store:

@@ -82,6 +82,36 @@ func (d *Decoder) isExceededMaxDepth() bool {
 	return d.decodeDepth > maxDecodeDepth
 }
 
+func (d *Decoder) castToInt(v interface{}) interface{} {
+	switch vv := v.(type) {
+	case int:
+		return int64(vv)
+	case int8:
+		return int64(vv)
+	case int16:
+		return int64(vv)
+	case int32:
+		return int64(vv)
+	case int64:
+		return vv
+	case uint:
+		return uint64(vv)
+	case uint8:
+		return uint64(vv)
+	case uint16:
+		return uint64(vv)
+	case uint32:
+		return uint64(vv)
+	case uint64:
+		return vv
+	case string:
+		// if error occurred, return zero value
+		i, _ := strconv.ParseInt(vv, 10, 64)
+		return i
+	}
+	return 0
+}
+
 func (d *Decoder) castToFloat(v interface{}) interface{} {
 	switch vv := v.(type) {
 	case int:
@@ -385,8 +415,7 @@ func (d *Decoder) nodeToValue(ctx context.Context, node ast.Node) (any, error) {
 			if err != nil {
 				return nil, err
 			}
-			i, _ := strconv.Atoi(fmt.Sprint(v))
-			return i, nil
+			return d.castToInt(v), nil
 		case token.FloatTag:
 			v, err := d.nodeToValue(ctx, n.Value)
 			if err != nil {

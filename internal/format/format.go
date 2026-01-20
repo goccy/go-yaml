@@ -362,7 +362,11 @@ func (f *Formatter) formatMapping(n *ast.MappingNode) string {
 	}
 	if n.IsFlowStyle {
 		ret += f.origin(n.End)
-		ret += f.formatCommentGroup(n.Comment)
+		if n.Comment != nil {
+			ret += f.formatCommentGroup(n.Comment)
+		} else if n.FootComment != nil {
+			ret += f.formatCommentGroup(n.FootComment)
+		}
 	}
 	return ret
 }

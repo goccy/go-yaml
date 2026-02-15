@@ -21,11 +21,12 @@ func isMerge(ctx context.Context) bool {
 
 func withAnchor(ctx context.Context, name string) context.Context {
 	anchorMap := getAnchorMap(ctx)
-	if anchorMap == nil {
-		anchorMap = make(map[string]struct{})
+	newMap := make(map[string]struct{}, len(anchorMap)+1)
+	for k, v := range anchorMap {
+		newMap[k] = v
 	}
-	anchorMap[name] = struct{}{}
-	return context.WithValue(ctx, ctxAnchorKey{}, anchorMap)
+	newMap[name] = struct{}{}
+	return context.WithValue(ctx, ctxAnchorKey{}, newMap)
 }
 
 func getAnchorMap(ctx context.Context) map[string]struct{} {

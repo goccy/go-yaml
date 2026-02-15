@@ -3926,3 +3926,96 @@ jobs:
 		t.Fatalf("unexpected url: %v", url)
 	}
 }
+
+func TestDecoder_SiblingAnchorAlias(t *testing.T) {
+	// Test that aliases to sibling anchors within a parent anchor resolve
+	// correctly. Previously, withAnchor() mutated a shared context map,
+	// causing sibling aliases to be falsely detected as self-referential.
+	t.Run("simple sibling alias", func(t *testing.T) {
+		yml := `
+a: &a
+  b: &b value
+  ref: *b
+`
+		var result map[string]any
+		if err := yaml.Unmarshal([]byte(yml), &result); err != nil {
+			t.Fatalf("failed to decode: %v", err)
+		}
+		a, ok := result["a"].(map[string]any)
+		if !ok {
+			t.Fatalf("a is not a map: %T", result["a"])
+		}
+		if a["b"] != "value" {
+			t.Fatalf("unexpected a.b: %v", a["b"])
+		}
+		if a["ref"] != "value" {
+			t.Fatalf("unexpected a.ref: got %v, want \"value\"", a["ref"])
+		}
+	})
+
+	t.Run("multiple sibling aliases", func(t *testing.T) {
+		yml := `
+config: &config
+  db: &db postgres://localhost/mydb
+  cache: &cache redis://localhost:6379
+  app:
+    database_url: *db
+    cache_url: *cache
+`
+		var result map[string]any
+		if err := yaml.Unmarshal([]byte(yml), &result); err != nil {
+			t.Fatalf("failed to decode: %v", err)
+		}
+		cfg, _ := result["config"].(map[string]any)
+		app, _ := cfg["app"].(map[string]any)
+		if app["database_url"] != "postgres://localhost/mydb" {
+			t.Fatalf("unexpected database_url: got %v, want postgres://localhost/mydb", app["database_url"])
+		}
+		if app["cache_url"] != "redis://localhost:6379" {
+			t.Fatalf("unexpected cache_url: got %v, want redis://localhost:6379", app["cache_url"])
+		}
+	})
+
+	t.Run("nested map sibling alias", func(t *testing.T) {
+		yml := `
+service: &service
+  auth: &auth
+    required: true
+    type: jwt
+  endpoint:
+    security: *auth
+`
+		var result map[string]any
+		if err := yaml.Unmarshal([]byte(yml), &result); err != nil {
+			t.Fatalf("failed to decode: %v", err)
+		}
+		svc, _ := result["service"].(map[string]any)
+		ep, _ := svc["endpoint"].(map[string]any)
+		security, ok := ep["security"].(map[string]any)
+		if !ok {
+			t.Fatalf("security is not a map: %T (value: %v)", ep["security"], ep["security"])
+		}
+		if security["required"] != true {
+			t.Fatalf("unexpected security.required: %v", security["required"])
+		}
+		if security["type"] != "jwt" {
+			t.Fatalf("unexpected security.type: %v", security["type"])
+		}
+	})
+
+	t.Run("self recursion still detected", func(t *testing.T) {
+		// Ensure the fix doesn't break legitimate self-recursion detection
+		yml := `
+a: &a
+  self: *a
+`
+		var result map[string]any
+		if err := yaml.Unmarshal([]byte(yml), &result); err != nil {
+			t.Fatalf("failed to decode: %v", err)
+		}
+		a, _ := result["a"].(map[string]any)
+		if a["self"] != nil {
+			t.Fatalf("self-recursive alias should be nil, got: %v", a["self"])
+		}
+	})
+}

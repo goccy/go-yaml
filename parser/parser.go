@@ -1175,7 +1175,7 @@ func (p *parser) parseSequenceValue(ctx *context, seqTk *Token) (ast.Node, error
 		return nil, errors.ErrSyntax("tag is not allowed in this sequence context", tk.RawToken())
 	}
 
-	if tk.Column() < seqCol {
+	if tk.Column() < seqCol || (tk.Column() == seqCol && tk.Line() != seqLine) {
 		// in this case,
 		// ----
 		//   - <value does not defined>

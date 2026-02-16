@@ -2027,6 +2027,76 @@ x-some-extra-thing: b_value
 
 }
 
+func TestDecoder_EmptySequenceItem(t *testing.T) {
+	t.Run("before sibling mapping key", func(t *testing.T) {
+		yml := `args:
+- a
+-
+command:
+- python`
+
+		var out map[string]any
+		if err := yaml.Unmarshal([]byte(yml), &out); err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+
+		args := out["args"].([]any)
+		if len(args) != 2 || args[0] != "a" || args[1] != nil {
+			t.Fatalf("expected [a, nil], got %v", args)
+		}
+		command := out["command"].([]any)
+		if len(command) != 1 || command[0] != "python" {
+			t.Fatalf("expected [python], got %v", command)
+		}
+	})
+
+	t.Run("indented sequence", func(t *testing.T) {
+		yml := `parent:
+  items:
+    - a
+    -
+  other: val`
+
+		var out map[string]any
+		if err := yaml.Unmarshal([]byte(yml), &out); err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+
+		parent := out["parent"].(map[string]any)
+		items := parent["items"].([]any)
+		if len(items) != 2 || items[0] != "a" || items[1] != nil {
+			t.Fatalf("expected [a, nil], got %v", items)
+		}
+		if parent["other"] != "val" {
+			t.Errorf("expected other=val, got %v", parent["other"])
+		}
+	})
+
+	t.Run("empty item with indented value on next line", func(t *testing.T) {
+		yml := `items:
+-
+  key: val
+- b`
+
+		var out map[string]any
+		if err := yaml.Unmarshal([]byte(yml), &out); err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+
+		items := out["items"].([]any)
+		if len(items) != 2 {
+			t.Fatalf("expected 2 items, got %d: %v", len(items), items)
+		}
+		m, ok := items[0].(map[string]any)
+		if !ok {
+			t.Fatalf("items[0] should be map, got %T: %v", items[0], items[0])
+		}
+		if m["key"] != "val" {
+			t.Errorf("expected key=val, got %v", m["key"])
+		}
+	})
+}
+
 func TestDecoder_AllowDuplicateMapKey(t *testing.T) {
 	yml := `
 a: b

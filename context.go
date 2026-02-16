@@ -1,6 +1,9 @@
 package yaml
 
-import "context"
+import (
+	"context"
+	"maps"
+)
 
 type (
 	ctxMergeKey  struct{}
@@ -22,9 +25,7 @@ func isMerge(ctx context.Context) bool {
 func withAnchor(ctx context.Context, name string) context.Context {
 	anchorMap := getAnchorMap(ctx)
 	newMap := make(map[string]struct{}, len(anchorMap)+1)
-	for k, v := range anchorMap {
-		newMap[k] = v
-	}
+	maps.Copy(newMap, anchorMap)
 	newMap[name] = struct{}{}
 	return context.WithValue(ctx, ctxAnchorKey{}, newMap)
 }

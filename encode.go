@@ -737,11 +737,13 @@ type IsZeroer interface {
 
 func (e *Encoder) isOmittedByOmitZero(v reflect.Value) bool {
 	kind := v.Kind()
-	if z, ok := v.Interface().(IsZeroer); ok {
-		if (kind == reflect.Ptr || kind == reflect.Interface) && v.IsNil() {
-			return true
+	if v.CanInterface() {
+		if z, ok := v.Interface().(IsZeroer); ok {
+			if (kind == reflect.Ptr || kind == reflect.Interface) && v.IsNil() {
+				return true
+			}
+			return z.IsZero()
 		}
-		return z.IsZero()
 	}
 	switch kind {
 	case reflect.String:

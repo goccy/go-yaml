@@ -32,6 +32,8 @@ type TestTextUnmarshalerContainer struct {
 	V TestTextMarshaler
 }
 
+type unexportedStruct struct{}
+
 func TestEncoder(t *testing.T) {
 	tests := []struct {
 		source  string
@@ -767,6 +769,15 @@ func TestEncoder(t *testing.T) {
 			struct {
 				A netip.Addr         `yaml:"a"`
 				B struct{ X, y int } `yaml:"b"`
+			}{},
+			[]yaml.EncodeOption{
+				yaml.OmitZero(),
+			},
+		},
+		{
+			"{}\n",
+			struct {
+				unexportedStruct
 			}{},
 			[]yaml.EncodeOption{
 				yaml.OmitZero(),

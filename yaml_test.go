@@ -103,6 +103,29 @@ d: &d [*c,*c]
 	}
 }
 
+// Issue 853
+func TestSmartAnchorEmptySlice(t *testing.T) {
+	v := map[string]any{
+		"key1": []string{},
+		"key2": []string{},
+		"key3": []string{"item1", "item2", "item3"},
+	}
+	got, err := yaml.MarshalWithOptions(v, yaml.WithSmartAnchor())
+	if err != nil {
+		t.Fatal(err)
+	}
+	expected := `key1: &key1 []
+key2: *key1
+key3:
+- item1
+- item2
+- item3
+`
+	if string(got) != expected {
+		t.Fatalf("expected:\n%s\ngot:\n%s", expected, string(got))
+	}
+}
+
 func TestSmartAnchor(t *testing.T) {
 	data := `
 a: &a [_,_,_,_,_,_,_,_,_,_,_,_,_,_,_]

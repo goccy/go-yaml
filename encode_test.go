@@ -966,6 +966,35 @@ func TestEncoder(t *testing.T) {
 				yaml.UseSingleQuote(true),
 			},
 		},
+		// Sequence indentation
+		{
+			"[]" + "\n",
+			[]string{},
+			[]yaml.EncodeOption{
+				yaml.IndentSequence(false),
+			},
+		},
+		{
+			"[]" + "\n",
+			[]string{},
+			[]yaml.EncodeOption{
+				yaml.IndentSequence(true),
+			},
+		},
+		{
+			"- a\n- b\n- c" + "\n",
+			[]string{"a", "b", "c"},
+			[]yaml.EncodeOption{
+				yaml.IndentSequence(false),
+			},
+		},
+		{
+			"- a\n- b\n- c" + "\n",
+			[]string{"a", "b", "c"},
+			[]yaml.EncodeOption{
+				yaml.IndentSequence(true),
+			},
+		},
 	}
 	for _, test := range tests {
 		t.Run(test.source, func(t *testing.T) {

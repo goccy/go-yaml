@@ -604,14 +604,9 @@ func (e *Encoder) encodeBool(v bool) *ast.BoolNode {
 }
 
 func (e *Encoder) encodeSlice(ctx context.Context, value reflect.Value) (*ast.SequenceNode, error) {
-	if e.indentSequence {
-		e.column += e.indentNum
-		defer func() { e.column -= e.indentNum }()
-	}
-	column := e.column
-	sequence := ast.Sequence(token.New("-", "-", e.pos(column)), e.isFlowStyle)
+	sequence := ast.Sequence(token.New("-", "-", e.pos(e.column)), e.isFlowStyle)
 	for i := 0; i < value.Len(); i++ {
-		node, err := e.encodeValue(ctx, value.Index(i), column)
+		node, err := e.encodeValue(ctx, value.Index(i), e.column)
 		if err != nil {
 			return nil, err
 		}
@@ -621,14 +616,9 @@ func (e *Encoder) encodeSlice(ctx context.Context, value reflect.Value) (*ast.Se
 }
 
 func (e *Encoder) encodeArray(ctx context.Context, value reflect.Value) (*ast.SequenceNode, error) {
-	if e.indentSequence {
-		e.column += e.indentNum
-		defer func() { e.column -= e.indentNum }()
-	}
-	column := e.column
-	sequence := ast.Sequence(token.New("-", "-", e.pos(column)), e.isFlowStyle)
+	sequence := ast.Sequence(token.New("-", "-", e.pos(e.column)), e.isFlowStyle)
 	for i := 0; i < value.Len(); i++ {
-		node, err := e.encodeValue(ctx, value.Index(i), column)
+		node, err := e.encodeValue(ctx, value.Index(i), e.column)
 		if err != nil {
 			return nil, err
 		}
@@ -648,6 +638,9 @@ func (e *Encoder) encodeMapItem(ctx context.Context, item MapItem, column int) (
 		value.AddColumn(e.indentNum)
 	}
 	if e.isTagAndMapNode(value) {
+		value.AddColumn(e.indentNum)
+	}
+	if e.isSequenceNode(value) && e.indentSequence {
 		value.AddColumn(e.indentNum)
 	}
 	return ast.MappingValue(
@@ -679,6 +672,11 @@ func (e *Encoder) isTagAndMapNode(node ast.Node) bool {
 	return ok && e.isMapNode(tn.Value)
 }
 
+func (e *Encoder) isSequenceNode(node ast.Node) bool {
+	_, ok := node.(*ast.SequenceNode)
+	return ok
+}
+
 func (e *Encoder) encodeMap(ctx context.Context, value reflect.Value, column int) (ast.Node, error) {
 	node := ast.Mapping(token.New("", "", e.pos(column)), e.isFlowStyle)
 	keys := make([]interface{}, len(value.MapKeys()))
@@ -699,6 +697,9 @@ func (e *Encoder) encodeMap(ctx context.Context, value reflect.Value, column int
 			encoded.AddColumn(e.indentNum)
 		}
 		if e.isTagAndMapNode(encoded) {
+			encoded.AddColumn(e.indentNum)
+		}
+		if e.isSequenceNode(encoded) && e.indentSequence {
 			encoded.AddColumn(e.indentNum)
 		}
 		keyText := fmt.Sprint(key)
@@ -911,6 +912,9 @@ func (e *Encoder) encodeStruct(ctx context.Context, value reflect.Value, column 
 			return nil, err
 		}
 		if e.isMapNode(encoded) {
+			encoded.AddColumn(e.indentNum)
+		}
+		if e.isSequenceNode(encoded) && e.indentSequence {
 			encoded.AddColumn(e.indentNum)
 		}
 		var key ast.MapKeyNode = e.encodeString(sf.RenderName, column)

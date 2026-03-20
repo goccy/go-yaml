@@ -3291,4 +3291,26 @@ func TestTokenOffset(t *testing.T) {
 			t.Fatalf("unexpected offset. got %d", tokens[4].Position.Offset)
 		}
 	})
+	t.Run("single_comment", func(t *testing.T) {
+		// "# x\na: 1\n": '#'=1,' '=2,'x'=3,'\n'=4,'a'=5
+		tokens := lexer.Tokenize("# x\na: 1\n")
+		tk := tokens[1] // "a" (tokens[0] is the comment)
+		if tk.Value != "a" {
+			t.Fatalf("unexpected value. got %q", tk.Value)
+		}
+		if tk.Position.Offset != 5 {
+			t.Fatalf("unexpected offset. got %d, want 5", tk.Position.Offset)
+		}
+	})
+	t.Run("multiple_comments", func(t *testing.T) {
+		// "# x\n# y\n# z\na: 1\n": "# x\n# y\n# z\n" = 13 chars, 'a' at offset 13
+		tokens := lexer.Tokenize("# x\n# y\n# z\na: 1\n")
+		tk := tokens[3] // "a" (tokens[0,1,2] are comments)
+		if tk.Value != "a" {
+			t.Fatalf("unexpected value. got %q", tk.Value)
+		}
+		if tk.Position.Offset != 13 {
+			t.Fatalf("unexpected offset. got %d, want 13", tk.Position.Offset)
+		}
+	})
 }

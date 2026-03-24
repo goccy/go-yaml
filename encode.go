@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"math"
+	"net/url"
 	"reflect"
 	"sort"
 	"strconv"
@@ -335,6 +336,8 @@ func (e *Encoder) canEncodeByMarshaler(v reflect.Value) bool {
 		return true
 	case time.Duration:
 		return true
+	case url.URL, *url.URL:
+		return true
 	case encoding.TextMarshaler:
 		return true
 	case jsonMarshaler:
@@ -408,6 +411,13 @@ func (e *Encoder) encodeByMarshaler(ctx context.Context, v reflect.Value, column
 
 	if t, ok := iface.(time.Duration); ok {
 		return e.encodeDuration(t, column), nil
+	}
+
+	if u, ok := iface.(url.URL); ok {
+		return e.encodeURL(u, column), nil
+	}
+	if u, ok := iface.(*url.URL); ok && u != nil {
+		return e.encodeURL(*u, column), nil
 	}
 
 	if marshaler, ok := iface.(encoding.TextMarshaler); ok {
@@ -847,6 +857,14 @@ func (e *Encoder) encodeTime(v time.Time, column int) *ast.StringNode {
 }
 
 func (e *Encoder) encodeDuration(v time.Duration, column int) *ast.StringNode {
+	value := v.String()
+	if e.isJSONStyle {
+		value = strconv.Quote(value)
+	}
+	return ast.String(token.New(value, value, e.pos(column)))
+}
+
+func (e *Encoder) encodeURL(v url.URL, column int) *ast.StringNode {
 	value := v.String()
 	if e.isJSONStyle {
 		value = strconv.Quote(value)

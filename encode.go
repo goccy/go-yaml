@@ -564,7 +564,7 @@ func (e *Encoder) isNeedQuoted(v string) bool {
 	if e.isJSONStyle {
 		return true
 	}
-	if e.useLiteralStyleIfMultiline && strings.ContainsAny(v, "\n\r") {
+	if !e.isFlowStyle && strings.ContainsAny(v, "\n\r") {
 		return false
 	}
 	if e.isFlowStyle && strings.ContainsAny(v, `]},'"`) {

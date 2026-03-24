@@ -264,7 +264,7 @@ func TestEncoder(t *testing.T) {
 			},
 		},
 		{
-			"v: \"# comment\\nusername: hello\\npassword: hello123\"\n",
+			"v: |-\n  # comment\n  username: hello\n  password: hello123\n",
 			map[string]interface{}{"v": "# comment\nusername: hello\npassword: hello123"},
 			[]yaml.EncodeOption{
 				yaml.UseLiteralStyleIfMultiline(false),
@@ -1157,28 +1157,16 @@ people:
 }
 
 func TestEncodeWithNestedYAML(t *testing.T) {
-	// Represents objects containing stringified YAML, and special chars
-	tests := []struct {
-		value interface{}
-		// If true, expects a different result between when using forced literal style or not
-		expectDifferent bool
-	}{
-		{
-			value:           map[string]interface{}{"v": "# comment\nname: hello\npassword: hello123\nspecial: \":ghost:\"\ntext: |\n  nested multiline!"},
-			expectDifferent: true,
-		},
-		{
-			value:           map[string]interface{}{"v": "# comment\nusername: hello\npassword: hello123"},
-			expectDifferent: true,
-		},
-		{
-			value:           map[string]interface{}{"v": "# comment\n"},
-			expectDifferent: true,
-		},
+	// Represents objects containing stringified YAML, and special chars.
+	// All multiline strings now use block notation consistently regardless of UseLiteralStyleIfMultiline.
+	values := []interface{}{
+		map[string]interface{}{"v": "# comment\nname: hello\npassword: hello123\nspecial: \":ghost:\"\ntext: |\n  nested multiline!"},
+		map[string]interface{}{"v": "# comment\nusername: hello\npassword: hello123"},
+		map[string]interface{}{"v": "# comment\n"},
 	}
 
-	for _, test := range tests {
-		yamlBytesForced, err := yaml.MarshalWithOptions(test.value, yaml.UseLiteralStyleIfMultiline(true))
+	for _, value := range values {
+		yamlBytes, err := yaml.MarshalWithOptions(value, yaml.UseLiteralStyleIfMultiline(true))
 		if err != nil {
 			t.Fatalf("%+v", err)
 		}
@@ -1186,24 +1174,65 @@ func TestEncodeWithNestedYAML(t *testing.T) {
 		// Convert it back for proper equality testing
 		var unmarshaled interface{}
 
-		if err := yaml.Unmarshal(yamlBytesForced, &unmarshaled); err != nil {
+		if err := yaml.Unmarshal(yamlBytes, &unmarshaled); err != nil {
 			t.Fatalf("%+v", err)
 		}
 
-		if !reflect.DeepEqual(test.value, unmarshaled) {
-			t.Fatalf("expected %v(%T). but actual %v(%T)", test.value, test.value, unmarshaled, unmarshaled)
+		if !reflect.DeepEqual(value, unmarshaled) {
+			t.Fatalf("expected %v(%T). but actual %v(%T)", value, value, unmarshaled, unmarshaled)
 		}
+	}
+}
 
-		if test.expectDifferent {
-			yamlBytesNotForced, err := yaml.MarshalWithOptions(test.value)
+func TestMarshalMultilineStringBlockNotation(t *testing.T) {
+	// Issue #846: multiline strings should use block notation consistently,
+	// even when they contain characters like ':' or '"' that would normally trigger quoting.
+	tests := []struct {
+		name  string
+		value map[string]string
+	}{
+		{
+			name:  "multiline ending with colon",
+			value: map[string]string{"hello": "\n\"name\":"},
+		},
+		{
+			name:  "multiline starting with double-quote",
+			value: map[string]string{"hello": "\"name\"\nvalue"},
+		},
+		{
+			name:  "multiline with colon at end of line",
+			value: map[string]string{"hello": "line1:\nline2"},
+		},
+		{
+			name:  "multiline with hash",
+			value: map[string]string{"hello": "# comment\nvalue"},
+		},
+		{
+			name:  "multiline with backslash",
+			value: map[string]string{"hello": "path\\to\nfile"},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			out, err := yaml.Marshal(test.value)
 			if err != nil {
-				t.Fatalf("%+v", err)
+				t.Fatalf("Marshal failed: %+v", err)
 			}
-
-			if string(yamlBytesForced) == string(yamlBytesNotForced) {
-				t.Fatalf("expected different strings when force literal style is not enabled. forced: %s, not forced: %s", string(yamlBytesForced), string(yamlBytesNotForced))
+			// Block notation must be used: output must contain the literal block indicator '|-', '|', or '|+'
+			s := string(out)
+			if !strings.Contains(s, "|-") && !strings.Contains(s, "|\n") && !strings.Contains(s, "|+") {
+				t.Fatalf("expected block notation but got: %s", s)
 			}
-		}
+			// Round-trip: unmarshal must reproduce the original value
+			var got map[string]string
+			if err := yaml.Unmarshal(out, &got); err != nil {
+				t.Fatalf("Unmarshal failed: %+v", err)
+			}
+			if !reflect.DeepEqual(test.value, got) {
+				t.Fatalf("round-trip mismatch: want %v, got %v", test.value, got)
+			}
+		})
 	}
 }
 

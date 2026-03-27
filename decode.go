@@ -565,6 +565,8 @@ func (d *Decoder) getMapNode(node ast.Node, isMerge bool) (ast.MapNode, error) {
 			return nil, fmt.Errorf("cannot find anchor by alias name %s", aliasName)
 		}
 		return d.getMapNode(node, isMerge)
+	case *ast.TagNode:
+		return d.getMapNode(n.Value, isMerge)
 	case *ast.SequenceNode:
 		if !isMerge {
 			return nil, errors.ErrUnexpectedNodeType(node.Type(), ast.MappingType, node.GetToken())
@@ -611,6 +613,9 @@ func (d *Decoder) getArrayNode(node ast.Node) (ast.ArrayNode, error) {
 			return arrayNode, nil
 		}
 		return nil, errors.ErrUnexpectedNodeType(node.Type(), ast.SequenceType, node.GetToken())
+	}
+	if tag, ok := node.(*ast.TagNode); ok {
+		return d.getArrayNode(tag.Value)
 	}
 	arrayNode, ok := node.(ast.ArrayNode)
 	if !ok {

@@ -4089,3 +4089,62 @@ a: &a
 		}
 	})
 }
+
+func TestIssue735(t *testing.T) {
+	type Slice struct {
+		Items []string `yaml:"items"`
+	}
+	type Map struct {
+		Items map[string]string `yaml:"items"`
+	}
+
+	t.Run("tag on scalar decoded as slice errors", func(t *testing.T) {
+		// A YAML tag applied to a non-sequence value on a slice field must
+		// return an error, not panic.
+		var v Slice
+		if err := yaml.Unmarshal([]byte("items:\n  ! scalar"), &v); err == nil {
+			t.Fatal("expected error, got nil")
+		}
+	})
+
+	t.Run("tag on scalar decoded as map errors", func(t *testing.T) {
+		// A YAML tag applied to a non-map value on a map field must
+		// return an error, not panic.
+		var v Map
+		if err := yaml.Unmarshal([]byte("items: !!str scalar"), &v); err == nil {
+			t.Fatal("expected error, got nil")
+		}
+	})
+
+	t.Run("!!seq tag on sequence decoded as slice succeeds", func(t *testing.T) {
+		var v Slice
+		if err := yaml.Unmarshal([]byte("items: !!seq\n  - a\n  - b"), &v); err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if len(v.Items) != 2 || v.Items[0] != "a" || v.Items[1] != "b" {
+			t.Fatalf("unexpected items: %v", v.Items)
+		}
+	})
+
+	t.Run("!!map tag on mapping decoded as map succeeds", func(t *testing.T) {
+		var v Map
+		if err := yaml.Unmarshal([]byte("items: !!map\n  a: b"), &v); err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if v.Items["a"] != "b" {
+			t.Fatalf("unexpected items: %v", v.Items)
+		}
+	})
+
+	t.Run("!!null tag on slice field yields nil slice", func(t *testing.T) {
+		// A tagged null value on a slice field should decode to nil, not error.
+		// Exercises the recursive dispatch through TagNode -> NullNode.
+		var v Slice
+		if err := yaml.Unmarshal([]byte("items: !!null null"), &v); err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if v.Items != nil {
+			t.Fatalf("expected nil slice, got %v", v.Items)
+		}
+	})
+}

@@ -4147,4 +4147,25 @@ func TestIssue735(t *testing.T) {
 			t.Fatalf("expected nil slice, got %v", v.Items)
 		}
 	})
+
+	t.Run("anchored tagged scalar aliased to slice field errors", func(t *testing.T) {
+		// An anchor whose value is a tagged scalar, aliased into a slice field,
+		// must return an error rather than panic via the nil ArrayRange iterator.
+		var v Slice
+		src := "anchor: &anchor !!str scalar\nitems: *anchor"
+		if err := yaml.Unmarshal([]byte(src), &v); err == nil {
+			t.Fatal("expected error, got nil")
+		}
+	})
+
+	t.Run("anchored tagged sequence aliased to slice field succeeds", func(t *testing.T) {
+		var v Slice
+		src := "anchor: &anchor !!seq\n  - a\n  - b\nitems: *anchor"
+		if err := yaml.Unmarshal([]byte(src), &v); err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if len(v.Items) != 2 || v.Items[0] != "a" || v.Items[1] != "b" {
+			t.Fatalf("unexpected items: %v", v.Items)
+		}
+	})
 }

@@ -595,12 +595,7 @@ func (d *Decoder) getArrayNode(node ast.Node) (ast.ArrayNode, error) {
 		return nil, nil
 	}
 	if anchor, ok := node.(*ast.AnchorNode); ok {
-		arrayNode, ok := anchor.Value.(ast.ArrayNode)
-		if ok {
-			return arrayNode, nil
-		}
-
-		return nil, errors.ErrUnexpectedNodeType(anchor.Value.Type(), ast.SequenceType, node.GetToken())
+		return d.getArrayNode(anchor.Value)
 	}
 	if alias, ok := node.(*ast.AliasNode); ok {
 		aliasName := alias.Value.GetToken().Value
@@ -608,11 +603,7 @@ func (d *Decoder) getArrayNode(node ast.Node) (ast.ArrayNode, error) {
 		if node == nil {
 			return nil, fmt.Errorf("cannot find anchor by alias name %s", aliasName)
 		}
-		arrayNode, ok := node.(ast.ArrayNode)
-		if ok {
-			return arrayNode, nil
-		}
-		return nil, errors.ErrUnexpectedNodeType(node.Type(), ast.SequenceType, node.GetToken())
+		return d.getArrayNode(node)
 	}
 	if tag, ok := node.(*ast.TagNode); ok {
 		return d.getArrayNode(tag.Value)

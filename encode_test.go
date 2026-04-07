@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"math"
 	"net/netip"
+	"net/url"
 	"reflect"
 	"strconv"
 	"strings"
@@ -927,6 +928,21 @@ func TestEncoder(t *testing.T) {
 		{
 			"v: null\n",
 			map[string]*time.Duration{"v": nil},
+			nil,
+		},
+		{
+			"v: https://example.com/api\n",
+			map[string]url.URL{"v": {Scheme: "https", Host: "example.com", Path: "/api"}},
+			nil,
+		},
+		{
+			"v: https://example.com/api\n",
+			map[string]*url.URL{"v": {Scheme: "https", Host: "example.com", Path: "/api"}},
+			nil,
+		},
+		{
+			"v: null\n",
+			map[string]*url.URL{"v": nil},
 			nil,
 		},
 		{

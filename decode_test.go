@@ -8,6 +8,7 @@ import (
 	"log"
 	"math"
 	"net"
+	"net/url"
 	"reflect"
 	"strconv"
 	"strings"
@@ -363,6 +364,18 @@ func TestDecoder(t *testing.T) {
 		{
 			source: "v: -0.5h\n",
 			value:  map[string]time.Duration{"v": -30 * time.Minute},
+		},
+		{
+			source: "v: https://example.com/api\n",
+			value:  map[string]url.URL{"v": {Scheme: "https", Host: "example.com", Path: "/api"}},
+		},
+		{
+			source: "v: https://example.com/api\n",
+			value:  map[string]*url.URL{"v": {Scheme: "https", Host: "example.com", Path: "/api"}},
+		},
+		{
+			source: "v: null\n",
+			value:  map[string]*url.URL{"v": nil},
 		},
 
 		// Single Quoted values.
@@ -1581,6 +1594,33 @@ func TestDecoder_TypeConversionError(t *testing.T) {
 				t.Fatal("expected to error")
 			}
 			msg := "cannot unmarshal uint64 into Go struct field T.B of type time.Duration"
+			if !strings.Contains(err.Error(), msg) {
+				t.Fatalf("expected error message: %s to contain: %s", err.Error(), msg)
+			}
+		})
+	})
+	t.Run("type conversion for url", func(t *testing.T) {
+		type T struct {
+			A url.URL
+		}
+		t.Run("invalid url string", func(t *testing.T) {
+			var v T
+			err := yaml.Unmarshal([]byte(`a: "://bad"`), &v)
+			if err == nil {
+				t.Fatal("expected to error")
+			}
+			msg := `missing protocol scheme`
+			if !strings.Contains(err.Error(), msg) {
+				t.Fatalf("expected error message: %s to contain: %s", err.Error(), msg)
+			}
+		})
+		t.Run("int to url", func(t *testing.T) {
+			var v T
+			err := yaml.Unmarshal([]byte(`a: 123`), &v)
+			if err == nil {
+				t.Fatal("expected to error")
+			}
+			msg := "cannot unmarshal uint64 into Go struct field T.A of type url.URL"
 			if !strings.Contains(err.Error(), msg) {
 				t.Fatalf("expected error message: %s to contain: %s", err.Error(), msg)
 			}

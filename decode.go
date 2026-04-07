@@ -9,6 +9,7 @@ import (
 	"io"
 	"maps"
 	"math"
+	"net/url"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -751,6 +752,7 @@ func (d *Decoder) canDecodeByUnmarshaler(dst reflect.Value) bool {
 		NodeUnmarshalerContext,
 		*time.Time,
 		*time.Duration,
+		*url.URL,
 		encoding.TextUnmarshaler:
 		return true
 	case jsonUnmarshaler:
@@ -849,6 +851,10 @@ func (d *Decoder) decodeByUnmarshaler(ctx context.Context, dst reflect.Value, sr
 
 	if _, ok := iface.(*time.Duration); ok {
 		return d.decodeDuration(ctx, dst, src)
+	}
+
+	if _, ok := iface.(*url.URL); ok {
+		return d.decodeURL(ctx, dst, src)
 	}
 
 	if unmarshaler, isText := iface.(encoding.TextUnmarshaler); isText {
@@ -1284,6 +1290,37 @@ func (d *Decoder) decodeDuration(ctx context.Context, dst reflect.Value, src ast
 		return err
 	}
 	dst.Set(reflect.ValueOf(t))
+	return nil
+}
+
+func (d *Decoder) castToURL(ctx context.Context, src ast.Node) (url.URL, error) {
+	if src == nil {
+		return url.URL{}, nil
+	}
+	v, err := d.nodeToValue(ctx, src)
+	if err != nil {
+		return url.URL{}, err
+	}
+	if u, ok := v.(url.URL); ok {
+		return u, nil
+	}
+	s, ok := v.(string)
+	if !ok {
+		return url.URL{}, errors.ErrTypeMismatch(reflect.TypeOf(url.URL{}), reflect.TypeOf(v), src.GetToken())
+	}
+	u, err := url.Parse(s)
+	if err != nil {
+		return url.URL{}, err
+	}
+	return *u, nil
+}
+
+func (d *Decoder) decodeURL(ctx context.Context, dst reflect.Value, src ast.Node) error {
+	u, err := d.castToURL(ctx, src)
+	if err != nil {
+		return err
+	}
+	dst.Set(reflect.ValueOf(u))
 	return nil
 }
 

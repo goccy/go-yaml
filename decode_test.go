@@ -2000,6 +2000,57 @@ children:
 		}
 	})
 
+	t.Run("inline map", func(t *testing.T) {
+		var v struct {
+			A     int               `yaml:"a"`
+			Extra map[string]string `yaml:",inline"`
+		}
+		yml := `---
+a: 1
+foo: bar
+baz: qux
+`
+		if err := yaml.NewDecoder(strings.NewReader(yml), yaml.DisallowUnknownField()).Decode(&v); err != nil {
+			t.Fatalf("parsing should succeed: %s", err)
+		}
+		if v.A != 1 {
+			t.Fatalf("v.A should be 1, got %d", v.A)
+		}
+		if v.Extra["foo"] != "bar" {
+			t.Fatalf("v.Extra[foo] should be bar, got %s", v.Extra["foo"])
+		}
+		if v.Extra["baz"] != "qux" {
+			t.Fatalf("v.Extra[baz] should be qux, got %s", v.Extra["baz"])
+		}
+	})
+
+	t.Run("nested struct with inline map", func(t *testing.T) {
+		type Inner struct {
+			RoundRobin bool              `yaml:"roundRobin"`
+			Hosts      map[string]string `yaml:",inline"`
+		}
+		var v struct {
+			Name    string `yaml:"name"`
+			Details Inner  `yaml:"details"`
+		}
+		yml := `---
+name: test
+details:
+  roundRobin: true
+  host1: 10.0.0.1
+  host2: 10.0.0.2
+`
+		if err := yaml.NewDecoder(strings.NewReader(yml), yaml.DisallowUnknownField()).Decode(&v); err != nil {
+			t.Fatalf("parsing should succeed: %s", err)
+		}
+		if !v.Details.RoundRobin {
+			t.Fatal("v.Details.RoundRobin should be true")
+		}
+		if v.Details.Hosts["host1"] != "10.0.0.1" {
+			t.Fatalf("v.Details.Hosts[host1] should be 10.0.0.1, got %s", v.Details.Hosts["host1"])
+		}
+	})
+
 	t.Run("with allowed prefixes", func(t *testing.T) {
 		var v struct {
 			A string `yaml:"a"`

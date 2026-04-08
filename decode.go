@@ -667,6 +667,12 @@ func (d *Decoder) deleteStructKeys(structType reflect.Type, unknownFields map[st
 	if structType.Kind() == reflect.Ptr {
 		structType = structType.Elem()
 	}
+	if structType.Kind() == reflect.Map {
+		// Inlined maps accept arbitrary keys, so all remaining
+		// unknown fields are valid.
+		clear(unknownFields)
+		return nil
+	}
 	structFieldMap, err := structFieldMap(structType)
 	if err != nil {
 		return err

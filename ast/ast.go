@@ -908,6 +908,43 @@ func (n *LiteralNode) AddColumn(col int) {
 	}
 }
 
+// detectIndent returns the leading whitespace count of the first non-empty
+// content line in a node's Origin. For LiteralNode, it examines the Value's
+// Origin; for other nodes, it examines the node's own token Origin.
+func detectIndent(node Node) int {
+	var origin string
+	if ln, ok := node.(*LiteralNode); ok && ln.Value != nil {
+		origin = ln.Value.GetToken().Origin
+	} else {
+		origin = node.GetToken().Origin
+	}
+	for _, line := range strings.Split(origin, "\n") {
+		trimmed := strings.TrimLeft(line, " ")
+		if trimmed != "" {
+			return len(line) - len(trimmed)
+		}
+	}
+	return 0
+}
+
+// rebuildLiteralOrigin reconstructs the Origin text of a literal block scalar's
+// content token from its Value string and the target indentation level.
+func rebuildLiteralOrigin(tk *token.Token, targetIndent int) {
+	indent := strings.Repeat(" ", targetIndent)
+	lines := strings.Split(tk.Value, "\n")
+	var sb strings.Builder
+	for i, line := range lines {
+		if i > 0 {
+			sb.WriteString("\n")
+		}
+		if line != "" {
+			sb.WriteString(indent)
+			sb.WriteString(line)
+		}
+	}
+	tk.Origin = sb.String()
+}
+
 // GetValue returns string value
 func (n *LiteralNode) GetValue() interface{} {
 	return n.String()
@@ -1374,6 +1411,23 @@ type MappingValueNode struct {
 // Replace replace value node.
 func (n *MappingValueNode) Replace(value Node) error {
 	column := n.Value.GetToken().Position.Column - value.GetToken().Position.Column
+	switch v := value.(type) {
+	case *MappingNode:
+		column = n.Key.GetToken().Position.Column + 2 - v.startPos().Column
+	case *SequenceNode:
+		column = n.Key.GetToken().Position.Column + 2 - v.GetToken().Position.Column
+	case *StringNode:
+		if strings.ContainsAny(v.Value, "\n\r") {
+			column = n.Key.GetToken().Position.Column - v.GetToken().Position.Column
+		}
+	case *LiteralNode:
+		column = n.Key.GetToken().Position.Column - v.GetToken().Position.Column
+		targetIndent := detectIndent(n.Value)
+		if targetIndent == 0 {
+			targetIndent = n.Key.GetToken().Position.Column - 1 + 2
+		}
+		rebuildLiteralOrigin(v.Value.GetToken(), targetIndent)
+	}
 	value.AddColumn(column)
 	n.Value = value
 	return nil
@@ -1564,6 +1618,22 @@ func (n *SequenceNode) Replace(idx int, value Node) error {
 		)
 	}
 	column := n.Values[idx].GetToken().Position.Column - value.GetToken().Position.Column
+	switch v := value.(type) {
+	case *MappingNode:
+		column = n.Values[idx].GetToken().Position.Column - v.startPos().Column
+	case *SequenceNode:
+		column = n.Values[idx].GetToken().Position.Column - v.GetToken().Position.Column
+	case *StringNode:
+		if strings.ContainsAny(v.Value, "\n\r") {
+			column = n.Values[idx].GetToken().Position.Column - value.GetToken().Position.Column
+		}
+	case *LiteralNode:
+		targetIndent := detectIndent(n.Values[idx])
+		if targetIndent == 0 {
+			targetIndent = n.Start.Position.Column - 1 + 2
+		}
+		rebuildLiteralOrigin(v.Value.GetToken(), targetIndent)
+	}
 	value.AddColumn(column)
 	n.Values[idx] = value
 	return nil

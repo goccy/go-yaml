@@ -862,6 +862,285 @@ building:
 	}
 }
 
+func TestPath_ReplaceWithNode_ValueToNodeIndent(t *testing.T) {
+	path, err := yaml.PathString("$.b")
+	if err != nil {
+		t.Fatalf("%+v", err)
+	}
+
+	file, err := parser.ParseBytes([]byte(`
+a: 1
+b:
+  c: 2
+`), 0)
+	if err != nil {
+		t.Fatalf("%+v", err)
+	}
+
+	node, err := yaml.ValueToNode(map[string]int{"d": 3})
+	if err != nil {
+		t.Fatalf("%+v", err)
+	}
+
+	if err := path.ReplaceWithNode(file, node); err != nil {
+		t.Fatalf("%+v", err)
+	}
+
+	expected := `
+a: 1
+b:
+  d: 3
+`
+	actual := "\n" + file.String()
+	if expected != actual {
+		t.Fatalf("expected: %q. but got %q", expected, actual)
+	}
+}
+
+func TestPath_ReplaceWithNode_LiteralNodeIndent(t *testing.T) {
+	path, err := yaml.PathString("$.spec.files[0].content")
+	if err != nil {
+		t.Fatalf("%+v", err)
+	}
+
+	file, err := parser.ParseBytes([]byte(`
+spec:
+  files:
+    - path: a.txt
+      content: |
+        old content
+    - path: b.txt
+      content: |
+        name: CI
+`), parser.ParseComments)
+	if err != nil {
+		t.Fatalf("%+v", err)
+	}
+
+	node, err := yaml.ValueToNode("first line\nsecond line\n", yaml.UseLiteralStyleIfMultiline(true))
+	if err != nil {
+		t.Fatalf("%+v", err)
+	}
+
+	if err := path.ReplaceWithNode(file, node); err != nil {
+		t.Fatalf("%+v", err)
+	}
+
+	expected := `
+spec:
+  files:
+    - path: a.txt
+      content: |
+        first line
+        second line
+    - path: b.txt
+      content: |
+        name: CI
+`
+	actual := "\n" + file.String()
+	if expected != actual {
+		t.Fatalf("expected: %q. but got %q", expected, actual)
+	}
+}
+
+func TestPath_ReplaceWithParsedLiteralNodeIndent(t *testing.T) {
+	path, err := yaml.PathString("$.spec.files[0].content")
+	if err != nil {
+		t.Fatalf("%+v", err)
+	}
+
+	file, err := parser.ParseBytes([]byte(`
+spec:
+  files:
+    - path: a.txt
+      content: |
+        old content
+    - path: b.txt
+      content: |
+        name: CI
+`), parser.ParseComments)
+	if err != nil {
+		t.Fatalf("%+v", err)
+	}
+
+	valBytes, err := yaml.MarshalWithOptions("first line\nsecond line\n", yaml.UseLiteralStyleIfMultiline(true))
+	if err != nil {
+		t.Fatalf("%+v", err)
+	}
+	valFile, err := parser.ParseBytes(valBytes, 0)
+	if err != nil {
+		t.Fatalf("%+v", err)
+	}
+
+	if err := path.ReplaceWithNode(file, valFile.Docs[0].Body); err != nil {
+		t.Fatalf("%+v", err)
+	}
+
+	expected := `
+spec:
+  files:
+    - path: a.txt
+      content: |
+        first line
+        second line
+    - path: b.txt
+      content: |
+        name: CI
+`
+	actual := "\n" + file.String()
+	if expected != actual {
+		t.Fatalf("expected: %q. but got %q", expected, actual)
+	}
+}
+
+func TestPath_ReplaceWithParsedLiteralNodeIndent_MultipleMatches(t *testing.T) {
+	path, err := yaml.PathString("$.spec.files[*].content")
+	if err != nil {
+		t.Fatalf("%+v", err)
+	}
+
+	file, err := parser.ParseBytes([]byte(`
+spec:
+  files:
+    - path: a.txt
+      content: |
+        old content
+    - path: b.txt
+      content: |
+        name: CI
+`), parser.ParseComments)
+	if err != nil {
+		t.Fatalf("%+v", err)
+	}
+
+	valBytes, err := yaml.MarshalWithOptions("first line\nsecond line\n", yaml.UseLiteralStyleIfMultiline(true))
+	if err != nil {
+		t.Fatalf("%+v", err)
+	}
+	valFile, err := parser.ParseBytes(valBytes, 0)
+	if err != nil {
+		t.Fatalf("%+v", err)
+	}
+
+	if err := path.ReplaceWithNode(file, valFile.Docs[0].Body); err != nil {
+		t.Fatalf("%+v", err)
+	}
+
+	expected := `
+spec:
+  files:
+    - path: a.txt
+      content: |
+        first line
+        second line
+    - path: b.txt
+      content: |
+        first line
+        second line
+`
+	actual := "\n" + file.String()
+	if expected != actual {
+		t.Fatalf("expected: %q. but got %q", expected, actual)
+	}
+}
+
+func TestPath_ReplaceWithParsedLiteralNodeIndent_SpecialCharacters(t *testing.T) {
+	path, err := yaml.PathString("$.spec.files[0].content")
+	if err != nil {
+		t.Fatalf("%+v", err)
+	}
+
+	file, err := parser.ParseBytes([]byte(`
+spec:
+  files:
+    - path: a.txt
+      content: |
+        old content
+    - path: b.txt
+      content: |
+        name: CI
+`), parser.ParseComments)
+	if err != nil {
+		t.Fatalf("%+v", err)
+	}
+
+	value := "* item\n/path/ @group\nkey: value\n"
+	valBytes, err := yaml.MarshalWithOptions(value, yaml.UseLiteralStyleIfMultiline(true))
+	if err != nil {
+		t.Fatalf("%+v", err)
+	}
+	valFile, err := parser.ParseBytes(valBytes, 0)
+	if err != nil {
+		t.Fatalf("%+v", err)
+	}
+
+	if err := path.ReplaceWithNode(file, valFile.Docs[0].Body); err != nil {
+		t.Fatalf("%+v", err)
+	}
+
+	expected := `
+spec:
+  files:
+    - path: a.txt
+      content: |
+        * item
+        /path/ @group
+        key: value
+    - path: b.txt
+      content: |
+        name: CI
+`
+	actual := "\n" + file.String()
+	if expected != actual {
+		t.Fatalf("expected: %q. but got %q", expected, actual)
+	}
+}
+
+func TestPath_ReplaceSequenceElementWithParsedLiteralNodeIndent(t *testing.T) {
+	path, err := yaml.PathString("$.items[0]")
+	if err != nil {
+		t.Fatalf("%+v", err)
+	}
+
+	file, err := parser.ParseBytes([]byte(`
+items:
+  - |
+    old content
+  - |
+    name: CI
+`), parser.ParseComments)
+	if err != nil {
+		t.Fatalf("%+v", err)
+	}
+
+	valBytes, err := yaml.MarshalWithOptions("* item\n/path/ @group\nkey: value\n", yaml.UseLiteralStyleIfMultiline(true))
+	if err != nil {
+		t.Fatalf("%+v", err)
+	}
+	valFile, err := parser.ParseBytes(valBytes, 0)
+	if err != nil {
+		t.Fatalf("%+v", err)
+	}
+
+	if err := path.ReplaceWithNode(file, valFile.Docs[0].Body); err != nil {
+		t.Fatalf("%+v", err)
+	}
+
+	expected := `
+items:
+  - |
+    * item
+    /path/ @group
+    key: value
+  - |
+    name: CI
+`
+	actual := "\n" + file.String()
+	if expected != actual {
+		t.Fatalf("expected: %q. but got %q", expected, actual)
+	}
+}
+
 func TestInvalidPath(t *testing.T) {
 	tests := []struct {
 		name string

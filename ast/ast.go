@@ -1838,7 +1838,7 @@ func (n *AnchorNode) AddColumn(col int) {
 func (n *AnchorNode) String() string {
 	anchor := "&" + n.Name.String()
 	value := n.Value.String()
-	if s, ok := n.Value.(*SequenceNode); ok && !s.IsFlowStyle {
+	if s, ok := n.Value.(*SequenceNode); ok && !s.IsFlowStyle && len(s.Values) > 0 {
 		return fmt.Sprintf("%s\n%s", anchor, value)
 	} else if m, ok := n.Value.(*MappingNode); ok && !m.IsFlowStyle {
 		return fmt.Sprintf("%s\n%s", anchor, value)

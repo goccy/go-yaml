@@ -704,13 +704,19 @@ func (e *Encoder) encodeMap(ctx context.Context, value reflect.Value, column int
 		keyText := fmt.Sprint(key)
 		vRef := e.toPointer(v)
 
-		// during the second encoding, an anchor is assigned if it is found to be used by an alias.
+		// During the second encoding, an anchor is assigned if the value is
+		// found to be referenced by an alias. If encodePtrAnchor already
+		// resolved this pointer to an alias node, skip the anchor assignment
+		// to avoid emitting both an anchor definition and an alias reference
+		// on the same node.
 		if aliasName, exists := e.getSmartAlias(vRef); exists {
-			anchorName := aliasName
-			anchorNode := ast.Anchor(token.New("&", "&", e.pos(column)))
-			anchorNode.Name = ast.String(token.New(anchorName, anchorName, e.pos(column)))
-			anchorNode.Value = encoded
-			encoded = anchorNode
+			if _, isAlias := encoded.(*ast.AliasNode); !isAlias {
+				anchorName := aliasName
+				anchorNode := ast.Anchor(token.New("&", "&", e.pos(column)))
+				anchorNode.Name = ast.String(token.New(anchorName, anchorName, e.pos(column)))
+				anchorNode.Value = encoded
+				encoded = anchorNode
+			}
 		}
 
 		kn, err := e.encodeValue(ctx, reflect.ValueOf(key), column)

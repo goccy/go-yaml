@@ -760,6 +760,7 @@ func (s *Scanner) scanComment(ctx *Context) bool {
 		progress := len([]rune(value))
 		ctx.addToken(token.Comment(value, string(ctx.obuf), s.pos()))
 		s.progressColumn(ctx, progress)
+		s.offset++ // account for the '#' character that was skipped via s.progress
 		s.progressLine(ctx)
 		ctx.clear()
 		return true
@@ -769,6 +770,7 @@ func (s *Scanner) scanComment(ctx *Context) bool {
 	ctx.addToken(token.Comment(value, string(ctx.obuf), s.pos()))
 	progress := len([]rune(value))
 	s.progressColumn(ctx, progress)
+	s.offset++ // account for the '#' character that was skipped via s.progress
 	s.progressLine(ctx)
 	ctx.clear()
 	return true

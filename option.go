@@ -220,8 +220,9 @@ func UseJSONMarshaler() EncodeOption {
 // the CustomMarshaler specified in EncodeOption takes precedence.
 func CustomMarshaler[T any](marshaler func(T) ([]byte, error)) EncodeOption {
 	return func(e *Encoder) error {
-		var typ T
-		e.customMarshalerMap[reflect.TypeOf(typ)] = func(ctx context.Context, v interface{}) ([]byte, error) {
+		typ := new(T)
+		rtyp := reflect.Indirect(reflect.ValueOf(typ)).Type()
+		e.customMarshalerMap[rtyp] = func(ctx context.Context, v interface{}) ([]byte, error) {
 			return marshaler(v.(T))
 		}
 		return nil
@@ -232,8 +233,9 @@ func CustomMarshaler[T any](marshaler func(T) ([]byte, error)) EncodeOption {
 // Similar to CustomMarshaler, but allows passing a context to the marshaler function.
 func CustomMarshalerContext[T any](marshaler func(context.Context, T) ([]byte, error)) EncodeOption {
 	return func(e *Encoder) error {
-		var typ T
-		e.customMarshalerMap[reflect.TypeOf(typ)] = func(ctx context.Context, v interface{}) ([]byte, error) {
+		typ := new(T)
+		rtyp := reflect.Indirect(reflect.ValueOf(typ)).Type()
+		e.customMarshalerMap[rtyp] = func(ctx context.Context, v interface{}) ([]byte, error) {
 			return marshaler(ctx, v.(T))
 		}
 		return nil

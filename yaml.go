@@ -280,8 +280,9 @@ func RegisterCustomMarshaler[T any](marshaler func(T) ([]byte, error)) {
 	globalCustomMarshalerMu.Lock()
 	defer globalCustomMarshalerMu.Unlock()
 
-	var typ T
-	globalCustomMarshalerMap[reflect.TypeOf(typ)] = func(ctx context.Context, v interface{}) ([]byte, error) {
+	typ := new(T)
+	rtyp := reflect.Indirect(reflect.ValueOf(typ)).Type()
+	globalCustomMarshalerMap[rtyp] = func(ctx context.Context, v interface{}) ([]byte, error) {
 		return marshaler(v.(T))
 	}
 }

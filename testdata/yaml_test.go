@@ -1083,6 +1083,26 @@ func TestRegisterCustomMarshaler(t *testing.T) {
 	if !bytes.Equal(b, []byte("\"override\"\n")) {
 		t.Fatalf("failed to register custom marshaler. got: %q", b)
 	}
+	// Test using an interface override
+	type I interface{}
+	yaml.RegisterCustomMarshaler[I](func(_ I) ([]byte, error) {
+		return []byte(`"interface"`), nil
+	})
+	b, err = yaml.Marshal(&struct{ Interfaced I }{&T{Foo: []byte("bar")}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(b, []byte("interfaced: \"interface\"\n")) {
+		t.Fatalf("failed to register custom marshaler. expected \"interface\" got: %q", b)
+	}
+	// Prove that straight pointer unmarshalling is unaffected
+	b, err = yaml.Marshal(&T{Foo: []byte("bar")})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(b, []byte("\"override\"\n")) {
+		t.Fatalf("failed to register custom marshaler. got: %q", b)
+	}
 }
 
 func TestRegisterCustomMarshalerContext(t *testing.T) {

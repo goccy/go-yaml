@@ -952,6 +952,114 @@ hoge:
 				{"$.hoge.moga", []*yaml.Comment{yaml.LineComment(" moga line comment"), yaml.FootComment(" moga foot comment")}},
 			},
 		},
+		{
+			name: "flow style comments",
+			yml: `
+key1: [] # comment1
+key2: [ # comment2
+ elm1, # comment3
+ elm2, # comment4
+] # comment5
+key3: {} # comment6
+key4: { # comment7
+ key1: value1, # comment8
+ key2: value2, # comment9
+} # comment10
+`,
+			expected: []struct {
+				path     string
+				comments []*yaml.Comment
+			}{
+				{"$.key1", []*yaml.Comment{yaml.FootComment(" comment1")}},
+				{"$.key2", []*yaml.Comment{yaml.LineComment(" comment2"), yaml.FootComment(" comment5")}},
+				{"$.key2[0]", []*yaml.Comment{yaml.LineComment(" comment3")}},
+				{"$.key2[1]", []*yaml.Comment{yaml.LineComment(" comment4")}},
+				{"$.key3", []*yaml.Comment{yaml.FootComment(" comment6")}},
+				{"$.key4", []*yaml.Comment{yaml.FootComment(" comment10")}},
+				{"$.key4.key1", []*yaml.Comment{yaml.LineComment(" comment8")}},
+				{"$.key4.key2", []*yaml.Comment{yaml.LineComment(" comment9")}},
+			},
+		},
+		{
+			name: "flow style edge cases",
+			yml: `
+# head comment
+empty: [] # empty
+single: [one] # single element
+no_comma: [a, b] # no trailing comma
+nested: [[inner]] # nested
+mixed: [flow] # mixed
+block:
+  - item
+`,
+			expected: []struct {
+				path     string
+				comments []*yaml.Comment
+			}{
+				{"$.empty", []*yaml.Comment{yaml.HeadComment(" head comment"), yaml.FootComment(" empty")}},
+				{"$.single", []*yaml.Comment{yaml.FootComment(" single element")}},
+				{"$.no_comma", []*yaml.Comment{yaml.FootComment(" no trailing comma")}},
+				{"$.nested", []*yaml.Comment{yaml.FootComment(" nested")}},
+				{"$.mixed", []*yaml.Comment{yaml.FootComment(" mixed")}},
+			},
+		},
+		{
+			name: "flow style nested and complex",
+			yml: `
+# head comment for nested
+nested: [[a, # inner[0]
+          b], # inner end
+         c] # outer end
+mixed: {
+  list: [1, 2], # comment on list value
+  map: {x: y} # comment on nested map
+} # comment on mixed
+outer: {inner: value} # flow map with line comment
+deeply: {a: {b: {c: d}}} # deeply nested`,
+			expected: []struct {
+				path     string
+				comments []*yaml.Comment
+			}{
+				{"$.nested", []*yaml.Comment{yaml.HeadComment(" head comment for nested"), yaml.FootComment(" outer end")}},
+				{"$.nested[0]", []*yaml.Comment{yaml.FootComment(" inner end")}},
+				{"$.nested[0][0]", []*yaml.Comment{yaml.LineComment(" inner[0]")}},
+				{"$.nested[0][1]", []*yaml.Comment{yaml.LineComment(" inner end")}},
+				{"$.nested[1]", []*yaml.Comment{yaml.LineComment(" outer end")}},
+				{"$.mixed", []*yaml.Comment{yaml.FootComment(" comment on mixed")}},
+				{"$.mixed.list", []*yaml.Comment{yaml.LineComment(" comment on list value")}},
+				{"$.mixed.map", []*yaml.Comment{yaml.FootComment(" comment on nested map")}},
+				{"$.outer", []*yaml.Comment{yaml.FootComment(" flow map with line comment")}},
+				{"$.deeply", []*yaml.Comment{yaml.FootComment(" deeply nested")}},
+			},
+		},
+		{
+			name: "tags all positions",
+			yml: `
+tag_inline: !!str value # tag inline comment
+tag_after: !!str # tag after type
+  plain string
+tag_int: !!int 123 # tag int comment
+tag_flow_seq: !!seq [1, 2] # tag flow seq comment
+tag_flow_map: !!map {a: 1} # tag flow map comment
+tag_block_seq: !!seq # tag block seq comment
+  - item1
+  - item2
+tag_block_map: !!map # tag block map comment
+  key: value
+`,
+			expected: []struct {
+				path     string
+				comments []*yaml.Comment
+			}{
+				{"$.tag_inline", []*yaml.Comment{yaml.LineComment(" tag inline comment")}},
+				{"$.tag_after", []*yaml.Comment{yaml.LineComment(" tag after type")}},
+				{"$.tag_int", []*yaml.Comment{yaml.LineComment(" tag int comment")}},
+				{"$.tag_flow_seq", []*yaml.Comment{yaml.FootComment(" tag flow seq comment")}},
+				{"$.tag_flow_map", []*yaml.Comment{yaml.FootComment(" tag flow map comment")}},
+				{"$.tag_block_seq", []*yaml.Comment{yaml.LineComment(" tag block seq comment")}},
+				{"$.tag_block_map", []*yaml.Comment{yaml.LineComment(" tag block map comment")}},
+			},
+		},
 	}
 
 	for _, tc := range tests {
@@ -966,6 +1074,15 @@ hoge:
 			}
 
 			if len(cm) != len(tc.expected) {
+				t.Logf("Expected %d comments, got %d:", len(tc.expected), len(cm))
+				t.Logf("Actual comments captured:")
+				for path, comments := range cm {
+					t.Logf("  %s: %v", path, comments)
+				}
+				t.Logf("Expected paths:")
+				for _, exp := range tc.expected {
+					t.Logf("  %s", exp.path)
+				}
 				t.Fatalf("comment size does not match: got: %d, expected: %d", len(cm), len(tc.expected))
 			}
 			for _, exp := range tc.expected {

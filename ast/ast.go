@@ -1250,8 +1250,13 @@ func (n *MappingNode) flowStyleString(commentMode bool) string {
 		values = append(values, strings.TrimLeft(value.String(), " "))
 	}
 	mapText := fmt.Sprintf("{%s}", strings.Join(values, ", "))
-	if commentMode && n.Comment != nil {
-		return addCommentString(mapText, n.Comment)
+	if commentMode {
+		if n.Comment != nil {
+			return addCommentString(mapText, n.Comment)
+		}
+		if n.FootComment != nil {
+			return addCommentString(mapText, n.FootComment)
+		}
 	}
 	return mapText
 }
@@ -1282,6 +1287,9 @@ func (n *MappingNode) String() string {
 	if len(n.Values) == 0 {
 		if n.Comment != nil {
 			return addCommentString("{}", n.Comment)
+		}
+		if n.FootComment != nil {
+			return addCommentString("{}", n.FootComment)
 		}
 		return "{}"
 	}
@@ -1626,6 +1634,9 @@ func (n *SequenceNode) flowStyleString() string {
 	seqText := fmt.Sprintf("[%s]", strings.Join(values, ", "))
 	if n.Comment != nil {
 		return addCommentString(seqText, n.Comment)
+	}
+	if n.FootComment != nil {
+		return addCommentString(seqText, n.FootComment)
 	}
 	return seqText
 }

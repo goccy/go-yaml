@@ -51,12 +51,9 @@ func Validator(v StructValidator) DecodeOption {
 	}
 }
 
-// Strict enable DisallowUnknownField
+// Strict is an alias for [DisallowUnknownField].
 func Strict() DecodeOption {
-	return func(d *Decoder) error {
-		d.disallowUnknownField = true
-		return nil
-	}
+	return DisallowUnknownField()
 }
 
 // DisallowUnknownField causes the Decoder to return an error when the destination

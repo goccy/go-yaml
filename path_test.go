@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/goccy/go-yaml"
+	"github.com/goccy/go-yaml/ast"
 	"github.com/goccy/go-yaml/parser"
 )
 
@@ -860,6 +861,293 @@ building:
 			})
 		})
 	}
+}
+
+func TestPath_ReplaceWithNode_PreserveIndent(t *testing.T) {
+	// Each case feeds either a node produced by yaml.ValueToNode (which yields
+	// a *ast.StringNode for literal-style multiline strings) or a node parsed
+	// out of YAML text (which yields a *ast.LiteralNode), and verifies that
+	// the destination document's indentation is preserved after replacement.
+	//
+	// The matrix exists because the two construction paths produce different
+	// AST node types and the replacement code path must handle both. The
+	// non-2-space cases guard against regressions where the indent was being
+	// silently normalized to 2 spaces.
+	tests := []struct {
+		name     string
+		path     string
+		src      string
+		newNode  func(t *testing.T) ast.Node
+		expected string
+	}{
+		{
+			// Originally reported in #636.
+			name: "mapping replacement (2-space indent)",
+			path: "$.b",
+			src: `
+a: 1
+b:
+  c: 2
+`,
+			newNode: func(t *testing.T) ast.Node {
+				n, err := yaml.ValueToNode(map[string]int{"d": 3})
+				if err != nil {
+					t.Fatalf("%+v", err)
+				}
+				return n
+			},
+			expected: `
+a: 1
+b:
+  d: 3
+`,
+		},
+		{
+			name: "mapping replacement (4-space indent must be preserved)",
+			path: "$.b",
+			src: `
+a: 1
+b:
+    c: 2
+`,
+			newNode: func(t *testing.T) ast.Node {
+				n, err := yaml.ValueToNode(map[string]int{"d": 3})
+				if err != nil {
+					t.Fatalf("%+v", err)
+				}
+				return n
+			},
+			expected: `
+a: 1
+b:
+    d: 3
+`,
+		},
+		{
+			name: "literal replacement via ValueToNode (StringNode path)",
+			path: "$.spec.files[0].content",
+			src: `
+spec:
+  files:
+    - path: a.txt
+      content: |
+        old content
+    - path: b.txt
+      content: |
+        name: CI
+`,
+			newNode: func(t *testing.T) ast.Node {
+				n, err := yaml.ValueToNode(
+					"first line\nsecond line\n",
+					yaml.UseLiteralStyleIfMultiline(true),
+				)
+				if err != nil {
+					t.Fatalf("%+v", err)
+				}
+				return n
+			},
+			expected: `
+spec:
+  files:
+    - path: a.txt
+      content: |
+        first line
+        second line
+    - path: b.txt
+      content: |
+        name: CI
+`,
+		},
+		{
+			name: "literal replacement via parser.ParseBytes (LiteralNode path)",
+			path: "$.spec.files[0].content",
+			src: `
+spec:
+  files:
+    - path: a.txt
+      content: |
+        old content
+    - path: b.txt
+      content: |
+        name: CI
+`,
+			newNode: func(t *testing.T) ast.Node {
+				return mustParseLiteral(t, "first line\nsecond line\n")
+			},
+			expected: `
+spec:
+  files:
+    - path: a.txt
+      content: |
+        first line
+        second line
+    - path: b.txt
+      content: |
+        name: CI
+`,
+		},
+		{
+			name: "literal replacement via [*] applies to multiple slots without cumulative corruption",
+			path: "$.spec.files[*].content",
+			src: `
+spec:
+  files:
+    - path: a.txt
+      content: |
+        old content
+    - path: b.txt
+      content: |
+        name: CI
+`,
+			newNode: func(t *testing.T) ast.Node {
+				return mustParseLiteral(t, "first line\nsecond line\n")
+			},
+			expected: `
+spec:
+  files:
+    - path: a.txt
+      content: |
+        first line
+        second line
+    - path: b.txt
+      content: |
+        first line
+        second line
+`,
+		},
+		{
+			name: "literal content with YAML-special characters at line starts",
+			path: "$.spec.files[0].content",
+			src: `
+spec:
+  files:
+    - path: a.txt
+      content: |
+        old content
+    - path: b.txt
+      content: |
+        name: CI
+`,
+			newNode: func(t *testing.T) ast.Node {
+				return mustParseLiteral(t, "* item\n/path/ @group\nkey: value\n")
+			},
+			expected: `
+spec:
+  files:
+    - path: a.txt
+      content: |
+        * item
+        /path/ @group
+        key: value
+    - path: b.txt
+      content: |
+        name: CI
+`,
+		},
+		{
+			name: "sequence element replacement with literal (LiteralNode path)",
+			path: "$.items[0]",
+			src: `
+items:
+  - |
+    old content
+  - |
+    name: CI
+`,
+			newNode: func(t *testing.T) ast.Node {
+				return mustParseLiteral(t, "* item\n/path/ @group\nkey: value\n")
+			},
+			expected: `
+items:
+  - |
+    * item
+    /path/ @group
+    key: value
+  - |
+    name: CI
+`,
+		},
+		{
+			// Guards against the StringNode-vs-LiteralNode classification gap:
+			// yaml.ValueToNode returns *StringNode and the source uses a
+			// non-default indent. Without the StringNode side of the fix, the
+			// new content would be re-indented to 2 spaces and silently lose
+			// the source document's indentation contract.
+			name: "literal replacement preserves non-2-space indent (StringNode path)",
+			path: "$.content",
+			src: `
+content: |
+   indented3
+`,
+			newNode: func(t *testing.T) ast.Node {
+				n, err := yaml.ValueToNode(
+					"AAA\nBBB\n",
+					yaml.UseLiteralStyleIfMultiline(true),
+				)
+				if err != nil {
+					t.Fatalf("%+v", err)
+				}
+				return n
+			},
+			expected: `
+content: |
+   AAA
+   BBB
+`,
+		},
+		{
+			name: "literal replacement preserves non-2-space indent (LiteralNode path)",
+			path: "$.content",
+			src: `
+content: |
+   indented3
+`,
+			newNode: func(t *testing.T) ast.Node {
+				return mustParseLiteral(t, "AAA\nBBB\n")
+			},
+			expected: `
+content: |
+   AAA
+   BBB
+`,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			path, err := yaml.PathString(tt.path)
+			if err != nil {
+				t.Fatalf("%+v", err)
+			}
+			file, err := parser.ParseBytes([]byte(tt.src), parser.ParseComments)
+			if err != nil {
+				t.Fatalf("%+v", err)
+			}
+			node := tt.newNode(t)
+			if err := path.ReplaceWithNode(file, node); err != nil {
+				t.Fatalf("%+v", err)
+			}
+			actual := "\n" + file.String()
+			if tt.expected != actual {
+				t.Fatalf("expected: %q\nbut got:  %q", tt.expected, actual)
+			}
+		})
+	}
+}
+
+// mustParseLiteral marshals s as a literal-style block scalar and parses the
+// result back so the returned node is a *ast.LiteralNode rather than a
+// *ast.StringNode (the two go through different replacement code paths).
+func mustParseLiteral(t *testing.T, s string) ast.Node {
+	t.Helper()
+	b, err := yaml.MarshalWithOptions(s, yaml.UseLiteralStyleIfMultiline(true))
+	if err != nil {
+		t.Fatalf("%+v", err)
+	}
+	f, err := parser.ParseBytes(b, 0)
+	if err != nil {
+		t.Fatalf("%+v", err)
+	}
+	return f.Docs[0].Body
 }
 
 func TestInvalidPath(t *testing.T) {

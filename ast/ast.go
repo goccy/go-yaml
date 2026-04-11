@@ -908,6 +908,81 @@ func (n *LiteralNode) AddColumn(col int) {
 	}
 }
 
+// detectLiteralContentIndent returns the leading whitespace count of the first
+// non-empty content line of a literal-style scalar value. It supports both
+// *LiteralNode (parsed via parser.ParseBytes) and multiline *StringNode
+// (produced by yaml.ValueToNode with UseLiteralStyleIfMultiline). It returns
+// 0 when the indent cannot be inferred from the node, in which case callers
+// should fall back to a sensible default.
+func detectLiteralContentIndent(node Node) int {
+	var origin string
+	switch n := node.(type) {
+	case *LiteralNode:
+		if n.Value != nil {
+			origin = n.Value.GetToken().Origin
+		}
+	case *StringNode:
+		if n.Token != nil {
+			origin = n.Token.Origin
+		}
+	}
+	if origin == "" {
+		return 0
+	}
+	for _, line := range strings.Split(origin, "\n") {
+		trimmed := strings.TrimLeft(line, " ")
+		if trimmed != "" {
+			return len(line) - len(trimmed)
+		}
+	}
+	return 0
+}
+
+// applyLiteralContentIndent re-indents the content of a literal-style scalar
+// value (a *LiteralNode or a multiline *StringNode) to the given target
+// indentation. For *LiteralNode, the inner string token's Origin is rebuilt
+// from its Value so the new lines do not inherit the source document's
+// indentation. For multiline *StringNode, the position is adjusted so that
+// String() emits content lines starting at the target indent.
+//
+// This function is a no-op for any node type that does not render as a
+// multiline literal-style scalar.
+func applyLiteralContentIndent(value Node, indent int) {
+	switch v := value.(type) {
+	case *LiteralNode:
+		if v.Value == nil {
+			return
+		}
+		tk := v.Value.GetToken()
+		pad := strings.Repeat(" ", indent)
+		lines := strings.Split(tk.Value, "\n")
+		var sb strings.Builder
+		for i, line := range lines {
+			if i > 0 {
+				sb.WriteString("\n")
+			}
+			// Empty entries (e.g. the trailing element from a final "\n")
+			// must remain empty so the literal block keeps its trailing
+			// newline; only non-empty lines get re-indented.
+			if line != "" {
+				sb.WriteString(pad)
+				sb.WriteString(line)
+			}
+		}
+		tk.Origin = sb.String()
+	case *StringNode:
+		if v.Token == nil || !strings.ContainsAny(v.Value, "\n\r") {
+			return
+		}
+		// StringNode.String() emits each content line as
+		//   strings.Repeat(" ", Column-1) + strings.Repeat(" ", IndentNum) + line
+		// so the total leading-space count is (Column-1) + IndentNum.
+		// Pin Column to 1 and let IndentNum carry the full indent.
+		v.Token.Position.Column = 1
+		v.Token.Position.IndentNum = indent
+	}
+}
+
 // GetValue returns string value
 func (n *LiteralNode) GetValue() interface{} {
 	return n.String()
@@ -1373,10 +1448,99 @@ type MappingValueNode struct {
 
 // Replace replace value node.
 func (n *MappingValueNode) Replace(value Node) error {
-	column := n.Value.GetToken().Position.Column - value.GetToken().Position.Column
-	value.AddColumn(column)
+	if isLiteralStyleScalar(value) {
+		// Literal block scalars are rendered from their original source
+		// indentation rather than from Position.Column, so the standard
+		// AddColumn-based shift used below cannot fix their indentation.
+		// Re-indent the content to match the destination instead.
+		fallback := n.Key.GetToken().Position.Column - 1 + 2
+		indent := detectLiteralContentIndent(n.Value)
+		if indent == 0 {
+			indent = fallback
+		}
+		applyLiteralContentIndent(value, indent)
+		n.Value = value
+		return nil
+	}
+	dstCol, srcCol := replaceColumns(n.Value, value, n.Key.GetToken().Position.Column+2)
+	value.AddColumn(dstCol - srcCol)
 	n.Value = value
 	return nil
+}
+
+// replaceColumns computes the (destination, source) column pair to use when
+// shifting `newValue` into the slot currently occupied by `existing`.
+//
+// For block-style *MappingNode and *SequenceNode replacements, both columns
+// are anchored at the first content position (the first key or the first
+// element). This is necessary because MappingNode.GetToken() returns the
+// internal Start token whose column is parser-dependent (often the first
+// colon), while ValueToNode-built mappings put Start at column 1 — using
+// either inconsistently would produce off-by-one indentation.
+//
+// For all other node types, both columns fall back to the standard token
+// position so that scalar→scalar replacements continue to align exactly with
+// the previous behavior.
+//
+// `convDefault` is the column to use as the destination when the existing
+// value cannot supply one (e.g. replacing a scalar with a block mapping):
+// it should be the natural indent for a block child of the parent (typically
+// parent_key_column + 2).
+func replaceColumns(existing, newValue Node, convDefault int) (dstCol, srcCol int) {
+	srcCol = anchorColumn(newValue)
+	dstCol = anchorColumn(existing)
+	// If the existing slot is a non-block value (scalar) but the new value
+	// is a block-style structure, the existing token column points just
+	// after `key: ` which would over-indent the new structure. Use the
+	// caller-supplied convention default instead.
+	if isBlockStructure(newValue) && !isBlockStructure(existing) {
+		dstCol = convDefault
+	}
+	return dstCol, srcCol
+}
+
+// anchorColumn returns the column where the node's content effectively
+// starts. For *MappingNode that is the first key's column (not the Start
+// token's column, which is parser-dependent); for *SequenceNode it is the
+// first element's column. For scalars and other nodes it is the node's
+// own token column.
+func anchorColumn(n Node) int {
+	switch v := n.(type) {
+	case *MappingNode:
+		if len(v.Values) > 0 {
+			return v.startPos().Column
+		}
+	case *SequenceNode:
+		if len(v.Values) > 0 {
+			return v.Values[0].GetToken().Position.Column
+		}
+	}
+	return n.GetToken().Position.Column
+}
+
+// isBlockStructure reports whether n renders as a block-style mapping or
+// sequence (i.e. its content lives on lines below the parent key).
+func isBlockStructure(n Node) bool {
+	switch v := n.(type) {
+	case *MappingNode:
+		return !v.IsFlowStyle && len(v.Values) > 0
+	case *SequenceNode:
+		return !v.IsFlowStyle && len(v.Values) > 0
+	}
+	return false
+}
+
+// isLiteralStyleScalar reports whether n renders as a multiline literal-style
+// scalar (i.e. a *LiteralNode, or a *StringNode whose Value contains a line
+// break and is therefore emitted via the literal block path in String()).
+func isLiteralStyleScalar(n Node) bool {
+	switch v := n.(type) {
+	case *LiteralNode:
+		return true
+	case *StringNode:
+		return strings.ContainsAny(v.Value, "\n\r")
+	}
+	return false
 }
 
 // Read implements (io.Reader).Read
@@ -1563,8 +1727,21 @@ func (n *SequenceNode) Replace(idx int, value Node) error {
 			len(n.Values), idx,
 		)
 	}
-	column := n.Values[idx].GetToken().Position.Column - value.GetToken().Position.Column
-	value.AddColumn(column)
+	if isLiteralStyleScalar(value) {
+		// See MappingValueNode.Replace for the rationale: literal block
+		// scalars need their content re-indented at replacement time
+		// because their rendering bypasses Position.Column.
+		fallback := n.Start.Position.Column - 1 + 2
+		indent := detectLiteralContentIndent(n.Values[idx])
+		if indent == 0 {
+			indent = fallback
+		}
+		applyLiteralContentIndent(value, indent)
+		n.Values[idx] = value
+		return nil
+	}
+	dstCol, srcCol := replaceColumns(n.Values[idx], value, n.Start.Position.Column+2)
+	value.AddColumn(dstCol - srcCol)
 	n.Values[idx] = value
 	return nil
 }

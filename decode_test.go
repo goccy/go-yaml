@@ -1288,6 +1288,26 @@ c:
 			source: "42: 100",
 			value:  map[int]any{42: 100},
 		},
+		{
+			source: "{hello:world: [a,b,c]}",
+			value:  map[string]any{"hello:world": []any{"a", "b", "c"}},
+		},
+		{
+			source: "{a:b:c: value}",
+			value:  map[string]any{"a:b:c": "value"},
+		},
+		{
+			source: "{host:port: 8080, name: test}",
+			value:  map[string]any{"host:port": uint64(8080), "name": "test"},
+		},
+		{
+			source: "{a:b: {c: d}}",
+			value:  map[string]any{"a:b": map[string]any{"c": "d"}},
+		},
+		{
+			source: "{a:b: [1,2]}",
+			value:  map[string]any{"a:b": []any{uint64(1), uint64(2)}},
+		},
 	}
 	for _, test := range tests {
 		t.Run(test.source, func(t *testing.T) {

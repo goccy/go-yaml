@@ -983,8 +983,17 @@ func (s *Scanner) scanMapDelim(ctx *Context) (bool, error) {
 	if s.startedFlowMapNum <= 0 && nc != ' ' && nc != '\t' && !s.isNewLineChar(nc) && !ctx.isNextEOS() {
 		return false, nil
 	}
-	if s.startedFlowMapNum > 0 && nc == '/' {
-		// like http://
+	if s.startedFlowMapNum > 0 && len(ctx.buf) > 0 &&
+		nc != ' ' && nc != '\t' && !s.isNewLineChar(nc) &&
+		nc != ',' && nc != '}' && nc != ']' && nc != '[' && nc != '{' &&
+		nc != '"' && nc != '\'' && !ctx.isNextEOS() {
+		// In flow mapping context, when scanning a plain scalar key (buf is non-empty),
+		// ':' is only a mapping value indicator when followed by whitespace,
+		// a flow indicator (',', '}', ']'), a flow collection start ('[', '{'),
+		// a quote ('"', '\''), or end of input.
+		// This allows unquoted keys like 'hello:world' and URLs like 'http://example.com'.
+		// When buf is empty the key was already tokenized (e.g. as a quoted string),
+		// so ':' is unambiguously a mapping value indicator.
 		return false, nil
 	}
 	if s.startedFlowMapNum > 0 {

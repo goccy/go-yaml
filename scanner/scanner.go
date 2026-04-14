@@ -746,7 +746,7 @@ func (s *Scanner) scanComment(ctx *Context) bool {
 
 	s.addBufferedTokenIfExists(ctx)
 	ctx.addOriginBuf('#')
-	s.progress(ctx, 1) // skip '#' character
+	s.progressOnly(ctx, 1) // skip '#' character, advance offset
 
 	for idx, c := range ctx.src[ctx.idx:] {
 		ctx.addOriginBuf(c)

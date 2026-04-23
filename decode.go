@@ -47,6 +47,7 @@ type Decoder struct {
 	parsedFile           *ast.File
 	streamIndex          int
 	decodeDepth          int
+	strictIntTypes       bool
 }
 
 // NewDecoder returns a new decoder that reads from r.
@@ -65,6 +66,7 @@ func NewDecoder(r io.Reader, opts ...DecodeOption) *Decoder {
 		disallowUnknownField: false,
 		allowDuplicateMapKey: false,
 		useOrderedMap:        false,
+		strictIntTypes:       false,
 	}
 }
 
@@ -978,12 +980,18 @@ func (d *Decoder) decodeValue(ctx context.Context, dst reflect.Value, src ast.No
 			}
 		case float64:
 			if vv <= math.MaxInt64 && !dst.OverflowInt(int64(vv)) {
+				if err := d.validateStrictIntValue(src, valueType, vv); err != nil {
+					return err
+				}
 				dst.SetInt(int64(vv))
 				return nil
 			}
 		case string: // handle scientific notation
 			if i, err := strconv.ParseFloat(vv, 64); err == nil {
 				if 0 <= i && i <= math.MaxUint64 && !dst.OverflowInt(int64(i)) {
+					if err := d.validateStrictIntValue(src, valueType, i); err != nil {
+						return err
+					}
 					dst.SetInt(int64(i))
 					return nil
 				}
@@ -1012,12 +1020,18 @@ func (d *Decoder) decodeValue(ctx context.Context, dst reflect.Value, src ast.No
 			}
 		case float64:
 			if 0 <= vv && vv <= math.MaxUint64 && !dst.OverflowUint(uint64(vv)) {
+				if err := d.validateStrictIntValue(src, valueType, vv); err != nil {
+					return err
+				}
 				dst.SetUint(uint64(vv))
 				return nil
 			}
 		case string: // handle scientific notation
 			if i, err := strconv.ParseFloat(vv, 64); err == nil {
 				if 0 <= i && i <= math.MaxUint64 && !dst.OverflowUint(uint64(i)) {
+					if err := d.validateStrictIntValue(src, valueType, i); err != nil {
+						return err
+					}
 					dst.SetUint(uint64(i))
 					return nil
 				}
@@ -1041,6 +1055,13 @@ func (d *Decoder) decodeValue(ctx context.Context, dst reflect.Value, src ast.No
 			return err
 		}
 		dst.Set(convertedValue)
+	}
+	return nil
+}
+
+func (d *Decoder) validateStrictIntValue(src ast.Node, valueType reflect.Type, v float64) error {
+	if d.strictIntTypes && math.Trunc(v) != v {
+		return errors.ErrTypeMismatch(valueType, reflect.TypeOf(v), src.GetToken())
 	}
 	return nil
 }

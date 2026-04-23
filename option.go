@@ -59,6 +59,13 @@ func Strict() DecodeOption {
 	}
 }
 
+func StrictInts() DecodeOption {
+	return func(d *Decoder) error {
+		d.strictIntTypes = true
+		return nil
+	}
+}
+
 // DisallowUnknownField causes the Decoder to return an error when the destination
 // is a struct and the input contains object keys which do not match any
 // non-ignored, exported fields in the destination.

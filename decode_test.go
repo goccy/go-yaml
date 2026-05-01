@@ -1852,6 +1852,27 @@ c: true
 	}
 }
 
+func TestDecoder_InlineMapExcludesKnownFields(t *testing.T) {
+	type Foo struct {
+		ID    string                 `yaml:"id"`
+		Extra map[string]interface{} `yaml:",inline"`
+	}
+	yml := "id: abc\nname: bar\n"
+	var v Foo
+	if err := yaml.NewDecoder(strings.NewReader(yml)).Decode(&v); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if v.ID != "abc" {
+		t.Fatalf("expected ID=abc, got %q", v.ID)
+	}
+	if _, ok := v.Extra["id"]; ok {
+		t.Fatal("inline map must not contain already-decoded field 'id'")
+	}
+	if v.Extra["name"] != "bar" {
+		t.Fatalf("inline map should contain unknown field 'name', got %v", v.Extra["name"])
+	}
+}
+
 func TestDecoder_InlineAndWrongTypeStrict(t *testing.T) {
 	type Base struct {
 		A int

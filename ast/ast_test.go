@@ -14,6 +14,20 @@ func TestEscapeSingleQuote(t *testing.T) {
 	}
 }
 
+func TestStringNodeStringMultiLineZeroColumn(t *testing.T) {
+	node := &StringNode{
+		BaseNode: &BaseNode{},
+		Token: &token.Token{
+			Type:     token.StringType,
+			Position: &token.Position{Column: 0, IndentNum: 0},
+		},
+		Value: "Some content\nSome more content\n",
+	}
+	if got := node.String(); got == "" {
+		t.Fatalf("expected non-empty result, got empty")
+	}
+}
+
 func TestReadNode(t *testing.T) {
 	t.Run("utf-8", func(t *testing.T) {
 		value := "éɛทᛞ⠻チ▓🦄"

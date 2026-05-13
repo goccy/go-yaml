@@ -269,6 +269,13 @@ func min(a, b int) int {
 	return b
 }
 
+func whitespace(n int) string {
+	if n <= 0 {
+		return ""
+	}
+	return strings.Repeat(" ", n)
+}
+
 func readNode(p []byte, node Node) (int, error) {
 	s := node.String()
 	readLen := node.readLen()
@@ -829,7 +836,7 @@ func (n *StringNode) String() string {
 		// This block assumes that the line breaks in this inside scalar content and the Outside scalar content are the same.
 		// It works mostly, but inconsistencies occur if line break characters are mixed.
 		header := token.LiteralBlockHeader(n.Value)
-		space := strings.Repeat(" ", n.Token.Position.Column-1)
+		space := whitespace(n.Token.Position.Column - 1)
 		indent := strings.Repeat(" ", n.Token.Position.IndentNum)
 		values := []string{}
 		for _, v := range strings.Split(n.Value, lbc) {
@@ -861,7 +868,7 @@ func (n *StringNode) stringWithoutComment() string {
 		// This block assumes that the line breaks in this inside scalar content and the Outside scalar content are the same.
 		// It works mostly, but inconsistencies occur if line break characters are mixed.
 		header := token.LiteralBlockHeader(n.Value)
-		space := strings.Repeat(" ", n.Token.Position.Column-1)
+		space := whitespace(n.Token.Position.Column - 1)
 		indent := strings.Repeat(" ", n.Token.Position.IndentNum)
 		values := []string{}
 		for _, v := range strings.Split(n.Value, lbc) {

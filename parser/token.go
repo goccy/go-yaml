@@ -635,12 +635,21 @@ func createDocumentTokens(tokens []*Token) ([]*Token, error) {
 				}), nil
 			}
 			if tokens[i+1].Type() == token.DocumentHeaderType {
-				return append(ret, &Token{
+				// The current `---` opens a document whose body is empty
+				// (the next `---` is the next document's header). Emit
+				// this as a header-only document and keep grouping the
+				// rest of the stream so trailing documents aren't lost.
+				ret = append(ret, &Token{
 					Group: &TokenGroup{
 						Type:   TokenGroupDocument,
 						Tokens: []*Token{tk},
 					},
-				}), nil
+				})
+				tks, err := createDocumentTokens(tokens[i+1:])
+				if err != nil {
+					return nil, err
+				}
+				return append(ret, tks...), nil
 			}
 			if tokens[i].Line() == tokens[i+1].Line() {
 				switch tokens[i+1].GroupType() {

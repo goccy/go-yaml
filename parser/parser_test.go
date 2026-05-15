@@ -211,6 +211,34 @@ func TestParseEmptyDocument(t *testing.T) {
 	})
 }
 
+func TestParseMultiDocCountsAllDocuments(t *testing.T) {
+	// Regression for #870. Comment-only documents (and back-to-back `---`
+	// separators) used to confuse document grouping and silently drop the
+	// trailing documents in the stream.
+	tests := []struct {
+		name string
+		src  string
+		want int
+	}{
+		{"comment-only middle doc", "a: 1\n---\n# only a comment\n---\nb: 2\n", 3},
+		{"adjacent document separators with body after", "a: 1\n---\n---\nb: 2\n", 3},
+		{"adjacent document separators trailing empty", "a: 1\n---\n---\n", 3},
+		{"three adjacent separators", "---\n---\n---\n", 3},
+		{"plain two-doc stream still works", "a: 1\n---\nb: 2\n", 2},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			f, err := parser.ParseBytes([]byte(tc.src), 0)
+			if err != nil {
+				t.Fatalf("parse %q: %v", tc.src, err)
+			}
+			if got := len(f.Docs); got != tc.want {
+				t.Fatalf("input %q: got %d documents, want %d", tc.src, got, tc.want)
+			}
+		})
+	}
+}
+
 func TestParseComplicatedDocument(t *testing.T) {
 	tests := []struct {
 		source string

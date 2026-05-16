@@ -3291,4 +3291,30 @@ func TestTokenOffset(t *testing.T) {
 			t.Fatalf("unexpected offset. got %d", tokens[4].Position.Offset)
 		}
 	})
+	// https://github.com/goccy/go-yaml/issues/856 — scanComment used to skip
+	// the '#' without bumping s.offset, so every token after a comment was
+	// shifted by -1 per preceding comment.
+	t.Run("comment", func(t *testing.T) {
+		cases := []struct {
+			name        string
+			src         string
+			aTokenIndex int
+			wantOffset  int
+		}{
+			{name: "single", src: "# x\na: 1\n", aTokenIndex: 1, wantOffset: 5},
+			{name: "multiple", src: "# x\n# y\n# z\na: 1\n", aTokenIndex: 3, wantOffset: 13},
+		}
+		for _, tc := range cases {
+			t.Run(tc.name, func(t *testing.T) {
+				tokens := lexer.Tokenize(tc.src)
+				tk := tokens[tc.aTokenIndex]
+				if tk.Value != "a" {
+					t.Fatalf("expected token %q, got %q", "a", tk.Value)
+				}
+				if tk.Position.Offset != tc.wantOffset {
+					t.Errorf("offset = %d, want %d", tk.Position.Offset, tc.wantOffset)
+				}
+			})
+		}
+	})
 }

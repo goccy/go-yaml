@@ -710,6 +710,28 @@ a: |+
 b: c
 `,
 		},
+		// Regression for #872: a |+ block at the end of a document must
+		// keep every trailing blank line when rendered back, since the
+		// "+" chomping indicator is what makes those lines part of the
+		// value.
+		{
+			`
+description: |+
+  one
+  two
+
+
+
+`,
+			`
+description: |+
+  one
+  two
+
+
+
+`,
+		},
 		{
 			`
 - key1: val

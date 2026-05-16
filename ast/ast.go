@@ -916,7 +916,16 @@ func (n *LiteralNode) GetValue() interface{} {
 // String literal to text
 func (n *LiteralNode) String() string {
 	origin := n.Value.GetToken().Origin
-	lit := strings.TrimRight(strings.TrimRight(origin, " "), "\n")
+	lit := strings.TrimRight(origin, " ")
+	if strings.HasSuffix(n.Start.Value, "+") {
+		// "+" chomping keeps every trailing newline as part of the
+		// value. The very last newline gets re-added by the surrounding
+		// container when it joins entries, so strip just that one to
+		// avoid doubling it.
+		lit = strings.TrimSuffix(lit, "\n")
+	} else {
+		lit = strings.TrimRight(lit, "\n")
+	}
 	if n.Comment != nil {
 		return fmt.Sprintf("%s %s\n%s", n.Start.Value, n.Comment.String(), lit)
 	}

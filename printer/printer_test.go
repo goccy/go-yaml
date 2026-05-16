@@ -6,6 +6,7 @@ import (
 
 	"github.com/goccy/go-yaml/lexer"
 	"github.com/goccy/go-yaml/printer"
+	"github.com/goccy/go-yaml/token"
 )
 
 func Test_Printer(t *testing.T) {
@@ -219,5 +220,34 @@ text3: hello
 				t.Fatalf("PrintErrorToken() got: %s\n want:%s\n", want, got)
 			}
 		})
+	}
+}
+
+// Regression for #876. The AliasType branch in property() used to check
+// p.Anchor before calling p.Alias(), so any caller that set Anchor but
+// left Alias unset would nil-panic when an alias token was printed.
+func Test_Printer_AliasOnlyAnchorSet(t *testing.T) {
+	tokens := lexer.Tokenize("anchor: &x 1\nalias: *x\n")
+
+	var aliasIdx int
+	for i, tk := range tokens {
+		if tk.Type == token.AliasType {
+			aliasIdx = i
+			break
+		}
+	}
+	if aliasIdx == 0 {
+		t.Fatalf("alias token not found")
+	}
+
+	p := printer.Printer{
+		Anchor: func() *printer.Property {
+			return &printer.Property{Prefix: "[a]", Suffix: "[/a]"}
+		},
+	}
+	// isColored=false so setDefaultColorSet isn't called and Alias stays
+	// nil, which is exactly the configuration that used to panic.
+	if got := p.PrintErrorToken(tokens[aliasIdx], false); got == "" {
+		t.Fatalf("PrintErrorToken returned empty string")
 	}
 }

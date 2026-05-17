@@ -2,6 +2,7 @@ import { AppBar, Toolbar, Typography, Box, Stack, SvgIcon, Button, TextField, Ta
 import GitHub from '@mui/icons-material/GitHub';
 import Share from '@mui/icons-material/Share';
 import ContentCopy from '@mui/icons-material/ContentCopy';
+import MenuBook from '@mui/icons-material/MenuBook';
 import './App.css'
 import YAMLIcon from '/public/yaml.svg?react';
 import React, { useState, useRef, useEffect } from 'react';
@@ -85,6 +86,7 @@ const Header = (content: any) => {
             />
           </Stack>
           <ShareLink setVisibility={setShareURLFieldVisibility}></ShareLink>
+          <DocsLink></DocsLink>
           <GitHubLink></GitHubLink>
         </Toolbar>
       </AppBar>
@@ -129,6 +131,34 @@ const ShareLink = (props: { setVisibility: React.Dispatch<React.SetStateAction<s
     </Button>
   )
 }
+
+const DocsLink = () => {
+  if (isXS()) {
+    return (
+      <IconButton href="https://pkg.go.dev/github.com/goccy/go-yaml" target="_blank" rel="noopener">
+        <MenuBook sx={{ color: themeWhite }}></MenuBook>
+      </IconButton>
+    )
+  }
+  return (
+    <Button variant="contained" sx={{
+      color: themeBlack,
+      backgroundColor: 'white',
+      fontWeight: 'bold',
+      paddingRight: 2,
+      paddingLeft: 2,
+      textTransform: 'none',
+      marginRight: 1,
+    }}
+      startIcon={<MenuBook sx={{ color: themeBlack }}></MenuBook>}
+      href="https://pkg.go.dev/github.com/goccy/go-yaml"
+      target="_blank"
+      rel="noopener"
+    >
+      Docs
+    </Button>
+  )
+};
 
 const GitHubLink = () => {
   if (isXS()) {

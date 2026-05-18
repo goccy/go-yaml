@@ -635,12 +635,20 @@ func createDocumentTokens(tokens []*Token) ([]*Token, error) {
 				}), nil
 			}
 			if tokens[i+1].Type() == token.DocumentHeaderType {
-				return append(ret, &Token{
+				// Empty document followed by another --- separator.
+				// Emit the empty doc and continue parsing the rest of
+				// the stream instead of dropping it (#870).
+				ret = append(ret, &Token{
 					Group: &TokenGroup{
 						Type:   TokenGroupDocument,
 						Tokens: []*Token{tk},
 					},
-				}), nil
+				})
+				tks, err := createDocumentTokens(tokens[i+1:])
+				if err != nil {
+					return nil, err
+				}
+				return append(ret, tks...), nil
 			}
 			if tokens[i].Line() == tokens[i+1].Line() {
 				switch tokens[i+1].GroupType() {

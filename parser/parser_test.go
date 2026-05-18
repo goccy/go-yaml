@@ -1924,6 +1924,26 @@ foo:
 	}
 }
 
+func TestCommentOnlyDocumentDoesNotDropFollowing(t *testing.T) {
+	src := "a: 1\n---\n# comment only\n---\nb: 2\n"
+	file, err := parser.ParseBytes([]byte(src), 0)
+	if err != nil {
+		t.Fatalf("parse error: %v", err)
+	}
+	if got, want := len(file.Docs), 3; got != want {
+		t.Fatalf("got %d docs, want %d", got, want)
+	}
+	if file.Docs[0].Body == nil {
+		t.Errorf("first doc body should not be nil")
+	}
+	if file.Docs[1].Body != nil {
+		t.Errorf("middle (comment-only) doc body should be nil, got %T", file.Docs[1].Body)
+	}
+	if file.Docs[2].Body == nil {
+		t.Errorf("third doc body should not be nil")
+	}
+}
+
 func TestNodePath(t *testing.T) {
 	yml := `
 a: # commentA

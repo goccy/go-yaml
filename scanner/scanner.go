@@ -746,7 +746,10 @@ func (s *Scanner) scanComment(ctx *Context) bool {
 
 	s.addBufferedTokenIfExists(ctx)
 	ctx.addOriginBuf('#')
-	s.progress(ctx, 1) // skip '#' character
+	// progressOnly so s.offset advances past the '#' as well; otherwise
+	// every token after the comment ends up with Position.Offset short by
+	// one per comment.
+	s.progressOnly(ctx, 1)
 
 	for idx, c := range ctx.src[ctx.idx:] {
 		ctx.addOriginBuf(c)

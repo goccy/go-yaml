@@ -3292,3 +3292,25 @@ func TestTokenOffset(t *testing.T) {
 		}
 	})
 }
+
+func TestTokenPositionOffsetAfterComment(t *testing.T) {
+	// Regression for #856: each preceding comment used to shift later
+	// tokens' Position.Offset by 1.
+	tests := []struct {
+		src    string
+		index  int
+		offset int
+	}{
+		{"# x\na: 1\n", 1, 5},
+		{"# x\n# y\n# z\na: 1\n", 3, 13},
+		{"a: 1\n", 0, 1},
+	}
+	for _, tt := range tests {
+		tokens := lexer.Tokenize(tt.src)
+		got := tokens[tt.index].Position.Offset
+		if got != tt.offset {
+			t.Errorf("Tokenize(%q)[%d].Position.Offset = %d, want %d",
+				tt.src, tt.index, got, tt.offset)
+		}
+	}
+}

@@ -4169,3 +4169,31 @@ func TestIssue735(t *testing.T) {
 		}
 	})
 }
+
+func TestIssue844(t *testing.T) {
+	type Inside struct {
+		Y string `yaml:"y"`
+		Z string `yaml:"z"`
+	}
+
+	type Outside struct {
+		X      string `yaml:"x"`
+		Inside `yaml:",inline"`
+	}
+
+	const data = `x: x-value
+y: y-value
+z: z-value
+`
+	var o Outside
+
+	if err := yaml.UnmarshalWithOptions([]byte(data), &o, yaml.CustomUnmarshaler[Inside](func(t *Inside, b []byte) error {
+		return yaml.Unmarshal(b, t)
+	})); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if o.Y != "y-value" || o.Z != "z-value" {
+		t.Fatalf("nested fields not populated: got %+v", o)
+	}
+}

@@ -1375,11 +1375,32 @@ func (d *Decoder) decodeStruct(ctx context.Context, dst reflect.Value, src ast.N
 				fieldValue.Set(reflect.Zero(fieldValue.Type()))
 				continue
 			}
+			keyNodeMap, err := d.keyToKeyNodeMap(ctx, src, ignoreMergeKey)
+			if err != nil {
+				return err
+			}
 			mapNode := ast.Mapping(nil, false)
 			for k, v := range keyToNodeMap {
-				key := &ast.StringNode{BaseNode: &ast.BaseNode{}, Value: k}
+				var key ast.MapKeyNode
+				key, ok := keyNodeMap[k].(ast.MapKeyNode)
+				if !ok {
+					key = &ast.StringNode{BaseNode: &ast.BaseNode{}, Value: k}
+				}
 				mapNode.Values = append(mapNode.Values, ast.MappingValue(nil, key, v))
 			}
+
+			sort.Slice(mapNode.Values, func(i, j int) bool {
+				ti := mapNode.Values[i].Key.GetToken()
+				tj := mapNode.Values[j].Key.GetToken()
+				if ti == nil || tj == nil {
+					return false
+				}
+				if ti.Position.Line != tj.Position.Line {
+					return ti.Position.Line < tj.Position.Line
+				}
+				return ti.Position.Column < tj.Position.Column
+			})
+
 			newFieldValue, err := d.createDecodedNewValue(ctx, fieldValue.Type(), fieldValue, mapNode)
 			if d.disallowUnknownField {
 				if err := d.deleteStructKeys(fieldValue.Type(), unknownFields); err != nil {

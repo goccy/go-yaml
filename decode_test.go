@@ -1651,6 +1651,22 @@ func TestDecoder_AnchorFiles(t *testing.T) {
 	}
 }
 
+func TestDecodeKeyEndingWithMergeIndicator(t *testing.T) {
+	// Only the exact key "<<" is the YAML merge key. A key that merely ends
+	// with "<<" (e.g. "a<<" or "0<<") must be treated as a normal scalar key,
+	// not as a merge key.
+	var v map[string]any
+	if err := yaml.Unmarshal([]byte("a<<: 1\n0<<: 2\n"), &v); err != nil {
+		t.Fatalf("unexpected error decoding keys ending in '<<': %v", err)
+	}
+	if got, ok := v["a<<"].(uint64); !ok || got != 1 {
+		t.Fatalf(`expected v["a<<"] == 1, got %#v`, v["a<<"])
+	}
+	if got, ok := v["0<<"].(uint64); !ok || got != 2 {
+		t.Fatalf(`expected v["0<<"] == 2, got %#v`, v["0<<"])
+	}
+}
+
 func TestDecodeWithMergeKey(t *testing.T) {
 	yml := `
 a: &a

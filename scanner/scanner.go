@@ -1062,6 +1062,11 @@ func (s *Scanner) scanDocumentEnd(ctx *Context) bool {
 }
 
 func (s *Scanner) scanMergeKey(ctx *Context) bool {
+	if ctx.existsBuffer() {
+		// "<<" is only the merge key when it stands alone as the key. If other
+		// characters precede it (e.g. "a<<"), it is part of a normal scalar key.
+		return false
+	}
 	if !s.isMergeKey(ctx) {
 		return false
 	}

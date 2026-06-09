@@ -151,6 +151,19 @@ alias: *x`
 	}
 }
 
+func TestPrinter_AliasWithoutAliasFunc(t *testing.T) {
+	yml := `anchor: &x 1
+alias: *x`
+	tokens := lexer.Tokenize(yml)
+	p := printer.Printer{
+		Anchor: func() *printer.Property { return &printer.Property{} },
+	}
+	got := p.PrintTokens(tokens)
+	if got != yml {
+		t.Fatalf("unexpected output: expect:[%s]\n actual:[%s]", yml, got)
+	}
+}
+
 func Test_Printer_Multiline(t *testing.T) {
 	yml := `
 text1: 'aaaa

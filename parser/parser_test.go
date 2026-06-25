@@ -1747,6 +1747,27 @@ baz: 1`
 	})
 }
 
+func TestParseDocumentAfterCommentOnlyDocument(t *testing.T) {
+	// A document that holds only comments becomes empty once comments are
+	// filtered out, leaving two consecutive "---" separators. Grouping must
+	// still keep the documents that follow it rather than dropping them.
+	// Regression test for https://github.com/goccy/go-yaml/issues/870.
+	source := "a: 1\n---\n# comment only\n---\nb: 2\n"
+	f, err := parser.ParseBytes([]byte(source), 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(f.Docs) != 3 {
+		t.Fatalf("expected 3 documents, got %d", len(f.Docs))
+	}
+	expected := []string{"a: 1", "---", "---\nb: 2"}
+	for i, want := range expected {
+		if got := f.Docs[i].String(); got != want {
+			t.Fatalf("doc[%d]: expected %q, got %q", i, want, got)
+		}
+	}
+}
+
 func TestSequenceComment(t *testing.T) {
 	content := `
 foo:

@@ -68,7 +68,7 @@ func (p *Printer) property(tk *token.Token) *Property {
 		}
 		return prop
 	case token.AliasType:
-		if p.Anchor != nil {
+		if p.Alias != nil {
 			return p.Alias()
 		}
 		return prop

@@ -151,6 +151,37 @@ alias: *x`
 	}
 }
 
+func TestPrinter_Alias(t *testing.T) {
+	// An alias token must be formatted with the Alias property, and setting the
+	// Anchor property alone must not reach into the (unset) Alias property.
+	t.Run("alias property is applied to alias tokens", func(t *testing.T) {
+		var p printer.Printer
+		p.Alias = func() *printer.Property {
+			return &printer.Property{Prefix: "<", Suffix: ">"}
+		}
+		got := p.PrintTokens(lexer.Tokenize("a: *x"))
+		expected := "a:< *><x>"
+		if got != expected {
+			t.Fatalf("unexpected output: expect:[%s] actual:[%s]", expected, got)
+		}
+	})
+
+	// Regression test: with Anchor set but Alias left nil, printing an alias
+	// token used to call the nil Alias func and panic.
+	t.Run("anchor set with nil alias does not panic", func(t *testing.T) {
+		var p printer.Printer
+		p.Anchor = func() *printer.Property {
+			return &printer.Property{Prefix: "[", Suffix: "]"}
+		}
+		defer func() {
+			if r := recover(); r != nil {
+				t.Fatalf("PrintTokens panicked with Anchor set and Alias nil: %v", r)
+			}
+		}()
+		_ = p.PrintTokens(lexer.Tokenize("a: *x"))
+	})
+}
+
 func Test_Printer_Multiline(t *testing.T) {
 	yml := `
 text1: 'aaaa

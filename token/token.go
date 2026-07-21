@@ -609,9 +609,8 @@ func toNumber(value string) (*NumberValue, error) {
 		normalized = strings.TrimPrefix(normalized, "0b")
 		base = 2
 		typ = NumberTypeBinary
-	case strings.HasPrefix(normalized, "0") && len(normalized) > 1 && dotCount == 0:
-		base = 8
-		typ = NumberTypeOctet
+	// YAML 1.2 core schema: octal requires an explicit 0o prefix. A bare
+	// leading zero is decimal (unlike YAML 1.1). See #894.
 	case dotCount == 1:
 		typ = NumberTypeFloat
 	default:

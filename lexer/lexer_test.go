@@ -78,7 +78,7 @@ func TestTokenize(t *testing.T) {
 			YAML: `0100`,
 			Tokens: token.Tokens{
 				{
-					Type:          token.OctetIntegerType,
+					Type:          token.IntegerType,
 					CharacterType: token.CharacterTypeMiscellaneous,
 					Indicator:     token.NotIndicator,
 					Value:         "0100",
@@ -2574,7 +2574,7 @@ s: >-3
 			YAML: `098765`,
 			Tokens: token.Tokens{
 				{
-					Type:          token.StringType,
+					Type:          token.IntegerType,
 					CharacterType: token.CharacterTypeMiscellaneous,
 					Indicator:     token.NotIndicator,
 					Value:         "098765",

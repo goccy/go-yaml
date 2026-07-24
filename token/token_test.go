@@ -156,3 +156,36 @@ func TestIsNeedQuoted(t *testing.T) {
 		}
 	}
 }
+
+func TestToNumberYAML12LeadingZeroDecimal(t *testing.T) {
+	// YAML 1.2: bare leading zeros are decimal; only 0o is octal (#894).
+	cases := []struct {
+		in  string
+		typ token.NumberType
+		val uint64
+	}{
+		{"010", token.NumberTypeDecimal, 10},
+		{"0100", token.NumberTypeDecimal, 100},
+		{"0o10", token.NumberTypeOctet, 8},
+		{"0", token.NumberTypeDecimal, 0},
+		{"0b10", token.NumberTypeBinary, 2},
+		{"0x10", token.NumberTypeHex, 16},
+	}
+	for _, tc := range cases {
+		n := token.ToNumber(tc.in)
+		if n == nil {
+			t.Fatalf("ToNumber(%q) = nil", tc.in)
+		}
+		if n.Type != tc.typ {
+			t.Fatalf("ToNumber(%q).Type = %v, want %v", tc.in, n.Type, tc.typ)
+		}
+		switch v := n.Value.(type) {
+		case uint64:
+			if v != tc.val {
+				t.Fatalf("ToNumber(%q).Value = %v, want %v", tc.in, v, tc.val)
+			}
+		default:
+			t.Fatalf("ToNumber(%q).Value type %T = %v", tc.in, n.Value, n.Value)
+		}
+	}
+}

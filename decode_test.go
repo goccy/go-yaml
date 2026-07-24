@@ -166,8 +166,13 @@ func TestDecoder(t *testing.T) {
 			value:  map[string]interface{}{"v": 685230},
 		},
 		{
-			source: "v: 02472256",
+			source: "v: 0o2472256",
 			value:  map[string]interface{}{"v": 685230},
+		},
+		{
+			// YAML 1.2: bare leading zero is decimal, not octal (#894)
+			source: "v: 010",
+			value:  map[string]interface{}{"v": 10},
 		},
 		{
 			source: "v: 0x_0A_74_AE",
@@ -4168,4 +4173,43 @@ func TestIssue735(t *testing.T) {
 			t.Fatalf("unexpected items: %v", v.Items)
 		}
 	})
+}
+
+func TestDecodeYAML12LeadingZeroInteger(t *testing.T) {
+	var v map[string]any
+	if err := yaml.Unmarshal([]byte("a: 010\nb: 0o10\n"), &v); err != nil {
+		t.Fatal(err)
+	}
+	switch a := v["a"].(type) {
+	case uint64:
+		if a != 10 {
+			t.Fatalf("a=%v want 10", a)
+		}
+	case int:
+		if a != 10 {
+			t.Fatalf("a=%v want 10", a)
+		}
+	case int64:
+		if a != 10 {
+			t.Fatalf("a=%v want 10", a)
+		}
+	default:
+		t.Fatalf("a type %T val %v", v["a"], v["a"])
+	}
+	switch b := v["b"].(type) {
+	case uint64:
+		if b != 8 {
+			t.Fatalf("b=%v want 8", b)
+		}
+	case int:
+		if b != 8 {
+			t.Fatalf("b=%v want 8", b)
+		}
+	case int64:
+		if b != 8 {
+			t.Fatalf("b=%v want 8", b)
+		}
+	default:
+		t.Fatalf("b type %T val %v", v["b"], v["b"])
+	}
 }

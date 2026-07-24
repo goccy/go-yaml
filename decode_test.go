@@ -4175,7 +4175,6 @@ func TestIssue735(t *testing.T) {
 	})
 }
 
-
 func TestDecodeYAML12LeadingZeroInteger(t *testing.T) {
 	var v map[string]any
 	if err := yaml.Unmarshal([]byte("a: 010\nb: 0o10\n"), &v); err != nil {

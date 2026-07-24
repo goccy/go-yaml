@@ -157,13 +157,12 @@ func TestIsNeedQuoted(t *testing.T) {
 	}
 }
 
-
 func TestToNumberYAML12LeadingZeroDecimal(t *testing.T) {
 	// YAML 1.2: bare leading zeros are decimal; only 0o is octal (#894).
 	cases := []struct {
-		in   string
-		typ  token.NumberType
-		val  uint64
+		in  string
+		typ token.NumberType
+		val uint64
 	}{
 		{"010", token.NumberTypeDecimal, 10},
 		{"0100", token.NumberTypeDecimal, 100},

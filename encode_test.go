@@ -2177,3 +2177,52 @@ a: &anc !mytag
 func ptr[T any](v T) *T {
 	return &v
 }
+
+func TestEncoder_BinaryTag(t *testing.T) {
+	t.Run("[]byte struct field marshals as !!binary", func(t *testing.T) {
+		type T struct {
+			FileData []byte `yaml:"file_data"`
+		}
+		v := T{FileData: gifBytes}
+		out, err := yaml.Marshal(v)
+		if err != nil {
+			t.Fatal(err)
+		}
+		expected := "file_data: !!binary " + gifBase64 + "\n"
+		if string(out) != expected {
+			t.Fatalf("unexpected output:\nexpected: %q\nactual:   %q", expected, string(out))
+		}
+	})
+
+	t.Run("!!binary output round-trips back to the original []byte", func(t *testing.T) {
+		type T struct {
+			FileData []byte `yaml:"file_data"`
+		}
+		v := T{FileData: gifBytes}
+		out, err := yaml.Marshal(v)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var v2 T
+		if err := yaml.Unmarshal(out, &v2); err != nil {
+			t.Fatalf("failed to unmarshal marshaled output: %v", err)
+		}
+		if !bytes.Equal(v.FileData, v2.FileData) {
+			t.Fatalf("round trip mismatch: got %v, want %v", v2.FileData, v.FileData)
+		}
+	})
+
+	t.Run("nil []byte marshals as empty binary", func(t *testing.T) {
+		type T struct {
+			FileData []byte `yaml:"file_data"`
+		}
+		out, err := yaml.Marshal(T{})
+		if err != nil {
+			t.Fatal(err)
+		}
+		expected := "file_data: !!binary \"\"\n"
+		if string(out) != expected {
+			t.Fatalf("unexpected output: %q", string(out))
+		}
+	})
+}

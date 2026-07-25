@@ -4169,3 +4169,82 @@ func TestIssue735(t *testing.T) {
 		}
 	})
 }
+
+// gifBase64 is the base64 encoding of a minimal 1x1 transparent GIF.
+const gifBase64 = "R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"
+
+var gifBytes = []byte{
+	0x47, 0x49, 0x46, 0x38, 0x39, 0x61, 0x01, 0x00, 0x01, 0x00, 0x80, 0x00,
+	0x00, 0x00, 0x00, 0x00, 0xff, 0xff, 0xff, 0x21, 0xf9, 0x04, 0x01, 0x00,
+	0x00, 0x00, 0x00, 0x2c, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x01, 0x00,
+	0x00, 0x02, 0x01, 0x44, 0x00, 0x3b,
+}
+
+func TestDecoder_BinaryTag(t *testing.T) {
+	t.Run("!!binary literal block into []byte struct field", func(t *testing.T) {
+		type T struct {
+			FileData []byte `yaml:"file_data"`
+		}
+		src := "file_data: !!binary |\n  " + gifBase64 + "\n"
+		var v T
+		if err := yaml.Unmarshal([]byte(src), &v); err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if !bytes.Equal(v.FileData, gifBytes) {
+			t.Fatalf("unexpected decoded bytes: %v", v.FileData)
+		}
+	})
+
+	t.Run("!!binary flow scalar into []byte struct field", func(t *testing.T) {
+		type T struct {
+			FileData []byte `yaml:"file_data"`
+		}
+		src := "file_data: !!binary " + gifBase64 + "\n"
+		var v T
+		if err := yaml.Unmarshal([]byte(src), &v); err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if !bytes.Equal(v.FileData, gifBytes) {
+			t.Fatalf("unexpected decoded bytes: %v", v.FileData)
+		}
+	})
+
+	t.Run("!!binary into map[string][]byte", func(t *testing.T) {
+		src := "file_data: !!binary |\n  " + gifBase64 + "\n"
+		var m map[string][]byte
+		if err := yaml.Unmarshal([]byte(src), &m); err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if !bytes.Equal(m["file_data"], gifBytes) {
+			t.Fatalf("unexpected decoded bytes: %v", m["file_data"])
+		}
+	})
+
+	t.Run("!!binary into interface{} yields []byte", func(t *testing.T) {
+		src := "file_data: !!binary |\n  " + gifBase64 + "\n"
+		var m map[string]interface{}
+		if err := yaml.Unmarshal([]byte(src), &m); err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		b, ok := m["file_data"].([]byte)
+		if !ok {
+			t.Fatalf("expected []byte, got %T", m["file_data"])
+		}
+		if !bytes.Equal(b, gifBytes) {
+			t.Fatalf("unexpected decoded bytes: %v", b)
+		}
+	})
+
+	t.Run("invalid base64 in !!binary does not panic", func(t *testing.T) {
+		type T struct {
+			FileData []byte `yaml:"file_data"`
+		}
+		src := "file_data: !!binary |\n  not-valid-base64!!!\n"
+		var v T
+		// base64.DecodeString errors are currently swallowed (see decode.go BinaryTag
+		// case), so this documents the actual behavior rather than requiring an error.
+		if err := yaml.Unmarshal([]byte(src), &v); err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+	})
+}

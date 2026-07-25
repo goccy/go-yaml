@@ -954,6 +954,20 @@ func (d *Decoder) decodeValue(ctx context.Context, dst reflect.Value, src ast.No
 		if mapSlice, ok := dst.Addr().Interface().(*MapSlice); ok {
 			return d.decodeMapSlice(ctx, mapSlice, src)
 		}
+		if valueType.Elem().Kind() == reflect.Uint8 {
+			if tag, ok := src.(*ast.TagNode); ok && token.ReservedTagKeyword(tag.Start.Value) == token.BinaryTag {
+				v, err := d.nodeToValue(ctx, src)
+				if err != nil {
+					return err
+				}
+				b, ok := v.([]byte)
+				if !ok {
+					return errors.ErrTypeMismatch(valueType, reflect.TypeOf(v), src.GetToken())
+				}
+				dst.SetBytes(b)
+				return nil
+			}
+		}
 		return d.decodeSlice(ctx, dst, src)
 	case reflect.Struct:
 		if mapItem, ok := dst.Addr().Interface().(*MapItem); ok {

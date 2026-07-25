@@ -3,6 +3,7 @@ package yaml
 import (
 	"context"
 	"encoding"
+	"encoding/base64"
 	"fmt"
 	"io"
 	"math"
@@ -478,6 +479,9 @@ func (e *Encoder) encodeValue(ctx context.Context, v reflect.Value, column int) 
 		if value := e.encodePtrAnchor(v, column); value != nil {
 			return value, nil
 		}
+		if v.Type().Elem().Kind() == reflect.Uint8 {
+			return e.encodeBinary(v.Bytes(), column), nil
+		}
 		return e.encodeSlice(ctx, v)
 	case reflect.Array:
 		return e.encodeArray(ctx, v)
@@ -596,6 +600,14 @@ func (e *Encoder) encodeString(v string, column int) *ast.StringNode {
 		}
 	}
 	return ast.String(token.New(v, v, e.pos(column)))
+}
+
+func (e *Encoder) encodeBinary(v []byte, column int) *ast.TagNode {
+	b64 := base64.StdEncoding.EncodeToString(v)
+	tagValue := string(token.BinaryTag)
+	tag := ast.Tag(token.New(tagValue, tagValue, e.pos(column)))
+	tag.Value = e.encodeString(b64, column)
+	return tag
 }
 
 func (e *Encoder) encodeBool(v bool) *ast.BoolNode {

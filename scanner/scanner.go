@@ -1118,12 +1118,23 @@ func (s *Scanner) scanMultiLineHeader(ctx *Context) (bool, error) {
 	if ctx.existsBuffer() {
 		return false, nil
 	}
+	if s.isPlainScalarAfterMapKey(ctx) {
+		return false, nil
+	}
 
 	if err := s.scanMultiLineHeaderOption(ctx); err != nil {
 		return false, err
 	}
 	s.progressLine(ctx)
 	return true, nil
+}
+
+func (s *Scanner) isPlainScalarAfterMapKey(ctx *Context) bool {
+	if ctx.currentChar() != '>' || ctx.nextChar() != '0' {
+		return false
+	}
+	tk := ctx.lastToken()
+	return tk != nil && tk.Type == token.MappingKeyType && tk.Position.Line == s.line
 }
 
 func (s *Scanner) validateMultiLineHeaderOption(opt string) error {

@@ -2027,6 +2027,57 @@ x-some-extra-thing: b_value
 
 }
 
+func TestDecoder_ExplicitKeyStartingWithFoldedIndicator(t *testing.T) {
+	for _, src := range []string{"? >0", "? >0\n"} {
+		t.Run(strconv.Quote(src), func(t *testing.T) {
+			var got map[string]interface{}
+			if err := yaml.Unmarshal([]byte(src), &got); err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			want := map[string]interface{}{">0": nil}
+			if !reflect.DeepEqual(got, want) {
+				t.Fatalf("expected %#v, got %#v", want, got)
+			}
+		})
+	}
+}
+
+func TestDecoder_ExplicitKeyWithFoldedScalar(t *testing.T) {
+	tests := []struct {
+		name string
+		src  string
+		key  string
+	}{
+		{
+			name: "default",
+			src:  "? >\n  key\n: value\n",
+			key:  "key\n",
+		},
+		{
+			name: "strip chomping",
+			src:  "? >-\n  key\n: value\n",
+			key:  "key",
+		},
+		{
+			name: "indent indicator",
+			src:  "? >1\n key\n: value\n",
+			key:  "key\n",
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			var got map[string]interface{}
+			if err := yaml.Unmarshal([]byte(test.src), &got); err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			want := map[string]interface{}{test.key: "value"}
+			if !reflect.DeepEqual(got, want) {
+				t.Fatalf("expected %#v, got %#v", want, got)
+			}
+		})
+	}
+}
+
 func TestDecoder_EmptySequenceItem(t *testing.T) {
 	t.Run("before sibling mapping key", func(t *testing.T) {
 		yml := `args:

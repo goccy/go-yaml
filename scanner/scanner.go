@@ -921,7 +921,7 @@ func (s *Scanner) scanFlowMapStart(ctx *Context) bool {
 }
 
 func (s *Scanner) scanFlowMapEnd(ctx *Context) bool {
-	if s.startedFlowMapNum <= 0 {
+	if ctx.existsBuffer() && s.startedFlowMapNum <= 0 {
 		return false
 	}
 

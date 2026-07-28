@@ -1257,6 +1257,32 @@ b
 `,
 		},
 		{
+			`a: }`,
+			`
+[1:4] could not find '{' character corresponding to '}'
+>  1 | a: }
+          ^
+`,
+		},
+		{
+			"a:\n}",
+			`
+[2:1] could not find '{' character corresponding to '}'
+   1 | a:
+>  2 | }
+       ^
+`,
+		},
+		{
+			"a:\n b:\n}",
+			`
+[3:1] could not find '{' character corresponding to '}'
+   2 |  null
+>  3 | }
+       ^
+`,
+		},
+		{
 			`a: [ [1] [2] [3] ]`,
 			`
 [1:10] ',' or ']' must be specified

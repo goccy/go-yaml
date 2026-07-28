@@ -495,6 +495,11 @@ func (p *parser) parseMap(ctx *context) (*ast.MappingNode, error) {
 			// ] <=
 			break
 		}
+		if !ctx.isFlow && typ == token.MappingEndType {
+			// key:
+			// } <=
+			return nil, errors.ErrSyntax("could not find '{' character corresponding to '}'", tk.RawToken())
+		}
 		if !p.isMapToken(tk) {
 			return nil, errors.ErrSyntax("non-map value is specified", tk.RawToken())
 		}
@@ -740,6 +745,13 @@ func (p *parser) parseMapValue(ctx *context, key ast.MapKeyNode, colonTk *Token)
 	}
 
 	if tk.Column() == keyCol && p.isMapToken(tk) {
+		if !ctx.isFlow && tk.Type() == token.MappingEndType {
+			// in this case,
+			// ----
+			// key:
+			// } <= '}' does not close any flow mapping.
+			return nil, errors.ErrSyntax("could not find '{' character corresponding to '}'", tk.RawToken())
+		}
 		// in this case,
 		// ----
 		// key: <value does not defined>

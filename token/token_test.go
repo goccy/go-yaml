@@ -138,6 +138,16 @@ func TestIsNeedQuoted(t *testing.T) {
 		"~",
 		"-",
 		"- --foo",
+		// infinity and nan keywords the decoder resolves to a float.
+		".inf",
+		".Inf",
+		".INF",
+		"-.inf",
+		"-.Inf",
+		"-.INF",
+		".nan",
+		".NaN",
+		".NAN",
 	}
 	for i, test := range needQuotedTests {
 		if !token.IsNeedQuoted(test) {
@@ -149,6 +159,10 @@ func TestIsNeedQuoted(t *testing.T) {
 		// time.Parse cannot handle: "2001-12-14 21:59:43.10 -5" from the examples.
 		// https://yaml.org/type/timestamp.html
 		"2001-12-14 21:59:43.10 -5",
+		// A leading '+' is not a keyword the decoder resolves, so it stays a string.
+		"+.inf",
+		"+.INF",
+		"Infinity",
 	}
 	for i, test := range notNeedQuotedTests {
 		if token.IsNeedQuoted(test) {

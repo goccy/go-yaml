@@ -374,14 +374,22 @@ func init() {
 		}
 	}
 	for _, keyword := range reservedInfKeywords {
-		reservedKeywordMap[keyword] = func(value, org string, pos *Position) *Token {
+		f := func(value, org string, pos *Position) *Token {
 			return reservedKeywordToken(InfinityType, value, org, pos)
 		}
+		reservedKeywordMap[keyword] = f
+		// Quote at encoding time so a string equal to an infinity keyword
+		// does not decode back as a float.
+		reservedEncKeywordMap[keyword] = f
 	}
 	for _, keyword := range reservedNanKeywords {
-		reservedKeywordMap[keyword] = func(value, org string, pos *Position) *Token {
+		f := func(value, org string, pos *Position) *Token {
 			return reservedKeywordToken(NanType, value, org, pos)
 		}
+		reservedKeywordMap[keyword] = f
+		// Quote at encoding time so a string equal to a nan keyword
+		// does not decode back as a float.
+		reservedEncKeywordMap[keyword] = f
 	}
 }
 

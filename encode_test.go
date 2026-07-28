@@ -2177,3 +2177,91 @@ a: &anc !mytag
 func ptr[T any](v T) *T {
 	return &v
 }
+
+// A string equal to an infinity/nan keyword must be encoded quoted, otherwise
+// the decoder reads it back as a float instead of the original string.
+func TestMarshalInfNanStringRoundTrip(t *testing.T) {
+	// Exactly the set token.New resolves to a float (reservedInfKeywords +
+	// reservedNanKeywords). Each must survive a string round trip unchanged.
+	keywords := []string{
+		".inf", ".Inf", ".INF", "-.inf", "-.Inf", "-.INF",
+		".nan", ".NaN", ".NAN",
+	}
+	for _, s := range keywords {
+		out, err := yaml.Marshal(map[string]string{"k": s})
+		if err != nil {
+			t.Fatalf("marshal %q: %v", s, err)
+		}
+		var asStr map[string]string
+		if err := yaml.Unmarshal(out, &asStr); err != nil {
+			t.Fatalf("unmarshal %q from %q: %v", s, string(out), err)
+		}
+		if asStr["k"] != s {
+			t.Errorf("string round trip: got %q want %q (emitted %q)", asStr["k"], s, string(out))
+		}
+		var asIface map[string]interface{}
+		if err := yaml.Unmarshal(out, &asIface); err != nil {
+			t.Fatalf("unmarshal-iface %q from %q: %v", s, string(out), err)
+		}
+		if got, ok := asIface["k"].(string); !ok || got != s {
+			t.Errorf("interface decode: got %v (%T) want string %q (emitted %q)", asIface["k"], asIface["k"], s, string(out))
+		}
+	}
+
+	// A leading '+' is not a keyword the decoder resolves, so these stay strings
+	// unquoted and must not be quoted by the encoder.
+	for _, s := range []string{"+.inf", "+.INF", "info", "banana", "Infinity", "inf", "nan"} {
+		out, err := yaml.Marshal(map[string]string{"k": s})
+		if err != nil {
+			t.Fatalf("marshal control %q: %v", s, err)
+		}
+		if strings.ContainsAny(string(out), "'\"") {
+			t.Errorf("control %q was quoted unnecessarily: %q", s, string(out))
+		}
+		var back map[string]string
+		if err := yaml.Unmarshal(out, &back); err != nil {
+			t.Fatalf("unmarshal control %q: %v", s, err)
+		}
+		if back["k"] != s {
+			t.Errorf("control round trip: got %q want %q", back["k"], s)
+		}
+	}
+
+	// Real float infinity/nan values must still encode as bare keywords and
+	// decode back as float64 (they must not be quoted).
+	floats := map[string]float64{
+		"k: .inf\n":  math.Inf(1),
+		"k: -.inf\n": math.Inf(-1),
+	}
+	for want, f := range floats {
+		out, err := yaml.Marshal(map[string]interface{}{"k": f})
+		if err != nil {
+			t.Fatalf("marshal float %v: %v", f, err)
+		}
+		if string(out) != want {
+			t.Errorf("float encode: got %q want %q", string(out), want)
+		}
+		var back map[string]interface{}
+		if err := yaml.Unmarshal(out, &back); err != nil {
+			t.Fatalf("unmarshal float %q: %v", string(out), err)
+		}
+		if got, ok := back["k"].(float64); !ok || got != f {
+			t.Errorf("float round trip: got %v (%T) want %v", back["k"], back["k"], f)
+		}
+	}
+	// NaN separately since NaN != NaN.
+	out, err := yaml.Marshal(map[string]interface{}{"k": math.NaN()})
+	if err != nil {
+		t.Fatalf("marshal NaN: %v", err)
+	}
+	if string(out) != "k: .nan\n" {
+		t.Errorf("NaN encode: got %q want %q", string(out), "k: .nan\n")
+	}
+	var nanBack map[string]interface{}
+	if err := yaml.Unmarshal(out, &nanBack); err != nil {
+		t.Fatalf("unmarshal NaN: %v", err)
+	}
+	if got, ok := nanBack["k"].(float64); !ok || !math.IsNaN(got) {
+		t.Errorf("NaN round trip: got %v (%T) want NaN", nanBack["k"], nanBack["k"])
+	}
+}

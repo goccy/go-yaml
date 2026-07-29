@@ -2003,3 +2003,28 @@ func (v *Visitor) Visit(node ast.Node) ast.Visitor {
 	tk.Next = nil
 	return v
 }
+
+func TestDeeplyNestedInput(t *testing.T) {
+	// Deeply nested collections make the parser recurse once per level, and
+	// each level records its full path string, so the work grows quadratically
+	// with the nesting depth. Input past maxParseDepth must be rejected during
+	// parsing rather than parsed into an oversized tree (which the decoder would
+	// then reject anyway via maxDecodeDepth).
+	t.Run("over the limit is rejected", func(t *testing.T) {
+		for _, src := range []string{
+			strings.Repeat("[", 20000) + strings.Repeat("]", 20000),          // flow sequence
+			strings.Repeat("{a: ", 20000) + "1" + strings.Repeat("}", 20000), // flow mapping
+			strings.Repeat("- ", 20000) + "x",                                // block sequence
+		} {
+			if _, err := parser.ParseBytes([]byte(src), 0); err == nil {
+				t.Fatalf("expected a parse error for deeply nested input, got nil")
+			}
+		}
+	})
+	t.Run("within the limit still parses", func(t *testing.T) {
+		src := strings.Repeat("[", 5000) + "42" + strings.Repeat("]", 5000)
+		if _, err := parser.ParseBytes([]byte(src), 0); err != nil {
+			t.Fatalf("nesting within the limit must parse, got: %v", err)
+		}
+	})
+}

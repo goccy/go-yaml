@@ -73,12 +73,21 @@ var yamlVersionMap = map[string]YAMLVersion{
 	"1.3": YAML13,
 }
 
+// maxParseDepth bounds how deeply parseToken may recurse. Deeply nested input
+// builds the AST (and its per-node path strings) at every level, so the work
+// grows quadratically with the nesting depth; without a limit a small document
+// consisting only of nested flow/block collections can consume seconds of CPU.
+// The value matches maxDecodeDepth in the decoder, so any document that would
+// have decoded successfully still parses.
+const maxParseDepth = 10000
+
 type parser struct {
 	tokens                []*Token
 	pathMap               map[string]ast.Node
 	yamlVersion           YAMLVersion
 	allowDuplicateMapKey  bool
 	secondaryTagDirective *ast.DirectiveNode
+	parseDepth            int
 }
 
 func newParser(tokens token.Tokens, mode Mode, opts []Option) (*parser, error) {
@@ -174,6 +183,11 @@ func (p *parser) parseDocumentBody(ctx *context) (ast.Node, error) {
 }
 
 func (p *parser) parseToken(ctx *context, tk *Token) (ast.Node, error) {
+	p.parseDepth++
+	defer func() { p.parseDepth-- }()
+	if p.parseDepth > maxParseDepth {
+		return nil, errors.ErrSyntax("exceeded maximum parse depth", tk.RawToken())
+	}
 	switch tk.GroupType() {
 	case TokenGroupMapKey, TokenGroupMapKeyValue:
 		return p.parseMap(ctx)

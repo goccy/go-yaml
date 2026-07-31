@@ -42,6 +42,21 @@ func TestDecoder(t *testing.T) {
 			value:  map[string]TestString{"v": "hi"},
 		},
 		{
+			// A leading UTF-8 BOM is an encoding signature, not content (YAML 1.2 section 5.2).
+			source: "\ufeffv: hi\n",
+			value:  map[string]string{"v": "hi"},
+		},
+		{
+			// Only the leading BOM is stripped.
+			source: "\ufeff\ufeffv: hi\n",
+			value:  map[string]string{"\ufeffv": "hi"},
+		},
+		{
+			// A BOM elsewhere is ordinary content.
+			source: "v: a\ufeffb\n",
+			value:  map[string]string{"v": "a\ufeffb"},
+		},
+		{
 			source: "v: \"true\"\n",
 			value:  map[string]string{"v": "true"},
 		},

@@ -1496,6 +1496,11 @@ func (s *Scanner) scan(ctx *Context) error {
 // Init prepares the scanner s to tokenize the text src by setting the scanner at the beginning of src.
 func (s *Scanner) Init(text string) {
 	src := []rune(text)
+	// A byte order mark at the start of the stream is an encoding signature,
+	// not content (YAML 1.2 section 5.2), so drop it.
+	if len(src) > 0 && src[0] == '\uFEFF' {
+		src = src[1:]
+	}
 	s.source = src
 	s.sourcePos = 0
 	s.sourceSize = len(src)

@@ -1766,6 +1766,31 @@ items:
 	})
 }
 
+func TestDecodeWithQuotedMergeTag(t *testing.T) {
+	tests := []struct {
+		name string
+		key  string
+	}{
+		{name: "short tag with double quotes", key: `!!merge "<<"`},
+		{name: "short tag with single quotes", key: `!!merge '<<'`},
+		{name: "verbatim tag with double quotes", key: `!<tag:yaml.org,2002:merge> "<<"`},
+		{name: "verbatim tag with single quotes", key: `!<tag:yaml.org,2002:merge> '<<'`},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			source := fmt.Sprintf("base: &base {x: 1}\nout:\n  %s : *base\n  y: 2\n", test.key)
+			var value map[string]map[string]int
+			if err := yaml.Unmarshal([]byte(source), &value); err != nil {
+				t.Fatal(err)
+			}
+			expected := map[string]int{"x": 1, "y": 2}
+			if !reflect.DeepEqual(value["out"], expected) {
+				t.Fatalf("expected %v, got %v", expected, value["out"])
+			}
+		})
+	}
+}
+
 func TestDecoder_Inline(t *testing.T) {
 	type Base struct {
 		A int

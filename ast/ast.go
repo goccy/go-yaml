@@ -2041,6 +2041,13 @@ func (n *TagNode) IsMergeKey() bool {
 	if n.Value == nil {
 		return false
 	}
+	switch n.Start.Value {
+	case string(token.MergeTag), "!<tag:yaml.org,2002:merge>":
+		scalar, ok := n.Value.(ScalarNode)
+		if ok && scalar.GetValue() == "<<" {
+			return true
+		}
+	}
 	key, ok := n.Value.(MapKeyNode)
 	if !ok {
 		return false

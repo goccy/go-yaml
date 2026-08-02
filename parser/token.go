@@ -400,7 +400,7 @@ func createScalarTagTokenGroups(tokens []*Token) ([]*Token, error) {
 					ret = append(ret, tk)
 					continue
 				}
-				if tokens[i+1].Type() != token.MergeKeyType {
+				if !isMergeKeyToken(tokens[i+1]) {
 					return nil, errors.ErrSyntax("could not find merge key", tokens[i+1].RawToken())
 				}
 				ret = append(ret, &Token{
@@ -721,6 +721,11 @@ func isScalarType(tk *Token) bool {
 		typ == token.StringType ||
 		typ == token.SingleQuoteType ||
 		typ == token.DoubleQuoteType
+}
+
+func isMergeKeyToken(tk *Token) bool {
+	return tk.Type() == token.MergeKeyType ||
+		isScalarType(tk) && tk.RawToken().Value == "<<"
 }
 
 func isNotMapKeyType(tk *Token) bool {

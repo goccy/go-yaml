@@ -4169,3 +4169,239 @@ func TestIssue735(t *testing.T) {
 		}
 	})
 }
+
+func TestIssue631AndIssue739(t *testing.T) {
+	// A plain scalar decoded into a string keeps the text as written in the
+	// document, instead of being resolved to an int/float/bool and formatted
+	// back. This matches gopkg.in/yaml.v3 and encoding/json.
+	t.Run("leading zero number is not read as octal", func(t *testing.T) {
+		type AWSAccounts struct {
+			AccountID  string `yaml:"accountid,omitempty"`
+			Nickname   string `yaml:"nickname,omitempty"`
+			RoleARN    string `yaml:"rolearn,omitempty"`
+			ExternalID string `yaml:"externalid,omitempty"`
+		}
+		src := `
+accountid: 074763617300
+nickname: 'xxx-xxx'
+rolearn: arn:aws:iam::074763617300:role/IAM_ROLE
+`
+		var v AWSAccounts
+		if err := yaml.Unmarshal([]byte(src), &v); err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		expected := AWSAccounts{
+			AccountID: "074763617300",
+			Nickname:  "xxx-xxx",
+			RoleARN:   "arn:aws:iam::074763617300:role/IAM_ROLE",
+		}
+		if v != expected {
+			t.Fatalf("unexpected value: %+v", v)
+		}
+	})
+
+	t.Run("bool keeps its original spelling", func(t *testing.T) {
+		var v struct {
+			Value string `yaml:"value"`
+		}
+		if err := yaml.Unmarshal([]byte("value: True\n"), &v); err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if v.Value != "True" {
+			t.Fatalf("got %q, expected %q", v.Value, "True")
+		}
+	})
+
+	t.Run("scalar spellings preserved for string destinations", func(t *testing.T) {
+		tests := []struct {
+			src      string
+			expected string
+		}{
+			// bools (#739)
+			{"True", "True"},
+			{"TRUE", "TRUE"},
+			{"False", "False"},
+			{"FALSE", "FALSE"},
+			{"true", "true"},
+			// integers (#631)
+			{"074763617300", "074763617300"},
+			{"007", "007"},
+			{"0o17", "0o17"},
+			{"0x1A", "0x1A"},
+			{"0b101", "0b101"},
+			{"1_000", "1_000"},
+			{"+10", "+10"},
+			{"-10", "-10"},
+			{"10", "10"},
+			// floats
+			{"1.230", "1.230"},
+			{"1.0", "1.0"},
+			{"1e3", "1e3"},
+			{".1", ".1"},
+			// infinity and NaN
+			{".inf", ".inf"},
+			{"-.inf", "-.inf"},
+			{".NaN", ".NaN"},
+			// values that were already correct and must stay unchanged
+			{"'010'", "010"},
+			{`"010"`, "010"},
+			{"2015-01-01", "2015-01-01"},
+			{"y", "y"},
+			{"on", "on"},
+			{"plain text", "plain text"},
+		}
+		for _, test := range tests {
+			t.Run(test.src, func(t *testing.T) {
+				var v struct {
+					V string `yaml:"v"`
+				}
+				if err := yaml.Unmarshal([]byte("v: "+test.src+"\n"), &v); err != nil {
+					t.Fatalf("unexpected error: %v", err)
+				}
+				if v.V != test.expected {
+					t.Fatalf("got %q, expected %q", v.V, test.expected)
+				}
+			})
+		}
+	})
+
+	t.Run("null stays the zero value", func(t *testing.T) {
+		// A null must not be turned into the literal text "null" or "~".
+		for _, src := range []string{"~", "null", "Null", "NULL"} {
+			var v struct {
+				V string `yaml:"v"`
+			}
+			if err := yaml.Unmarshal([]byte("v: "+src+"\n"), &v); err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if v.V != "" {
+				t.Fatalf("%s: got %q, expected an empty string", src, v.V)
+			}
+		}
+	})
+
+	t.Run("explicit tag still decides the conversion", func(t *testing.T) {
+		var v struct {
+			V string `yaml:"v"`
+		}
+		// !!int resolves the value, so the octal spelling is intentionally lost.
+		if err := yaml.Unmarshal([]byte("v: !!int 010\n"), &v); err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if v.V != "8" {
+			t.Fatalf("got %q, expected %q", v.V, "8")
+		}
+		// !!str asks for the value as written.
+		if err := yaml.Unmarshal([]byte("v: !!str 010\n"), &v); err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if v.V != "010" {
+			t.Fatalf("got %q, expected %q", v.V, "010")
+		}
+	})
+
+	t.Run("string destinations other than struct fields", func(t *testing.T) {
+		type myString string
+
+		var named struct {
+			V myString `yaml:"v"`
+		}
+		if err := yaml.Unmarshal([]byte("v: 010\n"), &named); err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if named.V != "010" {
+			t.Fatalf("named type: got %q, expected %q", named.V, "010")
+		}
+
+		var ptr struct {
+			V *string `yaml:"v"`
+		}
+		if err := yaml.Unmarshal([]byte("v: 010\n"), &ptr); err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if ptr.V == nil || *ptr.V != "010" {
+			t.Fatalf("pointer: got %v, expected %q", ptr.V, "010")
+		}
+
+		var slice []string
+		if err := yaml.Unmarshal([]byte("[010, True, 1.20]\n"), &slice); err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if !reflect.DeepEqual(slice, []string{"010", "True", "1.20"}) {
+			t.Fatalf("slice: got %q", slice)
+		}
+
+		var m map[string]string
+		if err := yaml.Unmarshal([]byte("010: True\n"), &m); err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if !reflect.DeepEqual(m, map[string]string{"010": "True"}) {
+			t.Fatalf("map: got %q", m)
+		}
+	})
+
+	t.Run("non-string destinations are unaffected", func(t *testing.T) {
+		// Resolution must still happen when the destination is not a string.
+		var i struct {
+			V int `yaml:"v"`
+		}
+		if err := yaml.Unmarshal([]byte("v: 010\n"), &i); err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if i.V != 8 {
+			t.Fatalf("int: got %d, expected 8", i.V)
+		}
+
+		var b struct {
+			V bool `yaml:"v"`
+		}
+		if err := yaml.Unmarshal([]byte("v: True\n"), &b); err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if !b.V {
+			t.Fatal("bool: got false, expected true")
+		}
+
+		var any map[string]interface{}
+		if err := yaml.Unmarshal([]byte("a: 010\nb: True\n"), &any); err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if !reflect.DeepEqual(any, map[string]interface{}{"a": uint64(8), "b": true}) {
+			t.Fatalf("interface: got %#v", any)
+		}
+	})
+
+	t.Run("aliased plain scalar preserves its spelling", func(t *testing.T) {
+		var v struct {
+			A string `yaml:"a"`
+			B string `yaml:"b"`
+		}
+		if err := yaml.Unmarshal([]byte("a: &x 010\nb: *x\n"), &v); err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if v.A != "010" || v.B != "010" {
+			t.Fatalf("unexpected value: %+v", v)
+		}
+	})
+
+	t.Run("round trip is stable", func(t *testing.T) {
+		type S struct {
+			V string `yaml:"v"`
+		}
+		var v S
+		if err := yaml.Unmarshal([]byte("v: 074763617300\n"), &v); err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		out, err := yaml.Marshal(v)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		var v2 S
+		if err := yaml.Unmarshal(out, &v2); err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if v2.V != v.V {
+			t.Fatalf("round trip changed the value: %q -> %q", v.V, v2.V)
+		}
+	})
+}

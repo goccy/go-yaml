@@ -427,6 +427,12 @@ func (d *Decoder) nodeToValue(ctx context.Context, node ast.Node) (any, error) {
 			}
 			return nil, errors.ErrSyntax(fmt.Sprintf("cannot convert %q to boolean", fmt.Sprint(v)), n.Value.GetToken())
 		case token.StringTag:
+			// An explicit !!str asks for the value as written, so the same
+			// source text used for string destinations applies here. Formatting
+			// the resolved value instead would turn `!!str 010` into "8".
+			if text, found := d.plainScalarSourceText(n.Value); found {
+				return text, nil
+			}
 			v, err := d.nodeToValue(ctx, n.Value)
 			if err != nil {
 				return nil, err
@@ -960,6 +966,20 @@ func (d *Decoder) decodeValue(ctx context.Context, dst reflect.Value, src ast.No
 			return d.decodeMapItem(ctx, mapItem, src)
 		}
 		return d.decodeStruct(ctx, dst, src)
+	case reflect.String:
+		// A plain (unquoted) scalar is resolved to a YAML type by the scanner,
+		// so `074763617300` becomes an octal integer and `True` becomes a bool.
+		// When the destination is a string that resolution must not be applied:
+		// formatting the resolved value back into text loses the original
+		// spelling and yields "8184078016" and "true" respectively
+		// (goccy/go-yaml#631, goccy/go-yaml#739). The token retains the source
+		// text verbatim, so assign that instead of a converted value.
+		if text, found := d.plainScalarSourceText(src); found {
+			dst.SetString(text)
+			return nil
+		}
+		// Not a resolved plain scalar (a quoted string, a block scalar, a
+		// tagged value, ...); fall through to the conversion below.
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
 		v, err := d.nodeToValue(ctx, src)
 		if err != nil {
@@ -1043,6 +1063,39 @@ func (d *Decoder) decodeValue(ctx context.Context, dst reflect.Value, src ast.No
 		dst.Set(convertedValue)
 	}
 	return nil
+}
+
+// plainScalarSourceText reports the source text of src when src is a plain
+// (unquoted) scalar that the scanner resolved to a non-string YAML type, such as
+// an integer, float, bool, infinity or NaN.
+//
+// Such a node carries the value as it was written in the document, which is what
+// a string destination should receive. Anything else returns false so the caller
+// keeps the normal conversion path:
+//
+//   - StringNode and NullNode need no special handling. A string already holds
+//     the right text, and a null must stay the zero value rather than become the
+//     literal "null" or "~".
+//   - Quoted and block scalars are excluded because their token value is the
+//     unescaped content rather than the source text, and they are always
+//     StringNode anyway.
+//   - Tagged values (TagNode) are excluded so an explicit tag keeps deciding the
+//     conversion, e.g. `!!int 010` still resolves to 8.
+//   - Anchors and aliases resolve through nodeToValue, which is left untouched.
+func (d *Decoder) plainScalarSourceText(src ast.Node) (string, bool) {
+	switch src.Type() {
+	case ast.IntegerType, ast.FloatType, ast.BoolType, ast.InfinityType, ast.NanType:
+	default:
+		return "", false
+	}
+	tk := src.GetToken()
+	if tk == nil {
+		return "", false
+	}
+	if tk.Indicator != token.NotIndicator {
+		return "", false
+	}
+	return tk.Value, true
 }
 
 func (d *Decoder) createDecodableValue(typ reflect.Type) reflect.Value {

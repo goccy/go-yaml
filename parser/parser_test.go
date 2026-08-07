@@ -161,6 +161,15 @@ v:
   c		: 'z'
 `,
 		`{a: &a c, *a : b}`,
+		// A mapping key followed by a stray closing brace used to panic with a
+		// nil pointer dereference in the parser (goccy/go-yaml#890). The `}` is
+		// treated as the scalar value of `key`.
+		"key:\n}",
+		"key:\n}\n",
+		"key:\n  }",
+		"key:\n}}",
+		"key:\n,",
+		"key:\n}\nother: 1",
 	}
 	for idx, src := range sources {
 		t.Run(strconv.Itoa(idx), func(t *testing.T) {
@@ -2002,4 +2011,54 @@ func (v *Visitor) Visit(node ast.Node) ast.Visitor {
 	tk.Prev = nil
 	tk.Next = nil
 	return v
+}
+
+func TestIssue890(t *testing.T) {
+	// A mapping key followed by a newline and a stray closing brace used to
+	// dereference a nil map value in the parser and crash with a SIGSEGV
+	// (goccy/go-yaml#890). Parsing must either succeed or return an error, but
+	// never panic. These inputs are accepted, with the stray indicator read as
+	// the scalar value of the preceding key.
+	tests := []struct {
+		source string
+		expect string
+	}{
+		{"key:\n}", "key: }\n"},
+		{"key:\n}\n", "key: }\n"},
+		{"key:\n  }", "key: }\n"},
+		{"key:\n}}", "key: }}\n"},
+		{"key:\n,", "key: ,\n"},
+		{"key:\n}\nother: 1", "key: }\nother: 1\n"},
+		{"key:\nkey2:\n}", "key:\nkey2: }\n"},
+	}
+	for _, test := range tests {
+		t.Run(test.source, func(t *testing.T) {
+			f, err := parser.ParseBytes([]byte(test.source), 0)
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if got := f.String(); got != test.expect {
+				t.Fatalf("got %q, expected %q", got, test.expect)
+			}
+		})
+	}
+}
+
+func TestIssue890_Errors(t *testing.T) {
+	// Neighboring malformed inputs from the same family are rejected with a
+	// syntax error. They are covered here so that a future change cannot turn
+	// any of them into a panic unnoticed.
+	sources := []string{
+		"key:\n]",
+		"key:\n{",
+		"- key:\n}",
+		"key: *a\n}",
+	}
+	for _, src := range sources {
+		t.Run(src, func(t *testing.T) {
+			if _, err := parser.ParseBytes([]byte(src), 0); err == nil {
+				t.Fatal("expected an error, got nil")
+			}
+		})
+	}
 }

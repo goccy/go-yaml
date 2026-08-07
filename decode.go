@@ -914,7 +914,10 @@ func (d *Decoder) decodeValue(ctx context.Context, dst reflect.Value, src ast.No
 	valueType := dst.Type()
 	switch valueType.Kind() {
 	case reflect.Ptr:
-		if dst.IsNil() {
+		// This case is reached when dst is itself a pointer, i.e. the caller
+		// passed a pointer to a pointer such as `var v *T; dec.Decode(&v)`.
+		if dst.IsNil() && !dst.CanSet() {
+			// there is no way to allocate a value to decode into.
 			return nil
 		}
 		if src.Type() == ast.NullType {
@@ -922,15 +925,17 @@ func (d *Decoder) decodeValue(ctx context.Context, dst reflect.Value, src ast.No
 			dst.Set(reflect.Zero(valueType))
 			return nil
 		}
-		v := d.createDecodableValue(dst.Type())
-		if err := d.decodeValue(ctx, v, src); err != nil {
-			return err
+		if dst.IsNil() {
+			// A nil pointer has to be allocated before it can be decoded into.
+			// Bailing out here instead left the caller's pointer as nil and
+			// reported no error (goccy/go-yaml#619).
+			dst.Set(reflect.New(valueType.Elem()))
 		}
-		castedValue, err := d.castToAssignableValue(v, dst.Type(), src)
-		if err != nil {
-			return err
-		}
-		dst.Set(castedValue)
+		// Decode into the value pointed to. The return is required: falling out
+		// of the switch reaches the scalar handling below, which would decode
+		// src a second time and fail with a type mismatch for any non-scalar
+		// source node.
+		return d.decodeValue(ctx, dst.Elem(), src)
 	case reflect.Interface:
 		if dst.Type() == astNodeType {
 			dst.Set(reflect.ValueOf(src))

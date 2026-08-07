@@ -4169,3 +4169,105 @@ func TestIssue735(t *testing.T) {
 		}
 	})
 }
+
+func TestIssue619(t *testing.T) {
+	type AppConfig struct {
+		Name string `yaml:"name"`
+		Port int    `yaml:"port"`
+	}
+	src := "name: foo\nport: 8080\n"
+	expected := AppConfig{Name: "foo", Port: 8080}
+
+	t.Run("decoder into pointer to nil pointer", func(t *testing.T) {
+		// Decoding into **T must allocate the inner pointer instead of
+		// silently leaving the caller's variable as nil.
+		var v *AppConfig
+		if err := yaml.NewDecoder(strings.NewReader(src)).Decode(&v); err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if v == nil {
+			t.Fatal("expected non-nil pointer, got nil")
+		}
+		if *v != expected {
+			t.Fatalf("unexpected value: %+v", *v)
+		}
+	})
+
+	t.Run("unmarshal into pointer to nil pointer", func(t *testing.T) {
+		var v *AppConfig
+		if err := yaml.Unmarshal([]byte(src), &v); err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if v == nil {
+			t.Fatal("expected non-nil pointer, got nil")
+		}
+		if *v != expected {
+			t.Fatalf("unexpected value: %+v", *v)
+		}
+	})
+
+	t.Run("unmarshal into pointer to allocated pointer", func(t *testing.T) {
+		// The existing pointer must be reused, not reported as a type mismatch.
+		v := new(AppConfig)
+		inner := v
+		if err := yaml.Unmarshal([]byte(src), &v); err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if v != inner {
+			t.Fatal("expected the pre-allocated pointer to be reused")
+		}
+		if *v != expected {
+			t.Fatalf("unexpected value: %+v", *v)
+		}
+	})
+
+	t.Run("unmarshal into pointer to nil scalar pointer", func(t *testing.T) {
+		var v *string
+		if err := yaml.Unmarshal([]byte("hello\n"), &v); err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if v == nil {
+			t.Fatal("expected non-nil pointer, got nil")
+		}
+		if *v != "hello" {
+			t.Fatalf("unexpected value: %q", *v)
+		}
+	})
+
+	t.Run("unmarshal into triple pointer", func(t *testing.T) {
+		var v **AppConfig
+		if err := yaml.Unmarshal([]byte(src), &v); err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if v == nil || *v == nil {
+			t.Fatal("expected fully allocated pointer chain")
+		}
+		if **v != expected {
+			t.Fatalf("unexpected value: %+v", **v)
+		}
+	})
+
+	t.Run("null document sets pointer to nil", func(t *testing.T) {
+		// A null source must still clear the pointer rather than allocate.
+		v := &AppConfig{Name: "keep"}
+		if err := yaml.Unmarshal([]byte("null\n"), &v); err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if v != nil {
+			t.Fatalf("expected nil pointer, got %+v", v)
+		}
+	})
+
+	t.Run("pointer to pointer implementing unmarshaler", func(t *testing.T) {
+		var v *unmarshalableYAMLStringValue
+		if err := yaml.Unmarshal([]byte("hello\n"), &v); err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if v == nil {
+			t.Fatal("expected non-nil pointer, got nil")
+		}
+		if *v != "hello" {
+			t.Fatalf("unexpected value: %q", string(*v))
+		}
+	})
+}

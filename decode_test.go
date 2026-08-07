@@ -4169,3 +4169,273 @@ func TestIssue735(t *testing.T) {
 		}
 	})
 }
+
+func TestIssue909(t *testing.T) {
+	type Config struct {
+		Data []byte `yaml:"data"`
+	}
+	// b64("foo") == "Zm9v"
+	const fooBinary = "data: !!binary Zm9v"
+
+	t.Run("reported case", func(t *testing.T) {
+		// This used to panic with a nil pointer dereference, because a []byte
+		// destination was sent to decodeSlice and the !!binary node is a scalar
+		// rather than a sequence.
+		var cfg Config
+		if err := yaml.Unmarshal([]byte(fooBinary), &cfg); err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if !bytes.Equal(cfg.Data, []byte("foo")) {
+			t.Fatalf("got %q, want %q", cfg.Data, "foo")
+		}
+	})
+
+	t.Run("map destination still works", func(t *testing.T) {
+		// The map case was already correct; it must stay that way.
+		var raw map[string]any
+		if err := yaml.Unmarshal([]byte(fooBinary), &raw); err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		got, ok := raw["data"].([]byte)
+		if !ok {
+			t.Fatalf("got %T, want []byte", raw["data"])
+		}
+		if !bytes.Equal(got, []byte("foo")) {
+			t.Fatalf("got %q, want %q", got, "foo")
+		}
+	})
+
+	t.Run("scalar spellings", func(t *testing.T) {
+		tests := []struct {
+			name   string
+			source string
+			want   []byte
+		}{
+			{name: "plain", source: "data: !!binary Zm9v", want: []byte("foo")},
+			{name: "single quoted", source: "data: !!binary 'Zm9v'", want: []byte("foo")},
+			{name: "double quoted", source: `data: !!binary "Zm9v"`, want: []byte("foo")},
+			{name: "literal block", source: "data: !!binary |\n  Zm9v", want: []byte("foo")},
+			{name: "folded block", source: "data: !!binary >\n  Zm9v", want: []byte("foo")},
+			{name: "padded", source: "data: !!binary Zm9vYg==", want: []byte("foob")},
+			{name: "empty string", source: `data: !!binary ""`, want: []byte{}},
+			{name: "flow mapping", source: "{data: !!binary Zm9v}", want: []byte("foo")},
+			{
+				name:   "multi line block",
+				source: "data: !!binary |\n  " + strings.Repeat("kJCQ", 17) + "kJ\n  CQ\n",
+				want:   bytes.Repeat([]byte{0x90}, 54),
+			},
+			{
+				// A high byte sequence that is not valid UTF-8, which is the
+				// reason to use !!binary rather than a plain string.
+				name:   "non utf8 bytes",
+				source: "data: !!binary gIGC\n",
+				want:   []byte{0x80, 0x81, 0x82},
+			},
+		}
+		for _, test := range tests {
+			t.Run(test.name, func(t *testing.T) {
+				var cfg Config
+				if err := yaml.Unmarshal([]byte(test.source), &cfg); err != nil {
+					t.Fatalf("unexpected error: %v", err)
+				}
+				if !bytes.Equal(cfg.Data, test.want) {
+					t.Fatalf("got %v, want %v", cfg.Data, test.want)
+				}
+			})
+		}
+	})
+
+	t.Run("empty binary tag stays the zero value", func(t *testing.T) {
+		var cfg Config
+		if err := yaml.Unmarshal([]byte("data: !!binary"), &cfg); err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if cfg.Data != nil {
+			t.Fatalf("got %v, want nil", cfg.Data)
+		}
+	})
+
+	t.Run("byte slice destinations", func(t *testing.T) {
+		t.Run("named type", func(t *testing.T) {
+			type Binary []byte
+			var v struct {
+				Data Binary `yaml:"data"`
+			}
+			if err := yaml.Unmarshal([]byte(fooBinary), &v); err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if !bytes.Equal(v.Data, Binary("foo")) {
+				t.Fatalf("got %q, want %q", v.Data, "foo")
+			}
+		})
+		t.Run("pointer to byte slice", func(t *testing.T) {
+			var v struct {
+				Data *[]byte `yaml:"data"`
+			}
+			if err := yaml.Unmarshal([]byte(fooBinary), &v); err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if v.Data == nil {
+				t.Fatal("expected a non nil pointer")
+			}
+			if !bytes.Equal(*v.Data, []byte("foo")) {
+				t.Fatalf("got %q, want %q", *v.Data, "foo")
+			}
+		})
+		t.Run("top level byte slice", func(t *testing.T) {
+			var v []byte
+			if err := yaml.Unmarshal([]byte("!!binary Zm9v"), &v); err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if !bytes.Equal(v, []byte("foo")) {
+				t.Fatalf("got %q, want %q", v, "foo")
+			}
+		})
+		t.Run("map with byte slice values", func(t *testing.T) {
+			var v map[string][]byte
+			if err := yaml.Unmarshal([]byte(fooBinary), &v); err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if !bytes.Equal(v["data"], []byte("foo")) {
+				t.Fatalf("got %q, want %q", v["data"], "foo")
+			}
+		})
+		t.Run("slice of byte slices", func(t *testing.T) {
+			var v struct {
+				Data [][]byte `yaml:"data"`
+			}
+			src := "data:\n  - !!binary Zm9v\n  - !!binary YmFy"
+			if err := yaml.Unmarshal([]byte(src), &v); err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if len(v.Data) != 2 {
+				t.Fatalf("got %d elements, want 2", len(v.Data))
+			}
+			if !bytes.Equal(v.Data[0], []byte("foo")) || !bytes.Equal(v.Data[1], []byte("bar")) {
+				t.Fatalf("got %q, want [foo bar]", v.Data)
+			}
+		})
+		t.Run("byte slice in a nested struct", func(t *testing.T) {
+			var v struct {
+				Items []Config `yaml:"items"`
+			}
+			src := "items:\n  - data: !!binary Zm9v\n  - data: !!binary YmFy"
+			if err := yaml.Unmarshal([]byte(src), &v); err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if len(v.Items) != 2 {
+				t.Fatalf("got %d items, want 2", len(v.Items))
+			}
+			if !bytes.Equal(v.Items[0].Data, []byte("foo")) || !bytes.Equal(v.Items[1].Data, []byte("bar")) {
+				t.Fatalf("got %q and %q, want foo and bar", v.Items[0].Data, v.Items[1].Data)
+			}
+		})
+	})
+
+	t.Run("through anchors and aliases", func(t *testing.T) {
+		t.Run("anchored binary", func(t *testing.T) {
+			var cfg Config
+			if err := yaml.Unmarshal([]byte("data: &d !!binary Zm9v"), &cfg); err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if !bytes.Equal(cfg.Data, []byte("foo")) {
+				t.Fatalf("got %q, want %q", cfg.Data, "foo")
+			}
+		})
+		t.Run("alias of a binary anchor", func(t *testing.T) {
+			var v struct {
+				Anchor []byte `yaml:"anchor"`
+				Data   []byte `yaml:"data"`
+			}
+			if err := yaml.Unmarshal([]byte("anchor: &d !!binary Zm9v\ndata: *d"), &v); err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if !bytes.Equal(v.Data, []byte("foo")) {
+				t.Fatalf("got %q, want %q", v.Data, "foo")
+			}
+		})
+	})
+
+	t.Run("non byte slice destinations are unaffected", func(t *testing.T) {
+		t.Run("string field still decodes the bytes", func(t *testing.T) {
+			var v struct {
+				Data string `yaml:"data"`
+			}
+			if err := yaml.Unmarshal([]byte(fooBinary), &v); err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if v.Data != "foo" {
+				t.Fatalf("got %q, want %q", v.Data, "foo")
+			}
+		})
+		t.Run("int slice is still rejected", func(t *testing.T) {
+			var v struct {
+				Data []int `yaml:"data"`
+			}
+			if err := yaml.Unmarshal([]byte(fooBinary), &v); err == nil {
+				t.Fatal("expected error, got nil")
+			}
+		})
+		t.Run("byte array is still rejected", func(t *testing.T) {
+			// [3]byte is an array rather than a slice, so it takes a different
+			// path. It must report an error instead of panicking.
+			var v struct {
+				Data [3]byte `yaml:"data"`
+			}
+			if err := yaml.Unmarshal([]byte(fooBinary), &v); err == nil {
+				t.Fatal("expected error, got nil")
+			}
+		})
+	})
+
+	t.Run("untagged values still decode as sequences", func(t *testing.T) {
+		t.Run("sequence into byte slice", func(t *testing.T) {
+			var cfg Config
+			if err := yaml.Unmarshal([]byte("data: [1, 2]"), &cfg); err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if !bytes.Equal(cfg.Data, []byte{1, 2}) {
+				t.Fatalf("got %v, want [1 2]", cfg.Data)
+			}
+		})
+		t.Run("plain scalar into byte slice is rejected", func(t *testing.T) {
+			var cfg Config
+			if err := yaml.Unmarshal([]byte("data: foo"), &cfg); err == nil {
+				t.Fatal("expected error, got nil")
+			}
+		})
+		t.Run("other tags into byte slice are rejected", func(t *testing.T) {
+			var cfg Config
+			if err := yaml.Unmarshal([]byte("data: !!str Zm9v"), &cfg); err == nil {
+				t.Fatal("expected error, got nil")
+			}
+		})
+	})
+
+	t.Run("binary map key returns an error instead of panicking", func(t *testing.T) {
+		// A []byte is not hashable, so reflect.Value.SetMapIndex panics rather
+		// than returning an error. Only an interface keyed map reaches this,
+		// since a concrete key type is converted before it is used.
+		var v map[any]any
+		if err := yaml.Unmarshal([]byte("!!binary Zm9v: value"), &v); err == nil {
+			t.Fatal("expected error, got nil")
+		}
+	})
+
+	t.Run("round trip", func(t *testing.T) {
+		// The encoder emits a byte slice as base64 with an explicit !!binary
+		// tag, so a value has to survive a marshal and unmarshal cycle.
+		want := Config{Data: []byte{0x80, 0x81, 0x82}}
+		out, err := yaml.Marshal(want)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		var got Config
+		if err := yaml.Unmarshal(out, &got); err != nil {
+			t.Fatalf("unexpected error decoding %q: %v", out, err)
+		}
+		if !bytes.Equal(got.Data, want.Data) {
+			t.Fatalf("got %v, want %v (encoded as %q)", got.Data, want.Data, out)
+		}
+	})
+}

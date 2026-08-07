@@ -954,6 +954,13 @@ func (d *Decoder) decodeValue(ctx context.Context, dst reflect.Value, src ast.No
 		if mapSlice, ok := dst.Addr().Interface().(*MapSlice); ok {
 			return d.decodeMapSlice(ctx, mapSlice, src)
 		}
+		// A `!!binary` node is a base64 encoded byte string, so it is already a
+		// byte slice rather than a sequence of nodes. Sending it to decodeSlice
+		// would hand it to getArrayNode, which unwraps the tag and finds a
+		// scalar where it requires an ast.ArrayNode (goccy/go-yaml#909).
+		if valueType.Elem().Kind() == reflect.Uint8 && d.isBinaryTagNode(src) {
+			return d.decodeBinary(ctx, dst, src)
+		}
 		return d.decodeSlice(ctx, dst, src)
 	case reflect.Struct:
 		if mapItem, ok := dst.Addr().Interface().(*MapItem); ok {
@@ -1570,6 +1577,48 @@ func (d *Decoder) decodeArray(ctx context.Context, dst reflect.Value, src ast.No
 	return nil
 }
 
+// isBinaryTagNode reports whether node carries an explicit `!!binary` tag,
+// looking through the anchor and alias wrappers that a tag can appear under.
+func (d *Decoder) isBinaryTagNode(node ast.Node) bool {
+	switch n := node.(type) {
+	case *ast.TagNode:
+		// A `%TAG` directive rebinds the handle onto a custom tag, so the text
+		// no longer denotes the reserved `!!binary`. nodeToValue does not decode
+		// base64 in that case either, so leave those nodes on the normal path.
+		if n.Directive != nil {
+			return false
+		}
+		return token.ReservedTagKeyword(n.Start.Value) == token.BinaryTag
+	case *ast.AnchorNode:
+		return d.isBinaryTagNode(n.Value)
+	case *ast.AliasNode:
+		return d.isBinaryTagNode(d.anchorNodeMap[n.Value.GetToken().Value])
+	}
+	return false
+}
+
+// decodeBinary decodes a `!!binary` node into a byte slice. nodeToValue already
+// performs the base64 decoding for this tag, which is why an `interface{}` or
+// `map[string]interface{}` destination has always produced the decoded bytes.
+func (d *Decoder) decodeBinary(ctx context.Context, dst reflect.Value, src ast.Node) error {
+	v, err := d.nodeToValue(ctx, src)
+	if err != nil {
+		return err
+	}
+	if v == nil {
+		// `!!binary` with no value; leave the destination at its zero value so
+		// this stays consistent with how a null is decoded elsewhere.
+		return nil
+	}
+	b, ok := v.([]byte)
+	if !ok {
+		return errors.ErrTypeMismatch(dst.Type(), reflect.TypeOf(v), src.GetToken())
+	}
+	// The destination may be a named type whose underlying type is []byte.
+	dst.Set(reflect.ValueOf(b).Convert(dst.Type()))
+	return nil
+}
+
 func (d *Decoder) decodeSlice(ctx context.Context, dst reflect.Value, src ast.Node) error {
 	d.stepIn()
 	defer d.stepOut()
@@ -1781,6 +1830,21 @@ func (d *Decoder) decodeMap(ctx context.Context, dst reflect.Value, src ast.Node
 		if keyType.Kind() != k.Kind() {
 			return errors.ErrSyntax(
 				fmt.Sprintf("cannot convert %q type to %q type", k.Kind(), keyType.Kind()),
+				key.GetToken(),
+			)
+		}
+		// An interface-keyed map accepts whatever concrete type the key decoded
+		// to, and SetMapIndex panics rather than returning an error if that type
+		// is not comparable. The dynamic type is the one that has to be checked,
+		// since the static interface type is always reported as comparable.
+		// `!!binary` reaches here as an unhashable []byte.
+		keyVal := k
+		if keyVal.Kind() == reflect.Interface && !keyVal.IsNil() {
+			keyVal = keyVal.Elem()
+		}
+		if !keyVal.Type().Comparable() {
+			return errors.ErrSyntax(
+				fmt.Sprintf("cannot use %q type as map key", keyVal.Type()),
 				key.GetToken(),
 			)
 		}

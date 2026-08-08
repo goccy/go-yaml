@@ -40,7 +40,7 @@ func TestSuites() ([]*TestSuite, error) {
 		if err != nil {
 			return err
 		}
-		name := strings.TrimPrefix(path, dir+"/")
+		name := strings.TrimPrefix(filepath.ToSlash(path), filepath.ToSlash(dir)+"/")
 		name = strings.TrimSuffix(name, "/"+filepath.Base(name))
 		if _, exists := testMap[name]; !exists {
 			testMap[name] = &TestSuite{}

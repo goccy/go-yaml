@@ -2177,3 +2177,23 @@ a: &anc !mytag
 func ptr[T any](v T) *T {
 	return &v
 }
+
+func TestEncoder_MergeKeyStringKey(t *testing.T) {
+	// A "<<" string map key must survive a Marshal -> Unmarshal round trip; it
+	// has to be quoted so it is not re-parsed as the merge-key indicator (#917).
+	v := map[string]any{"<<": "value"}
+	b, err := yaml.Marshal(v)
+	if err != nil {
+		t.Fatalf("failed to marshal: %v", err)
+	}
+	if !strings.Contains(string(b), `"<<"`) {
+		t.Fatalf("expected the merge-key string to be quoted, got: %q", string(b))
+	}
+	var got map[string]any
+	if err := yaml.Unmarshal(b, &got); err != nil {
+		t.Fatalf("failed to unmarshal %q: %v", string(b), err)
+	}
+	if got["<<"] != "value" {
+		t.Fatalf("round trip lost the \"<<\" key: %#v", got)
+	}
+}

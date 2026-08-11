@@ -682,6 +682,11 @@ func IsNeedQuoted(value string) bool {
 	if _, exists := reservedEncKeywordMap[value]; exists {
 		return true
 	}
+	// "<<" is the YAML merge-key indicator; emitting it unquoted would make it
+	// be re-parsed as a merge key instead of a plain string. See #917.
+	if value == "<<" {
+		return true
+	}
 	if isNumber(value) {
 		return true
 	}

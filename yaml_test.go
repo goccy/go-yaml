@@ -509,3 +509,32 @@ dynamicField:
 		}
 	})
 }
+
+func TestFormatError_StandardError(t *testing.T) {
+	stdErr := fmt.Errorf("simple error")
+	formatted := yaml.FormatError(stdErr, false, false)
+	if formatted != "simple error" {
+		t.Fatalf("expected %q, got %q", "simple error", formatted)
+	}
+}
+
+func TestYAMLToJSON_RoundTrip(t *testing.T) {
+	yml := []byte("name: test\nage: 20\n")
+	jsonBytes, err := yaml.YAMLToJSON(yml)
+	if err != nil {
+		t.Fatal(err)
+	}
+	jsonStr := string(jsonBytes)
+	if !strings.Contains(jsonStr, `"name"`) || !strings.Contains(jsonStr, `"test"`) || !strings.Contains(jsonStr, `20`) {
+		t.Fatalf("unexpected JSON: %s", jsonStr)
+	}
+
+	ymlBack, err := yaml.JSONToYAML(jsonBytes)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ymlStr := string(ymlBack)
+	if !strings.Contains(ymlStr, "name: test") || !strings.Contains(ymlStr, "age: 20") {
+		t.Fatalf("unexpected YAML: %s", ymlStr)
+	}
+}

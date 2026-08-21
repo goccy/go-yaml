@@ -585,6 +585,9 @@ func (d *DocumentNode) String() string {
 	if d.Body != nil {
 		doc = append(doc, d.Body.String())
 	}
+	if d.Comment != nil {
+		doc = append(doc, d.Comment.String())
+	}
 	if d.End != nil {
 		doc = append(doc, d.End.Value)
 	}

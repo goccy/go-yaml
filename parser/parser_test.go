@@ -1924,6 +1924,139 @@ foo:
 	}
 }
 
+func TestFlowMapWithComment(t *testing.T) {
+	tests := []struct {
+		name             string
+		yaml             string
+		expectedComments [][]string
+		expectedBody     string
+	}{
+		{
+			name: "comment on its own line inside flow mapping",
+			yaml: `{a: 1,
+  # comment
+  b: 2}`,
+			expectedComments: [][]string{{" comment"}},
+			expectedBody:     "{a: 1, b: 2}",
+		},
+		{
+			name: "inline comment before next entry inside flow mapping",
+			yaml: `{a: 1, # comment
+  b: 2}`,
+			expectedComments: [][]string{{" comment"}},
+			expectedBody:     "{a: 1, b: 2}",
+		},
+		{
+			name: "comment before first entry",
+			yaml: `{
+  # comment
+  a: 1}`,
+			expectedComments: [][]string{{" comment"}},
+			expectedBody:     "{a: 1}",
+		},
+		{
+			name: "comment after entry inside flow mapping",
+			yaml: `{a:1,
+  # comment
+}`,
+			expectedComments: [][]string{{" comment"}},
+			expectedBody:     "{a: 1}",
+		},
+		{
+			name: "comment on its own line in empty flow mapping",
+			yaml: `{
+  # comment
+}`,
+			expectedComments: [][]string{{" comment"}},
+			expectedBody:     "{}",
+		},
+		{
+			name: "comment after entry without trailing comma",
+			yaml: `{a: 1
+  # comment
+}`,
+			expectedComments: [][]string{{" comment"}},
+			expectedBody:     "{a: 1}",
+		},
+		{
+			name:             "comment after flow mapping",
+			yaml:             "{}\n# comment",
+			expectedComments: [][]string{{" comment"}},
+			expectedBody:     "{}",
+		},
+		{
+			name: "comment inside and after flow mapping results in two separate comment groups",
+			yaml: `{
+# comment1
+}
+# comment2`,
+			expectedComments: [][]string{{" comment2"}, {" comment1"}},
+			expectedBody:     "{}",
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			t.Run("ParseComments", func(t *testing.T) {
+				f, err := parser.ParseBytes([]byte(test.yaml), parser.ParseComments)
+				if err != nil {
+					t.Fatal(err)
+				}
+				if len(f.Docs) != 1 {
+					t.Fatal("failed to parse content")
+				}
+				comments := ast.Filter(ast.CommentType, f.Docs[0])
+				if len(comments) != len(test.expectedComments) {
+					t.Fatalf("failed to add comment to AST. got %d comments, want %d", len(comments), len(test.expectedComments))
+				}
+				for i, expected := range test.expectedComments {
+					group, ok := comments[i].(*ast.CommentGroupNode)
+					if !ok {
+						t.Fatalf("unexpected comment node type: %T", comments[i])
+					}
+					if len(group.Comments) != len(expected) {
+						t.Fatalf("unexpected number of comments. got %d, want %d", len(group.Comments), len(expected))
+					}
+					for j, want := range expected {
+						if got := group.Comments[j].Token.Value; got != want {
+							t.Fatalf("unexpected comment value. got %q, want %q", got, want)
+						}
+					}
+				}
+			})
+			t.Run("without ParseComments", func(t *testing.T) {
+				f, err := parser.ParseBytes([]byte(test.yaml), 0)
+				if err != nil {
+					t.Fatalf("failed to parse without ParseComments: %s", err)
+				}
+				comments := ast.Filter(ast.CommentType, f.Docs[0])
+				if len(comments) != 0 {
+					t.Fatalf("unexpected comment nodes. got %d, want 0", len(comments))
+				}
+				if got := f.Docs[0].Body.String(); got != test.expectedBody {
+					t.Fatalf("unexpected body. got %q, want %q", got, test.expectedBody)
+				}
+			})
+		})
+	}
+}
+
+func TestFlowMapRejectsLeadingComma(t *testing.T) {
+	tests := []struct {
+		name string
+		yaml string
+	}{
+		{name: "leading comma", yaml: `{, a: 1}`},
+		{name: "only comma", yaml: `{,}`},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			if _, err := parser.ParseBytes([]byte(test.yaml), parser.ParseComments); err == nil {
+				t.Fatal("failed to reject leading comma in flow mapping")
+			}
+		})
+	}
+}
+
 func TestNodePath(t *testing.T) {
 	yml := `
 a: # commentA

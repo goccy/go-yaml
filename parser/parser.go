@@ -150,7 +150,7 @@ func (p *parser) parseDocument(ctx *context, docGroup *TokenGroup) (*ast.Documen
 		return ast.Document(docGroup.RawToken(), nil), nil
 	}
 
-	body, err := p.parseDocumentBody(ctx.withGroup(&TokenGroup{
+	body, footComment, err := p.parseDocumentBody(ctx.withGroup(&TokenGroup{
 		Type:   TokenGroupDocumentBody,
 		Tokens: tokens,
 	}))
@@ -158,19 +158,30 @@ func (p *parser) parseDocument(ctx *context, docGroup *TokenGroup) (*ast.Documen
 		return nil, err
 	}
 	node := ast.Document(start, body)
+	if footComment != nil {
+		// this case: "{}\n# comment". If a comment exists after the document body,
+		// treat it as a comment for the document node.
+		footComment.SetPath(body.GetPath())
+		if err := node.SetComment(footComment); err != nil {
+			return nil, err
+		}
+	}
 	node.End = end
 	return node, nil
 }
 
-func (p *parser) parseDocumentBody(ctx *context) (ast.Node, error) {
+func (p *parser) parseDocumentBody(ctx *context) (ast.Node, *ast.CommentGroupNode, error) {
 	node, err := p.parseToken(ctx, ctx.currentToken())
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	if ctx.next() {
-		return nil, errors.ErrSyntax("value is not allowed in this context", ctx.currentToken().RawToken())
+		if ctx.isComment() {
+			return node, p.parseFootComment(ctx, 0), nil
+		}
+		return nil, nil, errors.ErrSyntax("value is not allowed in this context", ctx.currentToken().RawToken())
 	}
-	return node, nil
+	return node, nil, nil
 }
 
 func (p *parser) parseToken(ctx *context, tk *Token) (ast.Node, error) {
@@ -334,17 +345,32 @@ func (p *parser) parseFlowMap(ctx *context) (*ast.MappingNode, error) {
 	ctx.goNext() // skip MappingStart token
 
 	isFirst := true
+	headComment := p.parseHeadComment(ctx)
 	for ctx.next() {
 		tk := ctx.currentToken()
 		if tk.Type() == token.MappingEndType {
 			node.End = tk.RawToken()
 			break
 		}
+		if tk.Type() == token.CommentType {
+			// this case: "{a: 1,\n  # comment\n}". Comments on their own line
+			// are consumed and attached to the mapping node once it ends.
+			if cm := p.parseHeadComment(ctx); cm != nil {
+				headComment = cm
+			}
+			continue
+		}
 
 		var entryTk *Token
 		if tk.Type() == token.CollectEntryType {
+			if isFirst {
+				return nil, errors.ErrSyntax("expected mapping element, but found ','", tk.RawToken())
+			}
 			entryTk = tk
 			ctx.goNext()
+			if cm := p.parseHeadComment(ctx); cm != nil {
+				headComment = cm
+			}
 		} else if !isFirst {
 			return nil, errors.ErrSyntax("',' or '}' must be specified", tk.RawToken())
 		}
@@ -357,13 +383,14 @@ func (p *parser) parseFlowMap(ctx *context) (*ast.MappingNode, error) {
 		}
 
 		mapKeyTk := ctx.currentToken()
+		var mapValue *ast.MappingValueNode
 		switch mapKeyTk.GroupType() {
 		case TokenGroupMapKeyValue:
 			value, err := p.parseMapKeyValue(ctx.withGroup(mapKeyTk.Group), mapKeyTk.Group, entryTk)
 			if err != nil {
 				return nil, err
 			}
-			node.Values = append(node.Values, value)
+			mapValue = value
 			ctx.goNext()
 		case TokenGroupMapKey:
 			key, err := p.parseMapKey(ctx.withGroup(mapKeyTk.Group), mapKeyTk.Group)
@@ -377,11 +404,10 @@ func (p *parser) parseFlowMap(ctx *context) (*ast.MappingNode, error) {
 				if err != nil {
 					return nil, err
 				}
-				mapValue, err := newMappingValueNode(ctx, colonTk, entryTk, key, value)
+				mapValue, err = newMappingValueNode(ctx, colonTk, entryTk, key, value)
 				if err != nil {
 					return nil, err
 				}
-				node.Values = append(node.Values, mapValue)
 				ctx.goNext()
 			} else {
 				ctx.goNext()
@@ -392,11 +418,10 @@ func (p *parser) parseFlowMap(ctx *context) (*ast.MappingNode, error) {
 				if err != nil {
 					return nil, err
 				}
-				mapValue, err := newMappingValueNode(ctx, colonTk, entryTk, key, value)
+				mapValue, err = newMappingValueNode(ctx, colonTk, entryTk, key, value)
 				if err != nil {
 					return nil, err
 				}
-				node.Values = append(node.Values, mapValue)
 			}
 		default:
 			if !p.isFlowMapDelim(ctx.nextToken()) {
@@ -414,17 +439,32 @@ func (p *parser) parseFlowMap(ctx *context) (*ast.MappingNode, error) {
 			if err != nil {
 				return nil, err
 			}
-			mapValue, err := newMappingValueNode(ctx, mapKeyTk, entryTk, key, value)
+			mapValue, err = newMappingValueNode(ctx, mapKeyTk, entryTk, key, value)
 			if err != nil {
 				return nil, err
 			}
-			node.Values = append(node.Values, mapValue)
 			ctx.goNext()
 		}
+		if headComment != nil {
+			if err := setHeadComment(headComment, mapValue); err != nil {
+				return nil, err
+			}
+			headComment = nil
+		}
+		node.Values = append(node.Values, mapValue)
 		isFirst = false
 	}
 	if node.End == nil {
 		return nil, errors.ErrSyntax("could not find flow mapping end token '}'", node.Start)
+	}
+
+	if headComment != nil {
+		// this case: "{\n  # comment\n}" and "{\n  a: 1,\n  # comment\n}".
+		// If a comment exists before the mapping end token, treat it as a comment for the mapping node.
+		headComment.SetPath(node.GetPath())
+		if err := node.SetComment(headComment); err != nil {
+			return nil, err
+		}
 	}
 
 	// set line comment if exists. e.g.) } # comment

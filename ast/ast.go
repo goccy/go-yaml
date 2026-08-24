@@ -1436,8 +1436,14 @@ func (n *MappingValueNode) String() string {
 
 func (n *MappingValueNode) toString() string {
 	space := strings.Repeat(" ", n.Key.GetToken().Position.Column-1)
+	// Key with explicit '?' indicator requires the colon and value on a separate line.
+	// See https://github.com/goccy/go-yaml/issues/833
+	colonIndent := ""
+	if _, ok := n.Key.(*MappingKeyNode); ok {
+		colonIndent = "\n" + space
+	}
 	if checkLineBreak(n.Key.GetToken()) {
-		space = fmt.Sprintf("%s%s", "\n", space)
+		space = "\n" + space
 	}
 	keyIndentLevel := n.Key.GetToken().Position.IndentLevel
 	valueIndentLevel := n.Value.GetToken().Position.IndentLevel
@@ -1446,9 +1452,9 @@ func (n *MappingValueNode) toString() string {
 		value := n.Value.String()
 		if value == "" {
 			// implicit null value.
-			return fmt.Sprintf("%s%s:", space, n.Key.String())
+			return fmt.Sprintf("%s%s%s:", space, n.Key.String(), colonIndent)
 		}
-		return fmt.Sprintf("%s%s: %s", space, n.Key.String(), value)
+		return fmt.Sprintf("%s%s%s: %s", space, n.Key.String(), colonIndent, value)
 	} else if keyIndentLevel < valueIndentLevel && !n.IsFlowStyle {
 		valueStr := n.Value.String()
 		// For flow-style values indented on the next line, we need to add the proper indentation
@@ -1461,44 +1467,47 @@ func (n *MappingValueNode) toString() string {
 		}
 		if keyComment != nil {
 			return fmt.Sprintf(
-				"%s%s: %s\n%s",
+				"%s%s%s: %s\n%s",
 				space,
 				n.Key.stringWithoutComment(),
+				colonIndent,
 				keyComment.String(),
 				valueStr,
 			)
 		}
-		return fmt.Sprintf("%s%s:\n%s", space, n.Key.String(), valueStr)
+		return fmt.Sprintf("%s%s%s:\n%s", space, n.Key.String(), colonIndent, valueStr)
 	} else if m, ok := n.Value.(*MappingNode); ok && (m.IsFlowStyle || len(m.Values) == 0) {
-		return fmt.Sprintf("%s%s: %s", space, n.Key.String(), n.Value.String())
+		return fmt.Sprintf("%s%s%s: %s", space, n.Key.String(), colonIndent, n.Value.String())
 	} else if s, ok := n.Value.(*SequenceNode); ok && (s.IsFlowStyle || len(s.Values) == 0) {
-		return fmt.Sprintf("%s%s: %s", space, n.Key.String(), n.Value.String())
+		return fmt.Sprintf("%s%s%s: %s", space, n.Key.String(), colonIndent, n.Value.String())
 	} else if _, ok := n.Value.(*AnchorNode); ok {
-		return fmt.Sprintf("%s%s: %s", space, n.Key.String(), n.Value.String())
+		return fmt.Sprintf("%s%s%s: %s", space, n.Key.String(), colonIndent, n.Value.String())
 	} else if _, ok := n.Value.(*AliasNode); ok {
-		return fmt.Sprintf("%s%s: %s", space, n.Key.String(), n.Value.String())
+		return fmt.Sprintf("%s%s%s: %s", space, n.Key.String(), colonIndent, n.Value.String())
 	} else if _, ok := n.Value.(*TagNode); ok {
-		return fmt.Sprintf("%s%s: %s", space, n.Key.String(), n.Value.String())
+		return fmt.Sprintf("%s%s%s: %s", space, n.Key.String(), colonIndent, n.Value.String())
 	}
 
 	if keyComment != nil {
 		return fmt.Sprintf(
-			"%s%s: %s\n%s",
+			"%s%s%s: %s\n%s",
 			space,
 			n.Key.stringWithoutComment(),
+			colonIndent,
 			keyComment.String(),
 			n.Value.String(),
 		)
 	}
 	if m, ok := n.Value.(*MappingNode); ok && m.Comment != nil {
 		return fmt.Sprintf(
-			"%s%s: %s",
+			"%s%s%s: %s",
 			space,
 			n.Key.String(),
+			colonIndent,
 			strings.TrimLeft(n.Value.String(), " "),
 		)
 	}
-	return fmt.Sprintf("%s%s:\n%s", space, n.Key.String(), n.Value.String())
+	return fmt.Sprintf("%s%s%s:\n%s", space, n.Key.String(), colonIndent, n.Value.String())
 }
 
 // MapRange implements MapNode protocol

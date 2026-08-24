@@ -769,6 +769,141 @@ a:
 d: e
 `,
 		},
+		{
+			`
+? |
+    multi
+    line
+    key
+: value
+`, `
+? |
+    multi
+    line
+    key
+: value
+`,
+		},
+		{
+			`
+? key
+: value
+`, `
+? key
+: value
+`,
+		},
+		{
+			`
+? key
+`, `
+? key
+:
+`,
+		},
+		{
+			`
+? hello
+  world
+: value
+`, `
+? hello world
+: value
+`,
+		},
+		{
+			`
+? key
+: - a
+  - b
+`, `
+? key
+:
+  - a
+  - b
+`,
+		},
+		{
+			`
+? key
+:
+  a: 1
+  b: 2
+`, `
+? key
+:
+  a: 1
+  b: 2
+`,
+		},
+		{
+			`
+- ? key
+  : value
+- other
+`, `
+- ? key
+  : value
+- other
+`,
+		},
+		{
+			`
+top:
+  mid:
+    ? key
+    : value
+`, `
+top:
+  mid:
+    ? key
+    : value
+`,
+		},
+		{
+			`
+? key
+: &a value
+`, `
+? key
+: &a value
+`,
+		},
+		{
+			`
+? key
+: [1, 2]
+`, `
+? key
+: [1, 2]
+`,
+		},
+		{
+			`
+? key
+: |
+  text
+`, `
+? key
+: |
+  text
+`,
+		},
+		{
+			`
+? key
+:
+  - a: 1
+    b: 2
+  - c: 3
+`, `
+? key
+:
+  - a: 1
+    b: 2
+  - c: 3
+`,
+		},
 	}
 
 	for _, test := range tests {
@@ -1654,6 +1789,29 @@ a: #commentB
   # commentG
   - e # commentG
 # commentH
+`,
+		},
+		{
+			name: "explicit key with comment and block map value",
+			yaml: `
+? key # comment
+:
+  a: 1
+  b: 2
+`,
+		},
+		{
+			name: "explicit key with comment and block seq value",
+			yaml: `
+? key # comment
+: - 1
+  - 2
+`,
+			expected: `
+? key # comment
+:
+  - 1
+  - 2
 `,
 		},
 	}

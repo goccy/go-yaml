@@ -2,9 +2,11 @@ package printer_test
 
 import (
 	"fmt"
+	"strings"
 	"testing"
 
 	"github.com/goccy/go-yaml/lexer"
+	"github.com/goccy/go-yaml/parser"
 	"github.com/goccy/go-yaml/printer"
 )
 
@@ -220,4 +222,41 @@ text3: hello
 			}
 		})
 	}
+}
+
+func TestPrinter_PrintNode(t *testing.T) {
+	yml := `foo: bar
+num: 10
+`
+	f, err := parser.ParseBytes([]byte(yml), 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	node := f.Docs[0].Body
+
+	t.Run("without property funcs keeps plain node text", func(t *testing.T) {
+		var p printer.Printer
+		got := string(p.PrintNode(node))
+		want := fmt.Sprintf("%+v\n", node)
+		if got != want {
+			t.Fatalf("unexpected output: expect:[%s]\n actual:[%s]", want, got)
+		}
+	})
+
+	t.Run("property funcs colorize the whole tree", func(t *testing.T) {
+		var p printer.Printer
+		p.String = func() *printer.Property {
+			return &printer.Property{Prefix: "<s>", Suffix: "</s>"}
+		}
+		p.Number = func() *printer.Property {
+			return &printer.Property{Prefix: "<n>", Suffix: "</n>"}
+		}
+		got := string(p.PrintNode(node))
+		if !strings.Contains(got, "<s> bar</s>") {
+			t.Fatalf("string value was not colorized: %s", got)
+		}
+		if !strings.Contains(got, "<n> 10</n>") {
+			t.Fatalf("number value was not colorized: %s", got)
+		}
+	})
 }

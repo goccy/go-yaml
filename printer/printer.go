@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/goccy/go-yaml/ast"
+	"github.com/goccy/go-yaml/lexer"
 	"github.com/goccy/go-yaml/token"
 )
 
@@ -146,7 +147,24 @@ func (p *Printer) PrintTokens(tokens token.Tokens) string {
 
 // PrintNode create text from ast.Node
 func (p *Printer) PrintNode(node ast.Node) []byte {
+	// When any property function is configured the caller wants colorized
+	// output, but ast.Node only exposes its own token. Re-tokenize the node's
+	// text so PrintTokens can apply the per-token properties to the whole tree.
+	if node != nil && p.hasPropertyFunc() {
+		return []byte(p.PrintTokens(lexer.Tokenize(node.String())) + "\n")
+	}
 	return []byte(fmt.Sprintf("%+v\n", node))
+}
+
+// hasPropertyFunc reports whether any property function is set on the printer.
+func (p *Printer) hasPropertyFunc() bool {
+	return p.MapKey != nil ||
+		p.Anchor != nil ||
+		p.Alias != nil ||
+		p.Bool != nil ||
+		p.String != nil ||
+		p.Number != nil ||
+		p.Comment != nil
 }
 
 func (p *Printer) setDefaultColorSet() {

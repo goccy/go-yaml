@@ -577,6 +577,54 @@ func isNumber(value string) bool {
 	return num != nil
 }
 
+// hasDecimalExponent reports whether s is a base-10 number written in
+// scientific notation, e.g. "1e20", "1e+20", "1.5E-3". The mantissa may or may
+// not contain a decimal point. This is used so that exponent forms without a
+// mantissa dot (which strconv.ParseFloat accepts) are classified as floats
+// rather than falling through to the integer/octal cases. Callers must strip
+// any 0x/0o/0b prefix first so the exponent 'e' is not confused with a hex
+// digit.
+func hasDecimalExponent(s string) bool {
+	i := strings.IndexAny(s, "eE")
+	if i <= 0 || i == len(s)-1 {
+		// No exponent marker, nothing before it, or nothing after it.
+		return false
+	}
+	mantissa, exp := s[:i], s[i+1:]
+
+	// Mantissa: digits with at most one decimal point, at least one digit.
+	seenDigit := false
+	seenDot := false
+	for _, r := range mantissa {
+		switch {
+		case r >= '0' && r <= '9':
+			seenDigit = true
+		case r == '.':
+			if seenDot {
+				return false
+			}
+			seenDot = true
+		default:
+			return false
+		}
+	}
+	if !seenDigit {
+		return false
+	}
+
+	// Exponent: optional sign then at least one digit.
+	exp = strings.TrimPrefix(strings.TrimPrefix(exp, "+"), "-")
+	if exp == "" {
+		return false
+	}
+	for _, r := range exp {
+		if r < '0' || r > '9' {
+			return false
+		}
+	}
+	return true
+}
+
 func toNumber(value string) (*NumberValue, error) {
 	if len(value) == 0 {
 		return nil, nil
@@ -609,6 +657,13 @@ func toNumber(value string) (*NumberValue, error) {
 		normalized = strings.TrimPrefix(normalized, "0b")
 		base = 2
 		typ = NumberTypeBinary
+	case hasDecimalExponent(normalized):
+		// Scientific notation without a mantissa dot, e.g. "1e+20".
+		// strconv.ParseFloat accepts this even though dotCount == 0, so it
+		// must be classified as a float and not fall through to the octal or
+		// decimal-integer cases (which would reject it, mis-typing it as a
+		// plain string on decode).
+		typ = NumberTypeFloat
 	case strings.HasPrefix(normalized, "0") && len(normalized) > 1 && dotCount == 0:
 		base = 8
 		typ = NumberTypeOctet

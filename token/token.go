@@ -609,9 +609,6 @@ func toNumber(value string) (*NumberValue, error) {
 		normalized = strings.TrimPrefix(normalized, "0b")
 		base = 2
 		typ = NumberTypeBinary
-	case strings.HasPrefix(normalized, "0") && len(normalized) > 1 && dotCount == 0:
-		base = 8
-		typ = NumberTypeOctet
 	case dotCount == 1:
 		typ = NumberTypeFloat
 	default:

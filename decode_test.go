@@ -166,7 +166,7 @@ func TestDecoder(t *testing.T) {
 			value:  map[string]interface{}{"v": 685230},
 		},
 		{
-			source: "v: 02472256",
+			source: "v: 0o2472256",
 			value:  map[string]interface{}{"v": 685230},
 		},
 		{
@@ -180,6 +180,20 @@ func TestDecoder(t *testing.T) {
 		{
 			source: "v: +685_230",
 			value:  map[string]int{"v": 685230},
+		},
+		{
+			// https://github.com/goccy/go-yaml/issues/894
+			// A leading zero must not imply an octal base (YAML 1.2 core schema).
+			source: "v: 010",
+			value:  map[string]interface{}{"v": 10},
+		},
+		{
+			source: "v: -010",
+			value:  map[string]interface{}{"v": -10},
+		},
+		{
+			source: "v: 0o10",
+			value:  map[string]interface{}{"v": 8},
 		},
 
 		// Bools from spec

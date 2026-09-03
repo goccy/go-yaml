@@ -1464,6 +1464,43 @@ func TestDecoder_TypeConversionError(t *testing.T) {
 				t.Fatalf("expected error message: %s to contain: %s", err.Error(), msg)
 			}
 		})
+		t.Run("string to bool at nested struct", func(t *testing.T) {
+			type Leaf struct {
+				Flag bool
+			}
+			type Middle struct {
+				Leaf Leaf
+			}
+			type Top struct {
+				Middle Middle
+			}
+			var v Top
+			err := yaml.Unmarshal([]byte("middle:\n  leaf:\n    flag: str\n"), &v)
+			if err == nil {
+				t.Fatal("expected to error")
+			}
+			msg := "cannot unmarshal string into Go struct field Leaf.Flag of type bool"
+			if !strings.Contains(err.Error(), msg) {
+				t.Fatalf("expected error message: %s to contain: %s", err.Error(), msg)
+			}
+		})
+		t.Run("string to bool at struct in map", func(t *testing.T) {
+			type Vault struct {
+				SkipVerify bool `yaml:"skip_verify"`
+			}
+			type Config struct {
+				Vaults map[string]*Vault
+			}
+			var v Config
+			err := yaml.Unmarshal([]byte("vaults:\n  prod:\n    skip_verify: str\n"), &v)
+			if err == nil {
+				t.Fatal("expected to error")
+			}
+			msg := "cannot unmarshal string into Go struct field Vault.SkipVerify of type bool"
+			if !strings.Contains(err.Error(), msg) {
+				t.Fatalf("expected error message: %s to contain: %s", err.Error(), msg)
+			}
+		})
 	})
 	t.Run("type conversion for array", func(t *testing.T) {
 		t.Run("string to int", func(t *testing.T) {

@@ -1429,8 +1429,12 @@ func (d *Decoder) decodeStruct(ctx context.Context, dst reflect.Value, src ast.N
 			}
 			var te *errors.TypeError
 			if errors.As(err, &te) {
-				fieldName := fmt.Sprintf("%s.%s", structType.Name(), field.Name)
-				te.StructFieldName = &fieldName
+				// A nested struct has already named the field that failed;
+				// keep that name instead of replacing it with this field.
+				if te.StructFieldName == nil {
+					fieldName := fmt.Sprintf("%s.%s", structType.Name(), field.Name)
+					te.StructFieldName = &fieldName
+				}
 				foundErr = te
 			} else {
 				foundErr = err

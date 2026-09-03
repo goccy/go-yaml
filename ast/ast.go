@@ -1448,6 +1448,21 @@ func (n *MappingValueNode) toString() string {
 			// implicit null value.
 			return fmt.Sprintf("%s%s:", space, n.Key.String())
 		}
+		if keyComment != nil && keyIndentLevel < valueIndentLevel {
+			// the comment ends the key's line, so the value keeps its own line.
+			// ----
+			// key: # comment
+			//   value
+			valueSpace := strings.Repeat(" ", n.Value.GetToken().Position.Column-1)
+			return fmt.Sprintf(
+				"%s%s: %s\n%s%s",
+				space,
+				n.Key.stringWithoutComment(),
+				keyComment.String(),
+				valueSpace,
+				value,
+			)
+		}
 		return fmt.Sprintf("%s%s: %s", space, n.Key.String(), value)
 	} else if keyIndentLevel < valueIndentLevel && !n.IsFlowStyle {
 		valueStr := n.Value.String()

@@ -1573,6 +1573,22 @@ elem1:
 `,
 		},
 		{
+			name: "scalar value on the line after an inline key comment",
+			yaml: `
+key: # comment
+  value
+`,
+		},
+		{
+			name: "nested scalar value on the line after an inline key comment",
+			yaml: `
+a:
+  b: # comment
+    c
+d: e
+`,
+		},
+		{
 			name: "flow map with inline value comment",
 			yaml: `
 a:

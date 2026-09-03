@@ -1113,6 +1113,10 @@ merge:
 			},
 		},
 		{
+			source: "a: 1\nconfig: &config\n",
+			value:  map[string]any{"a": uint64(1), "config": nil},
+		},
+		{
 			source: `{a: &a c, *a : b}`,
 			value:  map[string]string{"a": "c", "c": "b"},
 		},

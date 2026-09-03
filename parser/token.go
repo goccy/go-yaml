@@ -308,14 +308,24 @@ func createAnchorAndAliasTokenGroups(tokens []*Token) ([]*Token, error) {
 			if i+1 >= len(tokens) {
 				return nil, errors.ErrSyntax("undefined anchor name", tk.RawToken())
 			}
-			if i+2 >= len(tokens) {
-				return nil, errors.ErrSyntax("undefined anchor value", tk.RawToken())
-			}
 			anchorName := &Token{
 				Group: &TokenGroup{
 					Type:   TokenGroupAnchorName,
 					Tokens: []*Token{tk, tokens[i+1]},
 				},
+			}
+			if i+2 >= len(tokens) {
+				// nothing follows the anchor name, so it anchors the implicit null node.
+				// ----
+				// key: &anchor<EOF>
+				ret = append(ret, &Token{
+					Group: &TokenGroup{
+						Type:   TokenGroupAnchor,
+						Tokens: []*Token{anchorName, createImplicitNullToken(tokens[i+1])},
+					},
+				})
+				i++
+				continue
 			}
 			valueTk := tokens[i+2]
 			if tk.Line() == valueTk.Line() && valueTk.Type() == token.SequenceEntryType {

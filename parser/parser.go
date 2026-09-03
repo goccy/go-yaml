@@ -755,7 +755,7 @@ func (p *parser) parseMapValue(ctx *context, key ast.MapKeyNode, colonTk *Token)
 		// next
 		group := &TokenGroup{
 			Type:   TokenGroupAnchor,
-			Tokens: []*Token{tk, ctx.createImplicitNullToken(tk)},
+			Tokens: []*Token{tk, createImplicitNullToken(tk)},
 		}
 		anchor, err := p.parseAnchor(ctx.withGroup(group), group)
 		if err != nil {
@@ -792,7 +792,7 @@ func (p *parser) parseMapValue(ctx *context, key ast.MapKeyNode, colonTk *Token)
 		// next
 		group := &TokenGroup{
 			Type:   TokenGroupAnchor,
-			Tokens: []*Token{tk, ctx.createImplicitNullToken(tk)},
+			Tokens: []*Token{tk, createImplicitNullToken(tk)},
 		}
 		anchor, err := p.parseAnchor(ctx.withGroup(group), group)
 		if err != nil {
@@ -984,7 +984,7 @@ func (p *parser) parseTag(ctx *context) (*ast.TagNode, error) {
 
 func (p *parser) parseTagValue(ctx *context, tagRawTk *token.Token, tk *Token) (ast.Node, error) {
 	if tk == nil {
-		return newNullNode(ctx, ctx.createImplicitNullToken(&Token{Token: tagRawTk}))
+		return newNullNode(ctx, createImplicitNullToken(&Token{Token: tagRawTk}))
 	}
 	switch token.ReservedTagKeyword(tagRawTk.Value) {
 	case token.MappingTag, token.SetTag:
@@ -1154,7 +1154,7 @@ func (p *parser) parseSequenceValue(ctx *context, seqTk *Token) (ast.Node, error
 		// -
 		group := &TokenGroup{
 			Type:   TokenGroupAnchor,
-			Tokens: []*Token{tk, ctx.createImplicitNullToken(tk)},
+			Tokens: []*Token{tk, createImplicitNullToken(tk)},
 		}
 		anchor, err := p.parseAnchor(ctx.withGroup(group), group)
 		if err != nil {
@@ -1191,7 +1191,7 @@ func (p *parser) parseSequenceValue(ctx *context, seqTk *Token) (ast.Node, error
 		// next
 		group := &TokenGroup{
 			Type:   TokenGroupAnchor,
-			Tokens: []*Token{tk, ctx.createImplicitNullToken(tk)},
+			Tokens: []*Token{tk, createImplicitNullToken(tk)},
 		}
 		anchor, err := p.parseAnchor(ctx.withGroup(group), group)
 		if err != nil {

@@ -119,14 +119,14 @@ func (p *Printer) PrintTokens(tokens token.Tokens) string {
 		lines := strings.Split(tk.Origin, "\n")
 		prop := p.property(tk)
 		if len(lines) == 1 {
-			line := prop.Prefix + lines[0] + prop.Suffix
 			if !started {
 				startLine()
 			}
-			out.WriteString(line)
+			out.WriteString(prop.Prefix)
+			out.WriteString(lines[0])
+			out.WriteString(prop.Suffix)
 		} else {
 			for idx, src := range lines {
-				line := prop.Prefix + src + prop.Suffix
 				if idx == 0 {
 					if !started {
 						startLine()
@@ -134,7 +134,9 @@ func (p *Printer) PrintTokens(tokens token.Tokens) string {
 				} else {
 					startLine()
 				}
-				out.WriteString(line)
+				out.WriteString(prop.Prefix)
+				out.WriteString(src)
+				out.WriteString(prop.Suffix)
 			}
 		}
 	}

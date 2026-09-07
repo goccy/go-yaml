@@ -242,6 +242,7 @@ func benchYAML(flow bool, n int) string {
 func BenchmarkPrintTokens_FlowStyle(b *testing.B) {
 	tokens := lexer.Tokenize(benchYAML(true, 8000))
 	var p printer.Printer
+	b.ReportAllocs()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		p.PrintTokens(tokens)
@@ -251,6 +252,7 @@ func BenchmarkPrintTokens_FlowStyle(b *testing.B) {
 func BenchmarkPrintTokens_BlockStyle(b *testing.B) {
 	tokens := lexer.Tokenize(benchYAML(false, 8000))
 	var p printer.Printer
+	b.ReportAllocs()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		p.PrintTokens(tokens)

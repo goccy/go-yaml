@@ -2,6 +2,7 @@ package printer_test
 
 import (
 	"fmt"
+	"strings"
 	"testing"
 
 	"github.com/goccy/go-yaml/lexer"
@@ -219,5 +220,41 @@ text3: hello
 				t.Fatalf("PrintErrorToken() got: %s\n want:%s\n", want, got)
 			}
 		})
+	}
+}
+
+func benchYAML(flow bool, n int) string {
+	var b strings.Builder
+	if flow {
+		b.WriteString("{")
+		for i := 0; i < n; i++ {
+			fmt.Fprintf(&b, "key%d: value%d, ", i, i)
+		}
+		b.WriteString("last: 1}\n")
+	} else {
+		for i := 0; i < n; i++ {
+			fmt.Fprintf(&b, "key%d: value%d\n", i, i)
+		}
+	}
+	return b.String()
+}
+
+func BenchmarkPrintTokens_FlowStyle(b *testing.B) {
+	tokens := lexer.Tokenize(benchYAML(true, 8000))
+	var p printer.Printer
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		p.PrintTokens(tokens)
+	}
+}
+
+func BenchmarkPrintTokens_BlockStyle(b *testing.B) {
+	tokens := lexer.Tokenize(benchYAML(false, 8000))
+	var p printer.Printer
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		p.PrintTokens(tokens)
 	}
 }

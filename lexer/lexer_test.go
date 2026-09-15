@@ -3292,3 +3292,13 @@ func TestTokenOffset(t *testing.T) {
 		}
 	})
 }
+
+func TestTokenize_UTF8BOM(t *testing.T) {
+	tokens := lexer.Tokenize("\ufeffa: 1\n")
+	if len(tokens) < 3 {
+		t.Fatalf("tokens: %d", len(tokens))
+	}
+	if tokens[0].Value != "a" {
+		t.Fatalf("first token %q, want a", tokens[0].Value)
+	}
+}

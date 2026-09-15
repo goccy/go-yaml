@@ -3346,6 +3346,48 @@ d: *a
 	}
 }
 
+func TestDecoder_UTF8BOM(t *testing.T) {
+	type doc struct {
+		A int `yaml:"a"`
+	}
+	src := []byte("\ufeffa: 1\n")
+
+	var v doc
+	if err := yaml.Unmarshal(src, &v); err != nil {
+		t.Fatal(err)
+	}
+	if v.A != 1 {
+		t.Fatalf("Unmarshal: %+v", v)
+	}
+
+	var m map[string]interface{}
+	if err := yaml.Unmarshal(src, &m); err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := m["a"]; !ok {
+		t.Fatalf("key a missing: %#v", m)
+	}
+	if _, ok := m["\ufeffa"]; ok {
+		t.Fatalf("BOM leaked into key: %#v", m)
+	}
+
+	var v2 doc
+	if err := yaml.NewDecoder(bytes.NewReader(src)).Decode(&v2); err != nil {
+		t.Fatal(err)
+	}
+	if v2.A != 1 {
+		t.Fatalf("Decoder: %+v", v2)
+	}
+
+	var v3 doc
+	if err := yaml.Unmarshal([]byte("a: 1\n"), &v3); err != nil {
+		t.Fatal(err)
+	}
+	if v3.A != 1 {
+		t.Fatalf("plain: %+v", v3)
+	}
+}
+
 func TestUnmarshalMapSliceParallel(t *testing.T) {
 	content := `
 steps:

@@ -1495,6 +1495,8 @@ func (s *Scanner) scan(ctx *Context) error {
 
 // Init prepares the scanner s to tokenize the text src by setting the scanner at the beginning of src.
 func (s *Scanner) Init(text string) {
+	// YAML 1.2 §5.2: a BOM at the start of a stream is an encoding signature, not content.
+	text = strings.TrimPrefix(text, "\uFEFF")
 	src := []rune(text)
 	s.source = src
 	s.sourcePos = 0

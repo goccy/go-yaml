@@ -1675,6 +1675,57 @@ a: #commentB
 	}
 }
 
+func TestCommentCRLFPositions(t *testing.T) {
+	src := "services:\r\n  test:\r\n#\r\n    container_name: abc"
+	expect := []struct {
+		value  string
+		path   string
+		line   int
+		column int
+	}{
+		{value: "services", path: "$.services", line: 1, column: 1},
+		{value: "test", path: "$.services.test", line: 2, column: 3},
+		{value: "container_name", path: "$.services.test.container_name", line: 4, column: 5},
+		{value: "abc", path: "$.services.test.container_name", line: 4, column: 21},
+	}
+	tests := []struct {
+		name string
+		mode parser.Mode
+	}{
+		{name: "without comments", mode: 0},
+		{name: "with comments", mode: parser.ParseComments},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			f, err := parser.ParseBytes([]byte(src), test.mode)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if len(f.Docs) != 1 {
+				t.Fatalf("expected one document, got:%d", len(f.Docs))
+			}
+			var capturer pathCapturer
+			ast.Walk(&capturer, f.Docs[0].Body)
+			var tokens []*token.Token
+			var paths []string
+			for i, nodeType := range capturer.orderedTypes {
+				if nodeType == ast.StringType {
+					tokens = append(tokens, capturer.orderedTokens[i])
+					paths = append(paths, capturer.orderedPaths[i])
+				}
+			}
+			if len(tokens) != len(expect) {
+				t.Fatalf("expected %d string nodes, got:%d", len(expect), len(tokens))
+			}
+			for i, tk := range tokens {
+				if tk.Value != expect[i].value || paths[i] != expect[i].path || tk.Position.Line != expect[i].line || tk.Position.Column != expect[i].column {
+					t.Errorf("expected:%+v got path:%s line:%d column:%d value:%q", expect[i], paths[i], tk.Position.Line, tk.Position.Column, tk.Value)
+				}
+			}
+		})
+	}
+}
+
 func TestCommentWithNull(t *testing.T) {
 	t.Run("same line", func(t *testing.T) {
 		content := `

@@ -758,8 +758,13 @@ func (s *Scanner) scanComment(ctx *Context) bool {
 		}
 		value := ctx.source(ctx.idx, ctx.idx+idx)
 		progress := len([]rune(value))
-		ctx.addToken(token.Comment(value, string(ctx.obuf), s.pos()))
+		pos := s.pos()
 		s.progressColumn(ctx, progress)
+		if c == '\r' && ctx.nextChar() == '\n' {
+			ctx.addOriginBuf('\n')
+			s.progressOnly(ctx, 1)
+		}
+		ctx.addToken(token.Comment(value, string(ctx.obuf), pos))
 		s.progressLine(ctx)
 		ctx.clear()
 		return true

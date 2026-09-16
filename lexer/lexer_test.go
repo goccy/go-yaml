@@ -3142,6 +3142,72 @@ b: 1`,
 				},
 			},
 		},
+		{
+			name: "comments with CRLF",
+			src:  "root:\r\n  first: # key \u00e9\r\n    \u00e9 # value\r\n  # between\r\n  second: last # eof",
+			expect: []testToken{
+				{
+					line:   1,
+					column: 1,
+					value:  "root",
+				},
+				{
+					line:   1,
+					column: 5,
+					value:  ":",
+				},
+				{
+					line:   2,
+					column: 3,
+					value:  "first",
+				},
+				{
+					line:   2,
+					column: 8,
+					value:  ":",
+				},
+				{
+					line:   2,
+					column: 10,
+					value:  " key \u00e9",
+				},
+				{
+					line:   3,
+					column: 5,
+					value:  "\u00e9",
+				},
+				{
+					line:   3,
+					column: 7,
+					value:  " value",
+				},
+				{
+					line:   4,
+					column: 3,
+					value:  " between",
+				},
+				{
+					line:   5,
+					column: 3,
+					value:  "second",
+				},
+				{
+					line:   5,
+					column: 9,
+					value:  ":",
+				},
+				{
+					line:   5,
+					column: 11,
+					value:  "last",
+				},
+				{
+					line:   5,
+					column: 16,
+					value:  " eof",
+				},
+			},
+		},
 	}
 
 	for _, tc := range tests {
@@ -3259,6 +3325,64 @@ a: |
 			got := lexer.Tokenize(test.src)
 			if got.InvalidToken() == nil {
 				t.Fatal("expected contains invalid token")
+			}
+		})
+	}
+}
+
+func TestCommentNewlines(t *testing.T) {
+	expect := []testToken{
+		{line: 1, column: 1, value: " a"},
+		{line: 2, column: 1, value: " b"},
+		{line: 3, column: 1, value: " c"},
+	}
+	tests := []struct {
+		name    string
+		src     string
+		origins []string
+	}{
+		{
+			name:    "lf",
+			src:     "# a\n# b\n# c\n",
+			origins: []string{"# a\n", "# b\n", "# c\n"},
+		},
+		{
+			name:    "crlf",
+			src:     "# a\r\n# b\r\n# c\r\n",
+			origins: []string{"# a\r\n", "# b\r\n", "# c\r\n"},
+		},
+		{
+			name:    "cr",
+			src:     "# a\r# b\r# c\r",
+			origins: []string{"# a\r", "# b\r", "# c\r"},
+		},
+		{
+			name:    "mixed",
+			src:     "# a\r\n# b\n# c\r",
+			origins: []string{"# a\r\n", "# b\n", "# c\r"},
+		},
+		{
+			name:    "eof",
+			src:     "# a\r\n# b\r# c",
+			origins: []string{"# a\r\n", "# b\r", "# c"},
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			tokens := lexer.Tokenize(test.src)
+			if len(tokens) != len(expect) {
+				t.Fatalf("Tokenize() token count mismatch, expected:%d got:%d", len(expect), len(tokens))
+			}
+			for i, tok := range tokens {
+				if tok.Type != token.CommentType {
+					t.Errorf("Tokenize()[%d] expected comment, got:%s", i, tok.Type)
+				}
+				if !tokenMatches(tok, expect[i]) {
+					t.Errorf("Tokenize()[%d] expected:%+v got line:%d column:%d value:%q", i, expect[i], tok.Position.Line, tok.Position.Column, tok.Value)
+				}
+				if tok.Origin != test.origins[i] {
+					t.Errorf("Tokenize()[%d] expected origin:%q got:%q", i, test.origins[i], tok.Origin)
+				}
 			}
 		})
 	}

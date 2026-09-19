@@ -1429,8 +1429,10 @@ func (d *Decoder) decodeStruct(ctx context.Context, dst reflect.Value, src ast.N
 			}
 			var te *errors.TypeError
 			if errors.As(err, &te) {
-				fieldName := fmt.Sprintf("%s.%s", structType.Name(), field.Name)
-				te.StructFieldName = &fieldName
+				if te.StructFieldName == nil {
+					fieldName := fmt.Sprintf("%s.%s", structType.Name(), field.Name)
+					te.StructFieldName = &fieldName
+				}
 				foundErr = te
 			} else {
 				foundErr = err

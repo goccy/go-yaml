@@ -1464,6 +1464,27 @@ func TestDecoder_TypeConversionError(t *testing.T) {
 				t.Fatalf("expected error message: %s to contain: %s", err.Error(), msg)
 			}
 		})
+		t.Run("string to bool in nested struct", func(t *testing.T) {
+			type Leaf struct {
+				Flag bool `yaml:"flag"`
+			}
+			type Middle struct {
+				Leaf Leaf `yaml:"leaf"`
+			}
+			type Top struct {
+				Middle Middle `yaml:"middle"`
+			}
+
+			var v Top
+			err := yaml.Unmarshal([]byte("middle:\n  leaf:\n    flag: yes\n"), &v)
+			if err == nil {
+				t.Fatal("expected to error")
+			}
+			msg := "cannot unmarshal string into Go struct field Leaf.Flag of type bool"
+			if !strings.Contains(err.Error(), msg) {
+				t.Fatalf("expected error message: %s to contain: %s", err.Error(), msg)
+			}
+		})
 	})
 	t.Run("type conversion for array", func(t *testing.T) {
 		t.Run("string to int", func(t *testing.T) {

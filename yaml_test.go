@@ -509,3 +509,33 @@ dynamicField:
 		}
 	})
 }
+
+func TestJSONRawMessageUnicodeEscape(t *testing.T) {
+	type unicodeEscapeJSONWrapper struct {
+		Value string          `json:"a"`
+		Raw   json.RawMessage `json:"b"`
+	}
+
+	data := []byte(`{
+  "a": "hello\u0026world",
+  "b": {
+    "c": "hello\u0026world"
+  }
+}`)
+
+	var wrapper unicodeEscapeJSONWrapper
+	if err := yaml.UnmarshalWithOptions(data, &wrapper, yaml.UseJSONUnmarshaler()); err != nil {
+		t.Fatal(err)
+	}
+	if wrapper.Value != "hello&world" {
+		t.Fatalf("unexpected value: %q", wrapper.Value)
+	}
+
+	var dynamic map[string]string
+	if err := json.Unmarshal(wrapper.Raw, &dynamic); err != nil {
+		t.Fatalf("failed to decode dynamic field: %v", err)
+	}
+	if dynamic["c"] != "hello&world" {
+		t.Fatalf("unexpected dynamic field value: %q", dynamic["c"])
+	}
+}

@@ -450,6 +450,9 @@ func (s *Scanner) scanDoubleQuote(ctx *Context) (*token.Token, error) {
 				} else {
 					progress = 3
 					codeNum := hexRunesToInt(src[idx+2 : idx+progress+1])
+					for _, r := range src[idx+1 : idx+progress+1] {
+						ctx.addOriginBuf(r)
+					}
 					value = append(value, rune(codeNum))
 				}
 			case 'u':
@@ -500,6 +503,9 @@ func (s *Scanner) scanDoubleQuote(ctx *Context) (*token.Token, error) {
 					codeNum = ((high - 0xD800) * 0x400) + (low - 0xDC00) + 0x10000
 					progress += 6
 				}
+				for _, r := range src[idx+1 : idx+progress+1] {
+					ctx.addOriginBuf(r)
+				}
 				value = append(value, rune(codeNum))
 			case 'U':
 				// \U00000000 style must have 9 characters at least.
@@ -513,6 +519,9 @@ func (s *Scanner) scanDoubleQuote(ctx *Context) (*token.Token, error) {
 				}
 				progress = 9
 				codeNum := hexRunesToInt(src[idx+2 : idx+10])
+				for _, r := range src[idx+1 : idx+progress+1] {
+					ctx.addOriginBuf(r)
+				}
 				value = append(value, rune(codeNum))
 			case '\n':
 				isFirstLineChar = true

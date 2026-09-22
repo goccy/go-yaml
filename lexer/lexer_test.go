@@ -3176,6 +3176,26 @@ b: 1`,
 	}
 }
 
+func TestTokenize_IndentLevelReturnsToRootAfterMultiLevelDedent(t *testing.T) {
+	tokens := lexer.Tokenize(`root:
+  level1:
+    level2:
+      level3:
+        level4: value
+top: value`)
+
+	for _, tk := range tokens {
+		if tk.Value != "top" {
+			continue
+		}
+		if tk.Position.IndentLevel != 0 {
+			t.Fatalf("expected top-level token indent level 0, got %d", tk.Position.IndentLevel)
+		}
+		return
+	}
+	t.Fatal("top-level token not found")
+}
+
 func TestInvalid(t *testing.T) {
 	tests := []struct {
 		name string

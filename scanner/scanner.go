@@ -43,7 +43,9 @@ type Scanner struct {
 	// prevLineIndentNum indicates the number of spaces used for indentation at previous line.
 	prevLineIndentNum int
 	// indentLevel indicates the level of indent depth. This value does not match the column value.
-	indentLevel            int
+	indentLevel int
+	indentNums  []int
+
 	isFirstCharAtLine      bool
 	isAnchor               bool
 	isAlias                bool
@@ -150,13 +152,16 @@ func (s *Scanner) newLineCount(src []rune) int {
 }
 
 func (s *Scanner) updateIndentLevel() {
-	if s.prevLineIndentNum < s.indentNum {
-		s.indentLevel++
-	} else if s.prevLineIndentNum > s.indentNum {
-		if s.indentLevel > 0 {
-			s.indentLevel--
-		}
+	if s.prevLineIndentNum == s.indentNum {
+		return
 	}
+	for len(s.indentNums) > 0 && s.indentNums[len(s.indentNums)-1] > s.indentNum {
+		s.indentNums = s.indentNums[:len(s.indentNums)-1]
+	}
+	if len(s.indentNums) == 0 || s.indentNums[len(s.indentNums)-1] < s.indentNum {
+		s.indentNums = append(s.indentNums, s.indentNum)
+	}
+	s.indentLevel = len(s.indentNums) - 1
 }
 
 func (s *Scanner) updateIndentState(ctx *Context) {
@@ -1510,6 +1515,7 @@ func (s *Scanner) clearState() {
 	s.prevLineIndentNum = 0
 	s.lastDelimColumn = 0
 	s.indentLevel = 0
+	s.indentNums = []int{0}
 	s.indentNum = 0
 }
 

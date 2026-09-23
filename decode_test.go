@@ -86,6 +86,30 @@ func TestDecoder(t *testing.T) {
 			value:  map[string]string{"v": " foo "},
 		},
 		{
+			source: "v: a\tb\n",
+			value:  map[string]string{"v": "a\tb"},
+		},
+		{
+			source: "v: a \t b\n",
+			value:  map[string]string{"v": "a \t b"},
+		},
+		{
+			source: "- a\tb\n",
+			value:  []string{"a\tb"},
+		},
+		{
+			source: "[a\tb]\n",
+			value:  []string{"a\tb"},
+		},
+		{
+			source: "{v: a\tb}\n",
+			value:  map[string]string{"v": "a\tb"},
+		},
+		{
+			source: "a\tb: c\n",
+			value:  map[string]string{"a\tb": "c"},
+		},
+		{
 			source: "v: false\n",
 			value:  map[string]bool{"v": false},
 		},

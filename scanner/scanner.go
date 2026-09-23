@@ -1468,6 +1468,9 @@ func (s *Scanner) scan(ctx *Context) error {
 				return err
 			}
 		case '\t':
+			if ctx.existsBuffer() && !s.isFirstCharAtLine {
+				break
+			}
 			if ctx.existsBuffer() && s.lastDelimColumn == 0 {
 				// tab indent for plain text (yaml-test-suite's spec-example-7-12-plain-lines).
 				s.indentNum++

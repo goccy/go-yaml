@@ -983,11 +983,12 @@ func (s *Scanner) scanMapDelim(ctx *Context) (bool, error) {
 	if s.startedFlowMapNum <= 0 && nc != ' ' && nc != '\t' && !s.isNewLineChar(nc) && !ctx.isNextEOS() {
 		return false, nil
 	}
-	if s.startedFlowMapNum > 0 && nc == '/' {
-		// like http://
-		return false, nil
-	}
 	if s.startedFlowMapNum > 0 {
+		// A colon in a plain scalar is content when followed by a non-space, non-flow character.
+		if ctx.existsBuffer() && nc != ' ' && nc != '\t' && !s.isNewLineChar(nc) &&
+			!ctx.isNextEOS() && !strings.ContainsRune(",[]{}", nc) {
+			return false, nil
+		}
 		tk := ctx.lastToken()
 		if tk != nil && tk.Type == token.MappingValueType {
 			return false, nil

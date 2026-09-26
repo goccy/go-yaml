@@ -3101,6 +3101,31 @@ a:
 	}
 }
 
+func TestDecoder_EmptyBlockScalarWithComment(t *testing.T) {
+	for _, header := range []string{"|", "|-", ">", ">-"} {
+		for _, blankLines := range []int{1, 2} {
+			source := "str: " + header + "\n" + strings.Repeat("\n", blankLines) + "# comment\n"
+			for _, preserveComments := range []bool{false, true} {
+				t.Run(fmt.Sprintf("%s/blankLines=%d/comments=%t", header, blankLines, preserveComments), func(t *testing.T) {
+					var value map[string]string
+					comments := yaml.CommentMap{}
+					var options []yaml.DecodeOption
+					if preserveComments {
+						options = append(options, yaml.CommentToMap(comments))
+					}
+					if err := yaml.UnmarshalWithOptions([]byte(source), &value, options...); err != nil {
+						t.Fatal(err)
+					}
+					want := map[string]string{"str": ""}
+					if !reflect.DeepEqual(value, want) {
+						t.Fatalf("got %#v, want %#v", value, want)
+					}
+				})
+			}
+		}
+	}
+}
+
 func TestDecoder_LiteralWithNewLine(t *testing.T) {
 	type A struct {
 		Node     string `yaml:"b"`

@@ -27,6 +27,36 @@ type Child struct {
 
 type TestString string
 
+func TestDecoder_FlowMapPlainKeyWithColon(t *testing.T) {
+	for _, test := range []struct {
+		source string
+		want   interface{}
+	}{
+		{`{hello:world: [a,b,c]}`, map[string]interface{}{"hello:world": []interface{}{"a", "b", "c"}}},
+		{`{a:b:c: value}`, map[string]interface{}{"a:b:c": "value"}},
+		{`{outer: {a:b: c}}`, map[string]interface{}{"outer": map[string]interface{}{"a:b": "c"}}},
+		{`[{a:b: c}]`, []interface{}{map[string]interface{}{"a:b": "c"}}},
+		{`{http://localhost:8080: value}`, map[string]interface{}{"http://localhost:8080": "value"}},
+		{`{a:1}`, map[string]interface{}{"a:1": nil}},
+		{`{a:"b"}`, map[string]interface{}{`a:"b"`: nil}},
+		{`{"key":value}`, map[string]interface{}{"key": "value"}},
+		{`{'key':value}`, map[string]interface{}{"key": "value"}},
+		{`{"key":/path}`, map[string]interface{}{"key": "/path"}},
+		{`{https://example.com: value}`, map[string]interface{}{"https://example.com": "value"}},
+		{`{a:, b: value}`, map[string]interface{}{"a": nil, "b": "value"}},
+	} {
+		t.Run(test.source, func(t *testing.T) {
+			var value interface{}
+			if err := yaml.Unmarshal([]byte(test.source), &value); err != nil {
+				t.Fatal(err)
+			}
+			if !reflect.DeepEqual(value, test.want) {
+				t.Fatalf("got %#v, want %#v", value, test.want)
+			}
+		})
+	}
+}
+
 func TestDecoder(t *testing.T) {
 	tests := []struct {
 		source string

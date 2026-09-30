@@ -378,8 +378,7 @@ func (d *Decoder) nodeToValue(ctx context.Context, node ast.Node) (any, error) {
 		}
 		switch token.ReservedTagKeyword(n.Start.Value) {
 		case token.TimestampTag:
-			t, _ := d.castToTime(ctx, n.Value)
-			return t, nil
+			return d.castToTime(ctx, n.Value)
 		case token.IntegerTag:
 			v, err := d.nodeToValue(ctx, n.Value)
 			if err != nil {
@@ -1244,7 +1243,7 @@ func (d *Decoder) castToTime(ctx context.Context, src ast.Node) (time.Time, erro
 		}
 		return t, nil
 	}
-	return time.Time{}, nil
+	return time.Time{}, errors.ErrSyntax(fmt.Sprintf("cannot unmarshal %q as a timestamp", s), src.GetToken())
 }
 
 func (d *Decoder) decodeTime(ctx context.Context, dst reflect.Value, src ast.Node) error {

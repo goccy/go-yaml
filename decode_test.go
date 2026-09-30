@@ -4169,3 +4169,32 @@ func TestIssue735(t *testing.T) {
 		}
 	})
 }
+
+func TestUnmarshalInvalidTimestamp(t *testing.T) {
+	var v map[string]time.Time
+	err := yaml.Unmarshal([]byte("v: not-a-date\n"), &v)
+	if err == nil {
+		t.Fatalf("invalid timestamp decoded as %v", v["v"])
+	}
+	if !strings.Contains(err.Error(), "not-a-date") {
+		t.Fatalf("error %q should name the input", err)
+	}
+	if !v["v"].IsZero() {
+		t.Fatalf("got %v", v["v"])
+	}
+
+	var tagged map[string]any
+	err = yaml.Unmarshal([]byte("v: !!timestamp not-a-date\n"), &tagged)
+	if err == nil {
+		t.Fatalf("!!timestamp decoded as %#v", tagged["v"])
+	}
+
+	err = yaml.Unmarshal([]byte("v: \"2015-01-01\"\n"), &v)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := time.Date(2015, 1, 1, 0, 0, 0, 0, time.UTC)
+	if !v["v"].Equal(want) {
+		t.Fatalf("quoted date: got %v", v["v"])
+	}
+}

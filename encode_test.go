@@ -2177,3 +2177,121 @@ a: &anc !mytag
 func ptr[T any](v T) *T {
 	return &v
 }
+
+func TestEncoder_ComplexMapKey(t *testing.T) {
+	type point struct {
+		X int
+		Z int
+	}
+	tests := []struct {
+		name   string
+		value  interface{}
+		expect string
+	}{
+		{
+			name: "sequence key",
+			value: yaml.MapSlice{
+				{Key: []string{"a", "b"}, Value: "v"},
+			},
+			expect: "? - a\n  - b\n: v\n",
+		},
+		{
+			name: "mapping key",
+			value: yaml.MapSlice{
+				{Key: map[string]string{"x": "a", "z": "b"}, Value: "v"},
+			},
+			expect: "? x: a\n  z: b\n: v\n",
+		},
+		{
+			name: "complex and scalar keys in one mapping",
+			value: yaml.MapSlice{
+				{Key: []string{"a"}, Value: "v1"},
+				{Key: "plain", Value: "v2"},
+			},
+			expect: "? - a\n: v1\nplain: v2\n",
+		},
+		{
+			name: "sequence value",
+			value: yaml.MapSlice{
+				{Key: []string{"a", "b"}, Value: []string{"x", "z"}},
+			},
+			expect: "? - a\n  - b\n:\n- x\n- z\n",
+		},
+		{
+			name:   "go map with array key",
+			value:  map[[2]string]string{{"a", "b"}: "v"},
+			expect: "? - a\n  - b\n: v\n",
+		},
+		{
+			name:   "go map with struct key",
+			value:  map[point]string{{X: 1, Z: 2}: "v"},
+			expect: "? x: 1\n  z: 2\n: v\n",
+		},
+		{
+			name: "nested in a mapping",
+			value: map[string]yaml.MapSlice{
+				"a": {{Key: []string{"x", "z"}, Value: "v"}},
+			},
+			expect: "a:\n  ? - x\n    - z\n  : v\n",
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			got, err := yaml.Marshal(test.value)
+			if err != nil {
+				t.Fatalf("%+v", err)
+			}
+			if string(got) != test.expect {
+				t.Fatalf("expected %q, got %q", test.expect, string(got))
+			}
+		})
+	}
+}
+
+func TestEncoder_ComplexMapKeyFlow(t *testing.T) {
+	got, err := yaml.MarshalWithOptions(
+		yaml.MapSlice{{Key: []string{"a", "b"}, Value: "v"}},
+		yaml.Flow(true),
+	)
+	if err != nil {
+		t.Fatalf("%+v", err)
+	}
+	var decoded yaml.MapSlice
+	if err := yaml.Unmarshal(got, &decoded); err != nil {
+		t.Fatalf("failed to decode %q: %+v", string(got), err)
+	}
+	expect := yaml.MapSlice{{Key: []interface{}{"a", "b"}, Value: "v"}}
+	if !reflect.DeepEqual(decoded, expect) {
+		t.Fatalf("expected %#v, got %#v (encoded as %q)", expect, decoded, string(got))
+	}
+}
+
+func TestEncoder_ComplexMapKeyRoundTrip(t *testing.T) {
+	sources := []string{
+		"? - a\n  - b\n: v\n",
+		"? x: a\n  y: b\n: v\n",
+		"? - a\n: v1\nplain: v2\n? - b\n  - c\n: v3\n",
+		"? - - a\n    - b\n  - c\n: v\n",
+		"? - a\n  - b\n:\n  - x\n  - y\n",
+		"a:\n  ? - x\n    - y\n  : v\n",
+	}
+	for _, src := range sources {
+		t.Run(strconv.Quote(src), func(t *testing.T) {
+			var first interface{}
+			if err := yaml.Unmarshal([]byte(src), &first); err != nil {
+				t.Fatalf("%+v", err)
+			}
+			encoded, err := yaml.Marshal(first)
+			if err != nil {
+				t.Fatalf("%+v", err)
+			}
+			var second interface{}
+			if err := yaml.Unmarshal(encoded, &second); err != nil {
+				t.Fatalf("failed to decode %q: %+v", string(encoded), err)
+			}
+			if !reflect.DeepEqual(first, second) {
+				t.Fatalf("round trip changed the value.\nencoded: %q\nfirst:  %#v\nsecond: %#v", string(encoded), first, second)
+			}
+		})
+	}
+}

@@ -225,6 +225,10 @@ func getIndentNumByFirstLineToken(tk *token.Token) int {
 		return defaultIndent
 	}
 
+	if tk.Type == token.MappingKeyType {
+		return defaultIndent
+	}
+
 	// key: value
 	//    ^
 	//   next
@@ -334,8 +338,12 @@ func (f *Formatter) formatMergeKey(n *ast.MergeKeyNode) string {
 }
 
 func (f *Formatter) formatMappingValue(n *ast.MappingValueNode) string {
+	key := f.origin(n.Key.GetToken()) + ":"
+	if mapKey, ok := n.Key.(*ast.MappingKeyNode); ok {
+		key = f.formatNode(mapKey) + f.origin(n.Start)
+	}
 	return f.formatCommentGroup(n.Comment) +
-		f.origin(n.Key.GetToken()) + ":" + f.formatCommentGroup(n.Key.GetComment()) + f.formatNode(n.Value) +
+		key + f.formatCommentGroup(n.Key.GetComment()) + f.formatNode(n.Value) +
 		f.formatCommentGroup(n.FootComment)
 }
 

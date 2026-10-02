@@ -116,6 +116,66 @@ func (d *Decoder) castToFloat(v interface{}) interface{} {
 	return 0
 }
 
+func validateGoMapKey(key reflect.Value, node ast.MapKeyNode) error {
+	v := key
+	if v.Kind() == reflect.Interface && !v.IsNil() {
+		v = v.Elem()
+	}
+	if !v.IsValid() || v.Type().Comparable() {
+		return nil
+	}
+	return errors.ErrSyntax(
+		fmt.Sprintf("cannot use a complex mapping key of type %s as a Go map key", v.Type()),
+		node.GetToken(),
+	)
+}
+
+func (d *Decoder) resolveKeyNode(node ast.Node) ast.Node {
+	switch n := node.(type) {
+	case *ast.MappingKeyNode:
+		return d.resolveKeyNode(n.Value)
+	case *ast.AnchorNode:
+		d.anchorNodeMap[n.Name.GetToken().Value] = n.Value
+		return d.resolveKeyNode(n.Value)
+	case *ast.TagNode:
+		return d.resolveKeyNode(n.Value)
+	case *ast.AliasNode:
+		target, exists := d.anchorNodeMap[n.Value.GetToken().Value]
+		if !exists {
+			return node
+		}
+		return d.resolveKeyNode(target)
+	}
+	return node
+}
+
+func (d *Decoder) isComplexMapKey(key ast.MapKeyNode) bool {
+	if _, ok := key.(*ast.MappingKeyNode); !ok {
+		return false
+	}
+	switch d.resolveKeyNode(key).(type) {
+	case *ast.SequenceNode, *ast.MappingNode, *ast.MappingValueNode:
+		return true
+	}
+	return false
+}
+
+func (d *Decoder) hasComplexMapKey(node *ast.MappingNode) bool {
+	for _, value := range node.Values {
+		if d.isComplexMapKey(value.Key) {
+			return true
+		}
+	}
+	return false
+}
+
+func (d *Decoder) mapKeyNodeToValue(ctx context.Context, node ast.MapKeyNode) (interface{}, error) {
+	if d.isComplexMapKey(node) {
+		return d.nodeToValue(ctx, d.resolveKeyNode(node))
+	}
+	return d.mapKeyNodeToString(ctx, node)
+}
+
 func (d *Decoder) mapKeyNodeToString(ctx context.Context, node ast.MapKeyNode) (string, error) {
 	key, err := d.nodeToValue(ctx, node)
 	if err != nil {
@@ -197,7 +257,7 @@ func (d *Decoder) setToOrderedMapValue(ctx context.Context, node ast.Node, m *Ma
 				}
 			}
 		} else {
-			key, err := d.mapKeyNodeToString(ctx, n.Key)
+			key, err := d.mapKeyNodeToValue(ctx, n.Key)
 			if err != nil {
 				return err
 			}
@@ -514,7 +574,7 @@ func (d *Decoder) nodeToValue(ctx context.Context, node ast.Node) (any, error) {
 		}
 		return map[string]interface{}{key: v}, nil
 	case *ast.MappingNode:
-		if d.useOrderedMap {
+		if d.useOrderedMap || d.hasComplexMapKey(n) {
 			m := make(MapSlice, 0, len(n.Values))
 			for _, value := range n.Values {
 				if err := d.setToOrderedMapValue(ctx, value, &m); err != nil {
@@ -1744,13 +1804,17 @@ func (d *Decoder) decodeMap(ctx context.Context, dst reflect.Value, src ast.Node
 			continue
 		}
 
+		var keyNode ast.Node = key
+		if d.isComplexMapKey(key) {
+			keyNode = d.resolveKeyNode(key)
+		}
 		k := d.createDecodableValue(keyType)
 		if d.canDecodeByUnmarshaler(k) {
-			if err := d.decodeByUnmarshaler(ctx, k, key); err != nil {
+			if err := d.decodeByUnmarshaler(ctx, k, keyNode); err != nil {
 				return err
 			}
 		} else {
-			keyVal, err := d.createDecodedNewValue(ctx, keyType, reflect.Value{}, key)
+			keyVal, err := d.createDecodedNewValue(ctx, keyType, reflect.Value{}, keyNode)
 			if err != nil {
 				return err
 			}
@@ -1758,6 +1822,9 @@ func (d *Decoder) decodeMap(ctx context.Context, dst reflect.Value, src ast.Node
 		}
 
 		if k.IsValid() {
+			if err := validateGoMapKey(k, key); err != nil {
+				return err
+			}
 			if err := d.validateDuplicateKey(keyMap, k.Interface(), key); err != nil {
 				return err
 			}

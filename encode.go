@@ -638,7 +638,6 @@ func (e *Encoder) encodeArray(ctx context.Context, value reflect.Value) (*ast.Se
 }
 
 func (e *Encoder) encodeMapItem(ctx context.Context, item MapItem, column int) (*ast.MappingValueNode, error) {
-	k := reflect.ValueOf(item.Key)
 	v := reflect.ValueOf(item.Value)
 	value, err := e.encodeValue(ctx, v, column)
 	if err != nil {
@@ -650,11 +649,35 @@ func (e *Encoder) encodeMapItem(ctx context.Context, item MapItem, column int) (
 	if e.isTagAndMapNode(value) {
 		value.AddColumn(e.indentNum)
 	}
+	key, err := e.encodeMapKey(ctx, item.Key, column)
+	if err != nil {
+		return nil, err
+	}
 	return ast.MappingValue(
 		token.New("", "", e.pos(column)),
-		e.encodeString(k.Interface().(string), column),
+		key,
 		value,
 	), nil
+}
+
+func (e *Encoder) encodeMapKey(ctx context.Context, key interface{}, column int) (ast.MapKeyNode, error) {
+	if str, ok := key.(string); ok {
+		return e.encodeString(str, column), nil
+	}
+	encoded, err := e.encodeValue(ctx, reflect.ValueOf(key), column)
+	if err != nil {
+		return nil, err
+	}
+	if keyNode, ok := encoded.(ast.MapKeyNode); ok {
+		if _, isMap := encoded.(ast.MapNode); !isMap {
+			if _, isSeq := encoded.(*ast.SequenceNode); !isSeq {
+				return keyNode, nil
+			}
+		}
+	}
+	mapKey := ast.MappingKey(token.New("?", "?", e.pos(column)))
+	mapKey.Value = encoded
+	return mapKey, nil
 }
 
 func (e *Encoder) encodeMapSlice(ctx context.Context, value MapSlice, column int) (*ast.MappingNode, error) {
@@ -713,9 +736,8 @@ func (e *Encoder) encodeMap(ctx context.Context, value reflect.Value, column int
 			encoded = anchorNode
 		}
 
-		kn, err := e.encodeValue(ctx, reflect.ValueOf(key), column)
-		keyNode, ok := kn.(ast.MapKeyNode)
-		if !ok || err != nil {
+		keyNode, err := e.encodeMapKey(ctx, key, column)
+		if err != nil {
 			keyNode = e.encodeString(fmt.Sprint(key), column)
 		}
 		node.Values = append(node.Values, ast.MappingValue(

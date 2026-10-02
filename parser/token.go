@@ -480,25 +480,70 @@ func createMapKeyTokenGroups(tokens []*Token) ([]*Token, error) {
 
 func createMapKeyByMappingKey(tokens []*Token) ([]*Token, error) {
 	ret := make([]*Token, 0, len(tokens))
+	var flowDepth int
 	for i := 0; i < len(tokens); i++ {
 		tk := tokens[i]
 		switch tk.Type() {
+		case token.SequenceStartType, token.MappingStartType:
+			flowDepth++
+		case token.SequenceEndType, token.MappingEndType:
+			flowDepth--
+		}
+		switch tk.Type() {
 		case token.MappingKeyType:
-			if i+1 >= len(tokens) {
-				return nil, errors.ErrSyntax("undefined map key", tk.RawToken())
+			keyTks, next := explicitMapKeyTokens(tokens, i, flowDepth > 0)
+			groupedKeyTks, err := createMapKeyTokenGroups(keyTks)
+			if err != nil {
+				return nil, err
 			}
 			ret = append(ret, &Token{
 				Group: &TokenGroup{
 					Type:   TokenGroupMapKey,
-					Tokens: []*Token{tk, tokens[i+1]},
+					Tokens: append([]*Token{tk}, createMapKeyValueTokenGroups(groupedKeyTks)...),
 				},
 			})
-			i++
+			i = next
 		default:
 			ret = append(ret, tk)
 		}
 	}
 	return ret, nil
+}
+
+func explicitMapKeyTokens(tokens []*Token, keyIdx int, inFlow bool) ([]*Token, int) {
+	keyTk := tokens[keyIdx]
+	col := keyTk.Column()
+	line := keyTk.Line()
+	var (
+		keyTks    []*Token
+		flowDepth int
+	)
+	i := keyIdx + 1
+	for ; i < len(tokens); i++ {
+		tk := tokens[i]
+		if flowDepth == 0 {
+			if inFlow {
+				switch tk.Type() {
+				case token.MappingValueType, token.CollectEntryType,
+					token.SequenceEndType, token.MappingEndType:
+					goto done
+				}
+			} else {
+				if tk.Line() != line && tk.Column() <= col {
+					goto done
+				}
+			}
+		}
+		switch tk.Type() {
+		case token.SequenceStartType, token.MappingStartType:
+			flowDepth++
+		case token.SequenceEndType, token.MappingEndType:
+			flowDepth--
+		}
+		keyTks = append(keyTks, tk)
+	}
+done:
+	return keyTks, i - 1
 }
 
 func createMapKeyByMappingValue(tokens []*Token) ([]*Token, error) {

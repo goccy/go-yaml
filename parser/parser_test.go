@@ -173,6 +173,110 @@ v:
 	}
 }
 
+func TestParseComplexMapKey(t *testing.T) {
+	tests := []struct {
+		name    string
+		src     string
+		keyType []ast.NodeType
+		expect  string
+	}{
+		{
+			name:    "block sequence",
+			src:     "? - a\n  - b\n: v\n",
+			keyType: []ast.NodeType{ast.SequenceType},
+			expect:  "? - a\n  - b\n: v",
+		},
+		{
+			name:    "flow sequence",
+			src:     "? [a, b]\n: v\n",
+			keyType: []ast.NodeType{ast.SequenceType},
+		},
+		{
+			name:    "block mapping",
+			src:     "? x: a\n  y: b\n: v\n",
+			keyType: []ast.NodeType{ast.MappingType, ast.MappingValueType},
+			expect:  "? x: a\n  y: b\n: v",
+		},
+		{
+			name:    "flow mapping",
+			src:     "? {x: a, y: b}\n: v\n",
+			keyType: []ast.NodeType{ast.MappingType, ast.MappingValueType},
+		},
+		{
+			name:    "block sequence value",
+			src:     "? - a\n  - b\n:\n  - x\n  - y\n",
+			keyType: []ast.NodeType{ast.SequenceType},
+			expect:  "? - a\n  - b\n:\n  - x\n  - y",
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			f, err := parser.ParseBytes([]byte(test.src), 0)
+			if err != nil {
+				t.Fatalf("%+v", err)
+			}
+			body, ok := f.Docs[0].Body.(*ast.MappingNode)
+			if !ok {
+				t.Fatalf("expected a mapping, got %T", f.Docs[0].Body)
+			}
+			if len(body.Values) != 1 {
+				t.Fatalf("expected one entry, got %d", len(body.Values))
+			}
+			key, ok := body.Values[0].Key.(*ast.MappingKeyNode)
+			if !ok {
+				t.Fatalf("expected an explicit key, got %T", body.Values[0].Key)
+			}
+			var matched bool
+			for _, typ := range test.keyType {
+				if key.Value.Type() == typ {
+					matched = true
+				}
+			}
+			if !matched {
+				t.Fatalf("expected key of type %v, got %s", test.keyType, key.Value.Type())
+			}
+			if test.expect == "" {
+				return
+			}
+			if got := strings.TrimSpace(f.String()); got != test.expect {
+				t.Fatalf("expected %q, got %q", test.expect, got)
+			}
+		})
+	}
+}
+
+func TestParseComplexMapKeyDistinctEntries(t *testing.T) {
+	src := "? [a, b]\n: v1\n? [a, c]\n: v2\n? {a: b}\n: v3\n"
+	f, err := parser.ParseBytes([]byte(src), 0)
+	if err != nil {
+		t.Fatalf("%+v", err)
+	}
+	body, ok := f.Docs[0].Body.(*ast.MappingNode)
+	if !ok {
+		t.Fatalf("expected a mapping, got %T", f.Docs[0].Body)
+	}
+	if len(body.Values) != 3 {
+		t.Fatalf("expected three entries, got %d", len(body.Values))
+	}
+}
+
+func TestParseComplexMapKeyWithoutValue(t *testing.T) {
+	f, err := parser.ParseBytes([]byte("? [a, b]\n"), 0)
+	if err != nil {
+		t.Fatalf("%+v", err)
+	}
+	body, ok := f.Docs[0].Body.(*ast.MappingNode)
+	if !ok {
+		t.Fatalf("expected a mapping, got %T", f.Docs[0].Body)
+	}
+	if len(body.Values) != 1 {
+		t.Fatalf("expected one entry, got %d", len(body.Values))
+	}
+	if _, ok := body.Values[0].Value.(*ast.NullNode); !ok {
+		t.Fatalf("expected a null value, got %T", body.Values[0].Value)
+	}
+}
+
 func TestParseEmptyDocument(t *testing.T) {
 	t.Run("empty document", func(t *testing.T) {
 		f, err := parser.ParseBytes([]byte(""), parser.ParseComments)

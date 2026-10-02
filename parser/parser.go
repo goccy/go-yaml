@@ -598,16 +598,20 @@ func (p *parser) parseMapKey(ctx *context, g *TokenGroup) (ast.MapKeyNode, error
 			return nil, err
 		}
 		ctx.goNext() // skip mapping key token
+		var value ast.Node
 		if ctx.isTokenNotFound() {
-			return nil, errors.ErrSyntax("could not find value for mapping key", mapKeyTk.RawToken())
+			value, err = newNullNode(ctx, ctx.addNullValueToken(mapKeyTk))
+		} else {
+			outerPathMap := p.pathMap
+			p.pathMap = make(map[string]ast.Node)
+			value, err = p.parseToken(ctx, ctx.currentToken())
+			p.pathMap = outerPathMap
 		}
-
-		scalar, err := p.parseScalarValue(ctx, ctx.currentToken())
 		if err != nil {
 			return nil, err
 		}
-		key.Value = scalar
-		keyText := p.mapKeyText(scalar)
+		key.Value = value
+		keyText := p.mapKeyText(value)
 		keyPath := ctx.withChild(keyText).path
 		key.SetPath(keyPath)
 		if err := p.validateMapKey(ctx, key.GetToken(), keyPath, g.Last()); err != nil {
@@ -714,6 +718,8 @@ func (p *parser) mapKeyText(n ast.Node) string {
 		return p.mapKeyText(nn.Value)
 	case *ast.AliasNode:
 		return ""
+	case *ast.SequenceNode, *ast.MappingNode, *ast.MappingValueNode:
+		return strings.Join(strings.Fields(nn.String()), " ")
 	}
 	return n.GetToken().Value
 }

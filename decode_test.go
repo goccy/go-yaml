@@ -4169,3 +4169,220 @@ func TestIssue735(t *testing.T) {
 		}
 	})
 }
+
+func TestDecoder_ComplexMapKey(t *testing.T) {
+	tests := []struct {
+		name   string
+		src    string
+		expect yaml.MapSlice
+	}{
+		{
+			name: "block sequence key",
+			src:  "? - a\n  - b\n: v\n",
+			expect: yaml.MapSlice{
+				{Key: []interface{}{"a", "b"}, Value: "v"},
+			},
+		},
+		{
+			name: "flow sequence key",
+			src:  "? [a, b]\n: v\n",
+			expect: yaml.MapSlice{
+				{Key: []interface{}{"a", "b"}, Value: "v"},
+			},
+		},
+		{
+			name: "block mapping key",
+			src:  "? x: a\n  y: b\n: v\n",
+			expect: yaml.MapSlice{
+				{Key: map[string]interface{}{"x": "a", "y": "b"}, Value: "v"},
+			},
+		},
+		{
+			name: "flow mapping key",
+			src:  "? {x: a, y: b}\n: v\n",
+			expect: yaml.MapSlice{
+				{Key: map[string]interface{}{"x": "a", "y": "b"}, Value: "v"},
+			},
+		},
+		{
+			name: "key without value",
+			src:  "? [a, b]\n",
+			expect: yaml.MapSlice{
+				{Key: []interface{}{"a", "b"}, Value: nil},
+			},
+		},
+		{
+			name: "complex and scalar keys in one mapping",
+			src:  "? [a]\n: v1\nplain: v2\n? - b\n: v3\n",
+			expect: yaml.MapSlice{
+				{Key: []interface{}{"a"}, Value: "v1"},
+				{Key: "plain", Value: "v2"},
+				{Key: []interface{}{"b"}, Value: "v3"},
+			},
+		},
+		{
+			name: "distinct keys with the same flattened text",
+			src:  "? [a, b]\n: v1\n? [a, c]\n: v2\n",
+			expect: yaml.MapSlice{
+				{Key: []interface{}{"a", "b"}, Value: "v1"},
+				{Key: []interface{}{"a", "c"}, Value: "v2"},
+			},
+		},
+		{
+			name: "nested sequence key",
+			src:  "? - [a, b]\n  - c\n: v\n",
+			expect: yaml.MapSlice{
+				{Key: []interface{}{[]interface{}{"a", "b"}, "c"}, Value: "v"},
+			},
+		},
+		{
+			name: "sequence value",
+			src:  "? [a, b]\n:\n  - x\n  - y\n",
+			expect: yaml.MapSlice{
+				{Key: []interface{}{"a", "b"}, Value: []interface{}{"x", "y"}},
+			},
+		},
+		{
+			name: "complex key in flow mapping",
+			src:  "{? [a, b]: v, c: d}\n",
+			expect: yaml.MapSlice{
+				{Key: []interface{}{"a", "b"}, Value: "v"},
+				{Key: "c", Value: "d"},
+			},
+		},
+		{
+			name: "same inner keys in different complex keys",
+			src:  "? {x: a}\n: v1\n? {x: b}\n: v2\nx: v3\n",
+			expect: yaml.MapSlice{
+				{Key: map[string]interface{}{"x": "a"}, Value: "v1"},
+				{Key: map[string]interface{}{"x": "b"}, Value: "v2"},
+				{Key: "x", Value: "v3"},
+			},
+		},
+		{
+			name: "anchored key",
+			src:  "? &k [a, b]\n: v\n",
+			expect: yaml.MapSlice{
+				{Key: []interface{}{"a", "b"}, Value: "v"},
+			},
+		},
+		{
+			name: "aliased key",
+			src:  "? &k [a, b]\n: v1\n? *k\n: v2\n",
+			expect: yaml.MapSlice{
+				{Key: []interface{}{"a", "b"}, Value: "v1"},
+				{Key: []interface{}{"a", "b"}, Value: "v2"},
+			},
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			var v interface{}
+			if err := yaml.Unmarshal([]byte(test.src), &v); err != nil {
+				t.Fatalf("%+v", err)
+			}
+			if !reflect.DeepEqual(v, test.expect) {
+				t.Fatalf("expected %#v, got %#v", test.expect, v)
+			}
+		})
+	}
+}
+
+func TestDecoder_ComplexMapKeyNested(t *testing.T) {
+	src := "a:\n  ? [x, y]\n  : v\nb:\n  - ? - p\n    : q\n"
+	var v interface{}
+	if err := yaml.Unmarshal([]byte(src), &v); err != nil {
+		t.Fatalf("%+v", err)
+	}
+	expect := map[string]interface{}{
+		"a": yaml.MapSlice{
+			{Key: []interface{}{"x", "y"}, Value: "v"},
+		},
+		"b": []interface{}{
+			yaml.MapSlice{
+				{Key: []interface{}{"p"}, Value: "q"},
+			},
+		},
+	}
+	if !reflect.DeepEqual(v, expect) {
+		t.Fatalf("expected %#v, got %#v", expect, v)
+	}
+}
+
+func TestDecoder_ComplexMapKeyToMapSlice(t *testing.T) {
+	var v yaml.MapSlice
+	if err := yaml.Unmarshal([]byte("? [a, b]\n: v\nplain: w\n"), &v); err != nil {
+		t.Fatalf("%+v", err)
+	}
+	expect := yaml.MapSlice{
+		{Key: []interface{}{"a", "b"}, Value: "v"},
+		{Key: "plain", Value: "w"},
+	}
+	if !reflect.DeepEqual(v, expect) {
+		t.Fatalf("expected %#v, got %#v", expect, v)
+	}
+}
+
+func TestDecoder_ComplexMapKeyToGoMap(t *testing.T) {
+	t.Run("array key", func(t *testing.T) {
+		var v map[[2]string]string
+		if err := yaml.Unmarshal([]byte("? [a, b]\n: v\n"), &v); err != nil {
+			t.Fatalf("%+v", err)
+		}
+		expect := map[[2]string]string{{"a", "b"}: "v"}
+		if !reflect.DeepEqual(v, expect) {
+			t.Fatalf("expected %#v, got %#v", expect, v)
+		}
+	})
+	t.Run("struct key", func(t *testing.T) {
+		type point struct {
+			X int
+			Z int
+		}
+		var v map[point]string
+		if err := yaml.Unmarshal([]byte("? {x: 1, z: 2}\n: v\n? x: 3\n  z: 4\n: w\n"), &v); err != nil {
+			t.Fatalf("%+v", err)
+		}
+		expect := map[point]string{{X: 1, Z: 2}: "v", {X: 3, Z: 4}: "w"}
+		if !reflect.DeepEqual(v, expect) {
+			t.Fatalf("expected %#v, got %#v", expect, v)
+		}
+	})
+	t.Run("unhashable key", func(t *testing.T) {
+		var v map[interface{}]string
+		if err := yaml.Unmarshal([]byte("? [a, b]\n: v\n"), &v); err == nil {
+			t.Fatalf("expected an error for a sequence key, got %#v", v)
+		}
+		if err := yaml.Unmarshal([]byte("? {a: b}\n: v\n"), &v); err == nil {
+			t.Fatalf("expected an error for a mapping key, got %#v", v)
+		}
+	})
+}
+
+type complexKeyDocument struct {
+	data []byte
+}
+
+func (d *complexKeyDocument) UnmarshalYAML(b []byte) error {
+	d.data = b
+	return nil
+}
+
+func TestDecoder_ComplexMapKeyInBytesUnmarshaler(t *testing.T) {
+	var v struct {
+		Foo complexKeyDocument `yaml:"foo"`
+	}
+	if err := yaml.Unmarshal([]byte("foo:\n  ? - a\n    - b\n  : v\n"), &v); err != nil {
+		t.Fatalf("%+v", err)
+	}
+	var got yaml.MapSlice
+	if err := yaml.Unmarshal(v.Foo.data, &got); err != nil {
+		t.Fatalf("failed to decode %q: %+v", v.Foo.data, err)
+	}
+	expect := yaml.MapSlice{
+		{Key: []interface{}{"a", "b"}, Value: "v"},
+	}
+	if !reflect.DeepEqual(got, expect) {
+		t.Fatalf("expected %#v, got %#v", expect, got)
+	}
+}

@@ -1343,6 +1343,37 @@ func (n *MappingKeyNode) stringWithoutComment() string {
 	return fmt.Sprintf("%s %s", n.Start.Value, n.Value.String())
 }
 
+func (n *MappingKeyNode) isComplex() bool {
+	switch v := n.Value.(type) {
+	case *SequenceNode:
+		return !v.IsFlowStyle && len(v.Values) != 0
+	case *MappingNode:
+		return !v.IsFlowStyle && len(v.Values) != 0
+	case *MappingValueNode:
+		return true
+	}
+	return false
+}
+
+func (n *MappingKeyNode) complexValueString() string {
+	indent := strings.Repeat(" ", n.Start.Position.Column+1)
+	valueLines := strings.Split(strings.TrimRight(n.Value.String(), "\n"), "\n")
+	base := len(valueLines[0]) - len(strings.TrimLeft(valueLines[0], " "))
+	lines := make([]string, 0, len(valueLines))
+	for i, line := range valueLines {
+		trimmed := line
+		for j := 0; j < base && strings.HasPrefix(trimmed, " "); j++ {
+			trimmed = trimmed[1:]
+		}
+		if i == 0 {
+			lines = append(lines, fmt.Sprintf("%s %s", n.Start.Value, trimmed))
+			continue
+		}
+		lines = append(lines, fmt.Sprintf("%s%s", indent, trimmed))
+	}
+	return strings.Join(lines, "\n")
+}
+
 // MarshalYAML encodes to a YAML text
 func (n *MappingKeyNode) MarshalYAML() ([]byte, error) {
 	return []byte(n.String()), nil
@@ -1434,10 +1465,37 @@ func (n *MappingValueNode) String() string {
 	return text
 }
 
+func (n *MappingValueNode) complexKeyToString(space string, key *MappingKeyNode) string {
+	keyStr := fmt.Sprintf("%s%s", space, key.complexValueString())
+	if scalar, ok := n.Value.(ScalarNode); ok {
+		value := scalar.String()
+		if value == "" {
+			return fmt.Sprintf("%s\n%s:", keyStr, space)
+		}
+		return fmt.Sprintf("%s\n%s: %s", keyStr, space, value)
+	}
+	switch v := n.Value.(type) {
+	case *SequenceNode:
+		if v.IsFlowStyle || len(v.Values) == 0 {
+			return fmt.Sprintf("%s\n%s: %s", keyStr, space, n.Value.String())
+		}
+	case *MappingNode:
+		if v.IsFlowStyle || len(v.Values) == 0 {
+			return fmt.Sprintf("%s\n%s: %s", keyStr, space, n.Value.String())
+		}
+	case *AnchorNode, *AliasNode, *TagNode:
+		return fmt.Sprintf("%s\n%s: %s", keyStr, space, n.Value.String())
+	}
+	return fmt.Sprintf("%s\n%s:\n%s", keyStr, space, n.Value.String())
+}
+
 func (n *MappingValueNode) toString() string {
 	space := strings.Repeat(" ", n.Key.GetToken().Position.Column-1)
 	if checkLineBreak(n.Key.GetToken()) {
 		space = fmt.Sprintf("%s%s", "\n", space)
+	}
+	if key, ok := n.Key.(*MappingKeyNode); ok && key.isComplex() {
+		return n.complexKeyToString(space, key)
 	}
 	keyIndentLevel := n.Key.GetToken().Position.IndentLevel
 	valueIndentLevel := n.Value.GetToken().Position.IndentLevel

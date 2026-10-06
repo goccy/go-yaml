@@ -150,6 +150,38 @@ func TestDecoder(t *testing.T) {
 			value:  map[string]interface{}{"v": 685.23015e+03},
 		},
 		{
+			source: "v: 1e3",
+			value:  map[string]interface{}{"v": float64(1000)},
+		},
+		{
+			source: "v: 1E3",
+			value:  map[string]interface{}{"v": float64(1000)},
+		},
+		{
+			source: "v: 1e+3",
+			value:  map[string]interface{}{"v": float64(1000)},
+		},
+		{
+			source: "v: -1e-3",
+			value:  map[string]interface{}{"v": float64(-0.001)},
+		},
+		{
+			source: "v: 5e0",
+			value:  map[string]interface{}{"v": float64(5)},
+		},
+		{
+			source: "v: 1e",
+			value:  map[string]interface{}{"v": "1e"},
+		},
+		{
+			source: "v: 1ee3",
+			value:  map[string]interface{}{"v": "1ee3"},
+		},
+		{
+			source: "v: 0x1e3",
+			value:  map[string]interface{}{"v": uint64(483)},
+		},
+		{
 			source: "v: 685_230.15",
 			value:  map[string]interface{}{"v": 685230.15},
 		},

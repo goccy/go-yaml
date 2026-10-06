@@ -577,6 +577,35 @@ func isNumber(value string) bool {
 	return num != nil
 }
 
+// hasExponent reports whether value is a mantissa of decimal digits followed by
+// an exponent part, such as "1e3" or "12E-4". A float does not need a fraction
+// part to carry an exponent in the YAML core schema, and this is only reached
+// after the 0x/0o/0b prefixes have been handled, so "0x1e3" never gets here.
+func hasExponent(value string) bool {
+	idx := strings.IndexAny(value, "eE")
+	if idx <= 0 || idx == len(value)-1 {
+		return false
+	}
+	mantissa := value[:idx]
+	exponent := value[idx+1:]
+	if exponent[0] == '+' || exponent[0] == '-' {
+		exponent = exponent[1:]
+	}
+	return isDecimalDigits(mantissa) && isDecimalDigits(exponent)
+}
+
+func isDecimalDigits(value string) bool {
+	if value == "" {
+		return false
+	}
+	for _, c := range value {
+		if c < '0' || c > '9' {
+			return false
+		}
+	}
+	return true
+}
+
 func toNumber(value string) (*NumberValue, error) {
 	if len(value) == 0 {
 		return nil, nil
@@ -613,6 +642,8 @@ func toNumber(value string) (*NumberValue, error) {
 		base = 8
 		typ = NumberTypeOctet
 	case dotCount == 1:
+		typ = NumberTypeFloat
+	case hasExponent(normalized):
 		typ = NumberTypeFloat
 	default:
 		typ = NumberTypeDecimal

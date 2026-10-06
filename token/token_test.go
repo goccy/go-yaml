@@ -138,6 +138,11 @@ func TestIsNeedQuoted(t *testing.T) {
 		"~",
 		"-",
 		"- --foo",
+		"1e3",
+		"1E3",
+		"1e+3",
+		"-1e-3",
+		"5e0",
 	}
 	for i, test := range needQuotedTests {
 		if !token.IsNeedQuoted(test) {

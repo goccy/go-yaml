@@ -318,6 +318,7 @@ func (s *Scanner) scanDoubleQuote(ctx *Context) (*token.Token, error) {
 	value := []rune{}
 	isFirstLineChar := false
 	isNewLine := false
+	literalTabBeforeClosingQuote := false
 
 	for idx := startIndex; idx < size; idx++ {
 		if !isNewLine {
@@ -566,7 +567,8 @@ func (s *Scanner) scanDoubleQuote(ctx *Context) (*token.Token, error) {
 			}
 			if foundNotSpaceChar {
 				value = append(value, c)
-				if src[idx+1] != '"' {
+				if src[idx+1] == '"' {
+					literalTabBeforeClosingQuote = true
 					s.progressColumn(ctx, 1)
 				}
 			} else {
@@ -579,7 +581,9 @@ func (s *Scanner) scanDoubleQuote(ctx *Context) (*token.Token, error) {
 			isFirstLineChar = false
 			continue
 		}
-		s.progressColumn(ctx, 1)
+		if !literalTabBeforeClosingQuote {
+			s.progressColumn(ctx, 1)
+		}
 		return token.DoubleQuote(string(value), string(ctx.obuf), srcpos), nil
 	}
 	s.progressColumn(ctx, 1)

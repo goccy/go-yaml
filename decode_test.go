@@ -1288,6 +1288,15 @@ c:
 			source: "42: 100",
 			value:  map[int]any{42: 100},
 		},
+		{
+			source: "a:\n  b: \"x\ty\"\n  c: y\n",
+			value: map[string]map[string]string{
+				"a": {
+					"b": "x\ty",
+					"c": "y",
+				},
+			},
+		},
 	}
 	for _, test := range tests {
 		t.Run(test.source, func(t *testing.T) {

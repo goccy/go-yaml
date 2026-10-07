@@ -2947,6 +2947,20 @@ three: "1 2 3 4
 			},
 		},
 		{
+			name: "double quote with literal tab",
+			src:  "a:\n  b: \"x\ty\"\n  c: y\n",
+			expect: []testToken{
+				{line: 1, column: 1, value: "a"},
+				{line: 1, column: 2, value: ":"},
+				{line: 2, column: 3, value: "b"},
+				{line: 2, column: 4, value: ":"},
+				{line: 2, column: 6, value: "x\ty"},
+				{line: 3, column: 3, value: "c"},
+				{line: 3, column: 4, value: ":"},
+				{line: 3, column: 6, value: "y"},
+			},
+		},
+		{
 			name: "single quote in an array",
 			src: `arr: ['1', 'and
 two']

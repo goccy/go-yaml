@@ -566,9 +566,6 @@ func (s *Scanner) scanDoubleQuote(ctx *Context) (*token.Token, error) {
 			}
 			if foundNotSpaceChar {
 				value = append(value, c)
-				if src[idx+1] != '"' {
-					s.progressColumn(ctx, 1)
-				}
 			} else {
 				idx += progress
 				s.progressColumn(ctx, progress)

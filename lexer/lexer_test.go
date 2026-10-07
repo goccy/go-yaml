@@ -2623,9 +2623,11 @@ s: >-3
 }
 
 type testToken struct {
-	line   int
-	column int
-	value  string
+	line      int
+	column    int
+	value     string
+	offset    int
+	hasOffset bool
 }
 
 func TestSingleLineToken_ValueLineColumnPosition(t *testing.T) {
@@ -2881,7 +2883,8 @@ func tokenMatches(t *token.Token, e testToken) bool {
 	return t != nil && t.Position != nil &&
 		t.Value == e.value &&
 		t.Position.Line == e.line &&
-		t.Position.Column == e.column
+		t.Position.Column == e.column &&
+		(!e.hasOffset || t.Position.Offset == e.offset)
 }
 
 func TestMultiLineToken_ValueLineColumnPosition(t *testing.T) {
@@ -2944,6 +2947,56 @@ three: "1 2 3 4
 					column: 8,
 					value:  "1 2 3 4 5",
 				},
+			},
+		},
+		{
+			name: "double quote with literal tab",
+			src:  "a:\n  b: \"x\ty\"\n  c: y\n",
+			expect: []testToken{
+				{line: 1, column: 1, value: "a"},
+				{line: 1, column: 2, value: ":"},
+				{line: 2, column: 3, value: "b"},
+				{line: 2, column: 4, value: ":"},
+				{line: 2, column: 6, value: "x\ty"},
+				{line: 3, column: 3, value: "c"},
+				{line: 3, column: 4, value: ":"},
+				{line: 3, column: 6, value: "y"},
+			},
+		},
+		{
+			name: "double quote with literal tab before closing quote",
+			src:  "\"x\t\"",
+			expect: []testToken{
+				{line: 1, column: 1, value: "x\t"},
+			},
+		},
+		{
+			name: "double quote with consecutive literal tabs",
+			src:  "\"x\t\t\"",
+			expect: []testToken{
+				{line: 1, column: 1, value: "x\t\t"},
+			},
+		},
+		{
+			name: "double quote with literal tab followed by comma",
+			src:  "[\"x\t\", y]",
+			expect: []testToken{
+				{line: 1, column: 1, value: "["},
+				{line: 1, column: 2, value: "x\t"},
+				{line: 1, column: 6, offset: 6, hasOffset: true, value: ","},
+				{line: 1, column: 8, value: "y"},
+				{line: 1, column: 9, value: "]"},
+			},
+		},
+		{
+			name: "double quote with internal literal tab followed by comma",
+			src:  "[\"x\ty\", z]",
+			expect: []testToken{
+				{line: 1, column: 1, value: "["},
+				{line: 1, column: 2, value: "x\ty"},
+				{line: 1, column: 7, offset: 7, hasOffset: true, value: ","},
+				{line: 1, column: 9, value: "z"},
+				{line: 1, column: 10, value: "]"},
 			},
 		},
 		{
@@ -3169,7 +3222,7 @@ b: 1`,
 			}
 			for i, tok := range got {
 				if !tokenMatches(tok, tc.expect[i]) {
-					t.Errorf("Tokenize() expected:%+v got line:%d column:%d value:%s", tc.expect[i], tok.Position.Line, tok.Position.Column, tok.Value)
+					t.Errorf("Tokenize() expected:%+v got line:%d column:%d offset:%d value:%s", tc.expect[i], tok.Position.Line, tok.Position.Column, tok.Position.Offset, tok.Value)
 				}
 			}
 		})
@@ -3199,6 +3252,10 @@ a: |invalid`,
 		{
 			name: "invalid double-quoted",
 			src:  `a: "\"key\": \"value:\"`,
+		},
+		{
+			name: "unterminated double quote ending in literal tab",
+			src:  "a: \"x\t",
 		},
 		{
 			name: "invalid document folded",

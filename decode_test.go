@@ -981,6 +981,10 @@ merge:
 			value:  map[string]string{"v": "hello\n...\nworld\n"},
 		},
 		{
+			source: "? \"k\"\n: |\n  v\n",
+			value:  map[string]string{"k": "v\n"},
+		},
+		{
 			source: "a: !!binary gIGC\n",
 			value:  map[string]string{"a": "\x80\x81\x82"},
 		},

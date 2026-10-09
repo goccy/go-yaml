@@ -50,8 +50,12 @@ type Scanner struct {
 	isDirective            bool
 	startedFlowSequenceNum int
 	startedFlowMapNum      int
-	indentState            IndentState
-	savedPos               *token.Position
+	// flowIndents is the block indent of each open flow collection.
+	// A plain scalar inside that collection folds across a line break when
+	// the next line keeps at least this indent. The key column is not the limit.
+	flowIndents []int
+	indentState IndentState
+	savedPos    *token.Position
 }
 
 func (s *Scanner) pos() *token.Position {
@@ -197,6 +201,59 @@ func (s *Scanner) updateIndent(ctx *Context, c rune) {
 
 func (s *Scanner) isChangedToIndentStateDown() bool {
 	return s.indentState == IndentStateDown
+}
+
+func (s *Scanner) pushFlowIndent() {
+	s.flowIndents = append(s.flowIndents, s.indentNum)
+}
+
+func (s *Scanner) popFlowIndent() {
+	if n := len(s.flowIndents); n > 0 {
+		s.flowIndents = s.flowIndents[:n-1]
+	}
+}
+
+// flowPlainContinues reports whether a plain scalar inside a flow collection
+// should absorb the current line instead of ending at the key column.
+// Continuation lines only have to stay at or past the enclosing block indent.
+// A line that is itself a new flow key still ends the scalar.
+func (s *Scanner) flowPlainContinues(ctx *Context, c rune) bool {
+	if !s.isFlowMode() || !ctx.existsBuffer() || len(s.flowIndents) == 0 {
+		return false
+	}
+	if s.indentNum < s.flowIndents[len(s.flowIndents)-1] {
+		return false
+	}
+	switch c {
+	case '\'', '"', '#', '!', '&', '*', '|', '>', '%', '@', '`', '?', ':':
+		return false
+	}
+	return !flowLineStartsKey(ctx)
+}
+
+// flowLineStartsKey reports whether the rest of this line is a flow mapping
+// key, which is a ':' followed by white space, a comment, or the end of the entry.
+func flowLineStartsKey(ctx *Context) bool {
+	src := ctx.src
+	for i := ctx.idx; i < len(src); i++ {
+		c := src[i]
+		if c == '\n' || c == '\r' {
+			return false
+		}
+		if c == ':' {
+			if i+1 >= len(src) {
+				return true
+			}
+			switch src[i+1] {
+			case ' ', '\t', '\n', '\r', '#', ',', '}', ']':
+				return true
+			}
+		}
+		if c == '{' || c == '}' || c == '[' || c == ']' || c == ',' || c == '#' {
+			return false
+		}
+	}
+	return false
 }
 
 func (s *Scanner) isChangedToIndentStateUp() bool {
@@ -915,6 +972,7 @@ func (s *Scanner) scanFlowMapStart(ctx *Context) bool {
 	ctx.addOriginBuf('{')
 	ctx.addToken(token.MappingStart(string(ctx.obuf), s.pos()))
 	s.startedFlowMapNum++
+	s.pushFlowIndent()
 	s.progressColumn(ctx, 1)
 	ctx.clear()
 	return true
@@ -929,6 +987,7 @@ func (s *Scanner) scanFlowMapEnd(ctx *Context) bool {
 	ctx.addOriginBuf('}')
 	ctx.addToken(token.MappingEnd(string(ctx.obuf), s.pos()))
 	s.startedFlowMapNum--
+	s.popFlowIndent()
 	s.progressColumn(ctx, 1)
 	ctx.clear()
 	return true
@@ -943,6 +1002,7 @@ func (s *Scanner) scanFlowArrayStart(ctx *Context) bool {
 	ctx.addOriginBuf('[')
 	ctx.addToken(token.SequenceStart(string(ctx.obuf), s.pos()))
 	s.startedFlowSequenceNum++
+	s.pushFlowIndent()
 	s.progressColumn(ctx, 1)
 	ctx.clear()
 	return true
@@ -957,6 +1017,7 @@ func (s *Scanner) scanFlowArrayEnd(ctx *Context) bool {
 	ctx.addOriginBuf(']')
 	ctx.addToken(token.SequenceEnd(string(ctx.obuf), s.pos()))
 	s.startedFlowSequenceNum--
+	s.popFlowIndent()
 	s.progressColumn(ctx, 1)
 	ctx.clear()
 	return true
@@ -1332,7 +1393,10 @@ func (s *Scanner) scan(ctx *Context) error {
 		s.updateIndent(ctx, c)
 
 		// If IndentState is down, tokens are split, so the buffer accumulated until that point needs to be cutted as a token.
-		if s.isChangedToIndentStateDown() {
+		// Inside a flow collection a plain scalar folds through a line break when the
+		// next line stays at the enclosing block indent. Literal and folded block
+		// scalars still end on an indent drop.
+		if s.isChangedToIndentStateDown() && (ctx.isMultiLine() || !s.flowPlainContinues(ctx, c)) {
 			s.addBufferedTokenIfExists(ctx)
 		}
 		if ctx.isMultiLine() {
@@ -1511,6 +1575,7 @@ func (s *Scanner) clearState() {
 	s.lastDelimColumn = 0
 	s.indentLevel = 0
 	s.indentNum = 0
+	s.flowIndents = nil
 }
 
 // Scan scans the next token and returns the token collection. The source end is indicated by io.EOF.

@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/goccy/go-yaml"
+	"github.com/goccy/go-yaml/ast"
 	"github.com/goccy/go-yaml/parser"
 )
 
@@ -506,6 +507,56 @@ dynamicField:
 		}
 		if !unmarshaledDynamicFieldValue.Equals(expectedDynamicFieldValue) {
 			t.Fatalf("unexpected unmarshaled dynamic field value: %v", unmarshaledDynamicFieldValue)
+		}
+	})
+}
+
+func TestValueToNode_HashWithoutWhitespace(t *testing.T) {
+	tests := []struct {
+		input    string
+		expected string
+	}{
+		{input: "SECRET/!@#", expected: "SECRET/!@#"},
+		{input: "foo#bar", expected: "foo#bar"},
+		{input: "c#", expected: "c#"},
+	}
+	for _, tc := range tests {
+		node, err := yaml.ValueToNode(tc.input)
+		if err != nil {
+			t.Fatalf("unexpected error for %q: %v", tc.input, err)
+		}
+		strNode, ok := node.(*ast.StringNode)
+		if !ok {
+			t.Fatalf("expected *ast.StringNode for %q, got %T", tc.input, node)
+		}
+		if strNode.Value != tc.expected {
+			t.Fatalf("expected %q, got %q", tc.expected, strNode.Value)
+		}
+	}
+}
+
+func TestMarshal_HashWithoutWhitespace(t *testing.T) {
+	t.Run("map key with hash is quoted", func(t *testing.T) {
+		m := map[string]string{"foo#bar": "value"}
+		b, err := yaml.Marshal(m)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		expected := "\"foo#bar\": value\n"
+		if string(b) != expected {
+			t.Fatalf("expected %q, got %q", expected, string(b))
+		}
+	})
+
+	t.Run("scalar value with hash is not quoted", func(t *testing.T) {
+		m := map[string]string{"key": "foo#bar"}
+		b, err := yaml.Marshal(m)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		expected := "key: foo#bar\n"
+		if string(b) != expected {
+			t.Fatalf("expected %q, got %q", expected, string(b))
 		}
 	})
 }

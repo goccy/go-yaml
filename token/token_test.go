@@ -138,6 +138,7 @@ func TestIsNeedQuoted(t *testing.T) {
 		"~",
 		"-",
 		"- --foo",
+		"hoge\t# comment",
 	}
 	for i, test := range needQuotedTests {
 		if !token.IsNeedQuoted(test) {
@@ -149,6 +150,9 @@ func TestIsNeedQuoted(t *testing.T) {
 		// time.Parse cannot handle: "2001-12-14 21:59:43.10 -5" from the examples.
 		// https://yaml.org/type/timestamp.html
 		"2001-12-14 21:59:43.10 -5",
+		"SECRET/!@#",
+		"foo#bar",
+		"c#",
 	}
 	for i, test := range notNeedQuotedTests {
 		if token.IsNeedQuoted(test) {

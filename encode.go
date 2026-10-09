@@ -587,6 +587,24 @@ func (e *Encoder) isNeedQuoted(v string) bool {
 	return false
 }
 
+func (e *Encoder) isNeedQuotedMapKey(v string) bool {
+	if strings.Contains(v, "#") {
+		return true
+	}
+	return e.isNeedQuoted(v)
+}
+
+func (e *Encoder) encodeMapKey(v string, column int) *ast.StringNode {
+	if e.isNeedQuotedMapKey(v) {
+		if e.singleQuote {
+			v = quoteWith(v, '\'')
+		} else {
+			v = strconv.Quote(v)
+		}
+	}
+	return ast.String(token.New(v, v, e.pos(column)))
+}
+
 func (e *Encoder) encodeString(v string, column int) *ast.StringNode {
 	if e.isNeedQuoted(v) {
 		if e.singleQuote {
@@ -652,7 +670,7 @@ func (e *Encoder) encodeMapItem(ctx context.Context, item MapItem, column int) (
 	}
 	return ast.MappingValue(
 		token.New("", "", e.pos(column)),
-		e.encodeString(k.Interface().(string), column),
+		e.encodeMapKey(k.Interface().(string), column),
 		value,
 	), nil
 }
@@ -713,10 +731,16 @@ func (e *Encoder) encodeMap(ctx context.Context, value reflect.Value, column int
 			encoded = anchorNode
 		}
 
-		kn, err := e.encodeValue(ctx, reflect.ValueOf(key), column)
-		keyNode, ok := kn.(ast.MapKeyNode)
-		if !ok || err != nil {
-			keyNode = e.encodeString(fmt.Sprint(key), column)
+		var keyNode ast.MapKeyNode
+		if reflect.ValueOf(key).Kind() == reflect.String {
+			keyNode = e.encodeMapKey(fmt.Sprint(key), column)
+		} else {
+			kn, err := e.encodeValue(ctx, reflect.ValueOf(key), column)
+			var ok bool
+			keyNode, ok = kn.(ast.MapKeyNode)
+			if !ok || err != nil {
+				keyNode = e.encodeMapKey(fmt.Sprint(key), column)
+			}
 		}
 		node.Values = append(node.Values, ast.MappingValue(
 			nil,
@@ -913,7 +937,7 @@ func (e *Encoder) encodeStruct(ctx context.Context, value reflect.Value, column 
 		if e.isMapNode(encoded) {
 			encoded.AddColumn(e.indentNum)
 		}
-		var key ast.MapKeyNode = e.encodeString(sf.RenderName, column)
+		var key ast.MapKeyNode = e.encodeMapKey(sf.RenderName, column)
 		switch {
 		case encoded.Type() == ast.AliasType:
 			if aliasName := sf.AliasName; aliasName != "" {

@@ -167,6 +167,27 @@ func (p *parser) parseDocumentBody(ctx *context) (ast.Node, error) {
 	if err != nil {
 		return nil, err
 	}
+	if ctx.isComment() {
+		footComment := p.parseFootComment(ctx, 0)
+		switch n := node.(type) {
+		case *ast.SequenceNode:
+			if n.FootComment != nil {
+				n.FootComment.Comments = append(n.FootComment.Comments, footComment.Comments...)
+			} else {
+				n.FootComment = footComment
+			}
+		case *ast.MappingNode:
+			if n.FootComment != nil {
+				n.FootComment.Comments = append(n.FootComment.Comments, footComment.Comments...)
+			} else {
+				n.FootComment = footComment
+			}
+		default:
+			if node != nil {
+				_ = node.SetComment(footComment)
+			}
+		}
+	}
 	if ctx.next() {
 		return nil, errors.ErrSyntax("value is not allowed in this context", ctx.currentToken().RawToken())
 	}

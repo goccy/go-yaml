@@ -2003,3 +2003,159 @@ func (v *Visitor) Visit(node ast.Node) ast.Visitor {
 	tk.Next = nil
 	return v
 }
+
+func TestCommentAfterTopLevelNode(t *testing.T) {
+	t.Run("flow sequence with comment", func(t *testing.T) {
+		content := `
+[1,2,3]
+#
+`
+		tokens := lexer.Tokenize(content)
+		file, err := parser.Parse(tokens, parser.ParseComments)
+		if err != nil {
+			t.Fatalf("unexpected error: %+v", err)
+		}
+		if len(file.Docs) == 0 || file.Docs[0].Body == nil {
+			t.Fatal("expected document with body")
+		}
+		seq, ok := file.Docs[0].Body.(*ast.SequenceNode)
+		if !ok {
+			t.Fatalf("expected SequenceNode, got %T", file.Docs[0].Body)
+		}
+		if seq.FootComment == nil {
+			t.Fatal("expected foot comment on sequence node")
+		}
+		if len(seq.FootComment.Comments) != 1 {
+			t.Fatalf("expected 1 foot comment, got %d", len(seq.FootComment.Comments))
+		}
+	})
+
+	t.Run("flow sequence with multiple comments", func(t *testing.T) {
+		content := `[1, 2, 3]
+# comment 1
+# comment 2
+`
+		file, err := parser.ParseBytes([]byte(content), parser.ParseComments)
+		if err != nil {
+			t.Fatalf("unexpected error: %+v", err)
+		}
+		seq, ok := file.Docs[0].Body.(*ast.SequenceNode)
+		if !ok {
+			t.Fatalf("expected SequenceNode, got %T", file.Docs[0].Body)
+		}
+		if seq.FootComment == nil {
+			t.Fatal("expected foot comment on sequence node")
+		}
+		if len(seq.FootComment.Comments) != 2 {
+			t.Fatalf("expected 2 foot comments, got %d", len(seq.FootComment.Comments))
+		}
+		if seq.FootComment.Comments[0].Token.Value != " comment 1" {
+			t.Fatalf("expected ' comment 1', got %q", seq.FootComment.Comments[0].Token.Value)
+		}
+		if seq.FootComment.Comments[1].Token.Value != " comment 2" {
+			t.Fatalf("expected ' comment 2', got %q", seq.FootComment.Comments[1].Token.Value)
+		}
+	})
+
+	t.Run("block sequence with comment", func(t *testing.T) {
+		content := `- 1
+- 2
+# comment
+`
+		file, err := parser.ParseBytes([]byte(content), parser.ParseComments)
+		if err != nil {
+			t.Fatalf("unexpected error: %+v", err)
+		}
+		seq, ok := file.Docs[0].Body.(*ast.SequenceNode)
+		if !ok {
+			t.Fatalf("expected SequenceNode, got %T", file.Docs[0].Body)
+		}
+		if seq.FootComment == nil {
+			t.Fatal("expected foot comment on sequence node")
+		}
+	})
+
+	t.Run("flow mapping with comment", func(t *testing.T) {
+		content := `{"a": 1, "b": 2}
+# comment
+`
+		file, err := parser.ParseBytes([]byte(content), parser.ParseComments)
+		if err != nil {
+			t.Fatalf("unexpected error: %+v", err)
+		}
+		m, ok := file.Docs[0].Body.(*ast.MappingNode)
+		if !ok {
+			t.Fatalf("expected MappingNode, got %T", file.Docs[0].Body)
+		}
+		if m.FootComment == nil {
+			t.Fatal("expected foot comment on mapping node")
+		}
+		if len(m.FootComment.Comments) != 1 {
+			t.Fatalf("expected 1 foot comment, got %d", len(m.FootComment.Comments))
+		}
+		if m.FootComment.Comments[0].Token.Value != " comment" {
+			t.Fatalf("expected ' comment', got %q", m.FootComment.Comments[0].Token.Value)
+		}
+	})
+
+	t.Run("block mapping with comment", func(t *testing.T) {
+		content := `a: 1
+b: 2
+# comment
+`
+		file, err := parser.ParseBytes([]byte(content), parser.ParseComments)
+		if err != nil {
+			t.Fatalf("unexpected error: %+v", err)
+		}
+		_, ok := file.Docs[0].Body.(*ast.MappingNode)
+		if !ok {
+			t.Fatalf("expected MappingNode, got %T", file.Docs[0].Body)
+		}
+	})
+
+	t.Run("scalar string with comment", func(t *testing.T) {
+		content := `hello
+# comment
+`
+		file, err := parser.ParseBytes([]byte(content), parser.ParseComments)
+		if err != nil {
+			t.Fatalf("unexpected error: %+v", err)
+		}
+		str, ok := file.Docs[0].Body.(*ast.StringNode)
+		if !ok {
+			t.Fatalf("expected StringNode, got %T", file.Docs[0].Body)
+		}
+		if str.GetComment() == nil {
+			t.Fatal("expected comment on string node")
+		}
+		if len(str.GetComment().Comments) != 1 {
+			t.Fatalf("expected 1 comment, got %d", len(str.GetComment().Comments))
+		}
+		if str.GetComment().Comments[0].Token.Value != " comment" {
+			t.Fatalf("expected ' comment', got %q", str.GetComment().Comments[0].Token.Value)
+		}
+	})
+
+	t.Run("scalar int with comment", func(t *testing.T) {
+		content := `42
+# comment
+`
+		file, err := parser.ParseBytes([]byte(content), parser.ParseComments)
+		if err != nil {
+			t.Fatalf("unexpected error: %+v", err)
+		}
+		num, ok := file.Docs[0].Body.(*ast.IntegerNode)
+		if !ok {
+			t.Fatalf("expected IntegerNode, got %T", file.Docs[0].Body)
+		}
+		if num.GetComment() == nil {
+			t.Fatal("expected comment on integer node")
+		}
+		if len(num.GetComment().Comments) != 1 {
+			t.Fatalf("expected 1 comment, got %d", len(num.GetComment().Comments))
+		}
+		if num.GetComment().Comments[0].Token.Value != " comment" {
+			t.Fatalf("expected ' comment', got %q", num.GetComment().Comments[0].Token.Value)
+		}
+	})
+}

@@ -1143,6 +1143,17 @@ a
 `,
 		},
 		{
+			`
+a:
+b`,
+			`
+[3:1] value is not allowed in this context. map key-value is pre-defined
+   2 | a:
+>  3 | b
+       ^
+`,
+		},
+		{
 			`%YAML 1.1 {}`,
 			`
 [1:1] unexpected directive value. document not started

@@ -747,6 +747,15 @@ func (p *parser) parseMapValue(ctx *context, key ast.MapKeyNode, colonTk *Token)
 		return newNullNode(ctx, ctx.insertNullToken(colonTk))
 	}
 
+	if tk.Column() == keyCol && tk.Line() != keyLine && tk.Type() != token.SequenceEntryType {
+		// in this case,
+		// ----
+		// key:
+		// value
+		// ^
+		return nil, errors.ErrSyntax("value is not allowed in this context. map key-value is pre-defined", tk.RawToken())
+	}
+
 	if tk.Line() == keyLine && tk.GroupType() == TokenGroupAnchorName &&
 		ctx.nextToken().Column() == keyCol && p.isMapToken(ctx.nextToken()) {
 		// in this case,

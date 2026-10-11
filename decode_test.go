@@ -3814,6 +3814,41 @@ nested:
 	}
 }
 
+func TestDecoder_EmptyInputPreservesDefaults(t *testing.T) {
+	for _, src := range []string{"", " \n\t", "# only a comment\n"} {
+		t.Run(fmt.Sprintf("%q", src), func(t *testing.T) {
+			t.Run("struct", func(t *testing.T) {
+				type config struct {
+					Name    string `yaml:"name"`
+					Enabled bool   `yaml:"enabled"`
+				}
+				want := config{Name: "default", Enabled: true}
+				got := want
+				dec := yaml.NewDecoder(strings.NewReader(src), yaml.DisallowUnknownField(), yaml.UseJSONUnmarshaler())
+				for i := 0; i < 2; i++ {
+					if err := dec.Decode(&got); err != io.EOF {
+						t.Fatalf("expected EOF, got %v", err)
+					}
+					if got != want {
+						t.Fatalf("defaults changed at EOF: got %+v, want %+v", got, want)
+					}
+				}
+			})
+			t.Run("map with context", func(t *testing.T) {
+				want := map[string]int{"default": 42}
+				got := map[string]int{"default": 42}
+				dec := yaml.NewDecoder(strings.NewReader(src))
+				if err := dec.DecodeContext(context.Background(), &got); err != io.EOF {
+					t.Fatalf("expected EOF, got %v", err)
+				}
+				if !reflect.DeepEqual(got, want) {
+					t.Fatalf("defaults changed at EOF: got %v, want %v", got, want)
+				}
+			})
+		})
+	}
+}
+
 func TestDecodeError(t *testing.T) {
 	tests := []struct {
 		name   string
@@ -3906,6 +3941,14 @@ func TestSetNullValue(t *testing.T) {
 		{
 			name: "empty document",
 			src:  "",
+		},
+		{
+			name: "whitespace only",
+			src:  " \n\t",
+		},
+		{
+			name: "comment only",
+			src:  "# only a comment\n",
 		},
 		{
 			name: "null value",

@@ -1951,13 +1951,6 @@ func (d *Decoder) decodeInit(ctx context.Context) error {
 func (d *Decoder) decode(ctx context.Context, v reflect.Value) error {
 	d.decodeDepth = 0
 	d.anchorValueMap = make(map[string]reflect.Value)
-	if len(d.parsedFile.Docs) == 0 {
-		// empty document.
-		dst := v.Elem()
-		if dst.IsValid() {
-			dst.Set(reflect.Zero(dst.Type()))
-		}
-	}
 	if len(d.parsedFile.Docs) <= d.streamIndex {
 		return io.EOF
 	}

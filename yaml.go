@@ -206,6 +206,12 @@ func UnmarshalContext(ctx context.Context, data []byte, v interface{}, opts ...D
 	dec := NewDecoder(bytes.NewBuffer(data), opts...)
 	if err := dec.DecodeContext(ctx, v); err != nil {
 		if err == io.EOF {
+			// An empty document unmarshals as null, while a Decoder leaves
+			// the destination unchanged when there are no more documents.
+			dst := reflect.ValueOf(v).Elem()
+			if dst.IsValid() {
+				dst.Set(reflect.Zero(dst.Type()))
+			}
 			return nil
 		}
 		return err

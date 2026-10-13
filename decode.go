@@ -1088,6 +1088,9 @@ func (d *Decoder) createDecodedNewValue(
 		aliasName := node.(*ast.AliasNode).Value.GetToken().Value
 		value := d.anchorValueMap[aliasName]
 		if value.IsValid() {
+			if value.Kind() == reflect.Interface && !value.IsNil() {
+				value = value.Elem()
+			}
 			v, err := d.castToAssignableValue(value, typ, node)
 			if err == nil {
 				return v, nil

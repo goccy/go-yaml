@@ -3997,6 +3997,34 @@ jobs:
 	}
 }
 
+func TestDecoder_AliasToRedefinedAnchor(t *testing.T) {
+	t.Run("mapping", func(t *testing.T) {
+		var v struct {
+			A any    `yaml:"a"`
+			B string `yaml:"b"`
+			C any    `yaml:"c"`
+		}
+		if err := yaml.Unmarshal([]byte("a: &x first\nb: *x\nc: &x second\n"), &v); err != nil {
+			t.Fatalf("failed to decode: %v", err)
+		}
+		if v.B != "first" {
+			t.Fatalf("B = %q, want %q", v.B, "first")
+		}
+	})
+	t.Run("sequence", func(t *testing.T) {
+		var v []struct {
+			A any    `yaml:"a"`
+			B string `yaml:"b"`
+		}
+		if err := yaml.Unmarshal([]byte("- a: &x first\n- b: *x\n- a: &x second\n"), &v); err != nil {
+			t.Fatalf("failed to decode: %v", err)
+		}
+		if v[1].B != "first" {
+			t.Fatalf("v[1].B = %q, want %q", v[1].B, "first")
+		}
+	})
+}
+
 func TestDecoder_SiblingAnchorAlias(t *testing.T) {
 	// Test that aliases to sibling anchors within a parent anchor resolve
 	// correctly. Previously, withAnchor() mutated a shared context map,

@@ -902,9 +902,28 @@ func (n *LiteralNode) GetToken() *token.Token {
 
 // AddColumn add column number to child nodes recursively
 func (n *LiteralNode) AddColumn(col int) {
+	if col == 0 {
+		return
+	}
 	n.Start.AddColumn(col)
 	if n.Value != nil {
 		n.Value.AddColumn(col)
+		// LiteralNode.String renders the original block text, rather than the
+		// value token's column. Move that text along with the token positions.
+		tk := n.Value.GetToken()
+		lines := strings.Split(tk.Origin, "\n")
+		for i, line := range lines {
+			if line == "" {
+				continue
+			}
+			if col > 0 {
+				lines[i] = strings.Repeat(" ", col) + line
+			} else if col < 0 {
+				indent := len(line) - len(strings.TrimLeft(line, " "))
+				lines[i] = line[min(-col, indent):]
+			}
+		}
+		tk.Origin = strings.Join(lines, "\n")
 	}
 }
 

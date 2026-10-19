@@ -1195,7 +1195,7 @@ func TestEncodeWithNestedYAML(t *testing.T) {
 		}
 
 		if test.expectDifferent {
-			yamlBytesNotForced, err := yaml.MarshalWithOptions(test.value)
+			yamlBytesNotForced, err := yaml.MarshalWithOptions(test.value, yaml.UseLiteralStyleIfMultiline(false))
 			if err != nil {
 				t.Fatalf("%+v", err)
 			}
@@ -1204,6 +1204,51 @@ func TestEncodeWithNestedYAML(t *testing.T) {
 				t.Fatalf("expected different strings when force literal style is not enabled. forced: %s, not forced: %s", string(yamlBytesForced), string(yamlBytesNotForced))
 			}
 		}
+	}
+}
+
+// Multiline values that start with a quote or end with a colon used to be
+// forced into double-quoted flow style. Default encoding keeps literal block
+// style for those cases (issue #846).
+func TestEncodeMultilineLiteralWithSpecialChars(t *testing.T) {
+	tests := []struct {
+		name  string
+		value map[string]string
+		want  string
+	}{
+		{
+			name:  "trailing colon",
+			value: map[string]string{"hello": "\n\"name\":"},
+			want:  "hello: |-\n  \n  \"name\":\n",
+		},
+		{
+			name:  "leading quote",
+			value: map[string]string{"hello": "\"name\"\nmore"},
+			want:  "hello: |-\n  \"name\"\n  more\n",
+		},
+		{
+			name:  "line ending with colon",
+			value: map[string]string{"hello": "line1\nline2:"},
+			want:  "hello: |-\n  line1\n  line2:\n",
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			got, err := yaml.Marshal(test.value)
+			if err != nil {
+				t.Fatalf("%+v", err)
+			}
+			if string(got) != test.want {
+				t.Fatalf("expect = %q, actual = %q", test.want, string(got))
+			}
+			var roundTrip map[string]string
+			if err := yaml.Unmarshal(got, &roundTrip); err != nil {
+				t.Fatalf("%+v", err)
+			}
+			if !reflect.DeepEqual(test.value, roundTrip) {
+				t.Fatalf("round-trip: expected %#v, got %#v", test.value, roundTrip)
+			}
+		})
 	}
 }
 

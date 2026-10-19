@@ -57,16 +57,17 @@ type Encoder struct {
 // The Encoder should be closed after use to flush all data to w.
 func NewEncoder(w io.Writer, opts ...EncodeOption) *Encoder {
 	return &Encoder{
-		writer:             w,
-		opts:               opts,
-		customMarshalerMap: map[reflect.Type]func(context.Context, interface{}) ([]byte, error){},
-		line:               1,
-		column:             1,
-		offset:             0,
-		indentNum:          DefaultIndentSpaces,
-		anchorRefToName:    make(map[uintptr]string),
-		anchorNameMap:      make(map[string]struct{}),
-		aliasRefToName:     make(map[uintptr]string),
+		writer:                     w,
+		opts:                       opts,
+		customMarshalerMap:         map[reflect.Type]func(context.Context, interface{}) ([]byte, error){},
+		line:                       1,
+		column:                     1,
+		offset:                     0,
+		indentNum:                  DefaultIndentSpaces,
+		useLiteralStyleIfMultiline: true,
+		anchorRefToName:            make(map[uintptr]string),
+		anchorNameMap:              make(map[string]struct{}),
+		aliasRefToName:             make(map[uintptr]string),
 	}
 }
 

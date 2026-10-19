@@ -177,8 +177,10 @@ func WithSmartAnchor() EncodeOption {
 	}
 }
 
-// UseLiteralStyleIfMultiline causes encoding multiline strings with a literal syntax,
-// no matter what characters they include
+// UseLiteralStyleIfMultiline controls whether multiline strings are encoded with a
+// literal block scalar (| / |- / |+), no matter what characters they include.
+// The default is true. Pass false to keep the previous quoting behavior for
+// multiline values that contain characters such as '#' or ':'.
 func UseLiteralStyleIfMultiline(useLiteralStyleIfMultiline bool) EncodeOption {
 	return func(e *Encoder) error {
 		e.useLiteralStyleIfMultiline = useLiteralStyleIfMultiline

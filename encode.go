@@ -11,6 +11,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"unicode/utf16"
+	"unicode/utf8"
 
 	"github.com/goccy/go-yaml/ast"
 	"github.com/goccy/go-yaml/internal/errors"
@@ -457,9 +459,9 @@ func (e *Encoder) encodeValue(ctx context.Context, v reflect.Value, column int) 
 	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
 		return e.encodeUint(v.Uint()), nil
 	case reflect.Float32:
-		return e.encodeFloat(v.Float(), 32), nil
+		return e.encodeFloat(v.Float(), 32)
 	case reflect.Float64:
-		return e.encodeFloat(v.Float(), 64), nil
+		return e.encodeFloat(v.Float(), 64)
 	case reflect.Ptr:
 		if value := e.encodePtrAnchor(v, column); value != nil {
 			return value, nil
@@ -538,26 +540,29 @@ func (e *Encoder) encodeUint(v uint64) *ast.IntegerNode {
 	return ast.Integer(token.New(value, value, e.pos(e.column)))
 }
 
-func (e *Encoder) encodeFloat(v float64, bitSize int) ast.Node {
+func (e *Encoder) encodeFloat(v float64, bitSize int) (ast.Node, error) {
+	if e.isJSONStyle && (math.IsInf(v, 0) || math.IsNaN(v)) {
+		return nil, fmt.Errorf("unsupported value for JSON: %s", strconv.FormatFloat(v, 'g', -1, bitSize))
+	}
 	if v == math.Inf(0) {
 		value := ".inf"
-		return ast.Infinity(token.New(value, value, e.pos(e.column)))
+		return ast.Infinity(token.New(value, value, e.pos(e.column))), nil
 	} else if v == math.Inf(-1) {
 		value := "-.inf"
-		return ast.Infinity(token.New(value, value, e.pos(e.column)))
+		return ast.Infinity(token.New(value, value, e.pos(e.column))), nil
 	} else if math.IsNaN(v) {
 		value := ".nan"
-		return ast.Nan(token.New(value, value, e.pos(e.column)))
+		return ast.Nan(token.New(value, value, e.pos(e.column))), nil
 	}
 	value := strconv.FormatFloat(v, 'g', -1, bitSize)
 	if !strings.Contains(value, ".") && !strings.Contains(value, "e") {
 		if e.autoInt {
-			return ast.Integer(token.New(value, value, e.pos(e.column)))
+			return ast.Integer(token.New(value, value, e.pos(e.column))), nil
 		}
 		// append x.0 suffix to keep float value context
 		value = fmt.Sprintf("%s.0", value)
 	}
-	return ast.Float(token.New(value, value, e.pos(e.column)))
+	return ast.Float(token.New(value, value, e.pos(e.column))), nil
 }
 
 func (e *Encoder) isNeedQuoted(v string) bool {
@@ -589,13 +594,51 @@ func (e *Encoder) isNeedQuoted(v string) bool {
 
 func (e *Encoder) encodeString(v string, column int) *ast.StringNode {
 	if e.isNeedQuoted(v) {
-		if e.singleQuote {
+		if e.isJSONStyle {
+			v = quoteJSON(v)
+		} else if e.singleQuote {
 			v = quoteWith(v, '\'')
 		} else {
 			v = strconv.Quote(v)
 		}
 	}
 	return ast.String(token.New(v, v, e.pos(column)))
+}
+
+// quoteJSON quotes s as a JSON string (RFC 8259).
+// It escapes the same characters as strconv.Quote, but only with escapes that JSON allows.
+// Invalid UTF-8 is replaced with U+FFFD, as encoding/json does.
+func quoteJSON(s string) string {
+	var b strings.Builder
+	b.Grow(len(s) + 2)
+	b.WriteByte('"')
+	for _, r := range s {
+		switch r {
+		case '"', '\\':
+			b.WriteByte('\\')
+			b.WriteRune(r)
+		case '\b':
+			b.WriteString(`\b`)
+		case '\f':
+			b.WriteString(`\f`)
+		case '\n':
+			b.WriteString(`\n`)
+		case '\r':
+			b.WriteString(`\r`)
+		case '\t':
+			b.WriteString(`\t`)
+		default:
+			if strconv.IsPrint(r) {
+				b.WriteRune(r)
+			} else if r1, r2 := utf16.EncodeRune(r); r1 != utf8.RuneError {
+				fmt.Fprintf(&b, `\u%04x\u%04x`, r1, r2)
+			} else {
+				fmt.Fprintf(&b, `\u%04x`, r)
+			}
+		}
+	}
+	b.WriteByte('"')
+	return b.String()
 }
 
 func (e *Encoder) encodeBool(v bool) *ast.BoolNode {

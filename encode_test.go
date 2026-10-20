@@ -1390,6 +1390,105 @@ func TestEncoder_JSON(t *testing.T) {
 	}
 }
 
+func TestEncoder_JSONEscape(t *testing.T) {
+	for _, test := range []struct {
+		desc     string
+		input    any
+		options  []yaml.EncodeOption
+		expected string
+	}{
+		{
+			desc:     "control characters",
+			input:    "a\x00b\x1fc\td",
+			expected: `"a\u0000b\u001fc\td"` + "\n",
+		},
+		{
+			desc:     "short escapes",
+			input:    "a\bb\fc\nd\re",
+			expected: `"a\bb\fc\nd\re"` + "\n",
+		},
+		{
+			desc:     "non-printable characters",
+			input:    "a\x7fb\u200bc\U000e0001d",
+			expected: `"a\u007fb\u200bc\udb40\udc01d"` + "\n",
+		},
+		{
+			desc:     "printable characters",
+			input:    "a\u00e9b\U0001f600c",
+			expected: "\"a\u00e9b\U0001f600c\"\n",
+		},
+		{
+			desc:     "invalid utf-8",
+			input:    "a\xffb",
+			expected: "\"a\ufffdb\"\n",
+		},
+		{
+			desc:     "quote and backslash",
+			input:    `a"b\c`,
+			expected: `"a\"b\\c"` + "\n",
+		},
+		{
+			desc:     "html characters",
+			input:    "<a&b>",
+			expected: `"<a&b>"` + "\n",
+		},
+		{
+			desc:     "map key",
+			input:    map[string]string{"k\x01": "v"},
+			expected: `{"k\u0001": "v"}` + "\n",
+		},
+		{
+			desc:     "single quote option",
+			input:    "a'b",
+			options:  []yaml.EncodeOption{yaml.UseSingleQuote(true)},
+			expected: `"a'b"` + "\n",
+		},
+	} {
+		t.Run(test.desc, func(t *testing.T) {
+			b, err := yaml.MarshalWithOptions(test.input, append(test.options, yaml.JSON())...)
+			if err != nil {
+				t.Fatalf("failed to encode: %s", err)
+			}
+			if actual := string(b); actual != test.expected {
+				t.Errorf("expect:\n%q\nactual\n%q\n", test.expected, actual)
+			}
+		})
+	}
+}
+
+func TestEncoder_JSONUnsupportedFloat(t *testing.T) {
+	for _, test := range []struct {
+		desc        string
+		input       any
+		expectedErr string
+	}{
+		{
+			desc:        "positive infinity",
+			input:       map[string]float64{"v": math.Inf(1)},
+			expectedErr: "unsupported value for JSON: +Inf",
+		},
+		{
+			desc:        "negative infinity",
+			input:       []float32{float32(math.Inf(-1))},
+			expectedErr: "unsupported value for JSON: -Inf",
+		},
+		{
+			desc:        "nan",
+			input:       map[string]any{"v": math.NaN()},
+			expectedErr: "unsupported value for JSON: NaN",
+		},
+	} {
+		t.Run(test.desc, func(t *testing.T) {
+			_, err := yaml.MarshalWithOptions(test.input, yaml.JSON())
+			if err == nil {
+				t.Errorf("expect error:\n%s\nbut got none\n", test.expectedErr)
+			} else if err.Error() != test.expectedErr {
+				t.Errorf("expect error:\n%s\nactual\n%s\n", test.expectedErr, err)
+			}
+		})
+	}
+}
+
 func TestEncoder_MarshalAnchor(t *testing.T) {
 	type Host struct {
 		Hostname string

@@ -82,38 +82,40 @@ func (d *Decoder) isExceededMaxDepth() bool {
 	return d.decodeDepth > maxDecodeDepth
 }
 
-func (d *Decoder) castToFloat(v interface{}) interface{} {
+func (d *Decoder) castToFloat(v interface{}) (float64, bool) {
 	switch vv := v.(type) {
 	case int:
-		return float64(vv)
+		return float64(vv), true
 	case int8:
-		return float64(vv)
+		return float64(vv), true
 	case int16:
-		return float64(vv)
+		return float64(vv), true
 	case int32:
-		return float64(vv)
+		return float64(vv), true
 	case int64:
-		return float64(vv)
+		return float64(vv), true
 	case uint:
-		return float64(vv)
+		return float64(vv), true
 	case uint8:
-		return float64(vv)
+		return float64(vv), true
 	case uint16:
-		return float64(vv)
+		return float64(vv), true
 	case uint32:
-		return float64(vv)
+		return float64(vv), true
 	case uint64:
-		return float64(vv)
+		return float64(vv), true
 	case float32:
-		return float64(vv)
+		return float64(vv), true
 	case float64:
-		return vv
+		return vv, true
 	case string:
-		// if error occurred, return zero value
-		f, _ := strconv.ParseFloat(vv, 64)
-		return f
+		f, err := strconv.ParseFloat(vv, 64)
+		if err != nil && !errors.Is(err, strconv.ErrRange) {
+			return 0, false
+		}
+		return f, true
 	}
-	return 0
+	return 0, false
 }
 
 func (d *Decoder) mapKeyNodeToString(ctx context.Context, node ast.MapKeyNode) (string, error) {
@@ -385,14 +387,27 @@ func (d *Decoder) nodeToValue(ctx context.Context, node ast.Node) (any, error) {
 			if err != nil {
 				return nil, err
 			}
-			i, _ := strconv.Atoi(fmt.Sprint(v))
+			s := fmt.Sprint(v)
+			i, err := strconv.Atoi(s)
+			if err != nil {
+				switch v.(type) {
+				case int64, uint64:
+					// Too large for int: keep the value as decoded, like an untagged integer.
+					return v, nil
+				}
+				return nil, errors.ErrSyntax(fmt.Sprintf("cannot convert %q to integer", s), n.Value.GetToken())
+			}
 			return i, nil
 		case token.FloatTag:
 			v, err := d.nodeToValue(ctx, n.Value)
 			if err != nil {
 				return nil, err
 			}
-			return d.castToFloat(v), nil
+			f, ok := d.castToFloat(v)
+			if !ok {
+				return nil, errors.ErrSyntax(fmt.Sprintf("cannot convert %q to float", fmt.Sprint(v)), n.Value.GetToken())
+			}
+			return f, nil
 		case token.NullTag:
 			return nil, nil
 		case token.BinaryTag:

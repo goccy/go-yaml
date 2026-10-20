@@ -605,6 +605,18 @@ func TestDecoder(t *testing.T) {
 
 		// Explicit tags.
 		{
+			source: "v: !!int 42",
+			value:  map[string]interface{}{"v": 42},
+		},
+		{
+			source: "v: !!int '-42'",
+			value:  map[string]interface{}{"v": -42},
+		},
+		{
+			source: "v: !!int 18446744073709551615",
+			value:  map[string]interface{}{"v": uint64(18446744073709551615)},
+		},
+		{
 			source: "v: !!float '1.1'",
 			value:  map[string]interface{}{"v": 1.1},
 		},
@@ -615,6 +627,10 @@ func TestDecoder(t *testing.T) {
 		{
 			source: "v: !!float -1",
 			value:  map[string]interface{}{"v": float64(-1)},
+		},
+		{
+			source: "v: !!float 1e400",
+			value:  map[string]interface{}{"v": math.Inf(0)},
 		},
 		{
 			source: "v: !!null ''",
@@ -1324,6 +1340,54 @@ func TestDecoder_Invalid(t *testing.T) {
 [1:2] could not find alias "-0"
 >  1 | *-0
         ^
+`,
+		},
+		{
+			"v: !!int 1.5",
+			`
+[1:9] cannot convert "1.5" to integer
+>  1 | v: !!int 1.5
+               ^
+`,
+		},
+		{
+			"v: !!int abc",
+			`
+[1:9] cannot convert "abc" to integer
+>  1 | v: !!int abc
+               ^
+`,
+		},
+		{
+			"v: !!int 99999999999999999999999",
+			`
+[1:9] cannot convert "99999999999999999999999" to integer
+>  1 | v: !!int 99999999999999999999999
+               ^
+`,
+		},
+		{
+			"v: !!int ~",
+			`
+[1:9] cannot convert "<nil>" to integer
+>  1 | v: !!int ~
+               ^
+`,
+		},
+		{
+			"v: !!float abc",
+			`
+[1:11] cannot convert "abc" to float
+>  1 | v: !!float abc
+                 ^
+`,
+		},
+		{
+			"v: !!float true",
+			`
+[1:11] cannot convert "true" to float
+>  1 | v: !!float true
+                 ^
 `,
 		},
 	}

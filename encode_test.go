@@ -235,6 +235,12 @@ func TestEncoder(t *testing.T) {
 			nil,
 		},
 		{
+			// Lone "\n" must use keep chomping so round-trip stays "\n" (#807).
+			"|+\n\n",
+			"\n",
+			nil,
+		},
+		{
 			"hello:\n  hello: |\n    hello\n    world\n",
 			map[string]map[string]string{"hello": {"hello": "hello\nworld\n"}},
 			nil,

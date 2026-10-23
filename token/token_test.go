@@ -156,3 +156,24 @@ func TestIsNeedQuoted(t *testing.T) {
 		}
 	}
 }
+
+func TestLiteralBlockHeader(t *testing.T) {
+	tests := []struct {
+		value string
+		want  string
+	}{
+		{"plain", ""},
+		{"a\nb", "|-"},
+		{"a\nb\n", "|"},
+		{"a\nb\n\n", "|+"},
+		{"\n", "|+"},
+		{"\n\n", "|+"},
+		{"\r", "|+"},
+		{"a\r\nb\r\n", "|"},
+	}
+	for _, tt := range tests {
+		if got := token.LiteralBlockHeader(tt.value); got != tt.want {
+			t.Errorf("LiteralBlockHeader(%q) = %q, want %q", tt.value, got, tt.want)
+		}
+	}
+}

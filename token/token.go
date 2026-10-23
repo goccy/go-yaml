@@ -723,6 +723,9 @@ func LiteralBlockHeader(value string) string {
 		return ""
 	case strings.HasSuffix(value, fmt.Sprintf("%s%s", lbc, lbc)):
 		return "|+"
+	case value == lbc:
+		// Clip ("|") would strip the only break; keep ("|+") preserves it.
+		return "|+"
 	case strings.HasSuffix(value, lbc):
 		return "|"
 	default:

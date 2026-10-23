@@ -4169,3 +4169,22 @@ func TestIssue735(t *testing.T) {
 		}
 	})
 }
+
+func BenchmarkUnmarshalWithCustomUnmarshaler(b *testing.B) {
+	unmarshaler := yaml.CustomUnmarshaler[string](func(dst *string, _ []byte) error {
+		*dst = "x"
+		return nil
+	})
+	for _, n := range []int{250, 500, 1000, 2000} {
+		b.Run(fmt.Sprintf("n=%d", n), func(b *testing.B) {
+			data := []byte(strings.Repeat("- x\n", n))
+			b.ResetTimer()
+			for i := 0; i < b.N; i++ {
+				var result []string
+				if err := yaml.UnmarshalWithOptions(data, &result, unmarshaler); err != nil {
+					b.Fatal(err)
+				}
+			}
+		})
+	}
+}

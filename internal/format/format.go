@@ -8,11 +8,15 @@ import (
 )
 
 func FormatNodeWithResolvedAlias(n ast.Node, anchorNodeMap map[string]ast.Node) string {
+	return FormatNodeWithTokenOriginMap(n, anchorNodeMap, nil)
+}
+
+func FormatNodeWithTokenOriginMap(n ast.Node, anchorNodeMap map[string]ast.Node, tokenToOriginMap map[*token.Token]string) string {
 	tk := getFirstToken(n)
 	if tk == nil {
 		return ""
 	}
-	formatter := newFormatter(tk, hasComment(n))
+	formatter := newFormatter(tk, hasComment(n), tokenToOriginMap)
 	formatter.anchorNodeMap = anchorNodeMap
 	return formatter.format(n)
 }
@@ -22,7 +26,7 @@ func FormatNode(n ast.Node) string {
 	if tk == nil {
 		return ""
 	}
-	return newFormatter(tk, hasComment(n)).format(n)
+	return newFormatter(tk, hasComment(n), nil).format(n)
 }
 
 func FormatFile(file *ast.File) string {
@@ -33,7 +37,7 @@ func FormatFile(file *ast.File) string {
 	if tk == nil {
 		return ""
 	}
-	return newFormatter(tk, hasCommentFile(file)).formatFile(file)
+	return newFormatter(tk, hasCommentFile(file), nil).formatFile(file)
 }
 
 func hasCommentFile(f *ast.File) bool {
@@ -189,7 +193,7 @@ type Formatter struct {
 	anchorNodeMap    map[string]ast.Node
 }
 
-func newFormatter(tk *token.Token, existsComment bool) *Formatter {
+func NewTokenToOriginMap(tk *token.Token) map[*token.Token]string {
 	tokenToOriginMap := make(map[*token.Token]string)
 	for tk.Prev != nil {
 		tk = tk.Prev
@@ -206,6 +210,13 @@ func newFormatter(tk *token.Token, existsComment bool) *Formatter {
 		origin += tk.Origin
 		tokenToOriginMap[tk] = origin
 		origin = ""
+	}
+	return tokenToOriginMap
+}
+
+func newFormatter(tk *token.Token, existsComment bool, tokenToOriginMap map[*token.Token]string) *Formatter {
+	if tokenToOriginMap == nil {
+		tokenToOriginMap = NewTokenToOriginMap(tk)
 	}
 	return &Formatter{
 		existsComment:    existsComment,

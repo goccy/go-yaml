@@ -47,6 +47,8 @@ type Decoder struct {
 	parsedFile           *ast.File
 	streamIndex          int
 	decodeDepth          int
+	tokenOriginHead      *token.Token
+	tokenToOriginMap     map[*token.Token]string
 }
 
 // NewDecoder returns a new decoder that reads from r.
@@ -692,13 +694,29 @@ func (d *Decoder) deleteStructKeys(structType reflect.Type, unknownFields map[st
 	return nil
 }
 
+func (d *Decoder) tokenOriginMap(node ast.Node) map[*token.Token]string {
+	tk := node.GetToken()
+	if tk == nil {
+		return nil
+	}
+	head := tk
+	for head.Prev != nil {
+		head = head.Prev
+	}
+	if d.tokenToOriginMap == nil || d.tokenOriginHead != head {
+		d.tokenOriginHead = head
+		d.tokenToOriginMap = format.NewTokenToOriginMap(head)
+	}
+	return d.tokenToOriginMap
+}
+
 func (d *Decoder) unmarshalableDocument(node ast.Node) ([]byte, error) {
-	doc := format.FormatNodeWithResolvedAlias(node, d.anchorNodeMap)
+	doc := format.FormatNodeWithTokenOriginMap(node, d.anchorNodeMap, d.tokenOriginMap(node))
 	return []byte(doc), nil
 }
 
 func (d *Decoder) unmarshalableText(node ast.Node) ([]byte, bool) {
-	doc := format.FormatNodeWithResolvedAlias(node, d.anchorNodeMap)
+	doc := format.FormatNodeWithTokenOriginMap(node, d.anchorNodeMap, d.tokenOriginMap(node))
 	var v string
 	if err := Unmarshal([]byte(doc), &v); err != nil {
 		return nil, false

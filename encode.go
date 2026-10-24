@@ -802,11 +802,13 @@ func (e *Encoder) isOmittedByOmitEmptyOption(v reflect.Value) bool {
 // the struct itself will also be excluded. These behaviors are originally the functionality of omitzero.
 func (e *Encoder) isOmittedByOmitEmptyTag(v reflect.Value) bool {
 	kind := v.Kind()
-	if z, ok := v.Interface().(IsZeroer); ok {
-		if (kind == reflect.Ptr || kind == reflect.Interface) && v.IsNil() {
-			return true
+	if v.CanInterface() {
+		if z, ok := v.Interface().(IsZeroer); ok {
+			if (kind == reflect.Ptr || kind == reflect.Interface) && v.IsNil() {
+				return true
+			}
+			return z.IsZero()
 		}
-		return z.IsZero()
 	}
 	switch kind {
 	case reflect.String:

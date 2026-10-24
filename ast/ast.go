@@ -305,6 +305,18 @@ func checkLineBreak(t *token.Token) bool {
 			if prev.Type == token.StringType {
 				// Remove any line breaks included in multiline string
 				adjustment += strings.Count(strings.TrimRight(strings.TrimSpace(prev.Origin), lbc), lbc)
+				// Keep-chomped block bodies retain trailing blank lines in
+				// Origin; count them so the next key does not emit them again.
+				if prev.Prev != nil {
+					h := prev.Prev.Value
+					if strings.HasPrefix(h, "|+") || strings.HasPrefix(h, ">+") {
+						trimmed := strings.TrimRight(prev.Origin, " ")
+						for strings.HasSuffix(trimmed, lbc) {
+							adjustment++
+							trimmed = trimmed[:len(trimmed)-len(lbc)]
+						}
+					}
+				}
 			}
 			// Due to the way that comment parsing works its assumed that when a null value does not have new line in origin
 			// it was squashed therefore difference is ignored.
@@ -916,7 +928,13 @@ func (n *LiteralNode) GetValue() interface{} {
 // String literal to text
 func (n *LiteralNode) String() string {
 	origin := n.Value.GetToken().Origin
-	lit := strings.TrimRight(strings.TrimRight(origin, " "), "\n")
+	lit := strings.TrimRight(origin, " ")
+	// Keep chomping ("|+", ">+") must preserve trailing blank lines in Origin.
+	// Clip/strip still drop them so the next mapping key stays adjacent.
+	keep := strings.HasPrefix(n.Start.Value, "|+") || strings.HasPrefix(n.Start.Value, ">+")
+	if !keep {
+		lit = strings.TrimRight(lit, "\n")
+	}
 	if n.Comment != nil {
 		return fmt.Sprintf("%s %s\n%s", n.Start.Value, n.Comment.String(), lit)
 	}
@@ -1261,7 +1279,16 @@ func (n *MappingNode) blockStyleString(commentMode bool) string {
 	for _, value := range n.Values {
 		values = append(values, value.String())
 	}
-	mapText := strings.Join(values, "\n")
+	// If a value already ends in a newline (e.g. keep-chomped block scalars),
+	// do not insert another separator newline or trailing blanks are inflated.
+	var b strings.Builder
+	for i, v := range values {
+		if i > 0 && !strings.HasSuffix(values[i-1], "\n") {
+			b.WriteByte('\n')
+		}
+		b.WriteString(v)
+	}
+	mapText := b.String()
 	if commentMode && n.Comment != nil {
 		value := values[0]
 		var spaceNum int

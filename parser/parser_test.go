@@ -2003,3 +2003,26 @@ func (v *Visitor) Visit(node ast.Node) ast.Visitor {
 	tk.Next = nil
 	return v
 }
+
+func TestKeepBlockScalarTrailingBlanks(t *testing.T) {
+	// |+ must preserve trailing blank lines through AST String() (#826).
+	src := "message: |+\n  1\n  2\n  3\n  4\n\n\nnext: token\n"
+	f, err := parser.ParseBytes([]byte(src), 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	out := f.String()
+	var want, got map[string]string
+	if err := yaml.Unmarshal([]byte(src), &want); err != nil {
+		t.Fatal(err)
+	}
+	if err := yaml.Unmarshal([]byte(out), &got); err != nil {
+		t.Fatal(err)
+	}
+	if got["message"] != want["message"] {
+		t.Fatalf("round-trip message: got %#v want %#v\nAST:\n%s", got["message"], want["message"], out)
+	}
+	if got["next"] != "token" {
+		t.Fatalf("next: got %#v", got["next"])
+	}
+}

@@ -12,7 +12,7 @@ func FormatNodeWithResolvedAlias(n ast.Node, anchorNodeMap map[string]ast.Node) 
 	if tk == nil {
 		return ""
 	}
-	formatter := newFormatter(tk, hasComment(n))
+	formatter := newFormatter(hasComment(n))
 	formatter.anchorNodeMap = anchorNodeMap
 	return formatter.format(n)
 }
@@ -22,7 +22,7 @@ func FormatNode(n ast.Node) string {
 	if tk == nil {
 		return ""
 	}
-	return newFormatter(tk, hasComment(n)).format(n)
+	return newFormatter(hasComment(n)).format(n)
 }
 
 func FormatFile(file *ast.File) string {
@@ -33,7 +33,7 @@ func FormatFile(file *ast.File) string {
 	if tk == nil {
 		return ""
 	}
-	return newFormatter(tk, hasCommentFile(file)).formatFile(file)
+	return newFormatter(hasCommentFile(file)).formatFile(file)
 }
 
 func hasCommentFile(f *ast.File) bool {
@@ -184,32 +184,13 @@ func getFirstToken(n ast.Node) *token.Token {
 }
 
 type Formatter struct {
-	existsComment    bool
-	tokenToOriginMap map[*token.Token]string
-	anchorNodeMap    map[string]ast.Node
+	existsComment bool
+	anchorNodeMap map[string]ast.Node
 }
 
-func newFormatter(tk *token.Token, existsComment bool) *Formatter {
-	tokenToOriginMap := make(map[*token.Token]string)
-	for tk.Prev != nil {
-		tk = tk.Prev
-	}
-	tokenToOriginMap[tk] = tk.Origin
-
-	var origin string
-	for tk.Next != nil {
-		tk = tk.Next
-		if tk.Type == token.CommentType {
-			origin += strings.Repeat("\n", strings.Count(normalizeNewLineChars(tk.Origin), "\n"))
-			continue
-		}
-		origin += tk.Origin
-		tokenToOriginMap[tk] = origin
-		origin = ""
-	}
+func newFormatter(existsComment bool) *Formatter {
 	return &Formatter{
-		existsComment:    existsComment,
-		tokenToOriginMap: tokenToOriginMap,
+		existsComment: existsComment,
 	}
 }
 
@@ -290,7 +271,12 @@ func (f *Formatter) origin(tk *token.Token) string {
 	if f.existsComment {
 		return tk.Origin
 	}
-	return f.tokenToOriginMap[tk]
+	// Prepend line breaks from preceding comments.
+	newlines := 0
+	for prev := tk.Prev; prev != nil && prev.Type == token.CommentType; prev = prev.Prev {
+		newlines += strings.Count(normalizeNewLineChars(prev.Origin), "\n")
+	}
+	return strings.Repeat("\n", newlines) + tk.Origin
 }
 
 func (f *Formatter) formatDocument(n *ast.DocumentNode) string {

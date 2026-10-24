@@ -151,22 +151,14 @@ func (c *context) createImplicitNullToken(base *Token) *Token {
 func (c *context) insertToken(tk *Token) {
 	ref := c.tokenRef
 	idx := ref.idx
-	if ref.size < idx {
-		return
-	}
-	if ref.size == idx {
-		curToken := ref.tokens[ref.size-1]
-		tk.RawToken().Next = curToken.RawToken()
-		curToken.RawToken().Prev = tk.RawToken()
-
-		ref.tokens = append(ref.tokens, tk)
-		ref.size = len(ref.tokens)
-		return
-	}
 
 	curToken := ref.tokens[idx]
+	tk.RawToken().Prev = curToken.RawToken().Prev
 	tk.RawToken().Next = curToken.RawToken()
 	curToken.RawToken().Prev = tk.RawToken()
+	if prev := tk.RawToken().Prev; prev != nil {
+		prev.Next = tk.RawToken()
+	}
 
 	ref.tokens = append(ref.tokens[:idx+1], ref.tokens[idx:]...)
 	ref.tokens[idx] = tk

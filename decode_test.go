@@ -8,6 +8,8 @@ import (
 	"log"
 	"math"
 	"net"
+	"os"
+	"path/filepath"
 	"reflect"
 	"strconv"
 	"strings"
@@ -1605,6 +1607,44 @@ func TestDecoder_AnchorReferenceDirs(t *testing.T) {
 	}
 	if v.A.C != "hello" {
 		t.Fatal("failed to decode by reference dirs")
+	}
+}
+
+func TestDecoder_ReferenceDirsSkipsInvalidFiles(t *testing.T) {
+	// Unrelated broken files under ReferenceDirs must not fail the main doc (#806).
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "anchor.yml"), []byte("a: &a\n  b: 1\n  c: hello\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "broken.yaml"), []byte(":\n  - [\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "not-yaml.txt"), []byte("This is not a yaml file.\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	buf := bytes.NewBufferString("a: *a\n")
+	dec := yaml.NewDecoder(buf, yaml.ReferenceDirs(dir))
+	var v struct {
+		A struct {
+			B int
+			C string
+		}
+	}
+	if err := dec.Decode(&v); err != nil {
+		t.Fatalf("valid main with invalid siblings: %+v", err)
+	}
+	if v.A.B != 1 || v.A.C != "hello" {
+		t.Fatalf("unexpected value: %+v", v)
+	}
+
+	// Explicit ReferenceFiles still surface parse errors for the named file.
+	dec = yaml.NewDecoder(bytes.NewBufferString("hello: world\n"), yaml.ReferenceFiles(filepath.Join(dir, "broken.yaml")))
+	var p struct {
+		Hello any `yaml:"hello"`
+	}
+	if err := dec.Decode(&p); err == nil {
+		t.Fatal("expected error for explicit broken ReferenceFiles")
 	}
 }
 

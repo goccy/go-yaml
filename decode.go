@@ -1863,31 +1863,49 @@ func (d *Decoder) resolveReference(ctx context.Context) error {
 		}
 		d.referenceReaders = append(d.referenceReaders, reader)
 	}
+	var dirReaders []io.Reader
 	for _, dir := range d.referenceDirs {
+		var readers []io.Reader
+		var err error
 		if !d.isRecursiveDir {
-			readers, err := d.readersUnderDir(dir)
-			if err != nil {
-				return err
-			}
-			d.referenceReaders = append(d.referenceReaders, readers...)
+			readers, err = d.readersUnderDir(dir)
 		} else {
-			readers, err := d.readersUnderDirRecursive(dir)
-			if err != nil {
-				return err
-			}
-			d.referenceReaders = append(d.referenceReaders, readers...)
+			readers, err = d.readersUnderDirRecursive(dir)
 		}
-	}
-	for _, reader := range d.referenceReaders {
-		bytes, err := io.ReadAll(reader)
 		if err != nil {
 			return err
 		}
-
-		// assign new anchor definition to anchorMap
-		if _, err := d.parse(ctx, bytes); err != nil {
-			return err
+		dirReaders = append(dirReaders, readers...)
+		d.referenceReaders = append(d.referenceReaders, readers...)
+	}
+	load := func(readers []io.Reader, required bool) error {
+		for _, reader := range readers {
+			bytes, err := io.ReadAll(reader)
+			if err != nil {
+				return err
+			}
+			// assign new anchor definition to anchorMap
+			if _, err := d.parse(ctx, bytes); err != nil {
+				if required {
+					return err
+				}
+				// ReferenceDirs may contain unrelated files; skip ones that
+				// do not parse instead of failing the main document (#806).
+				continue
+			}
 		}
+		return nil
+	}
+	// Explicit readers/files must parse; directory scans are best-effort.
+	nExplicit := len(d.referenceReaders) - len(dirReaders)
+	if nExplicit < 0 {
+		nExplicit = 0
+	}
+	if err := load(d.referenceReaders[:nExplicit], true); err != nil {
+		return err
+	}
+	if err := load(dirReaders, false); err != nil {
+		return err
 	}
 	d.isResolvedReference = true
 	return nil

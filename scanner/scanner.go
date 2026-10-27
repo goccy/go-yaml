@@ -74,7 +74,8 @@ func (s *Scanner) bufferedToken(ctx *Context) *token.Token {
 	column := s.column - len(ctx.buf)
 	level := s.indentLevel
 	if ctx.isMultiLine() {
-		line -= s.newLineCount(ctx.buf)
+		// Folded values replace some line breaks with spaces, so count the source.
+		line -= s.newLineCount(ctx.obuf)
 		column = strings.Index(string(ctx.obuf), string(ctx.buf)) + 1
 		// Since we are in a literal, folded or raw folded
 		// we can use the indent level from the last token.
@@ -799,7 +800,13 @@ func (s *Scanner) scanMultiLine(ctx *Context, c rune) error {
 			return ErrInvalidToken(invalidTk)
 		}
 		value := ctx.bufferedSrc()
-		ctx.addToken(token.String(string(value), string(ctx.obuf), s.pos()))
+		pos := s.pos()
+		pos.Line -= s.newLineCount(ctx.obuf)
+		if s.isNewLineChar(c) {
+			// The final line break is buffered but has not advanced s.line yet.
+			pos.Line++
+		}
+		ctx.addToken(token.String(string(value), string(ctx.obuf), pos))
 		ctx.clear()
 		s.progressColumn(ctx, 1)
 	} else if s.isNewLineChar(c) {
@@ -810,7 +817,9 @@ func (s *Scanner) scanMultiLine(ctx *Context, c rune) error {
 		if ctx.next() {
 			if s.foundDocumentSeparatorMarker(ctx.src[ctx.idx:]) {
 				value := ctx.bufferedSrc()
-				ctx.addToken(token.String(string(value), string(ctx.obuf), s.pos()))
+				pos := s.pos()
+				pos.Line -= s.newLineCount(ctx.obuf)
+				ctx.addToken(token.String(string(value), string(ctx.obuf), pos))
 				ctx.clear()
 				s.breakMultiLine(ctx)
 			}

@@ -24,6 +24,11 @@ const (
 	DefaultIndentSpaces = 2
 )
 
+type encodeReference struct {
+	typeOf reflect.Type
+	ptr    uintptr
+}
+
 // Encoder writes YAML values to an output stream.
 type Encoder struct {
 	writer                     io.Writer
@@ -38,6 +43,7 @@ type Encoder struct {
 	anchorNameMap              map[string]struct{}
 	anchorCallback             func(*ast.AnchorNode, interface{}) error
 	customMarshalerMap         map[reflect.Type]func(context.Context, interface{}) ([]byte, error)
+	encodePath                 map[encodeReference]struct{}
 	omitZero                   bool
 	omitEmpty                  bool
 	autoInt                    bool
@@ -443,6 +449,27 @@ func (e *Encoder) encodeByMarshaler(ctx context.Context, v reflect.Value, column
 func (e *Encoder) encodeValue(ctx context.Context, v reflect.Value, column int) (ast.Node, error) {
 	if e.isInvalidValue(v) {
 		return e.encodeNil(), nil
+	}
+	var ref encodeReference
+	trackRef := false
+	switch v.Kind() {
+	case reflect.Ptr, reflect.Map, reflect.Slice:
+		if !v.IsNil() && (v.Kind() != reflect.Slice || v.Len() > 0) {
+			if ptr := e.toPointer(v); ptr != 0 {
+				ref = encodeReference{typeOf: v.Type(), ptr: ptr}
+				if e.encodePath == nil {
+					e.encodePath = make(map[encodeReference]struct{})
+				}
+				if _, exists := e.encodePath[ref]; exists {
+					return nil, fmt.Errorf("yaml: encountered a cycle via %s", v.Type())
+				}
+				e.encodePath[ref] = struct{}{}
+				trackRef = true
+			}
+		}
+	}
+	if trackRef {
+		defer delete(e.encodePath, ref)
 	}
 	if e.canEncodeByMarshaler(v) {
 		node, err := e.encodeByMarshaler(ctx, v, column)

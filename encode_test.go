@@ -7,7 +7,10 @@ import (
 	"fmt"
 	"math"
 	"net/netip"
+	"os"
+	"os/exec"
 	"reflect"
+	"runtime/debug"
 	"strconv"
 	"strings"
 	"testing"
@@ -979,6 +982,78 @@ func TestEncoder(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestMarshalCyclicValues(t *testing.T) {
+	if cycleType := os.Getenv("GO_YAML_CYCLE_TEST"); cycleType != "" {
+		// Stack overflows are process-fatal. Keep the reproducer isolated and
+		// lower the limit so a regression fails quickly instead of exhausting
+		// the test runner's resources.
+		debug.SetMaxStack(1 << 20)
+
+		var value interface{}
+		switch cycleType {
+		case "map":
+			m := map[string]interface{}{}
+			m["self"] = m
+			value = m
+		case "slice":
+			s := make([]interface{}, 1)
+			s[0] = s
+			value = s
+		case "pointer":
+			type cycleNode struct {
+				Self *cycleNode `yaml:"self"`
+			}
+			node := &cycleNode{}
+			node.Self = node
+			value = node
+		default:
+			t.Fatalf("unknown cycle test type %q", cycleType)
+		}
+
+		if _, err := yaml.Marshal(value); err == nil || !strings.Contains(strings.ToLower(err.Error()), "cycle") {
+			t.Fatalf("Marshal() error = %v, want a cycle error", err)
+		}
+		return
+	}
+
+	for _, cycleType := range []string{"map", "slice", "pointer"} {
+		t.Run(cycleType, func(t *testing.T) {
+			cmd := exec.Command(os.Args[0], "-test.run=^TestMarshalCyclicValues$")
+			cmd.Env = append(os.Environ(), "GO_YAML_CYCLE_TEST="+cycleType)
+			if output, err := cmd.CombinedOutput(); err != nil {
+				t.Fatalf("cycle reproducer failed: %v\n%s", err, output)
+			}
+		})
+	}
+
+	t.Run("shared acyclic references", func(t *testing.T) {
+		shared := &struct {
+			Value string `yaml:"value"`
+		}{Value: "shared"}
+		sharedMap := map[string]interface{}{"value": "shared"}
+		value := []interface{}{shared, shared, sharedMap, sharedMap}
+		for _, opts := range [][]yaml.EncodeOption{nil, {yaml.WithSmartAnchor()}} {
+			if _, err := yaml.MarshalWithOptions(value, opts...); err != nil {
+				t.Fatalf("MarshalWithOptions(shared references) error = %v", err)
+			}
+		}
+	})
+
+	cyclic := &cyclicValueMarshaler{}
+	cyclic.Next = cyclic
+	if _, err := yaml.Marshal(cyclic); err != nil {
+		t.Fatalf("Marshal(custom marshaler that handles its cycle) error = %v", err)
+	}
+}
+
+type cyclicValueMarshaler struct {
+	Next *cyclicValueMarshaler
+}
+
+func (m *cyclicValueMarshaler) MarshalYAML() (interface{}, error) {
+	return "custom value", nil
 }
 
 func TestEncodeStructIncludeMap(t *testing.T) {

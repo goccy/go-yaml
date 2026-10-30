@@ -1322,6 +1322,50 @@ func TestEncoder_Flow(t *testing.T) {
 	}
 }
 
+func TestEncoder_FlowUseLiteralStyleIfMultiline(t *testing.T) {
+	input := map[string]string{"a": "hello\nworld"}
+	var buf bytes.Buffer
+	enc := yaml.NewEncoder(&buf, yaml.Flow(true), yaml.UseLiteralStyleIfMultiline(true))
+	if err := enc.Encode(input); err != nil {
+		t.Fatalf("encode: %+v", err)
+	}
+
+	const expected = "{a: \"hello\\nworld\"}\n"
+	if got := buf.String(); got != expected {
+		t.Fatalf("unexpected flow encoding: got %q, want %q", got, expected)
+	}
+
+	var decoded map[string]string
+	if err := yaml.Unmarshal(buf.Bytes(), &decoded); err != nil {
+		t.Fatalf("decode encoded value: %+v", err)
+	}
+	if !reflect.DeepEqual(input, decoded) {
+		t.Fatalf("round trip mismatch: got %#v, want %#v", decoded, input)
+	}
+}
+
+func TestEncoder_FlowUseSingleQuoteMultilineRoundTrip(t *testing.T) {
+	input := map[string]string{"a": "hello\nworld"}
+	var buf bytes.Buffer
+	enc := yaml.NewEncoder(&buf, yaml.Flow(true), yaml.UseLiteralStyleIfMultiline(true), yaml.UseSingleQuote(true))
+	if err := enc.Encode(input); err != nil {
+		t.Fatalf("encode: %+v", err)
+	}
+
+	var decoded map[string]string
+	if err := yaml.Unmarshal(buf.Bytes(), &decoded); err != nil {
+		t.Fatalf("decode encoded value: %+v", err)
+	}
+	if !reflect.DeepEqual(input, decoded) {
+		t.Fatalf("round trip mismatch: got %#v, want %#v", decoded, input)
+	}
+
+	const expected = "{a: \"hello\\nworld\"}\n"
+	if got := buf.String(); got != expected {
+		t.Fatalf("unexpected flow encoding: got %q, want %q", got, expected)
+	}
+}
+
 func TestEncoder_FlowRecursive(t *testing.T) {
 	var v struct {
 		M map[string][]int `yaml:",flow"`

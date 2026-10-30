@@ -564,6 +564,9 @@ func (e *Encoder) isNeedQuoted(v string) bool {
 	if e.isJSONStyle {
 		return true
 	}
+	if e.isFlowStyle && strings.ContainsAny(v, "\n\r") {
+		return true
+	}
 	if e.useLiteralStyleIfMultiline && strings.ContainsAny(v, "\n\r") {
 		return false
 	}
@@ -589,7 +592,9 @@ func (e *Encoder) isNeedQuoted(v string) bool {
 
 func (e *Encoder) encodeString(v string, column int) *ast.StringNode {
 	if e.isNeedQuoted(v) {
-		if e.singleQuote {
+		// quoteWith preserves a newline as literal backslash-n characters in single quotes.
+		// Flow-style multiline values therefore need double-quoted escapes to round-trip.
+		if e.singleQuote && (!e.isFlowStyle || !strings.ContainsAny(v, "\n\r")) {
 			v = quoteWith(v, '\'')
 		} else {
 			v = strconv.Quote(v)

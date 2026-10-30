@@ -792,11 +792,14 @@ func (s *Scanner) scanMultiLine(ctx *Context, c rune) error {
 		} else {
 			ctx.addBuf(c)
 		}
-		state.updateIndentColumn(s.column)
-		if err := state.validateIndentColumn(); err != nil {
-			invalidTk := token.Invalid(err.Error(), string(ctx.obuf), s.pos())
-			s.progressColumn(ctx, 1)
-			return ErrInvalidToken(invalidTk)
+		// A trailing empty line need not reach the content indentation level.
+		if !s.isFirstCharAtLine || (c != ' ' && c != '\n') {
+			state.updateIndentColumn(s.column)
+			if err := state.validateIndentColumn(); err != nil {
+				invalidTk := token.Invalid(err.Error(), string(ctx.obuf), s.pos())
+				s.progressColumn(ctx, 1)
+				return ErrInvalidToken(invalidTk)
+			}
 		}
 		value := ctx.bufferedSrc()
 		ctx.addToken(token.String(string(value), string(ctx.obuf), s.pos()))

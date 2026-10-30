@@ -714,19 +714,63 @@ func IsNeedQuoted(value string) bool {
 	return false
 }
 
-// LiteralBlockHeader detect literal block scalar header
+// needBlockIndentIndicator reports whether a literal/folded block scalar
+// header must include an explicit indentation indicator (YAML 1.2.2
+// c-indentation-indicator). This is required when the value matches
+// /^\n* / — leading line breaks followed by a space — because the parser
+// would otherwise treat the first non-empty line's indent as the block
+// indent and reject later, less-indented content lines.
+func needBlockIndentIndicator(value string) bool {
+	i := 0
+	for i < len(value) {
+		c := value[i]
+		if c == '\n' {
+			i++
+			continue
+		}
+		if c == '\r' {
+			i++
+			if i < len(value) && value[i] == '\n' {
+				i++
+			}
+			continue
+		}
+		break
+	}
+	return i < len(value) && value[i] == ' '
+}
+
+// LiteralBlockHeader detect literal block scalar header.
+// Prefer LiteralBlockHeaderWithIndent when the content indentation is known
+// so leading-newline-then-space values can round-trip.
 func LiteralBlockHeader(value string) string {
+	return LiteralBlockHeaderWithIndent(value, 0)
+}
+
+// LiteralBlockHeaderWithIndent is like LiteralBlockHeader, but emits an
+// explicit indentation indicator (1–9) when the value needs one. contentIndent
+// is the number of spaces prefixed to each content line (Column-1+IndentNum in
+// StringNode). Values outside 1–9 omit the indicator (YAML only allows a
+// single digit); callers that need those indents should quote instead.
+func LiteralBlockHeaderWithIndent(value string, contentIndent int) string {
 	lbc := DetectLineBreakCharacter(value)
 
-	switch {
-	case !strings.Contains(value, lbc):
+	if !strings.Contains(value, lbc) {
 		return ""
+	}
+
+	indicator := ""
+	if needBlockIndentIndicator(value) && contentIndent >= 1 && contentIndent <= 9 {
+		indicator = strconv.Itoa(contentIndent)
+	}
+
+	switch {
 	case strings.HasSuffix(value, fmt.Sprintf("%s%s", lbc, lbc)):
-		return "|+"
+		return "|" + indicator + "+"
 	case strings.HasSuffix(value, lbc):
-		return "|"
+		return "|" + indicator
 	default:
-		return "|-"
+		return "|" + indicator + "-"
 	}
 }
 

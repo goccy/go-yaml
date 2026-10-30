@@ -5,18 +5,18 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/goccy/go-yaml"
+	"github.com/goccy/go-yaml/ast"
+	"github.com/goccy/go-yaml/parser"
 	"math"
 	"net/netip"
 	"reflect"
+	"regexp"
 	"strconv"
 	"strings"
 	"testing"
 	"time"
 	"unsafe"
-
-	"github.com/goccy/go-yaml"
-	"github.com/goccy/go-yaml/ast"
-	"github.com/goccy/go-yaml/parser"
 )
 
 var zero = 0
@@ -2176,4 +2176,45 @@ a: &anc !mytag
 
 func ptr[T any](v T) *T {
 	return &v
+}
+
+func TestMarshalLiteralIndentIndicatorLeadingNewlineSpace(t *testing.T) {
+	// Regression for https://github.com/goccy/go-yaml/issues/976:
+	// strings matching /^\n* / must emit an explicit indentation indicator
+	// so Unmarshal can recover the original value.
+	cases := []struct {
+		name  string
+		value string
+		opts  []yaml.EncodeOption
+	}{
+		{name: "single leading nl", value: "\n  a\nb"},
+		{name: "double leading nl", value: "\n\n  a\nb"},
+		{name: "clip chomp", value: "\n  a\nb\n"},
+		{name: "literal style option", value: "\n  a\nb", opts: []yaml.EncodeOption{yaml.UseLiteralStyleIfMultiline(true)}},
+		{name: "indent 4", value: "\n  a\nb", opts: []yaml.EncodeOption{yaml.Indent(4)}},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			in := map[string]string{"k": tc.value}
+			out, err := yaml.MarshalWithOptions(in, tc.opts...)
+			if err != nil {
+				t.Fatalf("Marshal: %v", err)
+			}
+			if !bytes.Contains(out, []byte("|")) {
+				t.Fatalf("expected literal block header in output:\n%s", out)
+			}
+			// Indicator digit must be present for these inputs.
+			headerLine := string(bytes.SplitN(out, []byte("\n"), 2)[0])
+			if !regexp.MustCompile(`\|[1-9]`).MatchString(headerLine) {
+				t.Fatalf("expected indentation indicator in %q; full output:\n%s", headerLine, out)
+			}
+			var back map[string]string
+			if err := yaml.Unmarshal(out, &back); err != nil {
+				t.Fatalf("Unmarshal: %v\noutput:\n%s", err, out)
+			}
+			if back["k"] != tc.value {
+				t.Fatalf("round-trip mismatch: got %q want %q\noutput:\n%s", back["k"], tc.value, out)
+			}
+		})
+	}
 }

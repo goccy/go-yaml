@@ -156,3 +156,34 @@ func TestIsNeedQuoted(t *testing.T) {
 		}
 	}
 }
+
+func TestLiteralBlockHeaderWithIndent(t *testing.T) {
+	tests := []struct {
+		name   string
+		value  string
+		indent int
+		want   string
+	}{
+		{name: "no newline", value: "plain", indent: 2, want: ""},
+		{name: "strip no indicator", value: "a\nb", indent: 2, want: "|-"},
+		{name: "clip no indicator", value: "a\nb\n", indent: 2, want: "|"},
+		{name: "keep no indicator", value: "a\nb\n\n", indent: 2, want: "|+"},
+		{name: "leading nl+space strip", value: "\n  a\nb", indent: 2, want: "|2-"},
+		{name: "leading nl+space clip", value: "\n  a\nb\n", indent: 2, want: "|2"},
+		{name: "leading nl+space keep", value: "\n  a\nb\n\n", indent: 2, want: "|2+"},
+		{name: "double leading nl", value: "\n\n  a\nb", indent: 2, want: "|2-"},
+		{name: "leading space only", value: "  a\nb", indent: 2, want: "|2-"},
+		{name: "indent 4", value: "\n  a\nb", indent: 4, want: "|4-"},
+		{name: "indent 0 omits digit", value: "\n  a\nb", indent: 0, want: "|-"},
+		{name: "indent 10 omits digit", value: "\n  a\nb", indent: 10, want: "|-"},
+		{name: "crlf leading", value: "\r\n  a\r\nb", indent: 2, want: "|2-"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := token.LiteralBlockHeaderWithIndent(tt.value, tt.indent)
+			if got != tt.want {
+				t.Fatalf("LiteralBlockHeaderWithIndent(%q, %d) = %q, want %q", tt.value, tt.indent, got, tt.want)
+			}
+		})
+	}
+}

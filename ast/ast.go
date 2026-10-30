@@ -828,7 +828,8 @@ func (n *StringNode) String() string {
 	if strings.Contains(n.Value, lbc) {
 		// This block assumes that the line breaks in this inside scalar content and the Outside scalar content are the same.
 		// It works mostly, but inconsistencies occur if line break characters are mixed.
-		header := token.LiteralBlockHeader(n.Value)
+		contentIndent := n.Token.Position.Column - 1 + n.Token.Position.IndentNum
+		header := token.LiteralBlockHeaderWithIndent(n.Value, contentIndent)
 		space := strings.Repeat(" ", n.Token.Position.Column-1)
 		indent := strings.Repeat(" ", n.Token.Position.IndentNum)
 		values := []string{}
@@ -860,7 +861,8 @@ func (n *StringNode) stringWithoutComment() string {
 	if strings.Contains(n.Value, lbc) {
 		// This block assumes that the line breaks in this inside scalar content and the Outside scalar content are the same.
 		// It works mostly, but inconsistencies occur if line break characters are mixed.
-		header := token.LiteralBlockHeader(n.Value)
+		contentIndent := n.Token.Position.Column - 1 + n.Token.Position.IndentNum
+		header := token.LiteralBlockHeaderWithIndent(n.Value, contentIndent)
 		space := strings.Repeat(" ", n.Token.Position.Column-1)
 		indent := strings.Repeat(" ", n.Token.Position.IndentNum)
 		values := []string{}

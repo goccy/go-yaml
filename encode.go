@@ -564,6 +564,19 @@ func (e *Encoder) isNeedQuoted(v string) bool {
 	if e.isJSONStyle {
 		return true
 	}
+	// A carriage return cannot be represented in a plain, single-quoted or
+	// literal block scalar: line breaks of those styles are normalized to
+	// line feeds when decoded back. Always use a style that escapes it.
+	if strings.ContainsRune(v, '\r') {
+		return true
+	}
+	// A tab cannot be represented in a plain scalar: it is dropped when the
+	// value is decoded back. Values containing a line feed are encoded as a
+	// literal block where tabs are preserved, so only quote when there is
+	// no line feed.
+	if !strings.ContainsRune(v, '\n') && strings.ContainsRune(v, '\t') {
+		return true
+	}
 	if e.useLiteralStyleIfMultiline && strings.ContainsAny(v, "\n\r") {
 		return false
 	}
@@ -589,7 +602,9 @@ func (e *Encoder) isNeedQuoted(v string) bool {
 
 func (e *Encoder) encodeString(v string, column int) *ast.StringNode {
 	if e.isNeedQuoted(v) {
-		if e.singleQuote {
+		// A single-quoted scalar cannot represent a carriage return either
+		// (it is decoded as a space), so escape to double quotes instead.
+		if e.singleQuote && !strings.ContainsRune(v, '\r') {
 			v = quoteWith(v, '\'')
 		} else {
 			v = strconv.Quote(v)

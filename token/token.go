@@ -705,7 +705,9 @@ func IsNeedQuoted(value string) bool {
 		switch c {
 		case '#', '\\':
 			return true
-		case ':', '-':
+		case ':', '-', '?':
+			// YAML plain scalars may start with ?, : or - only when the next
+			// character is non-space; "? x" is an explicit-key indicator.
 			if i+1 < len(value) && value[i+1] == ' ' {
 				return true
 			}

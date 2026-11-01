@@ -2177,3 +2177,43 @@ a: &anc !mytag
 func ptr[T any](v T) *T {
 	return &v
 }
+
+func TestMarshalStringThatWouldReadBackAsAnotherType(t *testing.T) {
+	// Each of these is an ordinary string, but unquoted it reads back as a
+	// document marker (null) or as a float, so the encoder has to quote it.
+	values := []string{
+		"---", "...",
+		".inf", ".Inf", ".INF", "+.inf", "-.inf",
+		".nan", ".NaN", ".NAN",
+	}
+
+	for _, v := range values {
+		out, err := yaml.Marshal(v)
+		if err != nil {
+			t.Fatalf("marshal %q: %v", v, err)
+		}
+
+		var got string
+		if err := yaml.Unmarshal(out, &got); err != nil {
+			t.Fatalf("unmarshal %q (encoded as %q): %v", v, string(out), err)
+		}
+		if got != v {
+			t.Errorf("round trip of %q gave %q (encoded as %q)", v, got, string(out))
+		}
+	}
+
+	// The same values as keys, and inside a struct field.
+	in := map[string]string{"---": "...", "...": "---", ".inf": ".nan"}
+	out, err := yaml.Marshal(in)
+	if err != nil {
+		t.Fatalf("marshal map: %v", err)
+	}
+
+	var back map[string]string
+	if err := yaml.Unmarshal(out, &back); err != nil {
+		t.Fatalf("unmarshal map (encoded as %q): %v", string(out), err)
+	}
+	if !reflect.DeepEqual(in, back) {
+		t.Errorf("map round trip gave %#v (encoded as %q)", back, string(out))
+	}
+}

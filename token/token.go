@@ -688,6 +688,17 @@ func IsNeedQuoted(value string) bool {
 	if value == "-" {
 		return true
 	}
+	// A plain scalar with these values does not read back as the same string:
+	// "---" and "..." are document markers and resolve to null, while the
+	// float specials resolve to an infinity or a NaN.
+	switch value {
+	case "---", "...":
+		return true
+	}
+	switch strings.ToLower(value) {
+	case ".inf", "+.inf", "-.inf", ".nan":
+		return true
+	}
 	first := value[0]
 	switch first {
 	case '*', '&', '[', '{', '}', ']', ',', '!', '|', '>', '%', '\'', '"', '@', ' ', '`', ':':

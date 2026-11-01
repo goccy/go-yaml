@@ -2177,3 +2177,39 @@ a: &anc !mytag
 func ptr[T any](v T) *T {
 	return &v
 }
+
+func TestEncodeQuestionSpacePlainScalar(t *testing.T) {
+	// "? x" must be quoted: otherwise the emitter produces an explicit-key
+	// indicator and Unmarshal fails (issue #982). "?x" may stay plain.
+	cases := []struct {
+		in      string
+		wantEnc string
+	}{
+		{in: "? x", wantEnc: "value: \"? x\"\n"},
+		{in: "?x", wantEnc: "value: ?x\n"},
+		{in: "x? x", wantEnc: "value: \"x? x\"\n"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.in, func(t *testing.T) {
+			input := struct {
+				Value string `yaml:"value"`
+			}{Value: tc.in}
+			encoded, err := yaml.Marshal(input)
+			if err != nil {
+				t.Fatalf("Marshal: %v", err)
+			}
+			if string(encoded) != tc.wantEnc {
+				t.Fatalf("encoded:\n got: %q\nwant: %q", encoded, tc.wantEnc)
+			}
+			var decoded struct {
+				Value string `yaml:"value"`
+			}
+			if err := yaml.Unmarshal(encoded, &decoded); err != nil {
+				t.Fatalf("Unmarshal: %v", err)
+			}
+			if decoded.Value != tc.in {
+				t.Fatalf("roundtrip: got %q want %q", decoded.Value, tc.in)
+			}
+		})
+	}
+}

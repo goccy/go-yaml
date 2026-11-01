@@ -240,12 +240,12 @@ func TestEncoder(t *testing.T) {
 			nil,
 		},
 		{
-			"hello: |\r  hello\r  world\n",
+			"hello: \"hello\\rworld\\r\"\n",
 			map[string]string{"hello": "hello\rworld\r"},
 			nil,
 		},
 		{
-			"hello: |\r\n  hello\r\n  world\n",
+			"hello: \"hello\\r\\nworld\\r\\n\"\n",
 			map[string]string{"hello": "hello\r\nworld\r\n"},
 			nil,
 		},
@@ -2176,4 +2176,31 @@ a: &anc !mytag
 
 func ptr[T any](v T) *T {
 	return &v
+}
+
+func TestMarshalRoundTripControlCharacters(t *testing.T) {
+	// A carriage return cannot be represented in a plain, single-quoted or
+	// literal block scalar: all of those styles are normalized to line feeds
+	// (or corrupted) when decoded back. A tab inside a plain scalar is also
+	// dropped by the decoder. Ensure such values are encoded in a style that
+	// survives a Marshal/Unmarshal round trip.
+	for _, v := range []string{
+		"a\rb",
+		"a\r\nb",
+		"hello\rworld\r",
+		"tab\there",
+		"\t",
+	} {
+		src, err := yaml.Marshal(map[string]string{"s": v})
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		var m map[string]string
+		if err := yaml.Unmarshal(src, &m); err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if m["s"] != v {
+			t.Errorf("round trip lost data:\n value: %q\nencoded: %q\n  back: %q", v, src, m["s"])
+		}
+	}
 }

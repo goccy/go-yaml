@@ -2,6 +2,7 @@ package lexer_test
 
 import (
 	"sort"
+	"strings"
 	"testing"
 
 	"github.com/goccy/go-yaml/lexer"
@@ -3291,4 +3292,18 @@ func TestTokenOffset(t *testing.T) {
 			t.Fatalf("unexpected offset. got %d", tokens[4].Position.Offset)
 		}
 	})
+}
+
+func TestBlockScalarAllocations(t *testing.T) {
+	// Scanning a block scalar must not allocate for every character in it.
+	allocs := func(n int) float64 {
+		src := "a: |\n  " + strings.Repeat("x", n) + "\nb: >-\n  " + strings.Repeat("y", n) + "\n"
+		return testing.AllocsPerRun(10, func() {
+			lexer.Tokenize(src)
+		})
+	}
+	short, long := allocs(10), allocs(10000)
+	if long > short+100 {
+		t.Errorf("block scalars of 10000 characters took %.0f allocations, of 10 characters %.0f", long, short)
+	}
 }

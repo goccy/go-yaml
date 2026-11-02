@@ -24,6 +24,7 @@ type Context struct {
 
 type MultiLineState struct {
 	opt                              string
+	optIndentColumn                  int // indentation indicator of the header, 0 if there is none
 	firstLineIndentColumn            int
 	prevLineIndentColumn             int
 	lineIndentColumn                 int
@@ -90,11 +91,12 @@ func (c *Context) getMultiLineState() *MultiLineState {
 }
 
 func (c *Context) setLiteral(lastDelimColumn int, opt string) {
-	mstate := &MultiLineState{
-		isLiteral: true,
-		opt:       opt,
-	}
 	indent := firstLineIndentColumnByOpt(opt)
+	mstate := &MultiLineState{
+		isLiteral:       true,
+		opt:             opt,
+		optIndentColumn: indent,
+	}
 	if indent > 0 {
 		mstate.firstLineIndentColumn = lastDelimColumn + indent
 	}
@@ -102,11 +104,12 @@ func (c *Context) setLiteral(lastDelimColumn int, opt string) {
 }
 
 func (c *Context) setFolded(lastDelimColumn int, opt string) {
-	mstate := &MultiLineState{
-		isFolded: true,
-		opt:      opt,
-	}
 	indent := firstLineIndentColumnByOpt(opt)
+	mstate := &MultiLineState{
+		isFolded:        true,
+		opt:             opt,
+		optIndentColumn: indent,
+	}
 	if indent > 0 {
 		mstate.firstLineIndentColumn = lastDelimColumn + indent
 	}
@@ -164,7 +167,7 @@ func (s *MultiLineState) validateIndentAfterSpaceOnly(column int) error {
 }
 
 func (s *MultiLineState) validateIndentColumn() error {
-	if firstLineIndentColumnByOpt(s.opt) == 0 {
+	if s.optIndentColumn == 0 {
 		return nil
 	}
 	if s.firstLineIndentColumn > s.lineIndentColumn {

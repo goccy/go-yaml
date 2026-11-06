@@ -4169,3 +4169,40 @@ func TestIssue735(t *testing.T) {
 		}
 	})
 }
+
+func TestIssue987EmptyTaggedValueUnderSecondaryTagDirective(t *testing.T) {
+	// %TAG !! remaps the secondary handle. An empty tagged value used to panic
+	// in parseTag because newStringNode received a nil token (issue #987).
+	inputs := []struct {
+		name string
+		in   string
+		want any
+	}{
+		{
+			name: "mapping",
+			in:   "%TAG !! tag:example.com,2000:\n---\na: !!str\n",
+			want: map[string]any{"a": ""},
+		},
+		{
+			name: "sequence",
+			in:   "%TAG !! tag:example.com,2000:\n---\n- !!str\n",
+			want: []any{""},
+		},
+		{
+			name: "document-tag",
+			in:   "%TAG !! tag:x:\n--- ! ",
+			want: "",
+		},
+	}
+	for _, tc := range inputs {
+		t.Run(tc.name, func(t *testing.T) {
+			var v any
+			if err := yaml.Unmarshal([]byte(tc.in), &v); err != nil {
+				t.Fatalf("Unmarshal: %v", err)
+			}
+			if !reflect.DeepEqual(v, tc.want) {
+				t.Fatalf("got %#v, want %#v", v, tc.want)
+			}
+		})
+	}
+}

@@ -962,12 +962,22 @@ func (p *parser) parseTag(ctx *context) (*ast.TagNode, error) {
 
 	var tagValue ast.Node
 	if p.secondaryTagDirective != nil {
-		value, err := newStringNode(ctx, ctx.currentToken())
-		if err != nil {
-			return nil, err
-		}
-		tagValue = value
 		node.Directive = p.secondaryTagDirective
+		if tk := ctx.currentToken(); tk == nil {
+			// Empty tagged value at EOF (e.g. "a: !!str\n" under %TAG !! ...).
+			// Mirror parseTagValue's nil handling so we do not panic in newStringNode.
+			value, err := newNullNode(ctx, ctx.createImplicitNullToken(&Token{Token: tagRawTk}))
+			if err != nil {
+				return nil, err
+			}
+			tagValue = value
+		} else {
+			value, err := newStringNode(ctx, tk)
+			if err != nil {
+				return nil, err
+			}
+			tagValue = value
+		}
 	} else {
 		value, err := p.parseTagValue(ctx, tagRawTk, ctx.currentToken())
 		if err != nil {

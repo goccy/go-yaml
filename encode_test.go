@@ -17,6 +17,7 @@ import (
 	"github.com/goccy/go-yaml"
 	"github.com/goccy/go-yaml/ast"
 	"github.com/goccy/go-yaml/parser"
+	"github.com/goccy/go-yaml/token"
 )
 
 var zero = 0
@@ -1698,6 +1699,36 @@ func ExampleMarshal_node() {
 	fmt.Println(string(bytes))
 	// OUTPUT:
 	// text: node example
+}
+
+type astNodeMarshaler struct{}
+
+func (astNodeMarshaler) MarshalYAML() (interface{}, error) {
+	node, err := yaml.ValueToNode("node example")
+	if err != nil {
+		return nil, err
+	}
+	comment := ast.CommentGroup([]*token.Token{
+		token.Comment(" keep this comment", "# keep this comment", &token.Position{Line: 1, Column: 1}),
+	})
+	if err := node.SetComment(comment); err != nil {
+		return nil, err
+	}
+	return node, nil
+}
+
+func TestMarshalPreservesASTNodeFromInterfaceMarshaler(t *testing.T) {
+	var value struct {
+		Text astNodeMarshaler `yaml:"text"`
+	}
+	got, err := yaml.Marshal(value)
+	if err != nil {
+		t.Fatal(err)
+	}
+	const want = "text: node example # keep this comment\n"
+	if string(got) != want {
+		t.Fatalf("unexpected YAML:\n%s\nwant:\n%s", got, want)
+	}
 }
 
 func ExampleMarshal_explicitAnchorAlias() {

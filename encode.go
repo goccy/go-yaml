@@ -204,6 +204,9 @@ func (e *Encoder) setHeadComment(node ast.Node, filtered ast.Node, comment *ast.
 }
 
 func (e *Encoder) setLineComment(node ast.Node, filtered ast.Node, comment *ast.CommentGroupNode) error {
+	if n, ok := filtered.(*ast.SequenceNode); ok && (n.IsFlowStyle || len(n.Values) == 0) {
+		return n.SetComment(comment)
+	}
 	switch filtered.(type) {
 	case *ast.MappingValueNode, *ast.SequenceNode:
 		// Line comment cannot be set for mapping value node.

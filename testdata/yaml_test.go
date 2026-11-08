@@ -455,6 +455,67 @@ foo:
 			t.Fatalf("expected:%s but got %s", expected, actual)
 		}
 	})
+	t.Run("sequence line comments", func(t *testing.T) {
+		tests := []struct {
+			name     string
+			value    interface{}
+			expected string
+			items    []int
+		}{
+			{
+				name:     "empty slice",
+				value:    map[string][]int{"items": {}},
+				expected: "items: [] # comment\n",
+				items:    []int{},
+			},
+			{
+				name:     "nil slice",
+				value:    map[string][]int{"items": nil},
+				expected: "items: [] # comment\n",
+				items:    []int{},
+			},
+			{
+				name:     "empty array",
+				value:    map[string][0]int{"items": {}},
+				expected: "items: [] # comment\n",
+				items:    []int{},
+			},
+			{
+				name: "flow sequence",
+				value: struct {
+					Items []int `yaml:"items,flow"`
+				}{Items: []int{1, 2}},
+				expected: "items: [1, 2] # comment\n",
+				items:    []int{1, 2},
+			},
+			{
+				name:     "block sequence",
+				value:    map[string][]int{"items": {1, 2}},
+				expected: "items: # comment\n- 1\n- 2\n",
+				items:    []int{1, 2},
+			},
+		}
+		for _, test := range tests {
+			t.Run(test.name, func(t *testing.T) {
+				b, err := yaml.MarshalWithOptions(test.value, yaml.WithComment(yaml.CommentMap{
+					"$.items": []*yaml.Comment{yaml.LineComment(" comment")},
+				}))
+				if err != nil {
+					t.Fatal(err)
+				}
+				if string(b) != test.expected {
+					t.Errorf("expected %q but got %q", test.expected, b)
+				}
+				var got map[string][]int
+				if err := yaml.Unmarshal(b, &got); err != nil {
+					t.Fatal(err)
+				}
+				if diff := cmp.Diff(map[string][]int{"items": test.items}, got); diff != "" {
+					t.Fatalf("unexpected round trip (-want +got):\n%s", diff)
+				}
+			})
+		}
+	})
 	t.Run("single head comment", func(t *testing.T) {
 		v := struct {
 			Foo string                 `yaml:"foo"`

@@ -974,3 +974,52 @@ store:
 	// OUTPUT:
 	// [john ken]
 }
+
+func TestPath_ReadNodeComments(t *testing.T) {
+	const src = "name: test\nb:\n  # before\n  d: 1 # inline\n"
+	path, err := yaml.PathString("$.b")
+	if err != nil {
+		t.Fatal(err)
+	}
+	node, err := path.ReadNode(strings.NewReader(src))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got, want := node.String(), "  # before\n  d: 1 # inline"; got != want {
+		t.Fatalf("expected %q, got %q", want, got)
+	}
+	var got map[string]int
+	if err := path.Read(strings.NewReader(src), &got); err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(got, map[string]int{"d": 1}) {
+		t.Fatalf("unexpected decoded value: %v", got)
+	}
+}
+
+func TestPath_ReadFlowComments(t *testing.T) {
+	path, err := yaml.PathString("$.b")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var got []int
+	if err := path.Read(strings.NewReader("b: [1, 2 # inline\n]\n"), &got); err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(got, []int{1, 2}) {
+		t.Fatalf("unexpected decoded value: %v", got)
+	}
+}
+
+func TestPath_ReadNilDestination(t *testing.T) {
+	path, err := yaml.PathString("$.b")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := path.Read(strings.NewReader("b: 1\n"), nil); err != yaml.ErrDecodeRequiredPointerType {
+		t.Fatalf("expected pointer type error, got %v", err)
+	}
+	if err := path.Filter(map[string]int{"b": 1}, nil); err != yaml.ErrDecodeRequiredPointerType {
+		t.Fatalf("expected pointer type error, got %v", err)
+	}
+}

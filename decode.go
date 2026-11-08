@@ -1098,8 +1098,12 @@ func (d *Decoder) createDecodedNewValue(
 			node = anchor
 		}
 	}
+	valueNode := node
+	if anchor, ok := node.(*ast.AnchorNode); ok {
+		valueNode = anchor.Value
+	}
 	var newValue reflect.Value
-	if node.Type() == ast.NullType {
+	if valueNode.Type() == ast.NullType {
 		newValue = reflect.New(typ).Elem()
 	} else {
 		newValue = d.createDecodableValue(typ)

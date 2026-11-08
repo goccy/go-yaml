@@ -4169,3 +4169,25 @@ func TestIssue735(t *testing.T) {
 		}
 	})
 }
+
+func TestDecoder_AnchoredNullPointer(t *testing.T) {
+	type Opts struct {
+		Name string `yaml:"name"`
+	}
+	for _, value := range []string{"null", "~"} {
+		for _, initial := range []*Opts{nil, {Name: "default"}} {
+			t.Run(fmt.Sprintf("%s/initialized=%t", value, initial != nil), func(t *testing.T) {
+				got := struct {
+					Opts *Opts `yaml:"opts,anchor"`
+					Copy *Opts `yaml:"copy"`
+				}{Opts: initial, Copy: initial}
+				if err := yaml.Unmarshal([]byte("opts: &opts "+value+"\ncopy: *opts\n"), &got); err != nil {
+					t.Fatal(err)
+				}
+				if got.Opts != nil || got.Copy != nil {
+					t.Fatalf("expected nil pointers, got %+v", got)
+				}
+			})
+		}
+	}
+}

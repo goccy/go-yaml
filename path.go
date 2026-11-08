@@ -217,10 +217,10 @@ func (p *Path) Read(r io.Reader, v interface{}) error {
 	if err != nil {
 		return err
 	}
-	if err := Unmarshal([]byte(node.String()), v); err != nil {
-		return err
+	if v == nil {
+		return ErrDecodeRequiredPointerType
 	}
-	return nil
+	return NodeToValue(node, v)
 }
 
 // ReadNode create AST from r and extract node by YAMLPath.
@@ -232,7 +232,7 @@ func (p *Path) ReadNode(r io.Reader) (ast.Node, error) {
 	if _, err := io.Copy(&buf, r); err != nil {
 		return nil, err
 	}
-	f, err := parser.ParseBytes(buf.Bytes(), 0)
+	f, err := parser.ParseBytes(buf.Bytes(), parser.ParseComments)
 	if err != nil {
 		return nil, err
 	}

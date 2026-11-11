@@ -1608,6 +1608,90 @@ func TestEncoder_MultipleDocuments(t *testing.T) {
 	}
 }
 
+func TestEncoder_MultipleDocumentsWithAnchors(t *testing.T) {
+	type Settings struct {
+		Timeout int `yaml:"timeout"`
+	}
+	settings := &Settings{Timeout: 30}
+	config := struct {
+		Defaults *Settings `yaml:"defaults,anchor=defaults"`
+		Primary  *Settings `yaml:"primary"`
+	}{settings, settings}
+	var buf bytes.Buffer
+	enc := yaml.NewEncoder(&buf)
+	if err := enc.Encode(&config); err != nil {
+		t.Fatal(err)
+	}
+	settings.Timeout = 60
+	if err := enc.EncodeContext(context.Background(), &config); err != nil {
+		t.Fatal(err)
+	}
+	expected := "defaults: &defaults\n  timeout: 30\nprimary: *defaults\n---\ndefaults: &defaults\n  timeout: 60\nprimary: *defaults\n"
+	if actual := buf.String(); actual != expected {
+		t.Errorf("expect:\n%s\nactual\n%s\n", expected, actual)
+	}
+	for i, document := range strings.Split(buf.String(), "---\n") {
+		var decoded struct {
+			Defaults *Settings
+			Primary  *Settings
+		}
+		if err := yaml.Unmarshal([]byte(document), &decoded); err != nil {
+			t.Fatalf("document %d: %s", i, err)
+		}
+		if expected := 30 * (i + 1); decoded.Defaults.Timeout != expected || decoded.Primary.Timeout != expected {
+			t.Errorf("document %d: expected timeout %d, got %+v and %+v", i, expected, decoded.Defaults, decoded.Primary)
+		}
+	}
+}
+
+func TestEncoder_EncodeToNodeWithAnchors(t *testing.T) {
+	type Settings struct{ Timeout int }
+	value := &Settings{Timeout: 30}
+	config := struct {
+		Defaults *Settings `yaml:"defaults,anchor"`
+		Primary  *Settings `yaml:"primary"`
+	}{value, value}
+	enc := yaml.NewEncoder(nil, yaml.MarshalAnchor(func(anchor *ast.AnchorNode, _ interface{}) error {
+		anchor.Name.(*ast.StringNode).Value = fmt.Sprintf("settings%d", value.Timeout)
+		return nil
+	}))
+	node, err := enc.EncodeToNode(&config)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if actual, expected := node.String(), "defaults: &settings30\n  timeout: 30\nprimary: *settings30"; actual != expected {
+		t.Errorf("expect:\n%s\nactual\n%s\n", expected, actual)
+	}
+	value.Timeout = 60
+	node, err = enc.EncodeToNodeContext(context.Background(), &config)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if actual, expected := node.String(), "defaults: &settings60\n  timeout: 60\nprimary: *settings60"; actual != expected {
+		t.Errorf("expect:\n%s\nactual\n%s\n", expected, actual)
+	}
+}
+
+func TestEncoder_MultipleDocumentsWithSmartAnchor(t *testing.T) {
+	settings := map[string]interface{}{"timeout": 30}
+	var buf bytes.Buffer
+	enc := yaml.NewEncoder(&buf, yaml.WithSmartAnchor())
+	if err := enc.Encode(map[string]interface{}{"a": settings, "b": []interface{}{settings}}); err != nil {
+		t.Fatal(err)
+	}
+	settings["timeout"] = 60
+	if err := enc.Encode(map[string]interface{}{"c": settings, "d": []interface{}{settings}}); err != nil {
+		t.Fatal(err)
+	}
+	if err := enc.Encode(map[string]interface{}{"c": settings}); err != nil {
+		t.Fatal(err)
+	}
+	expected := "a: &a\n  timeout: 30\nb:\n- *a\n---\nc: &c\n  timeout: 60\nd:\n- *c\n---\nc:\n  timeout: 60\n"
+	if actual := buf.String(); actual != expected {
+		t.Errorf("expect:\n%s\nactual\n%s\n", expected, actual)
+	}
+}
+
 func TestEncoder_UnmarshallableTypes(t *testing.T) {
 	for _, test := range []struct {
 		desc        string

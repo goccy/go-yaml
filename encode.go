@@ -113,6 +113,9 @@ func (e *Encoder) EncodeToNode(v interface{}) (ast.Node, error) {
 
 // EncodeToNodeContext convert v to ast.Node with context.Context.
 func (e *Encoder) EncodeToNodeContext(ctx context.Context, v interface{}) (ast.Node, error) {
+	clear(e.anchorRefToName)
+	clear(e.anchorNameMap)
+	clear(e.aliasRefToName)
 	for _, opt := range e.opts {
 		if err := opt(e); err != nil {
 			return nil, err

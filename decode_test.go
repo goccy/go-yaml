@@ -3153,6 +3153,61 @@ func TestDecoder_TabCharacterAtRight(t *testing.T) {
 	}
 }
 
+func TestDecoder_PlainScalarWithMoreIndentedDashLine(t *testing.T) {
+	tests := []struct {
+		name     string
+		src      string
+		expected any
+	}{
+		{
+			name:     "dash lines then a line back at the scalar indent",
+			src:      "remediation:\n  this is text\n    - this is text\n    - this is text\n  this is text\n",
+			expected: map[string]any{"remediation": "this is text - this is text - this is text this is text"},
+		},
+		{
+			name:     "dash without space",
+			src:      "a:\n  x\n    -y\n  z\n",
+			expected: map[string]any{"a": "x -y z"},
+		},
+		{
+			name:     "dash lines at decreasing indents",
+			src:      "a:\n  x\n      - y\n    - w\n  z\n",
+			expected: map[string]any{"a": "x - y - w z"},
+		},
+		{
+			name:     "next key after the scalar",
+			src:      "a:\n  b\n    - c\n  d\nf: g\n",
+			expected: map[string]any{"a": "b - c d", "f": "g"},
+		},
+		{
+			name:     "empty line before the dash line",
+			src:      "a:\n  x\n\n    - y\n  z\n",
+			expected: map[string]any{"a": "x\n- y z"},
+		},
+		{
+			name:     "sequence entry",
+			src:      "- x\n    - y\n  z\n",
+			expected: []any{"x - y z"},
+		},
+		{
+			name:     "dash line is the last line",
+			src:      "a:\n  x\n    - y\nb: 1\n",
+			expected: map[string]any{"a": "x - y", "b": uint64(1)},
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			var v any
+			if err := yaml.Unmarshal([]byte(test.src), &v); err != nil {
+				t.Fatal(err)
+			}
+			if !reflect.DeepEqual(v, test.expected) {
+				t.Fatalf("expected %#v but got %#v", test.expected, v)
+			}
+		})
+	}
+}
+
 func TestDecoder_Canonical(t *testing.T) {
 	yml := `
 !!map {

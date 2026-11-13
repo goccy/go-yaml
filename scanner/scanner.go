@@ -199,10 +199,6 @@ func (s *Scanner) isChangedToIndentStateDown() bool {
 	return s.indentState == IndentStateDown
 }
 
-func (s *Scanner) isChangedToIndentStateUp() bool {
-	return s.indentState == IndentStateUp
-}
-
 func (s *Scanner) addBufferedTokenIfExists(ctx *Context) {
 	ctx.addToken(s.bufferedToken(ctx))
 }
@@ -1073,21 +1069,6 @@ func (s *Scanner) scanMergeKey(ctx *Context) bool {
 	return true
 }
 
-func (s *Scanner) scanRawFoldedChar(ctx *Context) bool {
-	if !ctx.existsBuffer() {
-		return false
-	}
-	if !s.isChangedToIndentStateUp() {
-		return false
-	}
-
-	ctx.setRawFolded(s.column)
-	ctx.addBuf('-')
-	ctx.addOriginBuf('-')
-	s.progressColumn(ctx, 1)
-	return true
-}
-
 func (s *Scanner) scanSequence(ctx *Context) (bool, error) {
 	if ctx.existsBuffer() {
 		return false, nil
@@ -1380,9 +1361,6 @@ func (s *Scanner) scan(ctx *Context) error {
 			}
 		case '-':
 			if s.scanDocumentStart(ctx) {
-				continue
-			}
-			if s.scanRawFoldedChar(ctx) {
 				continue
 			}
 			scanned, err := s.scanSequence(ctx)

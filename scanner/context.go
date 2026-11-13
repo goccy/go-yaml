@@ -30,7 +30,6 @@ type MultiLineState struct {
 	lastNotSpaceOnlyLineIndentColumn int
 	spaceOnlyIndentColumn            int
 	foldedNewLine                    bool
-	isRawFolded                      bool
 	isLiteral                        bool
 	isFolded                         bool
 }
@@ -110,14 +109,6 @@ func (c *Context) setFolded(lastDelimColumn int, opt string) {
 	if indent > 0 {
 		mstate.firstLineIndentColumn = lastDelimColumn + indent
 	}
-	c.mstate = mstate
-}
-
-func (c *Context) setRawFolded(column int) {
-	mstate := &MultiLineState{
-		isRawFolded: true,
-	}
-	mstate.updateIndentColumn(column)
 	c.mstate = mstate
 }
 
@@ -255,7 +246,7 @@ func (s *MultiLineState) updateNewLineInFolded(ctx *Context, column int) {
 }
 
 func (s *MultiLineState) hasTrimAllEndNewlineOpt() bool {
-	return strings.HasPrefix(s.opt, "-") || strings.HasSuffix(s.opt, "-") || s.isRawFolded
+	return strings.HasPrefix(s.opt, "-") || strings.HasSuffix(s.opt, "-")
 }
 
 func (s *MultiLineState) hasKeepAllEndNewlineOpt() bool {

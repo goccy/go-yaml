@@ -151,6 +151,42 @@ alias: *x`
 	}
 }
 
+func TestPrinter_AnchorAliasProperty(t *testing.T) {
+	src := `
+anchor: &x 1
+alias: *x`
+	anchor := func() *printer.Property { return &printer.Property{Prefix: "<a>", Suffix: "</a>"} }
+	alias := func() *printer.Property { return &printer.Property{Prefix: "<b>", Suffix: "</b>"} }
+	tests := []struct {
+		name     string
+		printer  printer.Printer
+		expected string
+	}{
+		{
+			name:    "anchor only",
+			printer: printer.Printer{Anchor: anchor},
+			expected: `
+anchor:<a> &</a><a>x</a> 1
+alias: *x`,
+		},
+		{
+			name:    "alias only",
+			printer: printer.Printer{Alias: alias},
+			expected: `
+anchor: &x 1
+alias:<b> *</b><b>x</b>`,
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			got := test.printer.PrintTokens(lexer.Tokenize(src))
+			if test.expected != got {
+				t.Fatalf("unexpected output: expect:[%s]\n actual:[%s]", test.expected, got)
+			}
+		})
+	}
+}
+
 func Test_Printer_Multiline(t *testing.T) {
 	yml := `
 text1: 'aaaa

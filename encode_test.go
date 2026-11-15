@@ -2177,3 +2177,21 @@ a: &anc !mytag
 func ptr[T any](v T) *T {
 	return &v
 }
+
+func TestIssue982(t *testing.T) {
+	type T struct {
+		Value string `yaml:"value"`
+	}
+	src := T{Value: "? x"}
+	out, err := yaml.Marshal(src)
+	if err != nil {
+		t.Fatalf("failed to marshal: %v", err)
+	}
+	var got T
+	if err := yaml.Unmarshal(out, &got); err != nil {
+		t.Fatalf("failed to unmarshal %q: %v", out, err)
+	}
+	if got.Value != src.Value {
+		t.Fatalf("expected %q but got %q", src.Value, got.Value)
+	}
+}

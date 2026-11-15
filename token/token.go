@@ -688,6 +688,10 @@ func IsNeedQuoted(value string) bool {
 	if value == "-" {
 		return true
 	}
+	if strings.HasPrefix(value, "? ") {
+		// A leading "? " would be parsed as an explicit key indicator.
+		return true
+	}
 	first := value[0]
 	switch first {
 	case '*', '&', '[', '{', '}', ']', ',', '!', '|', '>', '%', '\'', '"', '@', ' ', '`', ':':

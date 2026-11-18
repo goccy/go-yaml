@@ -1006,9 +1006,8 @@ func (s *Scanner) scanMapDelim(ctx *Context) (bool, error) {
 		s.lastDelimColumn = tk.Position.Column
 		ctx.addToken(tk)
 	} else if tk := ctx.lastToken(); tk != nil {
-		// If the map key is quote, the buffer does not exist because it has already been cut into tokens.
-		// Therefore, we need to check the last token.
-		if tk.Indicator == token.QuotedScalarIndicator {
+		// Quoted keys and tags on empty keys have already been emitted.
+		if tk.Indicator == token.QuotedScalarIndicator || tk.Type == token.TagType {
 			s.lastDelimColumn = tk.Position.Column
 		}
 	}

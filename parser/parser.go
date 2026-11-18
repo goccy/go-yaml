@@ -231,7 +231,7 @@ func (p *parser) parseToken(ctx *context, tk *Token) (ast.Node, error) {
 		ctx.goNext()
 		return node, nil
 	case TokenGroupScalarTag:
-		node, err := p.parseTag(ctx.withGroup(tk.Group))
+		node, err := p.parseTag(ctx.withGroup(tk.Group), 0)
 		if err != nil {
 			return nil, err
 		}
@@ -242,7 +242,7 @@ func (p *parser) parseToken(ctx *context, tk *Token) (ast.Node, error) {
 	case token.CommentType:
 		return p.parseComment(ctx)
 	case token.TagType:
-		return p.parseTag(ctx)
+		return p.parseTag(ctx, 0)
 	case token.MappingStartType:
 		return p.parseFlowMap(ctx.withFlow(true))
 	case token.SequenceStartType:
@@ -296,7 +296,7 @@ func (p *parser) parseScalarValue(ctx *context, tk *Token) (ast.ScalarNode, erro
 		case TokenGroupLiteral, TokenGroupFolded:
 			return p.parseLiteral(ctx.withGroup(tk.Group))
 		case TokenGroupScalarTag:
-			return p.parseTag(ctx.withGroup(tk.Group))
+			return p.parseTag(ctx.withGroup(tk.Group), 0)
 		default:
 			return nil, errors.ErrSyntax("unexpected scalar value", tk.RawToken())
 		}
@@ -802,7 +802,7 @@ func (p *parser) parseMapValue(ctx *context, key ast.MapKeyNode, colonTk *Token)
 		return anchor, nil
 	}
 
-	value, err := p.parseToken(ctx, ctx.currentToken())
+	value, err := p.parseBlockValue(ctx, keyCol)
 	if err != nil {
 		return nil, err
 	}
@@ -810,6 +810,14 @@ func (p *parser) parseMapValue(ctx *context, key ast.MapKeyNode, colonTk *Token)
 		return nil, err
 	}
 	return value, nil
+}
+
+func (p *parser) parseBlockValue(ctx *context, parentCol int) (ast.Node, error) {
+	tk := ctx.currentToken()
+	if tk.Type() == token.TagType && tk.Group == nil {
+		return p.parseTag(ctx, parentCol)
+	}
+	return p.parseToken(ctx, tk)
 }
 
 func (p *parser) validateAnchorValueInMapOrSeq(value ast.Node, col int) error {
@@ -936,7 +944,7 @@ func (p *parser) parseLiteral(ctx *context) (*ast.LiteralNode, error) {
 }
 
 func (p *parser) parseScalarTag(ctx *context) (*ast.TagNode, error) {
-	tag, err := p.parseTag(ctx)
+	tag, err := p.parseTag(ctx, 0)
 	if err != nil {
 		return nil, err
 	}
@@ -949,7 +957,7 @@ func (p *parser) parseScalarTag(ctx *context) (*ast.TagNode, error) {
 	return tag, nil
 }
 
-func (p *parser) parseTag(ctx *context) (*ast.TagNode, error) {
+func (p *parser) parseTag(ctx *context, parentCol int) (*ast.TagNode, error) {
 	tagTk := ctx.currentToken()
 	tagRawTk := tagTk.RawToken()
 	node, err := newTagNode(ctx, tagTk)
@@ -969,7 +977,7 @@ func (p *parser) parseTag(ctx *context) (*ast.TagNode, error) {
 		tagValue = value
 		node.Directive = p.secondaryTagDirective
 	} else {
-		value, err := p.parseTagValue(ctx, tagRawTk, ctx.currentToken())
+		value, err := p.parseTagValue(ctx, tagRawTk, ctx.currentToken(), parentCol)
 		if err != nil {
 			return nil, err
 		}
@@ -982,7 +990,7 @@ func (p *parser) parseTag(ctx *context) (*ast.TagNode, error) {
 	return node, nil
 }
 
-func (p *parser) parseTagValue(ctx *context, tagRawTk *token.Token, tk *Token) (ast.Node, error) {
+func (p *parser) parseTagValue(ctx *context, tagRawTk *token.Token, tk *Token, parentCol int) (ast.Node, error) {
 	if tk == nil {
 		return newNullNode(ctx, ctx.createImplicitNullToken(&Token{Token: tagRawTk}))
 	}
@@ -996,6 +1004,10 @@ func (p *parser) parseTagValue(ctx *context, tagRawTk *token.Token, tk *Token) (
 		}
 		return p.parseMap(ctx)
 	case token.IntegerTag, token.FloatTag, token.StringTag, token.BinaryTag, token.TimestampTag, token.BooleanTag, token.NullTag:
+		// A dedented sibling starts another entry, leaving the tagged scalar empty.
+		if tk.Line() > tagRawTk.Position.Line && tk.Column() <= parentCol {
+			return newTagDefaultScalarValueNode(ctx, tagRawTk)
+		}
 		if tk.GroupType() == TokenGroupLiteral || tk.GroupType() == TokenGroupFolded {
 			return p.parseLiteral(ctx.withGroup(tk.Group))
 		} else if tk.Type() == token.CollectEntryType || tk.Type() == token.MappingValueType {
@@ -1201,7 +1213,7 @@ func (p *parser) parseSequenceValue(ctx *context, seqTk *Token) (ast.Node, error
 		return anchor, nil
 	}
 
-	value, err := p.parseToken(ctx, ctx.currentToken())
+	value, err := p.parseBlockValue(ctx, seqCol)
 	if err != nil {
 		return nil, err
 	}

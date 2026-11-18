@@ -4169,3 +4169,30 @@ func TestIssue735(t *testing.T) {
 		}
 	})
 }
+
+func TestEmptyTaggedBlockScalars(t *testing.T) {
+	for _, tt := range []struct {
+		name, source string
+		want         interface{}
+	}{
+		{
+			"empty tagged keys and values",
+			"- !!str\n-\n  !!null : a\n  b: !!str\n- !!str : !!null\n",
+			[]interface{}{"", map[string]interface{}{"null": "a", "b": ""}, map[string]interface{}{"": nil}},
+		},
+		{"sequence", "- !!str\n- next\n", []interface{}{"", "next"}},
+		{"mapping", "first: !!str\nsecond: next\n", map[string]interface{}{"first": "", "second": "next"}},
+		{"nested mapping", "- text: !!str\n- next\n", []interface{}{map[string]interface{}{"text": ""}, "next"}},
+		{"indented value", "- !!str\n  next\n- last\n", []interface{}{"next", "last"}},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			var got interface{}
+			if err := yaml.Unmarshal([]byte(tt.source), &got); err != nil {
+				t.Fatal(err)
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Fatalf("decoded %#v, want %#v", got, tt.want)
+			}
+		})
+	}
+}

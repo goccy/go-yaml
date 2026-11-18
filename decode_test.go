@@ -1882,7 +1882,7 @@ func TestDecodeMergeKeyNestedLinear(t *testing.T) {
 		t.Fatalf("nested merges took %s; expected near-linear time", elapsed)
 	}
 	last, _ := v[fmt.Sprintf("m%d", levels)].(map[string]any)
-	if last == nil || fmt.Sprint(last["k0"]) != "0" || fmt.Sprint(last[fmt.Sprintf("k%d", levels)]) != fmt.Sprint(levels) {
+	if last == nil || fmt.Sprint(last["k0"]) != "0" || fmt.Sprint(last[fmt.Sprintf("k%d", levels)]) != strconv.Itoa(levels) {
 		t.Fatalf("unexpected last map: %#v", last)
 	}
 }

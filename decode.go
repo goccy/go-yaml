@@ -130,6 +130,303 @@ func (d *Decoder) mapKeyNodeToString(ctx context.Context, node ast.MapKeyNode) (
 	return fmt.Sprint(key), nil
 }
 
+// decodedMergeMap returns a map value for a merge target when every alias in
+// it already has a decoded anchor. Callers fall back to walking the AST when
+// this returns false.
+func (d *Decoder) decodedMergeMap(value ast.Node, mapType reflect.Type) (reflect.Value, bool) {
+	switch n := value.(type) {
+	case *ast.AliasNode:
+		name := n.Value.GetToken().Value
+		cached, ok := d.anchorValueMap[name]
+		if !ok || !cached.IsValid() {
+			return reflect.Value{}, false
+		}
+		for cached.Kind() == reflect.Interface || cached.Kind() == reflect.Ptr {
+			if cached.IsNil() {
+				return reflect.Value{}, false
+			}
+			cached = cached.Elem()
+		}
+		if cached.Kind() != reflect.Map {
+			return reflect.Value{}, false
+		}
+		if cached.Type().AssignableTo(mapType) {
+			return cached, true
+		}
+		// Copy into the destination map type when key/elem types allow it.
+		out := reflect.MakeMap(mapType)
+		iter := cached.MapRange()
+		for iter.Next() {
+			k := iter.Key()
+			v := iter.Value()
+			if !k.Type().AssignableTo(mapType.Key()) || !v.Type().AssignableTo(mapType.Elem()) {
+				return reflect.Value{}, false
+			}
+			out.SetMapIndex(k, v)
+		}
+		return out, true
+	case *ast.SequenceNode:
+		out := reflect.MakeMap(mapType)
+		for _, item := range n.Values {
+			part, ok := d.decodedMergeMap(item, mapType)
+			if !ok {
+				return reflect.Value{}, false
+			}
+			iter := part.MapRange()
+			for iter.Next() {
+				if out.MapIndex(iter.Key()).IsValid() {
+					continue
+				}
+				out.SetMapIndex(iter.Key(), iter.Value())
+			}
+		}
+		return out, true
+	case *ast.TagNode:
+		return d.decodedMergeMap(n.Value, mapType)
+	default:
+		return reflect.Value{}, false
+	}
+}
+
+// mergeDecodedMapInto copies src into dst without overwriting existing keys.
+// Returns false when src is not a recognized mapping form so the caller can
+// fall back to walking the AST (typed maps and structs are handled via reflect).
+func mergeDecodedMapInto(dst map[string]interface{}, src interface{}) bool {
+	switch s := src.(type) {
+	case map[string]interface{}:
+		for k, v := range s {
+			if _, exists := dst[k]; !exists {
+				dst[k] = v
+			}
+		}
+		return true
+	case MapSlice:
+		for _, item := range s {
+			k := fmt.Sprint(item.Key)
+			if _, exists := dst[k]; !exists {
+				dst[k] = item.Value
+			}
+		}
+		return true
+	}
+	rv := reflect.ValueOf(src)
+	for rv.Kind() == reflect.Interface || rv.Kind() == reflect.Ptr {
+		if !rv.IsValid() || rv.IsNil() {
+			return false
+		}
+		rv = rv.Elem()
+	}
+	if rv.Kind() != reflect.Map {
+		return false
+	}
+	iter := rv.MapRange()
+	for iter.Next() {
+		k := fmt.Sprint(iter.Key().Interface())
+		if _, exists := dst[k]; !exists {
+			dst[k] = iter.Value().Interface()
+		}
+	}
+	return true
+}
+
+func orderedMapIndexByString(m MapSlice, key string) int {
+	for i, item := range m {
+		if sk, ok := item.Key.(string); ok && sk == key {
+			return i
+		}
+	}
+	return -1
+}
+
+func orderedMapHasKey(m MapSlice, key interface{}) bool {
+	for _, item := range m {
+		if reflect.DeepEqual(item.Key, key) {
+			return true
+		}
+	}
+	return false
+}
+
+func mergeDecodedMapIntoOrdered(dst *MapSlice, src interface{}) bool {
+	switch s := src.(type) {
+	case map[string]interface{}:
+		for k, v := range s {
+			if !orderedMapHasKey(*dst, k) {
+				*dst = append(*dst, MapItem{Key: k, Value: v})
+			}
+		}
+		return true
+	case MapSlice:
+		for _, item := range s {
+			if !orderedMapHasKey(*dst, item.Key) {
+				*dst = append(*dst, MapItem{Key: item.Key, Value: item.Value})
+			}
+		}
+		return true
+	}
+	rv := reflect.ValueOf(src)
+	for rv.Kind() == reflect.Interface || rv.Kind() == reflect.Ptr {
+		if !rv.IsValid() || rv.IsNil() {
+			return false
+		}
+		rv = rv.Elem()
+	}
+	if rv.Kind() != reflect.Map {
+		return false
+	}
+	iter := rv.MapRange()
+	for iter.Next() {
+		k := iter.Key().Interface()
+		if !orderedMapHasKey(*dst, k) {
+			*dst = append(*dst, MapItem{Key: k, Value: iter.Value().Interface()})
+		}
+	}
+	return true
+}
+
+// mergeValueIntoMap applies a merge-key value. Existing keys in m win (YAML merge
+// key type). Alias targets reuse the already-decoded anchor when available so
+// nested merges stay linear and aliases keep the value from the definition site.
+func (d *Decoder) mergeValueIntoMap(ctx context.Context, value ast.Node, m map[string]interface{}) error {
+	d.stepIn()
+	defer d.stepOut()
+	if d.isExceededMaxDepth() {
+		return ErrExceededMaxDepth
+	}
+
+	switch n := value.(type) {
+	case *ast.AliasNode:
+		name := n.Value.GetToken().Value
+		if v, ok := d.anchorValueMap[name]; ok && v.IsValid() {
+			if mergeDecodedMapInto(m, v.Interface()) {
+				return nil
+			}
+		}
+		node := d.anchorNodeMap[name]
+		if node == nil {
+			return fmt.Errorf("cannot find anchor by alias name %s", name)
+		}
+		return d.mergeValueIntoMap(ctx, node, m)
+	case *ast.SequenceNode:
+		for _, item := range n.Values {
+			if err := d.mergeValueIntoMap(ctx, item, m); err != nil {
+				return err
+			}
+		}
+		return nil
+	case *ast.TagNode:
+		return d.mergeValueIntoMap(ctx, n.Value, m)
+	case *ast.AnchorNode:
+		name := n.Name.GetToken().Value
+		d.anchorNodeMap[name] = n.Value
+		tmp := make(map[string]interface{})
+		if err := d.mergeValueIntoMap(ctx, n.Value, tmp); err != nil {
+			return err
+		}
+		d.anchorValueMap[name] = reflect.ValueOf(tmp)
+		mergeDecodedMapInto(m, tmp)
+		return nil
+	}
+
+	mapNode, err := d.getMapNode(value, true)
+	if err != nil {
+		return err
+	}
+	iter := mapNode.MapRange()
+	for iter.Next() {
+		kv := iter.KeyValue()
+		if kv.Key.IsMergeKey() {
+			if err := d.mergeValueIntoMap(ctx, kv.Value, m); err != nil {
+				return err
+			}
+			continue
+		}
+		key, err := d.mapKeyNodeToString(ctx, kv.Key)
+		if err != nil {
+			return err
+		}
+		if _, exists := m[key]; exists {
+			continue
+		}
+		v, err := d.nodeToValue(ctx, kv.Value)
+		if err != nil {
+			return err
+		}
+		m[key] = v
+	}
+	return nil
+}
+
+func (d *Decoder) mergeValueIntoOrderedMap(ctx context.Context, value ast.Node, m *MapSlice) error {
+	d.stepIn()
+	defer d.stepOut()
+	if d.isExceededMaxDepth() {
+		return ErrExceededMaxDepth
+	}
+
+	switch n := value.(type) {
+	case *ast.AliasNode:
+		name := n.Value.GetToken().Value
+		if v, ok := d.anchorValueMap[name]; ok && v.IsValid() {
+			if mergeDecodedMapIntoOrdered(m, v.Interface()) {
+				return nil
+			}
+		}
+		node := d.anchorNodeMap[name]
+		if node == nil {
+			return fmt.Errorf("cannot find anchor by alias name %s", name)
+		}
+		return d.mergeValueIntoOrderedMap(ctx, node, m)
+	case *ast.SequenceNode:
+		for _, item := range n.Values {
+			if err := d.mergeValueIntoOrderedMap(ctx, item, m); err != nil {
+				return err
+			}
+		}
+		return nil
+	case *ast.TagNode:
+		return d.mergeValueIntoOrderedMap(ctx, n.Value, m)
+	case *ast.AnchorNode:
+		name := n.Name.GetToken().Value
+		d.anchorNodeMap[name] = n.Value
+		tmp := MapSlice{}
+		if err := d.mergeValueIntoOrderedMap(ctx, n.Value, &tmp); err != nil {
+			return err
+		}
+		d.anchorValueMap[name] = reflect.ValueOf(tmp)
+		mergeDecodedMapIntoOrdered(m, tmp)
+		return nil
+	}
+
+	mapNode, err := d.getMapNode(value, true)
+	if err != nil {
+		return err
+	}
+	iter := mapNode.MapRange()
+	for iter.Next() {
+		kv := iter.KeyValue()
+		if kv.Key.IsMergeKey() {
+			if err := d.mergeValueIntoOrderedMap(ctx, kv.Value, m); err != nil {
+				return err
+			}
+			continue
+		}
+		key, err := d.mapKeyNodeToString(ctx, kv.Key)
+		if err != nil {
+			return err
+		}
+		if orderedMapIndexByString(*m, key) >= 0 {
+			continue
+		}
+		v, err := d.nodeToValue(ctx, kv.Value)
+		if err != nil {
+			return err
+		}
+		*m = append(*m, MapItem{Key: key, Value: v})
+	}
+	return nil
+}
+
 func (d *Decoder) setToMapValue(ctx context.Context, node ast.Node, m map[string]interface{}) error {
 	d.stepIn()
 	defer d.stepOut()
@@ -141,27 +438,17 @@ func (d *Decoder) setToMapValue(ctx context.Context, node ast.Node, m map[string
 	switch n := node.(type) {
 	case *ast.MappingValueNode:
 		if n.Key.IsMergeKey() {
-			value, err := d.getMapNode(n.Value, true)
-			if err != nil {
-				return err
-			}
-			iter := value.MapRange()
-			for iter.Next() {
-				if err := d.setToMapValue(ctx, iter.KeyValue(), m); err != nil {
-					return err
-				}
-			}
-		} else {
-			key, err := d.mapKeyNodeToString(ctx, n.Key)
-			if err != nil {
-				return err
-			}
-			v, err := d.nodeToValue(ctx, n.Value)
-			if err != nil {
-				return err
-			}
-			m[key] = v
+			return d.mergeValueIntoMap(ctx, n.Value, m)
 		}
+		key, err := d.mapKeyNodeToString(ctx, n.Key)
+		if err != nil {
+			return err
+		}
+		v, err := d.nodeToValue(ctx, n.Value)
+		if err != nil {
+			return err
+		}
+		m[key] = v
 	case *ast.MappingNode:
 		for _, value := range n.Values {
 			if err := d.setToMapValue(ctx, value, m); err != nil {
@@ -186,25 +473,19 @@ func (d *Decoder) setToOrderedMapValue(ctx context.Context, node ast.Node, m *Ma
 	switch n := node.(type) {
 	case *ast.MappingValueNode:
 		if n.Key.IsMergeKey() {
-			value, err := d.getMapNode(n.Value, true)
-			if err != nil {
-				return err
-			}
-			iter := value.MapRange()
-			for iter.Next() {
-				if err := d.setToOrderedMapValue(ctx, iter.KeyValue(), m); err != nil {
-					return err
-				}
-			}
+			return d.mergeValueIntoOrderedMap(ctx, n.Value, m)
+		}
+		key, err := d.mapKeyNodeToString(ctx, n.Key)
+		if err != nil {
+			return err
+		}
+		value, err := d.nodeToValue(ctx, n.Value)
+		if err != nil {
+			return err
+		}
+		if idx := orderedMapIndexByString(*m, key); idx >= 0 {
+			(*m)[idx].Value = value
 		} else {
-			key, err := d.mapKeyNodeToString(ctx, n.Key)
-			if err != nil {
-				return err
-			}
-			value, err := d.nodeToValue(ctx, n.Value)
-			if err != nil {
-				return err
-			}
 			*m = append(*m, MapItem{Key: key, Value: value})
 		}
 	case *ast.MappingNode:
@@ -475,25 +756,16 @@ func (d *Decoder) nodeToValue(ctx context.Context, node ast.Node) (any, error) {
 		return d.nodeToValue(ctx, n.Value)
 	case *ast.MappingValueNode:
 		if n.Key.IsMergeKey() {
-			value, err := d.getMapNode(n.Value, true)
-			if err != nil {
-				return nil, err
-			}
-			iter := value.MapRange()
 			if d.useOrderedMap {
 				m := MapSlice{}
-				for iter.Next() {
-					if err := d.setToOrderedMapValue(ctx, iter.KeyValue(), &m); err != nil {
-						return nil, err
-					}
+				if err := d.mergeValueIntoOrderedMap(ctx, n.Value, &m); err != nil {
+					return nil, err
 				}
 				return m, nil
 			}
 			m := make(map[string]any)
-			for iter.Next() {
-				if err := d.setToMapValue(ctx, iter.KeyValue(), m); err != nil {
-					return nil, err
-				}
+			if err := d.mergeValueIntoMap(ctx, n.Value, m); err != nil {
+				return nil, err
 			}
 			return m, nil
 		}
@@ -1142,9 +1414,11 @@ func (d *Decoder) keyToNodeMap(ctx context.Context, node ast.Node, ignoreMergeKe
 			if err != nil {
 				return nil, err
 			}
+			// Merged keys fill gaps only; they are not duplicate conflicts and
+			// must not block a later explicit key for the same name.
 			for k, v := range mergeMap {
-				if err := d.validateDuplicateKey(keyMap, k, v); err != nil {
-					return nil, err
+				if _, exists := keyToNodeMap[k]; exists {
+					continue
 				}
 				keyToNodeMap[k] = v
 			}
@@ -1685,8 +1959,8 @@ func (d *Decoder) decodeMapSlice(ctx context.Context, dst *MapSlice, src ast.Nod
 				return err
 			}
 			for _, v := range m {
-				if err := d.validateDuplicateKey(keyMap, v.Key, value); err != nil {
-					return err
+				if orderedMapHasKey(mapSlice, v.Key) {
+					continue
 				}
 				mapSlice = append(mapSlice, v)
 			}
@@ -1703,6 +1977,8 @@ func (d *Decoder) decodeMapSlice(ctx context.Context, dst *MapSlice, src ast.Nod
 		if err != nil {
 			return err
 		}
+		// Keep typed key identity (e.g. uint64(1) vs string("1") under
+		// AllowDuplicateMapKey). Do not collapse by string form.
 		mapSlice = append(mapSlice, MapItem{Key: k, Value: v})
 	}
 	*dst = mapSlice
@@ -1731,13 +2007,25 @@ func (d *Decoder) decodeMap(ctx context.Context, dst reflect.Value, src ast.Node
 		key := mapIter.Key()
 		value := mapIter.Value()
 		if key.IsMergeKey() {
-			if err := d.decodeMap(withMerge(ctx), dst, value); err != nil {
+			if merged, ok := d.decodedMergeMap(value, mapType); ok {
+				iter := merged.MapRange()
+				for iter.Next() {
+					if mapValue.MapIndex(iter.Key()).IsValid() {
+						continue
+					}
+					mapValue.SetMapIndex(iter.Key(), iter.Value())
+				}
+				continue
+			}
+			mergedHolder := reflect.New(mapType)
+			mergedHolder.Elem().Set(reflect.MakeMap(mapType))
+			if err := d.decodeMap(withMerge(ctx), mergedHolder.Elem(), value); err != nil {
 				return err
 			}
-			iter := dst.MapRange()
+			iter := mergedHolder.Elem().MapRange()
 			for iter.Next() {
-				if err := d.validateDuplicateKey(keyMap, iter.Key(), value); err != nil {
-					return err
+				if mapValue.MapIndex(iter.Key()).IsValid() {
+					continue
 				}
 				mapValue.SetMapIndex(iter.Key(), iter.Value())
 			}

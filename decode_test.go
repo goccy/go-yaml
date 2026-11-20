@@ -4182,6 +4182,10 @@ func TestEmptyTaggedBlockScalars(t *testing.T) {
 		},
 		{"sequence", "- !!str\n- next\n", []interface{}{"", "next"}},
 		{"mapping", "first: !!str\nsecond: next\n", map[string]interface{}{"first": "", "second": "next"}},
+		{"anchor before tag", "first: &v !!str\nsecond: *v\n", map[string]interface{}{"first": "", "second": ""}},
+		{"tag before final anchor", "first: !!str &v\n", map[string]interface{}{"first": ""}},
+		{"anchored indented value", "first: !!str &v\n  text\nsecond: *v\n", map[string]interface{}{"first": "text", "second": "text"}},
+		{"tag before anchor", "- !!str &v\n- *v\n", []interface{}{"", ""}},
 		{"nested mapping", "- text: !!str\n- next\n", []interface{}{map[string]interface{}{"text": ""}, "next"}},
 		{"indented value", "- !!str\n  next\n- last\n", []interface{}{"next", "last"}},
 	} {

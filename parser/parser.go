@@ -174,6 +174,10 @@ func (p *parser) parseDocumentBody(ctx *context) (ast.Node, error) {
 }
 
 func (p *parser) parseToken(ctx *context, tk *Token) (ast.Node, error) {
+	return p.parseTokenAtColumn(ctx, tk, 0)
+}
+
+func (p *parser) parseTokenAtColumn(ctx *context, tk *Token, parentCol int) (ast.Node, error) {
 	switch tk.GroupType() {
 	case TokenGroupMapKey, TokenGroupMapKeyValue:
 		return p.parseMap(ctx)
@@ -207,7 +211,7 @@ func (p *parser) parseToken(ctx *context, tk *Token) (ast.Node, error) {
 		if ctx.isTokenNotFound() {
 			return nil, errors.ErrSyntax("could not find anchor value", tk.RawToken())
 		}
-		value, err := p.parseToken(ctx, ctx.currentToken())
+		value, err := p.parseTokenAtColumn(ctx, ctx.currentToken(), parentCol)
 		if err != nil {
 			return nil, err
 		}
@@ -242,7 +246,7 @@ func (p *parser) parseToken(ctx *context, tk *Token) (ast.Node, error) {
 	case token.CommentType:
 		return p.parseComment(ctx)
 	case token.TagType:
-		return p.parseTag(ctx, 0)
+		return p.parseTag(ctx, parentCol)
 	case token.MappingStartType:
 		return p.parseFlowMap(ctx.withFlow(true))
 	case token.SequenceStartType:
@@ -802,7 +806,7 @@ func (p *parser) parseMapValue(ctx *context, key ast.MapKeyNode, colonTk *Token)
 		return anchor, nil
 	}
 
-	value, err := p.parseBlockValue(ctx, keyCol)
+	value, err := p.parseTokenAtColumn(ctx, ctx.currentToken(), keyCol)
 	if err != nil {
 		return nil, err
 	}
@@ -810,14 +814,6 @@ func (p *parser) parseMapValue(ctx *context, key ast.MapKeyNode, colonTk *Token)
 		return nil, err
 	}
 	return value, nil
-}
-
-func (p *parser) parseBlockValue(ctx *context, parentCol int) (ast.Node, error) {
-	tk := ctx.currentToken()
-	if tk.Type() == token.TagType && tk.Group == nil {
-		return p.parseTag(ctx, parentCol)
-	}
-	return p.parseToken(ctx, tk)
 }
 
 func (p *parser) validateAnchorValueInMapOrSeq(value ast.Node, col int) error {
@@ -1007,6 +1003,23 @@ func (p *parser) parseTagValue(ctx *context, tagRawTk *token.Token, tk *Token, p
 		// A dedented sibling starts another entry, leaving the tagged scalar empty.
 		if tk.Line() > tagRawTk.Position.Line && tk.Column() <= parentCol {
 			return newTagDefaultScalarValueNode(ctx, tagRawTk)
+		}
+		if tk.GroupType() == TokenGroupAnchorName {
+			anchor, err := p.parseAnchorName(ctx.withGroup(tk.Group))
+			if err != nil {
+				return nil, err
+			}
+			ctx.goNext()
+			next := ctx.currentToken()
+			if next == nil || (next.Line() > tk.Line() && next.Column() <= parentCol) {
+				anchor.Value, err = newTagDefaultScalarValueNode(ctx, tagRawTk)
+			} else {
+				anchor.Value, err = p.parseToken(ctx, next)
+				if _, ok := anchor.Value.(*ast.AnchorNode); ok {
+					return nil, errors.ErrSyntax("anchors cannot be used consecutively", next.RawToken())
+				}
+			}
+			return anchor, err
 		}
 		if tk.GroupType() == TokenGroupLiteral || tk.GroupType() == TokenGroupFolded {
 			return p.parseLiteral(ctx.withGroup(tk.Group))
@@ -1213,7 +1226,7 @@ func (p *parser) parseSequenceValue(ctx *context, seqTk *Token) (ast.Node, error
 		return anchor, nil
 	}
 
-	value, err := p.parseBlockValue(ctx, seqCol)
+	value, err := p.parseTokenAtColumn(ctx, ctx.currentToken(), seqCol)
 	if err != nil {
 		return nil, err
 	}

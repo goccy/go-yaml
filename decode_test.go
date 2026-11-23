@@ -4169,3 +4169,58 @@ func TestIssue735(t *testing.T) {
 		}
 	})
 }
+
+func TestIssue909(t *testing.T) {
+	// A !!binary scalar decoded into a byte slice field must be base64-decoded
+	// rather than treated as a YAML sequence, which previously failed with
+	// "string was used where sequence is expected" (and panicked on older
+	// versions).
+	t.Run("binary tag into []byte struct field", func(t *testing.T) {
+		var v struct {
+			Data []byte `yaml:"data"`
+		}
+		if err := yaml.Unmarshal([]byte("data: !!binary aGVsbG8=\n"), &v); err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if !bytes.Equal(v.Data, []byte("hello")) {
+			t.Fatalf("unexpected data: %q", v.Data)
+		}
+	})
+
+	t.Run("binary tag with block scalar into []byte struct field", func(t *testing.T) {
+		var v struct {
+			Data []byte `yaml:"data"`
+		}
+		src := "data: !!binary |\n  " + strings.Repeat("kJCQ", 17) + "kJ\n  CQ\n"
+		if err := yaml.Unmarshal([]byte(src), &v); err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if want := []byte(strings.Repeat("\x90", 54)); !bytes.Equal(v.Data, want) {
+			t.Fatalf("unexpected data: %q", v.Data)
+		}
+	})
+
+	t.Run("binary tag into named byte slice type", func(t *testing.T) {
+		type Blob []byte
+		var v struct {
+			Data Blob `yaml:"data"`
+		}
+		if err := yaml.Unmarshal([]byte("data: !!binary aGVsbG8=\n"), &v); err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if !bytes.Equal(v.Data, []byte("hello")) {
+			t.Fatalf("unexpected data: %q", v.Data)
+		}
+	})
+
+	t.Run("binary tag into map[string]any still works", func(t *testing.T) {
+		var v map[string]any
+		if err := yaml.Unmarshal([]byte("data: !!binary aGVsbG8=\n"), &v); err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		b, ok := v["data"].([]byte)
+		if !ok || !bytes.Equal(b, []byte("hello")) {
+			t.Fatalf("unexpected data: %v", v["data"])
+		}
+	})
+}

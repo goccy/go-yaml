@@ -584,6 +584,16 @@ func (d *Decoder) getMapNode(node ast.Node, isMerge bool) (ast.MapNode, error) {
 	return nil, errors.ErrUnexpectedNodeType(node.Type(), ast.MappingType, node.GetToken())
 }
 
+// isBinaryTagNode reports whether node is a scalar explicitly tagged with the
+// `!!binary` tag.
+func isBinaryTagNode(node ast.Node) bool {
+	tag, ok := node.(*ast.TagNode)
+	if !ok {
+		return false
+	}
+	return tag.Start != nil && tag.Start.Value == string(token.BinaryTag)
+}
+
 func (d *Decoder) getArrayNode(node ast.Node) (ast.ArrayNode, error) {
 	d.stepIn()
 	defer d.stepOut()
@@ -953,6 +963,22 @@ func (d *Decoder) decodeValue(ctx context.Context, dst reflect.Value, src ast.No
 	case reflect.Slice:
 		if mapSlice, ok := dst.Addr().Interface().(*MapSlice); ok {
 			return d.decodeMapSlice(ctx, mapSlice, src)
+		}
+		// A !!binary scalar represents a base64-encoded byte sequence, so it
+		// must be decoded into a byte slice directly instead of being treated
+		// as a YAML sequence (which fails with "string was used where sequence
+		// is expected").
+		if valueType.Elem().Kind() == reflect.Uint8 && isBinaryTagNode(src) {
+			v, err := d.nodeToValue(ctx, src)
+			if err != nil {
+				return err
+			}
+			b, ok := v.([]byte)
+			if !ok {
+				return errors.ErrTypeMismatch(valueType, reflect.TypeOf(v), src.GetToken())
+			}
+			dst.Set(reflect.ValueOf(b).Convert(valueType))
+			return nil
 		}
 		return d.decodeSlice(ctx, dst, src)
 	case reflect.Struct:

@@ -2,6 +2,7 @@ package printer_test
 
 import (
 	"fmt"
+	"strings"
 	"testing"
 
 	"github.com/goccy/go-yaml/lexer"
@@ -149,6 +150,34 @@ alias: *x`
 	if expected != got {
 		t.Fatalf("unexpected output: expect:[%s]\n actual:[%s]", expected, got)
 	}
+}
+
+func TestPrinter_Alias(t *testing.T) {
+	yml := `anchor: &x 1
+alias: *x`
+	tokens := lexer.Tokenize(yml)
+
+	t.Run("alias marker uses the Alias property", func(t *testing.T) {
+		var p printer.Printer
+		p.Alias = func() *printer.Property {
+			return &printer.Property{Prefix: "[", Suffix: "]"}
+		}
+		got := p.PrintTokens(tokens)
+		if !strings.Contains(got, "[ *]") {
+			t.Fatalf("alias property is not applied to the alias marker: [%s]", got)
+		}
+	})
+
+	t.Run("no panic with only Anchor set", func(t *testing.T) {
+		var p printer.Printer
+		p.Anchor = func() *printer.Property {
+			return &printer.Property{Prefix: "<", Suffix: ">"}
+		}
+		got := p.PrintTokens(tokens)
+		if !strings.Contains(got, "< &>") {
+			t.Fatalf("anchor property is not applied to the anchor marker: [%s]", got)
+		}
+	})
 }
 
 func Test_Printer_Multiline(t *testing.T) {

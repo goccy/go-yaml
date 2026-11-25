@@ -1790,6 +1790,51 @@ func Test_Marshaler(t *testing.T) {
 	t.Logf("%s", buf)
 }
 
+type addressableMarshaler string
+
+func (m *addressableMarshaler) MarshalYAML() ([]byte, error) {
+	return []byte(string(*m) + "quux"), nil
+}
+
+func Test_MarshalerOnAddressableNonPointer(t *testing.T) {
+	tests := []struct {
+		name string
+		in   any
+		want string
+	}{
+		{
+			name: "slice element",
+			in:   []addressableMarshaler{"foobar"},
+			want: "- foobarquux\n",
+		},
+		{
+			name: "array element",
+			in:   [1]addressableMarshaler{"foobar"},
+			want: "- foobarquux\n",
+		},
+		{
+			name: "slice of pointers",
+			in:   []*addressableMarshaler{addressableMarshalerPtr("foobar")},
+			want: "- foobarquux\n",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := yaml.Marshal(tt.in)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if string(got) != tt.want {
+				t.Fatalf("expected %q, got %q", tt.want, got)
+			}
+		})
+	}
+}
+
+func addressableMarshalerPtr(v addressableMarshaler) *addressableMarshaler {
+	return &v
+}
+
 type marshalContext struct{}
 
 func (c *marshalContext) MarshalYAML(ctx context.Context) ([]byte, error) {

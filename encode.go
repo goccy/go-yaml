@@ -314,6 +314,32 @@ func (e *Encoder) marshalerFromCustomMarshalerMap(t reflect.Type) (func(context.
 	return nil, false
 }
 
+// marshalerInterface returns the addressable value of v when that value
+// implements a marshaler interface but v itself does not. This allows
+// pointer-receiver MarshalYAML methods to be used for addressable values,
+// such as elements of a slice.
+func marshalerInterface(v reflect.Value) any {
+	iface := v.Interface()
+	if isMarshalerInterface(iface) {
+		return iface
+	}
+	if v.Kind() == reflect.Ptr || !v.CanAddr() || !v.Addr().CanInterface() {
+		return iface
+	}
+	if addrIface := v.Addr().Interface(); isMarshalerInterface(addrIface) {
+		return addrIface
+	}
+	return iface
+}
+
+func isMarshalerInterface(iface any) bool {
+	switch iface.(type) {
+	case BytesMarshalerContext, BytesMarshaler, InterfaceMarshalerContext, InterfaceMarshaler, time.Time, *time.Time, time.Duration, encoding.TextMarshaler, jsonMarshaler:
+		return true
+	}
+	return false
+}
+
 func (e *Encoder) canEncodeByMarshaler(v reflect.Value) bool {
 	if !v.CanInterface() {
 		return false
@@ -321,7 +347,7 @@ func (e *Encoder) canEncodeByMarshaler(v reflect.Value) bool {
 	if e.existsTypeInCustomMarshalerMap(v.Type()) {
 		return true
 	}
-	iface := v.Interface()
+	iface := marshalerInterface(v)
 	switch iface.(type) {
 	case BytesMarshalerContext:
 		return true
@@ -344,10 +370,8 @@ func (e *Encoder) canEncodeByMarshaler(v reflect.Value) bool {
 }
 
 func (e *Encoder) encodeByMarshaler(ctx context.Context, v reflect.Value, column int) (ast.Node, error) {
-	iface := v.Interface()
-
 	if marshaler, exists := e.marshalerFromCustomMarshalerMap(v.Type()); exists {
-		doc, err := marshaler(ctx, iface)
+		doc, err := marshaler(ctx, v.Interface())
 		if err != nil {
 			return nil, err
 		}
@@ -357,6 +381,8 @@ func (e *Encoder) encodeByMarshaler(ctx context.Context, v reflect.Value, column
 		}
 		return node, nil
 	}
+
+	iface := marshalerInterface(v)
 
 	if marshaler, ok := iface.(BytesMarshalerContext); ok {
 		doc, err := marshaler.MarshalYAML(ctx)
@@ -627,8 +653,14 @@ func (e *Encoder) encodeArray(ctx context.Context, value reflect.Value) (*ast.Se
 	}
 	column := e.column
 	sequence := ast.Sequence(token.New("-", "-", e.pos(column)), e.isFlowStyle)
-	for i := 0; i < value.Len(); i++ {
-		node, err := e.encodeValue(ctx, value.Index(i), column)
+	elements := value
+	if !elements.CanAddr() {
+		copyValue := reflect.New(value.Type()).Elem()
+		copyValue.Set(value)
+		elements = copyValue
+	}
+	for i := 0; i < elements.Len(); i++ {
+		node, err := e.encodeValue(ctx, elements.Index(i), column)
 		if err != nil {
 			return nil, err
 		}
